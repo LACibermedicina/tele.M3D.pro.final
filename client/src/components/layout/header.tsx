@@ -9,7 +9,7 @@ import LanguageSelector from "@/components/ui/language-selector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import NotificationCenter from "@/components/notifications/notification-center";
 import CommandPalette from "@/components/command-palette";
@@ -244,7 +244,7 @@ export default function Header() {
   return (
     <header className="bg-card/95 backdrop-blur-sm border-b border-border shadow-sm sticky top-0 z-50" data-testid="header-main">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-24">
           <div className="flex items-center space-x-4">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <Tooltip>
@@ -378,7 +378,7 @@ export default function Header() {
 
             <Link href="/" data-testid="link-logo">
               <div className="flex items-center space-x-3 cursor-pointer group">
-                <div className="w-10 h-10 flex items-center justify-center">
+                <div className="w-20 h-20 flex items-center justify-center">
                   <img 
                     src={telemedLogo} 
                     alt="Telemed Logo" 
@@ -574,13 +574,13 @@ export default function Header() {
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 bg-card/95 backdrop-blur-sm">
                   <DropdownMenuItem 
                     onClick={() => navigate('/login')} 
                     data-testid="button-login"
                     className="cursor-pointer"
                   >
-                    <User className="mr-2 h-4 w-4" />
+                    <LogIn className="mr-2 h-4 w-4" />
                     {t("auth.login")}
                   </DropdownMenuItem>
                   <DropdownMenuItem 
@@ -588,7 +588,7 @@ export default function Header() {
                     data-testid="button-register"
                     className="cursor-pointer"
                   >
-                    <User className="mr-2 h-4 w-4" />
+                    <UserPlus className="mr-2 h-4 w-4" />
                     Cadastrar
                   </DropdownMenuItem>
                 </DropdownMenuContent>
