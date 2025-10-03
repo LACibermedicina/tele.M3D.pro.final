@@ -510,32 +510,34 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             {!user && (
               <form onSubmit={handleQuickLogin} className="hidden lg:flex items-center space-x-3 animate-fade-in">
-                <div className="relative">
+                <div className="relative group">
                   <input
                     type="text"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     placeholder="Email ou usuário"
-                    className="w-48 px-4 py-2 rounded-xl border-2 border-primary/30 bg-background/50 backdrop-blur-sm text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 hover:border-primary/50"
+                    className="w-48 px-4 py-2 rounded-xl border-2 border-primary/20 bg-background/40 backdrop-blur-sm text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 focus:bg-background/60 transition-all duration-300 hover:border-primary/40 hover:bg-background/50 focus:placeholder:text-muted-foreground/70 focus:placeholder:translate-x-1 placeholder:transition-all"
                     data-testid="input-quick-login-email"
                     disabled={isLoggingIn}
                   />
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
                 </div>
-                <div className="relative">
+                <div className="relative group">
                   <input
                     type="password"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     placeholder="Senha"
-                    className="w-40 px-4 py-2 rounded-xl border-2 border-primary/30 bg-background/50 backdrop-blur-sm text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 hover:border-primary/50"
+                    className="w-40 px-4 py-2 rounded-xl border-2 border-primary/20 bg-background/40 backdrop-blur-sm text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 focus:bg-background/60 transition-all duration-300 hover:border-primary/40 hover:bg-background/50 focus:placeholder:text-muted-foreground/70 focus:placeholder:translate-x-1 placeholder:transition-all"
                     data-testid="input-quick-login-password"
                     disabled={isLoggingIn}
                   />
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
                 </div>
                 <Button
                   type="submit"
                   size="sm"
-                  className="rounded-xl px-4 shadow-md hover:shadow-lg transition-all duration-300"
+                  className="rounded-xl px-4 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300"
                   style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}
                   disabled={isLoggingIn || !loginEmail || !loginPassword}
                   data-testid="button-quick-login"
@@ -629,6 +631,29 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
+                      className="w-10 h-10 text-blue-600/70 dark:text-blue-400/70 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition-all"
+                      data-testid="button-info-visitor"
+                      onClick={() => {
+                        toast({
+                          title: "ℹ️ Informações Gerais",
+                          description: "Telemed - Sistema de Telemedicina com IA",
+                        });
+                        navigate('/features');
+                      }}
+                    >
+                      <Shield className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Informações do Sistema</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
                       className="w-10 h-10 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all"
                       data-testid="button-emergency-visitor"
                       onClick={() => {
@@ -648,123 +673,39 @@ export default function Header() {
                   </TooltipContent>
                 </Tooltip>
 
-                <DropdownMenu>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="w-10 h-10 rounded-xl hover:bg-primary/10 text-primary/70 hover:text-primary transition-all"
-                          data-testid="button-auth-menu"
-                        >
-                          <UserPlus className="h-5 w-5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Cadastro e Login</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  <DropdownMenuContent align="end" className="w-auto p-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-2 border-primary/20 shadow-2xl">
-                    <div className="flex flex-col gap-1">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <DropdownMenuItem 
-                            onClick={() => navigate('/login')} 
-                            data-testid="button-login"
-                            className="cursor-pointer group p-0 hover:bg-transparent focus:bg-transparent relative"
-                          >
-                            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-all">
-                              <LogIn className="h-5 w-5 text-primary" />
-                            </div>
-                            <span className="absolute left-12 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-medium pointer-events-none px-2">
-                              {t("auth.login")}
-                            </span>
-                          </DropdownMenuItem>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          <p>{t("auth.login")}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <DropdownMenuItem 
-                            onClick={() => navigate('/register')} 
-                            data-testid="button-register"
-                            className="cursor-pointer group p-0 hover:bg-transparent focus:bg-transparent relative"
-                          >
-                            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-all">
-                              <UserPlus className="h-5 w-5 text-primary" />
-                            </div>
-                            <span className="absolute left-12 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-medium pointer-events-none px-2">
-                              Cadastrar
-                            </span>
-                          </DropdownMenuItem>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          <p>Cadastrar</p>
-                        </TooltipContent>
-                      </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="w-10 h-10 rounded-xl hover:bg-primary/10 text-primary/70 hover:text-primary transition-all"
+                      data-testid="button-login-icon"
+                      onClick={() => navigate('/login')}
+                    >
+                      <LogIn className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{t("auth.login")}</p>
+                  </TooltipContent>
+                </Tooltip>
 
-                      <div className="h-px bg-border/30 my-1" />
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              toast({
-                                title: "ℹ️ Informações Gerais",
-                                description: "Telemed - Sistema de Telemedicina com IA",
-                              });
-                              navigate('/features');
-                            }}
-                            data-testid="button-info"
-                            className="cursor-pointer group p-0 hover:bg-transparent focus:bg-transparent relative"
-                          >
-                            <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center group-hover:bg-blue-500/30 transition-all">
-                              <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                            </div>
-                            <span className="absolute left-12 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-medium pointer-events-none px-2">
-                              Informações
-                            </span>
-                          </DropdownMenuItem>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          <p>Informações do Sistema</p>
-                        </TooltipContent>
-                      </Tooltip>
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              toast({
-                                title: "🚨 Emergência Médica",
-                                description: "Em caso de emergência, ligue 192 (SAMU) ou 193 (Bombeiros)",
-                                variant: "destructive",
-                              });
-                              window.open('tel:192', '_blank');
-                            }}
-                            data-testid="button-emergency-menu"
-                            className="cursor-pointer group p-0 hover:bg-transparent focus:bg-transparent relative"
-                          >
-                            <div className="w-10 h-10 rounded-xl bg-destructive/20 flex items-center justify-center group-hover:bg-destructive/30 transition-all">
-                              <Ambulance className="h-5 w-5 text-destructive" />
-                            </div>
-                            <span className="absolute left-12 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-medium pointer-events-none px-2">
-                              Emergência
-                            </span>
-                          </DropdownMenuItem>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          <p>Acionar Emergência Médica</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="w-10 h-10 rounded-xl hover:bg-primary/10 text-primary/70 hover:text-primary transition-all"
+                      data-testid="button-register-icon"
+                      onClick={() => navigate('/register')}
+                    >
+                      <UserPlus className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Cadastrar</p>
+                  </TooltipContent>
+                </Tooltip>
               </>
             )}
           </div>
