@@ -224,7 +224,7 @@ function SidebarContent() {
       {/* Modern User Info */}
       <div className="border-t border-border p-6">
         <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-md" style={{ background: "linear-gradient(135deg, hsl(30, 65%, 65%) 0%, hsl(20, 50%, 68%) 100%)" }}>
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-md" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
             <User className="text-white h-5 w-5" />
           </div>
           <div className="flex-1">

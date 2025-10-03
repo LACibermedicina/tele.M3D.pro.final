@@ -9,7 +9,7 @@ import LanguageSelector from "@/components/ui/language-selector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import NotificationCenter from "@/components/notifications/notification-center";
 import CommandPalette from "@/components/command-palette";
@@ -23,6 +23,9 @@ export default function Header() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const { user, logout } = useAuth();
   const { toast } = useToast();
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Get only first and second name
   const getShortName = (fullName: string) => {
@@ -43,6 +46,34 @@ export default function Header() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const handleQuickLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    
+    try {
+      const response = await apiRequest('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          username: loginEmail, 
+          password: loginPassword 
+        }),
+      });
+
+      if (response.ok) {
+        window.location.href = '/dashboard';
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro no Login",
+        description: error.message || "Credenciais inválidas",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -312,7 +343,7 @@ export default function Header() {
                           }`}
                           style={{
                             background: isActive
-                              ? "linear-gradient(135deg, hsl(30, 65%, 65%) 0%, hsl(20, 50%, 68%) 100%)"
+                              ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)"
                               : "transparent"
                           }}
                         >
@@ -334,7 +365,7 @@ export default function Header() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <Avatar className="w-12 h-12">
-                          <AvatarFallback className="text-white font-semibold" style={{ background: "linear-gradient(135deg, hsl(30, 65%, 65%) 0%, hsl(20, 50%, 68%) 100%)" }}>
+                          <AvatarFallback className="text-white font-semibold" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
                             {getUserInitials(user.name)}
                           </AvatarFallback>
                         </Avatar>
@@ -463,7 +494,7 @@ export default function Header() {
                           }`}
                           style={{
                             background: isActive
-                              ? "linear-gradient(135deg, hsl(30, 65%, 65%) 0%, hsl(20, 50%, 68%) 100%)"
+                              ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)"
                               : "transparent"
                           }}
                         >
@@ -481,6 +512,47 @@ export default function Header() {
           </TooltipProvider>
 
           <div className="flex items-center space-x-4">
+            {!user && (
+              <form onSubmit={handleQuickLogin} className="hidden lg:flex items-center space-x-3 animate-fade-in">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="Email ou usuário"
+                    className="w-48 px-4 py-2 rounded-xl border-2 border-primary/30 bg-background/50 backdrop-blur-sm text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 hover:border-primary/50"
+                    data-testid="input-quick-login-email"
+                    disabled={isLoggingIn}
+                  />
+                </div>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="Senha"
+                    className="w-40 px-4 py-2 rounded-xl border-2 border-primary/30 bg-background/50 backdrop-blur-sm text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 hover:border-primary/50"
+                    data-testid="input-quick-login-password"
+                    disabled={isLoggingIn}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="rounded-xl px-4 shadow-md hover:shadow-lg transition-all duration-300"
+                  style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}
+                  disabled={isLoggingIn || !loginEmail || !loginPassword}
+                  data-testid="button-quick-login"
+                >
+                  {isLoggingIn ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <LogIn className="h-4 w-4" />
+                  )}
+                </Button>
+              </form>
+            )}
+            
             <LanguageSelector />
             
             {user ? (
@@ -510,7 +582,7 @@ export default function Header() {
                       data-testid="button-user-menu"
                     >
                       <Avatar className="w-9 h-9">
-                        <AvatarFallback className="text-white font-semibold text-sm" style={{ background: "linear-gradient(135deg, hsl(30, 65%, 65%) 0%, hsl(20, 50%, 68%) 100%)" }}>
+                        <AvatarFallback className="text-white font-semibold text-sm" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
                           {getUserInitials(user.name)}
                         </AvatarFallback>
                       </Avatar>
@@ -555,44 +627,62 @@ export default function Header() {
                 </DropdownMenu>
               </>
             ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="flex items-center space-x-2 px-3 py-2 rounded-xl hover:bg-primary/10 transition-colors"
-                    data-testid="button-login-menu"
-                    title={t("auth.login")}
-                  >
-                    <img 
-                      src={userIcon} 
-                      alt="User Icon" 
-                      className="w-5 h-5"
-                      style={{ filter: 'brightness(0) invert(1)' }}
-                    />
-                    <span className="hidden sm:inline text-sm font-medium text-foreground">
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-10 h-10 rounded-xl hover:bg-primary/10 text-primary transition-all"
+                      onClick={() => navigate('/register')}
+                      data-testid="button-register-icon"
+                    >
+                      <UserPlus className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Cadastrar</p>
+                  </TooltipContent>
+                </Tooltip>
+                
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-10 h-10 rounded-xl hover:bg-primary/10 text-primary transition-all"
+                          data-testid="button-login-menu"
+                        >
+                          <LogIn className="h-5 w-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t("auth.login")}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align="end" className="w-48 bg-card/95 backdrop-blur-sm">
+                    <DropdownMenuItem 
+                      onClick={() => navigate('/login')} 
+                      data-testid="button-login"
+                      className="cursor-pointer"
+                    >
+                      <LogIn className="mr-2 h-4 w-4" />
                       {t("auth.login")}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-card/95 backdrop-blur-sm">
-                  <DropdownMenuItem 
-                    onClick={() => navigate('/login')} 
-                    data-testid="button-login"
-                    className="cursor-pointer"
-                  >
-                    <LogIn className="mr-2 h-4 w-4" />
-                    {t("auth.login")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => navigate('/register')} 
-                    data-testid="button-register"
-                    className="cursor-pointer"
-                  >
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Cadastrar
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => navigate('/register')} 
+                      data-testid="button-register"
+                      className="cursor-pointer"
+                    >
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Cadastrar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             )}
           </div>
         </div>
