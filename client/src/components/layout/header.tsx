@@ -629,7 +629,7 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="w-10 h-10 text-destructive hover:bg-destructive/10 rounded-xl transition-all"
+                      className="w-10 h-10 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all"
                       data-testid="button-emergency-visitor"
                       onClick={() => {
                         toast({
@@ -655,7 +655,7 @@ export default function Header() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="w-10 h-10 rounded-xl hover:bg-primary/10 text-primary transition-all"
+                          className="w-10 h-10 rounded-xl hover:bg-primary/10 text-primary/70 hover:text-primary transition-all"
                           data-testid="button-auth-menu"
                         >
                           <UserPlus className="h-5 w-5" />
@@ -666,101 +666,103 @@ export default function Header() {
                       <p>Cadastro e Login</p>
                     </TooltipContent>
                   </Tooltip>
-                  <DropdownMenuContent align="end" className="w-56 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-2 border-primary/20 shadow-2xl">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuItem 
-                          onClick={() => navigate('/login')} 
-                          data-testid="button-login"
-                          className="cursor-pointer group py-3 hover:bg-primary/10 focus:bg-primary/10 transition-all duration-300"
-                        >
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mr-3 group-hover:bg-primary/20 transition-all">
-                            <LogIn className="h-5 w-5 text-primary" />
-                          </div>
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-medium">
-                            {t("auth.login")}
-                          </span>
-                        </DropdownMenuItem>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        <p>{t("auth.login")}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuItem 
-                          onClick={() => navigate('/register')} 
-                          data-testid="button-register"
-                          className="cursor-pointer group py-3 hover:bg-primary/10 focus:bg-primary/10 transition-all duration-300"
-                        >
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mr-3 group-hover:bg-primary/20 transition-all">
-                            <UserPlus className="h-5 w-5 text-primary" />
-                          </div>
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-medium">
-                            Cadastrar
-                          </span>
-                        </DropdownMenuItem>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        <p>Cadastrar</p>
-                      </TooltipContent>
-                    </Tooltip>
+                  <DropdownMenuContent align="end" className="w-auto p-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-2 border-primary/20 shadow-2xl">
+                    <div className="flex flex-col gap-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuItem 
+                            onClick={() => navigate('/login')} 
+                            data-testid="button-login"
+                            className="cursor-pointer group p-0 hover:bg-transparent focus:bg-transparent relative"
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-all">
+                              <LogIn className="h-5 w-5 text-primary" />
+                            </div>
+                            <span className="absolute left-12 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-medium pointer-events-none px-2">
+                              {t("auth.login")}
+                            </span>
+                          </DropdownMenuItem>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p>{t("auth.login")}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuItem 
+                            onClick={() => navigate('/register')} 
+                            data-testid="button-register"
+                            className="cursor-pointer group p-0 hover:bg-transparent focus:bg-transparent relative"
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-all">
+                              <UserPlus className="h-5 w-5 text-primary" />
+                            </div>
+                            <span className="absolute left-12 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-medium pointer-events-none px-2">
+                              Cadastrar
+                            </span>
+                          </DropdownMenuItem>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p>Cadastrar</p>
+                        </TooltipContent>
+                      </Tooltip>
 
-                    <DropdownMenuSeparator className="bg-border/30" />
-                    
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            toast({
-                              title: "ℹ️ Informações Gerais",
-                              description: "Telemed - Sistema de Telemedicina com IA",
-                            });
-                            navigate('/features');
-                          }}
-                          data-testid="button-info"
-                          className="cursor-pointer group py-3 hover:bg-blue-500/10 focus:bg-blue-500/10 transition-all duration-300"
-                        >
-                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center mr-3 group-hover:bg-blue-500/20 transition-all">
-                            <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-medium">
-                            Informações
-                          </span>
-                        </DropdownMenuItem>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        <p>Informações do Sistema</p>
-                      </TooltipContent>
-                    </Tooltip>
+                      <div className="h-px bg-border/30 my-1" />
+                      
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              toast({
+                                title: "ℹ️ Informações Gerais",
+                                description: "Telemed - Sistema de Telemedicina com IA",
+                              });
+                              navigate('/features');
+                            }}
+                            data-testid="button-info"
+                            className="cursor-pointer group p-0 hover:bg-transparent focus:bg-transparent relative"
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center group-hover:bg-blue-500/30 transition-all">
+                              <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <span className="absolute left-12 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-medium pointer-events-none px-2">
+                              Informações
+                            </span>
+                          </DropdownMenuItem>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p>Informações do Sistema</p>
+                        </TooltipContent>
+                      </Tooltip>
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            toast({
-                              title: "🚨 Emergência Médica",
-                              description: "Em caso de emergência, ligue 192 (SAMU) ou 193 (Bombeiros)",
-                              variant: "destructive",
-                            });
-                            window.open('tel:192', '_blank');
-                          }}
-                          data-testid="button-emergency-menu"
-                          className="cursor-pointer group py-3 hover:bg-destructive/10 focus:bg-destructive/10 transition-all duration-300"
-                        >
-                          <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center mr-3 group-hover:bg-destructive/20 transition-all">
-                            <Ambulance className="h-5 w-5 text-destructive" />
-                          </div>
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-medium">
-                            Emergência
-                          </span>
-                        </DropdownMenuItem>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        <p>Acionar Emergência Médica</p>
-                      </TooltipContent>
-                    </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              toast({
+                                title: "🚨 Emergência Médica",
+                                description: "Em caso de emergência, ligue 192 (SAMU) ou 193 (Bombeiros)",
+                                variant: "destructive",
+                              });
+                              window.open('tel:192', '_blank');
+                            }}
+                            data-testid="button-emergency-menu"
+                            className="cursor-pointer group p-0 hover:bg-transparent focus:bg-transparent relative"
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-destructive/20 flex items-center justify-center group-hover:bg-destructive/30 transition-all">
+                              <Ambulance className="h-5 w-5 text-destructive" />
+                            </div>
+                            <span className="absolute left-12 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 font-medium pointer-events-none px-2">
+                              Emergência
+                            </span>
+                          </DropdownMenuItem>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p>Acionar Emergência Médica</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
