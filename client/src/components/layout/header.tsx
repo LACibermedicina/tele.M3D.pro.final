@@ -630,21 +630,28 @@ export default function Header() {
               <>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
+                    <Button 
+                      variant="ghost" 
                       size="icon"
-                      className="w-10 h-10 rounded-xl hover:bg-primary/10 text-primary transition-all"
-                      onClick={() => navigate('/register')}
-                      data-testid="button-register-icon"
+                      className="w-10 h-10 text-destructive hover:bg-destructive/10 rounded-xl transition-all"
+                      data-testid="button-emergency-visitor"
+                      onClick={() => {
+                        toast({
+                          title: "🚨 Emergência Médica",
+                          description: "Em caso de emergência, ligue 192 (SAMU) ou 193 (Bombeiros)",
+                          variant: "destructive",
+                        });
+                        window.open('tel:192', '_blank');
+                      }}
                     >
-                      <UserPlus className="h-5 w-5" />
+                      <Ambulance className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Cadastrar</p>
+                    <p>Emergência Médica</p>
                   </TooltipContent>
                 </Tooltip>
-                
+
                 <DropdownMenu>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -653,33 +660,103 @@ export default function Header() {
                           variant="ghost"
                           size="icon"
                           className="w-10 h-10 rounded-xl hover:bg-primary/10 text-primary transition-all"
-                          data-testid="button-login-menu"
+                          data-testid="button-auth-menu"
                         >
-                          <LogIn className="h-5 w-5" />
+                          <UserPlus className="h-5 w-5" />
                         </Button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{t("auth.login")}</p>
+                      <p>Cadastro e Login</p>
                     </TooltipContent>
                   </Tooltip>
-                  <DropdownMenuContent align="end" className="w-48 bg-card/95 backdrop-blur-sm">
-                    <DropdownMenuItem 
-                      onClick={() => navigate('/login')} 
-                      data-testid="button-login"
-                      className="cursor-pointer"
-                    >
-                      <LogIn className="mr-2 h-4 w-4" />
-                      {t("auth.login")}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => navigate('/register')} 
-                      data-testid="button-register"
-                      className="cursor-pointer"
-                    >
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Cadastrar
-                    </DropdownMenuItem>
+                  <DropdownMenuContent align="end" className="w-56 bg-background/80 backdrop-blur-xl border-2 border-white/30 dark:border-gray-700/30 shadow-xl">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuItem 
+                          onClick={() => navigate('/login')} 
+                          data-testid="button-login"
+                          className="cursor-pointer group py-3"
+                        >
+                          <LogIn className="mr-3 h-5 w-5" />
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            {t("auth.login")}
+                          </span>
+                        </DropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        <p>{t("auth.login")}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuItem 
+                          onClick={() => navigate('/register')} 
+                          data-testid="button-register"
+                          className="cursor-pointer group py-3"
+                        >
+                          <UserPlus className="mr-3 h-5 w-5" />
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            Cadastrar
+                          </span>
+                        </DropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        <p>Cadastrar</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <DropdownMenuSeparator className="bg-border/50" />
+                    
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            toast({
+                              title: "ℹ️ Informações Gerais",
+                              description: "Telemed - Sistema de Telemedicina com IA",
+                            });
+                            navigate('/features');
+                          }}
+                          data-testid="button-info"
+                          className="cursor-pointer group py-3"
+                        >
+                          <Shield className="mr-3 h-5 w-5" />
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            Informações
+                          </span>
+                        </DropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        <p>Informações do Sistema</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            toast({
+                              title: "🚨 Emergência Médica",
+                              description: "Em caso de emergência, ligue 192 (SAMU) ou 193 (Bombeiros)",
+                              variant: "destructive",
+                            });
+                            window.open('tel:192', '_blank');
+                          }}
+                          data-testid="button-emergency-menu"
+                          className="cursor-pointer group py-3 text-destructive focus:text-destructive"
+                        >
+                          <Ambulance className="mr-3 h-5 w-5" />
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            Emergência
+                          </span>
+                        </DropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        <p>Acionar Emergência Médica</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
