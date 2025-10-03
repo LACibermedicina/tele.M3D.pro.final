@@ -631,7 +631,7 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="w-10 h-10 text-blue-600/70 dark:text-blue-400/70 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition-all"
+                      className="w-10 h-10 rounded-xl hover:bg-primary/10 transition-all"
                       data-testid="button-info-visitor"
                       onClick={() => {
                         toast({
@@ -641,7 +641,7 @@ export default function Header() {
                         navigate('/features');
                       }}
                     >
-                      <Shield className="h-5 w-5" />
+                      <Shield className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -654,7 +654,7 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="w-10 h-10 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all"
+                      className="w-10 h-10 rounded-xl hover:bg-destructive/10 transition-all"
                       data-testid="button-emergency-visitor"
                       onClick={() => {
                         toast({
@@ -665,7 +665,7 @@ export default function Header() {
                         window.open('tel:192', '_blank');
                       }}
                     >
-                      <Ambulance className="h-5 w-5" />
+                      <Ambulance className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -678,11 +678,11 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="w-10 h-10 rounded-xl hover:bg-primary/10 text-primary/70 hover:text-primary transition-all"
+                      className="w-10 h-10 rounded-xl hover:bg-primary/10 transition-all"
                       data-testid="button-login-icon"
                       onClick={() => navigate('/login')}
                     >
-                      <LogIn className="h-5 w-5" />
+                      <LogIn className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -695,11 +695,11 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="w-10 h-10 rounded-xl hover:bg-primary/10 text-primary/70 hover:text-primary transition-all"
+                      className="w-10 h-10 rounded-xl hover:bg-primary/10 transition-all"
                       data-testid="button-register-icon"
                       onClick={() => navigate('/register')}
                     >
-                      <UserPlus className="h-5 w-5" />
+                      <UserPlus className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
