@@ -52,13 +52,9 @@ export default function Header() {
     setIsLoggingIn(true);
     
     try {
-      const response = await apiRequest('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          username: loginEmail, 
-          password: loginPassword 
-        }),
+      const response = await apiRequest('POST', '/api/auth/login', { 
+        username: loginEmail, 
+        password: loginPassword 
       });
 
       if (response.ok) {
@@ -670,16 +666,18 @@ export default function Header() {
                       <p>Cadastro e Login</p>
                     </TooltipContent>
                   </Tooltip>
-                  <DropdownMenuContent align="end" className="w-56 bg-background/80 backdrop-blur-xl border-2 border-white/30 dark:border-gray-700/30 shadow-xl">
+                  <DropdownMenuContent align="end" className="w-56 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-2 border-primary/20 shadow-2xl">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <DropdownMenuItem 
                           onClick={() => navigate('/login')} 
                           data-testid="button-login"
-                          className="cursor-pointer group py-3"
+                          className="cursor-pointer group py-3 hover:bg-primary/10 focus:bg-primary/10 transition-all duration-300"
                         >
-                          <LogIn className="mr-3 h-5 w-5" />
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mr-3 group-hover:bg-primary/20 transition-all">
+                            <LogIn className="h-5 w-5 text-primary" />
+                          </div>
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-medium">
                             {t("auth.login")}
                           </span>
                         </DropdownMenuItem>
@@ -694,10 +692,12 @@ export default function Header() {
                         <DropdownMenuItem 
                           onClick={() => navigate('/register')} 
                           data-testid="button-register"
-                          className="cursor-pointer group py-3"
+                          className="cursor-pointer group py-3 hover:bg-primary/10 focus:bg-primary/10 transition-all duration-300"
                         >
-                          <UserPlus className="mr-3 h-5 w-5" />
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mr-3 group-hover:bg-primary/20 transition-all">
+                            <UserPlus className="h-5 w-5 text-primary" />
+                          </div>
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-medium">
                             Cadastrar
                           </span>
                         </DropdownMenuItem>
@@ -707,7 +707,7 @@ export default function Header() {
                       </TooltipContent>
                     </Tooltip>
 
-                    <DropdownMenuSeparator className="bg-border/50" />
+                    <DropdownMenuSeparator className="bg-border/30" />
                     
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -720,10 +720,12 @@ export default function Header() {
                             navigate('/features');
                           }}
                           data-testid="button-info"
-                          className="cursor-pointer group py-3"
+                          className="cursor-pointer group py-3 hover:bg-blue-500/10 focus:bg-blue-500/10 transition-all duration-300"
                         >
-                          <Shield className="mr-3 h-5 w-5" />
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center mr-3 group-hover:bg-blue-500/20 transition-all">
+                            <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-medium">
                             Informações
                           </span>
                         </DropdownMenuItem>
@@ -745,10 +747,12 @@ export default function Header() {
                             window.open('tel:192', '_blank');
                           }}
                           data-testid="button-emergency-menu"
-                          className="cursor-pointer group py-3 text-destructive focus:text-destructive"
+                          className="cursor-pointer group py-3 hover:bg-destructive/10 focus:bg-destructive/10 transition-all duration-300"
                         >
-                          <Ambulance className="mr-3 h-5 w-5" />
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center mr-3 group-hover:bg-destructive/20 transition-all">
+                            <Ambulance className="h-5 w-5 text-destructive" />
+                          </div>
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 font-medium">
                             Emergência
                           </span>
                         </DropdownMenuItem>
