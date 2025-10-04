@@ -429,7 +429,7 @@ export default function Header() {
                 <div className="w-20 h-20 flex items-center justify-center">
                   <img 
                     src={telemedLogo} 
-                    alt="Telemed Logo" 
+                    alt="Tele<M3D> Logo" 
                     className="w-full h-full object-contain transition-transform group-hover:scale-110"
                     style={{ filter: 'brightness(0) invert(1)' }}
                   />

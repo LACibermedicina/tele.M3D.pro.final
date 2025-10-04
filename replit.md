@@ -1,7 +1,7 @@
-# Telemed - Sistema de Telemedicina
+# Tele<M3D> - Sistema de Telemedicina
 
 ## Overview
-Telemed is an AI-powered telemedicine platform designed to modernize healthcare delivery and improve patient-doctor interactions. It integrates traditional medical practice management with advanced telemedicine features such as multilingual support, video consultations, WhatsApp integration, automated scheduling, clinical decision support, and FIPS-compliant digital signatures. This responsive full-stack web application offers real-time communication, comprehensive patient data management, and an optimized mobile experience for both patients and doctors.
+Tele<M3D> is an AI-powered telemedicine platform designed to modernize healthcare delivery and improve patient-doctor interactions. It integrates traditional medical practice management with advanced telemedicine features such as multilingual support, video consultations, WhatsApp integration, automated scheduling, clinical decision support, and FIPS-compliant digital signatures. This responsive full-stack web application offers real-time communication, comprehensive patient data management, and an optimized mobile experience for both patients and doctors.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
