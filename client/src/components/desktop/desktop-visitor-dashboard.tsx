@@ -184,9 +184,9 @@ export function DesktopVisitorDashboard() {
                   <Globe className="w-12 h-12 drop-shadow-lg" />
                   <Badge className="bg-white/30 backdrop-blur-md text-white text-lg px-4 py-2 border border-white/20">Visitante</Badge>
                 </div>
-                <h1 className="text-4xl font-bold mb-4 drop-shadow-lg">Bem-vindo ao Telemed</h1>
+                <h1 className="text-4xl font-bold mb-4 drop-shadow-lg">Conexão que cuida, cuidados que conectam</h1>
                 <p className="text-xl text-blue-100 mb-6 drop-shadow-md">
-                  Plataforma de telemedicina com tecnologia avançada para cuidar da sua saúde
+                  
                 </p>
                 <div className="flex space-x-4">
                   <Link href="/register">

@@ -99,8 +99,8 @@ export function MobileVisitorDashboard() {
         <CardContent className="p-6">
           <div className="text-center">
             <UserPlus className="w-16 h-16 mx-auto mb-4 opacity-90" />
-            <h1 className="text-2xl font-bold">Bem-vindo ao Telemed</h1>
-            <p className="text-blue-100 mt-2">Acesso público aos serviços de telemedicina</p>
+            <h1 className="text-2xl font-bold">Conexão que cuida, cuidados que conectam</h1>
+            <p className="text-blue-100 mt-2"></p>
             <div className="mt-4">
               <Badge className="bg-white/20 text-white">Visitante</Badge>
             </div>
