@@ -453,11 +453,11 @@ export default function Header() {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="w-10 h-10 hover:bg-primary/10 text-primary transition-colors"
+                  className="group w-10 h-10 hover:bg-primary/10 text-primary transition-all"
                   data-testid="button-support"
                   onClick={handleSupportContact}
                 >
-                  <i className="fas fa-headset text-lg"></i>
+                  <i className="fas fa-headset text-lg drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300"></i>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -554,11 +554,11 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="w-10 h-10 text-destructive hover:bg-destructive/10 transition-colors"
+                      className="group w-10 h-10 text-destructive hover:bg-destructive/10 transition-all"
                       data-testid="button-emergency"
                       onClick={handleEmergencyContact}
                     >
-                      <Ambulance className="h-5 w-5" />
+                      <Ambulance className="h-5 w-5 drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)] transition-all duration-300" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -624,7 +624,7 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="w-10 h-10 rounded-xl hover:bg-primary/10 transition-all"
+                      className="group w-10 h-10 rounded-xl hover:bg-primary/10 transition-all"
                       data-testid="button-info-visitor"
                       onClick={() => {
                         toast({
@@ -634,7 +634,7 @@ export default function Header() {
                         navigate('/features');
                       }}
                     >
-                      <Shield className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
+                      <Shield className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(59,130,246,0.8)] transition-all duration-300" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -647,7 +647,7 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="w-10 h-10 rounded-xl hover:bg-destructive/10 transition-all"
+                      className="group w-10 h-10 rounded-xl hover:bg-destructive/10 transition-all"
                       data-testid="button-emergency-visitor"
                       onClick={() => {
                         toast({
@@ -658,7 +658,7 @@ export default function Header() {
                         window.open('tel:192', '_blank');
                       }}
                     >
-                      <Ambulance className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
+                      <Ambulance className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)] transition-all duration-300" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -671,11 +671,11 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="w-10 h-10 rounded-xl hover:bg-primary/10 transition-all"
+                      className="group w-10 h-10 rounded-xl hover:bg-primary/10 transition-all"
                       data-testid="button-register-icon"
                       onClick={() => navigate('/register')}
                     >
-                      <UserPlus className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
+                      <UserPlus className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
