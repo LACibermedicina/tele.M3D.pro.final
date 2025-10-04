@@ -413,8 +413,8 @@ export default function Header() {
                     style={{ filter: 'brightness(0) invert(1)' }}
                   />
                 </div>
-                <span className="hidden lg:block text-xl font-bold text-foreground group-hover:text-primary transition-colors">
-                  Telemed
+                <span className="hidden lg:block text-xl font-bold text-white group-hover:text-primary transition-colors drop-shadow-lg">
+                  Tele&lt;M3D&gt;
                 </span>
               </div>
             </Link>
@@ -447,24 +447,6 @@ export default function Header() {
                 </Tooltip>
               </div>
             )}
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/documentation">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="icon-link-accent group w-10 h-10 hover:bg-blue-500/10 text-blue-600 transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                    data-testid="button-documentation"
-                  >
-                    <BookOpen className="h-5 w-5 drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(59,130,246,0.8)] transition-all duration-300" />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="bg-blue-500 text-white font-medium px-3 py-2 shadow-lg">
-                <p>Documentação do Sistema</p>
-              </TooltipContent>
-            </Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -528,6 +510,24 @@ export default function Header() {
           </TooltipProvider>
 
           <div className="flex items-center space-x-3">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/documentation">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="icon-link-primary group w-10 h-10 hover:bg-primary/10 text-white transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                    data-testid="button-documentation"
+                  >
+                    <BookOpen className="h-5 w-5 drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300" />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
+                <p>Documentação do Sistema</p>
+              </TooltipContent>
+            </Tooltip>
+
             {!user && (
               <form onSubmit={handleQuickLogin} className="hidden lg:flex items-center space-x-2 bg-background/30 backdrop-blur-sm rounded-full px-3 py-1.5 border border-primary/10 animate-fade-in">
                 <input
