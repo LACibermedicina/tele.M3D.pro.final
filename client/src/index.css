@@ -522,4 +522,73 @@
       padding: 14px 16px;
     }
   }
+
+  /* Icon Link Effects - Blur with Opposite Colors */
+  .icon-link-primary {
+    position: relative;
+  }
+
+  .icon-link-primary::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    background: radial-gradient(circle, hsl(210, 100%, 60%) 0%, transparent 70%);
+    opacity: 0;
+    filter: blur(12px);
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .icon-link-primary:hover::before {
+    opacity: 0.6;
+  }
+
+  .icon-link-destructive::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    background: radial-gradient(circle, hsl(120, 100%, 50%) 0%, transparent 70%);
+    opacity: 0;
+    filter: blur(12px);
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .icon-link-destructive:hover::before {
+    opacity: 0.5;
+  }
+
+  .icon-link-success::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    background: radial-gradient(circle, hsl(280, 100%, 60%) 0%, transparent 70%);
+    opacity: 0;
+    filter: blur(12px);
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .icon-link-success:hover::before {
+    opacity: 0.5;
+  }
+
+  .icon-link-accent::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    background: radial-gradient(circle, hsl(200, 100%, 60%) 0%, transparent 70%);
+    opacity: 0;
+    filter: blur(12px);
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .icon-link-accent:hover::before {
+    opacity: 0.5;
+  }
 }

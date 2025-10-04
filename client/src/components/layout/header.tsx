@@ -453,7 +453,7 @@ export default function Header() {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="group w-10 h-10 hover:bg-primary/10 text-primary transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                  className="icon-link-primary group w-10 h-10 hover:bg-primary/10 text-primary transition-all duration-300 hover:scale-110 hover:shadow-lg"
                   data-testid="button-support"
                   onClick={handleSupportContact}
                 >
@@ -483,7 +483,7 @@ export default function Header() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className={`group w-10 h-10 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg ${
+                          className={`icon-link-primary group w-10 h-10 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg ${
                             isActive
                               ? "text-white shadow-md"
                               : "text-muted-foreground hover:text-primary hover:bg-primary/10"
@@ -556,7 +556,7 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="group w-10 h-10 text-destructive hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                      className="icon-link-destructive group w-10 h-10 text-destructive hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
                       data-testid="button-emergency"
                       onClick={handleEmergencyContact}
                     >
@@ -626,7 +626,7 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="group w-10 h-10 rounded-xl hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                      className="icon-link-accent group w-10 h-10 rounded-xl hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
                       data-testid="button-info-visitor"
                       onClick={() => {
                         toast({
@@ -649,7 +649,7 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="group w-10 h-10 rounded-xl hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                      className="icon-link-destructive group w-10 h-10 rounded-xl hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
                       data-testid="button-emergency-visitor"
                       onClick={() => {
                         toast({
@@ -673,7 +673,7 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="group w-10 h-10 rounded-xl hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                      className="icon-link-primary group w-10 h-10 rounded-xl hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
                       data-testid="button-register-icon"
                       onClick={() => navigate('/register')}
                     >
