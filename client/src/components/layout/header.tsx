@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen } from "lucide-react";
+import { formatErrorForToast } from "@/lib/error-handler";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import NotificationCenter from "@/components/notifications/notification-center";
 import CommandPalette from "@/components/command-palette";
@@ -61,10 +62,12 @@ export default function Header() {
         window.location.href = '/dashboard';
       }
     } catch (error: any) {
+      const errorInfo = formatErrorForToast(error, '/api/auth/login', 'POST');
       toast({
-        title: "Erro no Login",
-        description: error.message || "Credenciais inválidas",
+        title: errorInfo.title,
+        description: errorInfo.description,
         variant: "destructive",
+        errorCode: errorInfo.errorCode,
       });
     } finally {
       setIsLoggingIn(false);

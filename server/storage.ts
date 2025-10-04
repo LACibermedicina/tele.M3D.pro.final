@@ -197,6 +197,7 @@ export interface IStorage {
   createConsultationRecording(recording: InsertConsultationRecording): Promise<ConsultationRecording>;
   
   // Error Logs
+  createErrorLog(errorLog: InsertErrorLog): Promise<ErrorLog>;
   getErrorLogs(filters?: {
     errorType?: string;
     userId?: string;
@@ -1662,6 +1663,11 @@ export class DatabaseStorage implements IStorage {
     return await query;
   }
   
+  async createErrorLog(errorLog: InsertErrorLog): Promise<ErrorLog> {
+    const [newErrorLog] = await db.insert(errorLogs).values(errorLog).returning();
+    return newErrorLog;
+  }
+
   async getErrorLog(id: string): Promise<ErrorLog | undefined> {
     const [errorLog] = await db.select().from(errorLogs)
       .where(eq(errorLogs.id, id))

@@ -8659,6 +8659,111 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     }
   });
 
+  // ===== ERROR LOGGING ENDPOINTS =====
+
+  // Create error log (Public - no auth required for logging frontend errors)
+  app.post('/api/error-logs', async (req, res) => {
+    try {
+      const errorLogSchema = z.object({
+        errorCode: z.string(),
+        technicalMessage: z.string(),
+        userMessage: z.string(),
+        endpoint: z.string().optional(),
+        method: z.string().optional(),
+        statusCode: z.number(),
+        stackTrace: z.string().optional(),
+      });
+
+      const data = errorLogSchema.parse(req.body);
+      
+      // Get user ID if authenticated
+      const userId = (req as any).user?.id || null;
+      
+      // Determine error type based on status code
+      let errorType = 'internal';
+      if (data.statusCode === 401 || data.statusCode === 403) {
+        errorType = 'authentication';
+      } else if (data.statusCode === 400 || data.statusCode === 422) {
+        errorType = 'validation';
+      } else if (data.statusCode >= 500) {
+        errorType = 'internal';
+      }
+      
+      // Get IP address and user agent
+      const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+      
+      // Create error log
+      const errorLog = await storage.createErrorLog({
+        errorCode: data.errorCode,
+        userId,
+        errorType,
+        endpoint: data.endpoint || null,
+        method: data.method || null,
+        technicalMessage: data.technicalMessage,
+        userMessage: data.userMessage,
+        stackTrace: data.stackTrace || null,
+        context: {
+          statusCode: data.statusCode,
+          timestamp: new Date().toISOString(),
+        },
+        ipAddress,
+        userAgent,
+      });
+      
+      res.status(201).json({ success: true, errorCode: errorLog.errorCode });
+    } catch (error) {
+      console.error('Error log creation error:', error);
+      // Don't fail loudly - error logging should be silent
+      res.status(200).json({ success: false });
+    }
+  });
+
+  // Get all error logs (Admin only)
+  app.get('/api/error-logs', requireAuth, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const { errorType, resolved, limit } = req.query;
+      
+      const filters: any = {};
+      if (errorType) filters.errorType = errorType.toString();
+      if (resolved !== undefined) filters.resolved = resolved === 'true';
+      if (limit) filters.limit = parseInt(limit.toString());
+      
+      const errorLogs = await storage.getErrorLogs(filters);
+      res.json(errorLogs);
+    } catch (error) {
+      console.error('Get error logs error:', error);
+      res.status(500).json({ message: 'Failed to get error logs' });
+    }
+  });
+
+  // Mark error as resolved (Admin only)
+  app.patch('/api/error-logs/:id/resolve', requireAuth, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const { id } = req.params;
+      const { adminNotes } = req.body;
+      
+      const errorLog = await storage.markErrorAsResolved(id, req.user.id, adminNotes);
+      
+      if (!errorLog) {
+        return res.status(404).json({ message: 'Error log not found' });
+      }
+      
+      res.json(errorLog);
+    } catch (error) {
+      console.error('Mark error resolved error:', error);
+      res.status(500).json({ message: 'Failed to mark error as resolved' });
+    }
+  });
+
   // ===== ADVANCED ANALYTICS & REPORTING ENDPOINTS =====
 
   // Dashboard Overview Analytics

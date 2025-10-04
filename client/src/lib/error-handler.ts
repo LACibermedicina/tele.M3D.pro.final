@@ -10,6 +10,34 @@ export interface ApiError {
   errors?: Array<{ message: string; path?: string[] }>;
 }
 
+function generateErrorCode(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  return `ERR-${year}${month}${day}-${random}`;
+}
+
+function logErrorToBackend(errorData: {
+  errorCode: string;
+  technicalMessage: string;
+  userMessage: string;
+  endpoint?: string;
+  method?: string;
+  statusCode: number;
+  stackTrace?: string;
+}) {
+  fetch('/api/error-logs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(errorData),
+    credentials: 'include',
+  }).catch(logError => {
+    console.error('Failed to log error to backend:', logError);
+  });
+}
+
 export function parseApiError(error: unknown): ApiError {
   if (error instanceof Error) {
     const errorMessage = error.message;
@@ -205,16 +233,41 @@ export function getErrorSuggestion(error: unknown): ErrorSuggestion {
   }
 }
 
-export function formatErrorForToast(error: unknown) {
+export function formatErrorForToast(
+  error: unknown,
+  endpoint?: string,
+  method?: string
+): {
+  title: string;
+  description: string;
+  errorCode: string;
+} {
+  const apiError = parseApiError(error);
   const suggestion = getErrorSuggestion(error);
+  const errorCode = generateErrorCode();
   
   let description = suggestion.description;
   if (suggestion.suggestions && suggestion.suggestions.length > 0) {
     description += '\n\nSugestões:\n• ' + suggestion.suggestions.join('\n• ');
   }
   
+  const stackTrace = error instanceof Error ? error.stack : undefined;
+  const technicalMessage = error instanceof Error ? error.message : String(error);
+  
+  // Log error asynchronously without blocking
+  logErrorToBackend({
+    errorCode,
+    technicalMessage,
+    userMessage: `${suggestion.title}: ${suggestion.description}`,
+    endpoint,
+    method,
+    statusCode: apiError.statusCode,
+    stackTrace,
+  });
+  
   return {
     title: suggestion.title,
     description,
+    errorCode,
   };
 }
