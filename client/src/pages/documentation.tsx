@@ -3,11 +3,31 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
+import { useMemo } from "react";
 import PageWrapper from "@/components/layout/page-wrapper";
 import medicalBgImage from "@assets/stock_images/medical_dashboard_in_fa79cda0.jpg";
-import dashboardImg from "@assets/stock_images/medical_dashboard_in_e5fdc287.jpg";
-import videoConsultImg from "@assets/stock_images/telemedicine_doctor__163c5e09.jpg";
-import healthRecordsImg from "@assets/stock_images/digital_health_recor_c30ace83.jpg";
+
+// Dashboard images (high resolution)
+import dashboardImg1 from "@assets/stock_images/modern_medical_techn_078712be.jpg";
+import dashboardImg2 from "@assets/stock_images/modern_medical_techn_b18d4623.jpg";
+import dashboardImg3 from "@assets/stock_images/modern_medical_techn_2b8bed4e.jpg";
+import dashboardImg4 from "@assets/stock_images/modern_medical_techn_ce6e6799.jpg";
+import dashboardImg5 from "@assets/stock_images/modern_medical_techn_480a3367.jpg";
+
+// Video consultation images (high resolution)
+import videoConsultImg1 from "@assets/stock_images/telemedicine_video_c_37792252.jpg";
+import videoConsultImg2 from "@assets/stock_images/telemedicine_video_c_93c81701.jpg";
+import videoConsultImg3 from "@assets/stock_images/telemedicine_video_c_bd4a1444.jpg";
+import videoConsultImg4 from "@assets/stock_images/telemedicine_video_c_9c8d96f0.jpg";
+import videoConsultImg5 from "@assets/stock_images/telemedicine_video_c_1e021ed2.jpg";
+
+// Health records images (high resolution)
+import healthRecordsImg1 from "@assets/stock_images/electronic_health_re_cc05fe95.jpg";
+import healthRecordsImg2 from "@assets/stock_images/electronic_health_re_e4203ca7.jpg";
+import healthRecordsImg3 from "@assets/stock_images/electronic_health_re_fe455f7b.jpg";
+import healthRecordsImg4 from "@assets/stock_images/electronic_health_re_7d9cdbe2.jpg";
+import healthRecordsImg5 from "@assets/stock_images/electronic_health_re_d88b5606.jpg";
+
 import { 
   Video, 
   Shield, 
@@ -32,49 +52,62 @@ import {
 export default function Documentation() {
   const { t } = useTranslation();
 
-  // Color mapping for Tailwind classes (static strings)
+  // Random image selection (changes each page load)
+  const randomImages = useMemo(() => {
+    const dashboardImages = [dashboardImg1, dashboardImg2, dashboardImg3, dashboardImg4, dashboardImg5];
+    const videoImages = [videoConsultImg1, videoConsultImg2, videoConsultImg3, videoConsultImg4, videoConsultImg5];
+    const healthImages = [healthRecordsImg1, healthRecordsImg2, healthRecordsImg3, healthRecordsImg4, healthRecordsImg5];
+    
+    return {
+      dashboard: dashboardImages[Math.floor(Math.random() * dashboardImages.length)],
+      video: videoImages[Math.floor(Math.random() * videoImages.length)],
+      health: healthImages[Math.floor(Math.random() * healthImages.length)]
+    };
+  }, []);
+
+  // Autumn palette color mapping (warm, modern colors)
   const colorClasses = {
-    blue: {
-      bgHeader: "bg-blue-50",
-      borderHeader: "border-blue-100",
-      icon: "text-blue-600",
-      bullet: "bg-blue-500"
-    },
-    purple: {
-      bgHeader: "bg-purple-50",
-      borderHeader: "border-purple-100",
-      icon: "text-purple-600",
-      bullet: "bg-purple-500"
-    },
-    green: {
-      bgHeader: "bg-green-50",
-      borderHeader: "border-green-100",
-      icon: "text-green-600",
-      bullet: "bg-green-500"
+    amber: {
+      bgHeader: "bg-amber-50/90",
+      borderHeader: "border-amber-200",
+      icon: "text-amber-700",
+      bullet: "bg-amber-600"
     },
     orange: {
-      bgHeader: "bg-orange-50",
-      borderHeader: "border-orange-100",
-      icon: "text-orange-600",
-      bullet: "bg-orange-500"
+      bgHeader: "bg-orange-50/90",
+      borderHeader: "border-orange-200",
+      icon: "text-orange-700",
+      bullet: "bg-orange-600"
     },
-    yellow: {
-      bgHeader: "bg-yellow-50",
-      borderHeader: "border-yellow-100",
-      icon: "text-yellow-600",
-      bullet: "bg-yellow-500"
+    rose: {
+      bgHeader: "bg-rose-50/90",
+      borderHeader: "border-rose-200",
+      icon: "text-rose-700",
+      bullet: "bg-rose-600"
     },
-    red: {
-      bgHeader: "bg-red-50",
-      borderHeader: "border-red-100",
-      icon: "text-red-600",
-      bullet: "bg-red-500"
+    emerald: {
+      bgHeader: "bg-emerald-50/90",
+      borderHeader: "border-emerald-200",
+      icon: "text-emerald-700",
+      bullet: "bg-emerald-600"
     },
-    gray: {
-      bgHeader: "bg-gray-50",
-      borderHeader: "border-gray-100",
-      icon: "text-gray-600",
-      bullet: "bg-gray-500"
+    sky: {
+      bgHeader: "bg-sky-50/90",
+      borderHeader: "border-sky-200",
+      icon: "text-sky-700",
+      bullet: "bg-sky-600"
+    },
+    purple: {
+      bgHeader: "bg-purple-50/90",
+      borderHeader: "border-purple-200",
+      icon: "text-purple-700",
+      bullet: "bg-purple-600"
+    },
+    slate: {
+      bgHeader: "bg-slate-50/90",
+      borderHeader: "border-slate-200",
+      icon: "text-slate-700",
+      bullet: "bg-slate-600"
     }
   };
 
@@ -82,7 +115,7 @@ export default function Documentation() {
     {
       category: "Consultas e Atendimento",
       icon: Video,
-      color: "blue",
+      color: "sky",
       items: [
         {
           title: "Consultas por Vídeo",
@@ -126,7 +159,7 @@ export default function Documentation() {
     {
       category: "Gestão de Dados Médicos",
       icon: FileText,
-      color: "green",
+      color: "emerald",
       items: [
         {
           title: "Prontuário Eletrônico",
@@ -170,7 +203,7 @@ export default function Documentation() {
     {
       category: "Sistema de Créditos TMC",
       icon: CreditCard,
-      color: "yellow",
+      color: "amber",
       items: [
         {
           title: "Compra de Créditos",
@@ -192,7 +225,7 @@ export default function Documentation() {
     {
       category: "Segurança e Conformidade",
       icon: Shield,
-      color: "red",
+      color: "rose",
       items: [
         {
           title: "Criptografia Avançada",
@@ -214,7 +247,7 @@ export default function Documentation() {
     {
       category: "Gestão Administrativa",
       icon: Settings,
-      color: "gray",
+      color: "slate",
       items: [
         {
           title: "Dashboard Administrativo",
@@ -304,8 +337,8 @@ export default function Documentation() {
               </Button>
             </Link>
             <BookOpen className="w-16 h-16 mx-auto mb-4 text-white" />
-            <h1 className="text-4xl font-bold text-white mb-4">Documentação do Sistema Telemed</h1>
-            <p className="text-xl text-white/90 mb-6">
+            <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-lg">Documentação do Sistema Telemed</h1>
+            <p className="text-xl text-white/90 mb-6 drop-shadow-md">
               Manual completo de recursos, funcionalidades e guias de uso
             </p>
             <div className="flex justify-center gap-3 flex-wrap">
@@ -323,34 +356,34 @@ export default function Documentation() {
           {/* Ilustrações principais */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <Card className="shadow-xl hover:shadow-2xl transition-all overflow-hidden">
-              <img src={dashboardImg} alt="Dashboard" className="w-full h-48 object-cover" />
-              <CardContent className="p-4 text-center">
-                <h3 className="font-bold">Dashboard Intuitivo</h3>
-                <p className="text-sm text-muted-foreground">Interface moderna e fácil de usar</p>
+              <img src={randomImages.dashboard} alt="Dashboard" className="w-full h-48 object-cover" />
+              <CardContent className="p-4 text-center bg-white/95 backdrop-blur-sm">
+                <h3 className="font-bold text-slate-800">Dashboard Intuitivo</h3>
+                <p className="text-sm text-slate-600">Interface moderna e fácil de usar</p>
               </CardContent>
             </Card>
             <Card className="shadow-xl hover:shadow-2xl transition-all overflow-hidden">
-              <img src={videoConsultImg} alt="Videochamada" className="w-full h-48 object-cover" />
-              <CardContent className="p-4 text-center">
-                <h3 className="font-bold">Consultas em Vídeo</h3>
-                <p className="text-sm text-muted-foreground">Atendimento online de qualidade</p>
+              <img src={randomImages.video} alt="Videochamada" className="w-full h-48 object-cover" />
+              <CardContent className="p-4 text-center bg-white/95 backdrop-blur-sm">
+                <h3 className="font-bold text-slate-800">Consultas em Vídeo</h3>
+                <p className="text-sm text-slate-600">Atendimento online de qualidade</p>
               </CardContent>
             </Card>
             <Card className="shadow-xl hover:shadow-2xl transition-all overflow-hidden">
-              <img src={healthRecordsImg} alt="Prontuários" className="w-full h-48 object-cover" />
-              <CardContent className="p-4 text-center">
-                <h3 className="font-bold">Prontuários Digitais</h3>
-                <p className="text-sm text-muted-foreground">Gestão completa de dados médicos</p>
+              <img src={randomImages.health} alt="Prontuários" className="w-full h-48 object-cover" />
+              <CardContent className="p-4 text-center bg-white/95 backdrop-blur-sm">
+                <h3 className="font-bold text-slate-800">Prontuários Digitais</h3>
+                <p className="text-sm text-slate-600">Gestão completa de dados médicos</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Recursos do Sistema */}
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-white text-center mb-8">Recursos e Funcionalidades</h2>
+            <h2 className="text-3xl font-bold text-white text-center mb-8 drop-shadow-lg">Recursos e Funcionalidades</h2>
             <div className="space-y-8">
               {systemFeatures.map((category, idx) => {
-                const colors = colorClasses[category.color as keyof typeof colorClasses] || colorClasses.blue;
+                const colors = colorClasses[category.color as keyof typeof colorClasses] || colorClasses.sky;
                 return (
                   <Card key={idx} className="shadow-xl bg-white/95 backdrop-blur-sm">
                     <CardHeader className={`${colors.bgHeader} border-b ${colors.borderHeader}`}>
@@ -388,7 +421,7 @@ export default function Documentation() {
 
           {/* Especificações Técnicas */}
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-white text-center mb-8">Especificações Técnicas</h2>
+            <h2 className="text-3xl font-bold text-white text-center mb-8 drop-shadow-lg">Especificações Técnicas</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {technicalSpecs.map((spec, idx) => (
                 <Card key={idx} className="shadow-xl bg-gradient-to-br from-white to-gray-50">
@@ -399,7 +432,7 @@ export default function Documentation() {
                     <ul className="space-y-2">
                       {spec.items.map((item, itemIdx) => (
                         <li key={itemIdx} className="flex items-start text-sm">
-                          <CheckCircle className="w-4 h-4 mr-2 text-green-600 flex-shrink-0 mt-0.5" />
+                          <CheckCircle className="w-4 h-4 mr-2 text-emerald-600 flex-shrink-0 mt-0.5" />
                           <span>{item}</span>
                         </li>
                       ))}
@@ -412,7 +445,7 @@ export default function Documentation() {
 
           {/* Guias por Perfil */}
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-white text-center mb-8">Guias de Uso por Perfil</h2>
+            <h2 className="text-3xl font-bold text-white text-center mb-8 drop-shadow-lg">Guias de Uso por Perfil</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {userGuides.map((guide, idx) => (
                 <Card key={idx} className="shadow-xl hover:shadow-2xl transition-all">
