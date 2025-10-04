@@ -413,7 +413,7 @@ export default function Header() {
                     style={{ filter: 'brightness(0) invert(1)' }}
                   />
                 </div>
-                <span className="hidden lg:block text-xl font-bold text-white group-hover:text-primary transition-colors drop-shadow-lg">
+                <span className="hidden md:block text-xl font-bold text-white group-hover:text-primary transition-colors drop-shadow-lg">
                   Tele&lt;M3D&gt;
                 </span>
               </div>
@@ -529,13 +529,13 @@ export default function Header() {
             </Tooltip>
 
             {!user && (
-              <form onSubmit={handleQuickLogin} className="hidden lg:flex items-center space-x-2 bg-background/30 backdrop-blur-sm rounded-full px-3 py-1.5 border border-primary/10 animate-fade-in">
+              <form onSubmit={handleQuickLogin} className="hidden md:flex items-center space-x-2 bg-background/30 backdrop-blur-sm rounded-full px-3 py-1.5 border border-primary/10 animate-fade-in">
                 <input
                   type="text"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   placeholder="Email"
-                  className="w-32 px-2 py-1 bg-transparent text-xs placeholder:text-muted-foreground/40 focus:outline-none focus:placeholder:text-muted-foreground/60 transition-all"
+                  className="w-32 px-2 py-1 bg-transparent text-xs text-white placeholder:text-white/40 focus:outline-none focus:placeholder:text-white/60 transition-all"
                   data-testid="input-quick-login-email"
                   disabled={isLoggingIn}
                 />
@@ -545,7 +545,7 @@ export default function Header() {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="Senha"
-                  className="w-24 px-2 py-1 bg-transparent text-xs placeholder:text-muted-foreground/40 focus:outline-none focus:placeholder:text-muted-foreground/60 transition-all"
+                  className="w-24 px-2 py-1 bg-transparent text-xs text-white placeholder:text-white/40 focus:outline-none focus:placeholder:text-white/60 transition-all"
                   data-testid="input-quick-login-password"
                   disabled={isLoggingIn}
                 />
