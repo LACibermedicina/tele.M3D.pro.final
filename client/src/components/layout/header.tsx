@@ -507,47 +507,40 @@ export default function Header() {
             </nav>
           </TooltipProvider>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             {!user && (
-              <form onSubmit={handleQuickLogin} className="hidden lg:flex items-center space-x-3 animate-fade-in">
-                <div className="relative group">
-                  <input
-                    type="text"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="Email ou usuário"
-                    className="w-48 px-4 py-2 rounded-xl border-2 border-primary/20 bg-background/40 backdrop-blur-sm text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 focus:bg-background/60 transition-all duration-300 hover:border-primary/40 hover:bg-background/50 focus:placeholder:text-muted-foreground/70 focus:placeholder:translate-x-1 placeholder:transition-all"
-                    data-testid="input-quick-login-email"
-                    disabled={isLoggingIn}
-                  />
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                </div>
-                <div className="relative group">
-                  <input
-                    type="password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="Senha"
-                    className="w-40 px-4 py-2 rounded-xl border-2 border-primary/20 bg-background/40 backdrop-blur-sm text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 focus:bg-background/60 transition-all duration-300 hover:border-primary/40 hover:bg-background/50 focus:placeholder:text-muted-foreground/70 focus:placeholder:translate-x-1 placeholder:transition-all"
-                    data-testid="input-quick-login-password"
-                    disabled={isLoggingIn}
-                  />
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                </div>
-                <Button
+              <form onSubmit={handleQuickLogin} className="hidden lg:flex items-center space-x-2 bg-background/30 backdrop-blur-sm rounded-full px-3 py-1.5 border border-primary/10 animate-fade-in">
+                <input
+                  type="text"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  placeholder="Email"
+                  className="w-32 px-2 py-1 bg-transparent text-xs placeholder:text-muted-foreground/40 focus:outline-none focus:placeholder:text-muted-foreground/60 transition-all"
+                  data-testid="input-quick-login-email"
+                  disabled={isLoggingIn}
+                />
+                <div className="h-4 w-px bg-border/50" />
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="Senha"
+                  className="w-24 px-2 py-1 bg-transparent text-xs placeholder:text-muted-foreground/40 focus:outline-none focus:placeholder:text-muted-foreground/60 transition-all"
+                  data-testid="input-quick-login-password"
+                  disabled={isLoggingIn}
+                />
+                <button
                   type="submit"
-                  size="sm"
-                  className="rounded-xl px-4 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300"
-                  style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}
                   disabled={isLoggingIn || !loginEmail || !loginPassword}
+                  className="ml-1 p-1.5 rounded-full hover:bg-primary/10 disabled:opacity-40 transition-all"
                   data-testid="button-quick-login"
                 >
                   {isLoggingIn ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
                   ) : (
-                    <LogIn className="h-4 w-4" />
+                    <LogIn className="h-3.5 w-3.5 text-primary" />
                   )}
-                </Button>
+                </button>
               </form>
             )}
             
@@ -670,23 +663,6 @@ export default function Header() {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Emergência Médica</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="w-10 h-10 rounded-xl hover:bg-primary/10 transition-all"
-                      data-testid="button-login-icon"
-                      onClick={() => navigate('/login')}
-                    >
-                      <LogIn className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t("auth.login")}</p>
                   </TooltipContent>
                 </Tooltip>
 
