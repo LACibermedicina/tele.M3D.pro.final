@@ -268,7 +268,7 @@ export default function FloatingChatbot() {
                 <Brain className="w-4 h-4" />
               </div>
               <CardTitle className="text-sm font-medium">
-                {t('chatbot.title')}
+                Assistente Virtual IA - Telemed
               </CardTitle>
             </div>
             <div className="flex items-center space-x-1">

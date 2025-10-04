@@ -450,7 +450,7 @@ Formato: texto corrido, máximo 300 palavras.
     userMessage: string,
     systemContext: string,
     conversationHistory: Array<{ role: string; content: string }>,
-    userRole: string = 'patient'
+    userRole: 'patient' | 'doctor' | 'visitor' | 'admin' | 'researcher' = 'patient'
   ): Promise<{ response: string; referencesUsed: string[] }> {
     try {
       const client = getGeminiClient();
@@ -458,36 +458,107 @@ Formato: texto corrido, máximo 300 palavras.
         model: "gemini-2.0-flash-exp"
       });
 
-      // Search for relevant PDF references from database
+      // Search for relevant PDF references from database with keyword matching
       let pdfReferences = '';
       let referencesUsed: string[] = [];
       try {
-        const references = await db.select()
+        // Extract potential keywords from user message
+        const messageLower = userMessage.toLowerCase();
+        const medicalKeywords = [
+          'dor', 'febre', 'tosse', 'náusea', 'vômito', 'diarreia', 'cefaleia', 
+          'pressão', 'diabetes', 'hipertensão', 'covid', 'gripe', 'resfriado',
+          'sintoma', 'diagnóstico', 'tratamento', 'medicamento', 'exame',
+          'harrison', 'medicina interna', 'emergência', 'cardiovascular', 
+          'respiratório', 'gastrointestinal', 'neurológico', 'infecção'
+        ];
+
+        // Get all active references for this role
+        let references = await db.select()
           .from(chatbotReferences)
           .where(and(
             eq(chatbotReferences.isActive, true),
             sql`${userRole} = ANY(${chatbotReferences.allowedRoles})`
           ))
           .orderBy(sql`${chatbotReferences.priority} DESC`)
-          .limit(5); // Get top 5 most relevant references
+          .limit(10); // Get more candidates for filtering
 
-        if (references.length > 0) {
-          pdfReferences = '\n\n=== REFERÊNCIAS MÉDICAS PRIORITÁRIAS ===\n\n';
-          pdfReferences += 'IMPORTANTE: Use as seguintes referências médicas como fonte prioritária de informação antes de buscar outras fontes:\n\n';
+        // Score and filter references based on keyword relevance
+        const scoredReferences = references.map(ref => {
+          let score = ref.priority || 1;
           
-          references.forEach((ref, index) => {
+          // Boost score if reference matches keywords from user message
+          if (ref.keywords && ref.keywords.length > 0) {
+            const keywordMatches = ref.keywords.filter(kw => 
+              messageLower.includes(kw.toLowerCase())
+            ).length;
+            score += keywordMatches * 10;
+          }
+          
+          // Boost score if title or content contains relevant terms
+          const titleLower = ref.title.toLowerCase();
+          const contentLower = (ref.content || '').toLowerCase();
+          
+          medicalKeywords.forEach(keyword => {
+            if (messageLower.includes(keyword)) {
+              if (titleLower.includes(keyword)) score += 5;
+              if (contentLower.includes(keyword)) score += 2;
+            }
+          });
+
+          // Prioritize Harrison references for medical questions
+          if ((titleLower.includes('harrison') || contentLower.includes('harrison')) &&
+              (messageLower.includes('diagnóstico') || messageLower.includes('tratamento') || 
+               messageLower.includes('sintoma') || messageLower.includes('doença'))) {
+            score += 20;
+          }
+          
+          return { ...ref, relevanceScore: score };
+        });
+
+        // Sort by relevance and take top 5
+        const topReferences = scoredReferences
+          .sort((a, b) => b.relevanceScore - a.relevanceScore)
+          .slice(0, 5);
+
+        if (topReferences.length > 0) {
+          pdfReferences = '\n\n═══════════════════════════════════════════\n';
+          pdfReferences += '📚 REFERÊNCIAS MÉDICAS PRIORITÁRIAS\n';
+          pdfReferences += '═══════════════════════════════════════════\n\n';
+          pdfReferences += '⚠️ INSTRUÇÕES CRÍTICAS:\n';
+          pdfReferences += '1. Use EXCLUSIVAMENTE as informações destas referências para responder\n';
+          pdfReferences += '2. Cite o nome da referência ao mencionar informações dela\n';
+          pdfReferences += '3. Se a resposta não estiver nas referências, seja honesto e diga que não possui a informação\n';
+          pdfReferences += '4. Priorize evidências científicas das referências sobre conhecimento geral\n\n';
+          
+          topReferences.forEach((ref, index) => {
             if (ref.pdfExtractedText || ref.content) {
-              pdfReferences += `--- Referência ${index + 1}: ${ref.title} ---\n`;
-              pdfReferences += `Categoria: ${ref.category}\n`;
+              pdfReferences += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+              pdfReferences += `📖 REFERÊNCIA ${index + 1}: ${ref.title}\n`;
+              pdfReferences += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+              pdfReferences += `📂 Categoria: ${ref.category}\n`;
               if (ref.source) {
-                pdfReferences += `Fonte: ${ref.source}\n`;
+                pdfReferences += `🔗 Fonte: ${ref.source}\n`;
               }
-              pdfReferences += `Conteúdo:\n${ref.pdfExtractedText || ref.content}\n\n`;
+              if (ref.keywords && ref.keywords.length > 0) {
+                pdfReferences += `🏷️  Palavras-chave: ${ref.keywords.join(', ')}\n`;
+              }
+              pdfReferences += `📊 Relevância: ${ref.relevanceScore}/100\n\n`;
+              
+              // Truncate very long content to avoid token limits
+              const content = ref.pdfExtractedText || ref.content;
+              const maxLength = 3000; // characters per reference
+              const truncatedContent = content.length > maxLength 
+                ? content.substring(0, maxLength) + '\n\n[...conteúdo truncado...]' 
+                : content;
+              
+              pdfReferences += `📄 CONTEÚDO:\n${truncatedContent}\n\n`;
               referencesUsed.push(ref.id);
             }
           });
           
-          pdfReferences += '=== FIM DAS REFERÊNCIAS ===\n\n';
+          pdfReferences += '═══════════════════════════════════════════\n';
+          pdfReferences += '📚 FIM DAS REFERÊNCIAS MÉDICAS\n';
+          pdfReferences += '═══════════════════════════════════════════\n\n';
         }
       } catch (dbError) {
         console.error('Error fetching PDF references:', dbError);
@@ -505,19 +576,39 @@ Formato: texto corrido, máximo 300 palavras.
       // Add last 5 messages for context (to keep token count reasonable)
       const recentHistory = conversationHistory.slice(-5);
       if (recentHistory.length > 0) {
-        fullPrompt += 'Histórico recente da conversa:\n\n';
+        fullPrompt += '══════════════════════════════════════\n';
+        fullPrompt += '💬 HISTÓRICO DA CONVERSA\n';
+        fullPrompt += '══════════════════════════════════════\n\n';
         recentHistory.forEach((msg) => {
-          const role = msg.role === 'user' ? 'Usuário' : 'Assistente';
+          const role = msg.role === 'user' ? '👤 Usuário' : '🤖 Assistente';
           fullPrompt += `${role}: ${msg.content}\n\n`;
         });
-        fullPrompt += '---\n\n';
+        fullPrompt += '══════════════════════════════════════\n\n';
       }
       
-      fullPrompt += `Nova pergunta do usuário:\n${userMessage}\n\nResposta:`;
+      fullPrompt += `═══ 💬 NOVA PERGUNTA ═══\n${userMessage}\n\n═══ 🤖 SUA RESPOSTA ═══\n`;
 
       const result = await model.generateContent(fullPrompt);
+      const responseText = result.response.text();
+      
+      // Update usage count for used references
+      if (referencesUsed.length > 0) {
+        try {
+          await Promise.all(referencesUsed.map(refId =>
+            db.update(chatbotReferences)
+              .set({
+                lastUsed: new Date(),
+                usageCount: sql`${chatbotReferences.usageCount} + 1`
+              })
+              .where(eq(chatbotReferences.id, refId))
+          ));
+        } catch (updateError) {
+          console.error('Error updating reference usage:', updateError);
+        }
+      }
+      
       return {
-        response: result.response.text(),
+        response: responseText,
         referencesUsed
       };
     } catch (error) {
