@@ -62,13 +62,13 @@ export default function NotificationCenter() {
         <Button 
           variant="ghost" 
           size="sm" 
-          className="relative"
+          className="relative text-white hover:bg-primary/10"
           data-testid="button-notification-center"
         >
           {unreadCount > 0 ? (
-            <BellRing className="h-5 w-5" />
+            <BellRing className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
           ) : (
-            <Bell className="h-5 w-5" />
+            <Bell className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
           )}
           
           {/* Connection Status Indicator */}

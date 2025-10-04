@@ -280,15 +280,15 @@ export default function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="md:hidden w-10 h-10 hover:bg-primary/10"
+                      className="md:hidden w-10 h-10 hover:bg-primary/10 text-white"
                       data-testid="button-hamburger"
                     >
-                      <Menu className="h-5 w-5" />
+                      <Menu className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
                     </Button>
                   </SheetTrigger>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Menu</p>
+                  <p className="text-white">Menu</p>
                 </TooltipContent>
               </Tooltip>
               
@@ -346,7 +346,7 @@ export default function Header() {
                           <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                             isActive ? "bg-white/20" : "bg-muted"
                           }`}>
-                            <i className={`${item.faIcon} ${isActive ? "text-white" : "text-muted-foreground"}`}></i>
+                            <i className={`${item.faIcon} text-white`}></i>
                           </div>
                           <span className="font-medium">{item.label}</span>
                         </div>
@@ -434,15 +434,15 @@ export default function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="w-8 h-8 hover:bg-primary/10"
+                      className="w-8 h-8 hover:bg-primary/10 text-white"
                       onClick={() => setIsCommandPaletteOpen(true)}
                       data-testid="button-command-palette"
                     >
-                      <Command className="h-4 w-4" />
+                      <Command className="h-4 w-4 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Comandos (⌘K)</p>
+                    <p className="text-white">Comandos (⌘K)</p>
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -453,15 +453,15 @@ export default function Header() {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="icon-link-primary group w-10 h-10 hover:bg-primary/10 text-primary transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                  className="icon-link-primary group w-10 h-10 hover:bg-primary/10 text-white transition-all duration-300 hover:scale-110 hover:shadow-lg"
                   data-testid="button-support"
                   onClick={handleSupportContact}
                 >
-                  <i className="fas fa-headset text-lg drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300"></i>
+                  <i className="fas fa-headset text-lg text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300"></i>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
-                <p>{t("support.contact")}</p>
+                <p className="text-white">{t("support.contact")}</p>
               </TooltipContent>
             </Tooltip>
           </div>
@@ -486,7 +486,7 @@ export default function Header() {
                           className={`icon-link-primary group w-10 h-10 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg ${
                             isActive
                               ? "text-white shadow-md"
-                              : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                              : "text-white hover:text-white hover:bg-primary/10"
                           }`}
                           style={{
                             background: isActive
@@ -494,14 +494,14 @@ export default function Header() {
                               : "transparent"
                           }}
                         >
-                          <IconComponent className={`h-5 w-5 transition-all duration-300 ${
+                          <IconComponent className={`h-5 w-5 transition-all duration-300 drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] ${
                             !isActive && "group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]"
                           }`} />
                         </Button>
                       </Link>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
-                      <p>{item.label}</p>
+                      <p className="text-white">{item.label}</p>
                     </TooltipContent>
                   </Tooltip>
                 );
@@ -524,7 +524,7 @@ export default function Header() {
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
-                <p>Documentação do Sistema</p>
+                <p className="text-white">Documentação do Sistema</p>
               </TooltipContent>
             </Tooltip>
 
@@ -556,9 +556,9 @@ export default function Header() {
                   data-testid="button-quick-login"
                 >
                   {isLoggingIn ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
                   ) : (
-                    <LogIn className="h-3.5 w-3.5 text-primary" />
+                    <LogIn className="h-3.5 w-3.5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
                   )}
                 </button>
               </form>
@@ -574,15 +574,15 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="icon-link-destructive group w-10 h-10 text-destructive hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                      className="icon-link-destructive group w-10 h-10 text-white hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
                       data-testid="button-emergency"
                       onClick={handleEmergencyContact}
                     >
-                      <Ambulance className="h-5 w-5 drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)] transition-all duration-300" />
+                      <Ambulance className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)] transition-all duration-300" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-destructive text-white font-medium px-3 py-2 shadow-lg">
-                    <p>Emergência Médica</p>
+                    <p className="text-white">Emergência Médica</p>
                   </TooltipContent>
                 </Tooltip>
                 <DropdownMenu>
@@ -658,7 +658,7 @@ export default function Header() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-blue-500 text-white font-medium px-3 py-2 shadow-lg">
-                    <p>Informações do Sistema</p>
+                    <p className="text-white">Informações do Sistema</p>
                   </TooltipContent>
                 </Tooltip>
 
@@ -667,7 +667,7 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="icon-link-destructive group w-10 h-10 rounded-xl hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                      className="icon-link-destructive group w-10 h-10 text-white rounded-xl hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
                       data-testid="button-emergency-visitor"
                       onClick={() => {
                         toast({
@@ -682,7 +682,7 @@ export default function Header() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-destructive text-white font-medium px-3 py-2 shadow-lg">
-                    <p>Emergência Médica</p>
+                    <p className="text-white">Emergência Médica</p>
                   </TooltipContent>
                 </Tooltip>
 
@@ -699,7 +699,7 @@ export default function Header() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
-                    <p>Cadastrar</p>
+                    <p className="text-white">Cadastrar</p>
                   </TooltipContent>
                 </Tooltip>
               </>
