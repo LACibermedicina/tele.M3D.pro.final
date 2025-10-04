@@ -524,7 +524,10 @@
   }
 
   /* Icon Link Effects - Blur with Opposite Colors */
-  .icon-link-primary {
+  .icon-link-primary,
+  .icon-link-destructive,
+  .icon-link-success,
+  .icon-link-accent {
     position: relative;
   }
 
