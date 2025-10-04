@@ -22,6 +22,7 @@ import PatientJoin from "@/pages/patient-join";
 import VideoConsultation from "@/pages/video-consultation";
 import NotFound from "@/pages/not-found";
 import Features from "@/pages/features";
+import Documentation from "@/pages/documentation";
 import RegisterSelect from "@/pages/register/index";
 import PatientRegister from "@/pages/register/patient";
 import DoctorRegister from "@/pages/register/doctor";
@@ -86,6 +87,11 @@ function Router() {
         {/* Features page - public */}
         <Route path="/features">
           <Features />
+        </Route>
+        
+        {/* Documentation page - public */}
+        <Route path="/documentation">
+          <Documentation />
         </Route>
         
         {/* Public homepage - accessible to all including visitors */}
