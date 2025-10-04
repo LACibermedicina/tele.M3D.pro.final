@@ -32,6 +32,52 @@ import {
 export default function Documentation() {
   const { t } = useTranslation();
 
+  // Color mapping for Tailwind classes (static strings)
+  const colorClasses = {
+    blue: {
+      bgHeader: "bg-blue-50",
+      borderHeader: "border-blue-100",
+      icon: "text-blue-600",
+      bullet: "bg-blue-500"
+    },
+    purple: {
+      bgHeader: "bg-purple-50",
+      borderHeader: "border-purple-100",
+      icon: "text-purple-600",
+      bullet: "bg-purple-500"
+    },
+    green: {
+      bgHeader: "bg-green-50",
+      borderHeader: "border-green-100",
+      icon: "text-green-600",
+      bullet: "bg-green-500"
+    },
+    orange: {
+      bgHeader: "bg-orange-50",
+      borderHeader: "border-orange-100",
+      icon: "text-orange-600",
+      bullet: "bg-orange-500"
+    },
+    yellow: {
+      bgHeader: "bg-yellow-50",
+      borderHeader: "border-yellow-100",
+      icon: "text-yellow-600",
+      bullet: "bg-yellow-500"
+    },
+    red: {
+      bgHeader: "bg-red-50",
+      borderHeader: "border-red-100",
+      icon: "text-red-600",
+      bullet: "bg-red-500"
+    },
+    gray: {
+      bgHeader: "bg-gray-50",
+      borderHeader: "border-gray-100",
+      icon: "text-gray-600",
+      bullet: "bg-gray-500"
+    }
+  };
+
   const systemFeatures = [
     {
       category: "Consultas e Atendimento",
@@ -303,37 +349,40 @@ export default function Documentation() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-white text-center mb-8">Recursos e Funcionalidades</h2>
             <div className="space-y-8">
-              {systemFeatures.map((category, idx) => (
-                <Card key={idx} className="shadow-xl bg-white/95 backdrop-blur-sm">
-                  <CardHeader className={`bg-${category.color}-50 border-b border-${category.color}-100`}>
-                    <CardTitle className="flex items-center text-2xl">
-                      <category.icon className={`w-8 h-8 mr-3 text-${category.color}-600`} />
-                      {category.category}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {category.items.map((item, itemIdx) => (
-                        <div key={itemIdx} className="space-y-3">
-                          <h3 className="font-bold text-lg flex items-center">
-                            <CheckCircle className={`w-5 h-5 mr-2 text-${category.color}-600`} />
-                            {item.title}
-                          </h3>
-                          <p className="text-sm text-muted-foreground">{item.description}</p>
-                          <ul className="space-y-1">
-                            {item.features.map((feature, fIdx) => (
-                              <li key={fIdx} className="text-sm flex items-center">
-                                <div className={`w-1.5 h-1.5 rounded-full bg-${category.color}-500 mr-2`}></div>
-                                {feature}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              {systemFeatures.map((category, idx) => {
+                const colors = colorClasses[category.color as keyof typeof colorClasses] || colorClasses.blue;
+                return (
+                  <Card key={idx} className="shadow-xl bg-white/95 backdrop-blur-sm">
+                    <CardHeader className={`${colors.bgHeader} border-b ${colors.borderHeader}`}>
+                      <CardTitle className="flex items-center text-2xl">
+                        <category.icon className={`w-8 h-8 mr-3 ${colors.icon}`} />
+                        {category.category}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {category.items.map((item, itemIdx) => (
+                          <div key={itemIdx} className="space-y-3">
+                            <h3 className="font-bold text-lg flex items-center">
+                              <CheckCircle className={`w-5 h-5 mr-2 ${colors.icon}`} />
+                              {item.title}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">{item.description}</p>
+                            <ul className="space-y-1">
+                              {item.features.map((feature, fIdx) => (
+                                <li key={fIdx} className="text-sm flex items-center">
+                                  <div className={`w-1.5 h-1.5 rounded-full ${colors.bullet} mr-2`}></div>
+                                  {feature}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </section>
 
