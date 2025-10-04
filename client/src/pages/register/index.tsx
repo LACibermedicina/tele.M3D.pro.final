@@ -1,11 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import PageWrapper from "@/components/layout/page-wrapper";
+import medicalBgImage from "@assets/stock_images/modern_hospital_equi_71042fed.jpg";
 import { Users, Stethoscope, ArrowRight, CheckCircle, Shield, Heart, Settings } from "lucide-react";
 
 export default function RegisterSelect() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8 px-4">
+    <PageWrapper variant="medical" medicalBg={medicalBgImage}>
+      <div className="py-8 px-4">
       <div className="max-w-4xl mx-auto">
         
         {/* Header */}
@@ -206,6 +209,7 @@ export default function RegisterSelect() {
           </p>
         </div>
       </div>
-    </div>
+      </div>
+    </PageWrapper>
   );
 }

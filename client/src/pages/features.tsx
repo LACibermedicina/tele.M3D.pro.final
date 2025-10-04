@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
+import PageWrapper from "@/components/layout/page-wrapper";
+import medicalBgImage from "@assets/stock_images/medical_technology_e_aba2d0f3.jpg";
 import { 
   Video, 
   Shield, 
@@ -146,10 +148,9 @@ export default function Features() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      
+    <PageWrapper variant="medical" medicalBg={medicalBgImage}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-16">
+      <div className="bg-primary/10 backdrop-blur-sm text-white py-16">
         <div className="max-w-6xl mx-auto px-4">
           <Link href="/">
             <Button variant="ghost" className="mb-6 text-white hover:bg-white/10" data-testid="button-back-home">
@@ -413,6 +414,6 @@ export default function Features() {
         </section>
 
       </div>
-    </div>
+    </PageWrapper>
   );
 }

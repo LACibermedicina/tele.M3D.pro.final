@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Shield, Settings, Users, FileText, TrendingUp, CheckCircle, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatErrorForToast } from "@/lib/error-handler";
+import PageWrapper from "@/components/layout/page-wrapper";
+import medicalBgImage from "@assets/stock_images/modern_hospital_equi_a96c59f2.jpg";
 
 const registerSchema = z.object({
   username: z.string().min(3, "Nome de usuário deve ter pelo menos 3 caracteres"),
@@ -102,8 +104,9 @@ export default function AdminRegister() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
+    <PageWrapper variant="medical" medicalBg={medicalBgImage}>
+      <div className="py-8 px-4">
+        <div className="max-w-6xl mx-auto">
         
         {/* Header */}
         <div className="text-center mb-8">
@@ -301,6 +304,7 @@ export default function AdminRegister() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </PageWrapper>
   );
 }

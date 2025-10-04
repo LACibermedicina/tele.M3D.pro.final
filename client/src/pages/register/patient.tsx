@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, Heart, Calendar, FileText, Shield, CheckCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatErrorForToast } from "@/lib/error-handler";
+import PageWrapper from "@/components/layout/page-wrapper";
+import medicalBgImage from "@assets/stock_images/medical_laboratory_m_cc690ac1.jpg";
 
 const registerSchema = z.object({
   username: z.string().min(3, "Nome de usuário deve ter pelo menos 3 caracteres"),
@@ -98,8 +100,9 @@ export default function PatientRegister() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <PageWrapper variant="medical" medicalBg={medicalBgImage}>
+      <div className="py-8 px-4">
+        <div className="max-w-4xl mx-auto">
         
         {/* Header */}
         <div className="text-center mb-8">
@@ -323,6 +326,7 @@ export default function PatientRegister() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </PageWrapper>
   );
 }
