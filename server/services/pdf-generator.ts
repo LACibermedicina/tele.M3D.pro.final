@@ -227,7 +227,7 @@ export class PDFGeneratorService {
         </div>
         
         <div class="prescription-header">
-          <div class="clinic-name">TELEMED - Sistema de Telemedicina</div>
+          <div class="clinic-name">TELE&lt;M3D&gt; - Sistema de Telemedicina</div>
           <div class="clinic-info">Plataforma Digital de Saúde | Atendimento Médico Especializado</div>
           <div class="clinic-info">www.telemed.com.br | contato@telemed.com.br</div>
         </div>
@@ -303,7 +303,7 @@ export class PDFGeneratorService {
       <body>
         <div class="header">
           <h2>SOLICITAÇÃO DE EXAME</h2>
-          <p>TELEMED - Sistema de Telemedicina</p>
+          <p>TELE&lt;M3D&gt; - Sistema de Telemedicina</p>
         </div>
         
         <div class="patient-info">
@@ -342,7 +342,7 @@ export class PDFGeneratorService {
       <body>
         <div class="header">
           <h2>ATESTADO MÉDICO</h2>
-          <p>TELEMED - Sistema de Telemedicina</p>
+          <p>TELE&lt;M3D&gt; - Sistema de Telemedicina</p>
         </div>
         
         <div class="content">

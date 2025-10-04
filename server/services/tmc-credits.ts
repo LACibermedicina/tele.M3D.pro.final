@@ -39,7 +39,7 @@ export async function initializeCashbox(adminId: string) {
       totalRevenue: 0,
       totalExpenses: 0,
       serverCosts: 0,
-      description: 'Sistema de Caixa Telemed',
+      description: 'Sistema de Caixa Tele<M3D>',
       updatedBy: adminId,
     });
   }

@@ -59,7 +59,7 @@ export function DesktopVisitorDashboard() {
   };
 
   const handleWhatsAppContact = () => {
-    const message = encodeURIComponent('Olá! Preciso de suporte com a plataforma Telemed.');
+    const message = encodeURIComponent('Olá! Preciso de suporte com a plataforma Tele<M3D>.');
     window.open(`https://wa.me/${supportPhone.replace(/\D/g, '')}?text=${message}`, '_blank');
   };
 
@@ -476,7 +476,7 @@ export function DesktopVisitorDashboard() {
                 Em caso de emergência médica, ligue imediatamente para o SAMU ou dirija-se ao hospital mais próximo.
               </p>
               <div className="text-center text-sm text-red-500">
-                O Telemed não substitui atendimento de emergência
+                O Tele&lt;M3D&gt; não substitui atendimento de emergência
               </div>
             </CardContent>
           </Card>

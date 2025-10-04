@@ -41,7 +41,7 @@ export function MobileVisitorDashboard() {
   };
 
   const handleWhatsAppContact = () => {
-    const message = encodeURIComponent('Olá! Preciso de suporte com a plataforma Telemed.');
+    const message = encodeURIComponent('Olá! Preciso de suporte com a plataforma Tele<M3D>.');
     window.open(`https://wa.me/${supportPhone.replace(/\D/g, '')}?text=${message}`, '_blank');
   };
 

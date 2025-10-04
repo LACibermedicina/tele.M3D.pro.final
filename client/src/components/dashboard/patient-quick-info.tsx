@@ -36,7 +36,7 @@ export default function PatientQuickInfo() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             to: selectedPatient.phone || '5511900000000',
-            message: `🩺 *Telemed* - Consulta Iniciada\n\nOlá ${selectedPatient.name}!\n\nSeu médico está iniciando a consulta agora. Entre na sala de videochamada através do link que será enviado em breve.\n\n⏰ Horário: ${format(new Date(), 'HH:mm', { locale: ptBR })}`
+            message: `🩺 *Tele<M3D>* - Consulta Iniciada\n\nOlá ${selectedPatient.name}!\n\nSeu médico está iniciando a consulta agora. Entre na sala de videochamada através do link que será enviado em breve.\n\n⏰ Horário: ${format(new Date(), 'HH:mm', { locale: ptBR })}`
           })
         });
 
@@ -47,7 +47,7 @@ export default function PatientQuickInfo() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               to: selectedPatient.phone,
-              message: `Telemed: Seu médico está iniciando a consulta. Acesse o link que será enviado por WhatsApp.`
+              message: `Tele<M3D>: Seu médico está iniciando a consulta. Acesse o link que será enviado por WhatsApp.`
             })
           });
         }

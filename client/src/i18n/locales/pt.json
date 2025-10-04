@@ -1,9 +1,9 @@
 {
   "app": {
-    "name": "Telemed",
+    "name": "Tele<M3D>",
     "subtitle": "Sistema de Telemedicina",
     "description": "Sistema de telemedicina com IA integrada",
-    "logo_alt": "Logo Telemed"
+    "logo_alt": "Logo Tele<M3D>"
   },
   "user": {
     "guest": "Visitante",
@@ -140,8 +140,8 @@
     }
   },
   "ui": {
-    "app_title": "Telemed",
-    "app_subtitle": "Sistema de Telemedicina",
+    "app_title": "Tele<M3D>",
+    "app_subtitle": "Sistema de Tele<M3D>icina",
     "login_tab": "Entrar",
     "register_tab": "Cadastrar",
     "login_title": "Fazer Login",
@@ -172,7 +172,7 @@
   },
   "auth": {
     "login_success": "Login realizado",
-    "login_success_desc": "Bem-vindo ao Telemed!",
+    "login_success_desc": "Bem-vindo ao Tele<M3D>!",
     "login_error": "Erro no login",
     "login_error_desc": "Credenciais inválidas",
     "register_success": "Registro realizado",
@@ -221,7 +221,7 @@
     "link_copied_desc": "O link foi copiado para a área de transferência."
   },
   "footer": {
-    "copyright": "© 2024 Telemed - Sistema de Telemedicina",
+    "copyright": "© 2024 Tele<M3D> - Sistema de Tele<M3D>icina",
     "all_rights_reserved": "Todos os direitos reservados"
   },
   "chatbot": {
@@ -367,7 +367,7 @@
       "already_have_account": "Já tem uma conta?",
       "login_link": "Fazer login",
       "success_title": "Conta criada com sucesso!",
-      "success_description": "Bem-vindo à plataforma Telemed. Você já pode fazer login.",
+      "success_description": "Bem-vindo à plataforma Tele<M3D>. Você já pode fazer login.",
       "error_title": "Erro ao criar conta",
       "error_description": "Ocorreu um erro ao criar sua conta. Tente novamente.",
       "benefits_title": "Benefícios para Médicos",

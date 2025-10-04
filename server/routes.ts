@@ -4720,7 +4720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json({ 
         user: userWithoutPassword, 
         token,
-        message: `Cadastro realizado com sucesso! Bem-vindo(a) ao Telemed, ${userWithoutPassword.name}. Seu perfil de ${roleName} foi criado e você já pode acessar todas as funcionalidades da plataforma.` 
+        message: `Cadastro realizado com sucesso! Bem-vindo(a) ao Tele<M3D>, ${userWithoutPassword.name}. Seu perfil de ${roleName} foi criado e você já pode acessar todas as funcionalidades da plataforma.` 
       });
     } catch (error) {
       const { errorLoggerService } = await import('./services/error-logger');
@@ -10059,7 +10059,7 @@ REGRAS IMPORTANTES:
 ╚══════════════════════════════════════════════════════════════╝
 
 🎯 OBJETIVO PRINCIPAL:
-Você é um assistente de saúde especializado que ajuda visitantes da Telemed com informações médicas confiáveis, baseadas em evidências científicas.
+Você é um assistente de saúde especializado que ajuda visitantes da Tele<M3D> com informações médicas confiáveis, baseadas em evidências científicas.
 
 📚 SUAS CAPACIDADES:
 ✓ Informações gerais sobre serviços de telemedicina

@@ -91,7 +91,7 @@ export class SignatureService {
       email: doctor[0].email,
       medicalLicense: doctor[0].medicalLicense,
       specialization: doctor[0].specialization,
-      issuer: 'Telemed Digital Signature Authority',
+      issuer: 'Tele<M3D> Digital Signature Authority',
       issuedAt: new Date().toISOString(),
       validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year
     };

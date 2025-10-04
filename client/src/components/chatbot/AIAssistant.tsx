@@ -53,7 +53,7 @@ export function AIAssistant({ open, onOpenChange, initialContext }: AIAssistantP
 
   const getGreeting = () => {
     if (!user) {
-      return `👋 Olá! Sou o assistente virtual da Telemed. Posso ajudar com:
+      return `👋 Olá! Sou o assistente virtual da Tele<M3D>. Posso ajudar com:
 • Agendamento de consultas
 • Análise inicial de sintomas
 • Orientações médicas gerais
@@ -260,7 +260,7 @@ Deseja confirmar este agendamento?`,
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center">
               <Bot className="w-5 h-5 mr-2 text-purple-600" />
-              <span>Assistente Virtual IA - Telemed</span>
+              <span>Assistente Virtual IA - Tele{"<"}M3D{">"}</span>
             </div>
             {user && (
               <Badge variant="outline" className="ml-2">

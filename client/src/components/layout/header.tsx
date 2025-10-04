@@ -110,7 +110,7 @@ export default function Header() {
       if (supportConfig.whatsappNumber && supportConfig.supportChatbotEnabled) {
         // Open WhatsApp directly with support number
         // Privacy-conscious message without PII in URL
-        const supportMessage = `Olá! Preciso de suporte no sistema Telemed.`;
+        const supportMessage = `Olá! Preciso de suporte no sistema Tele<M3D>.`;
         const whatsappUrl = `https://wa.me/55${supportConfig.whatsappNumber}?text=${encodeURIComponent(supportMessage)}`;
         
         // Try to open WhatsApp
@@ -320,7 +320,7 @@ export default function Header() {
                       <div className="w-10 h-10 flex items-center justify-center">
                         <img 
                           src={telemedLogo} 
-                          alt="Telemed Logo" 
+                          alt="Tele<M3D> Logo" 
                           className="w-full h-full object-contain"
                           style={{ filter: 'brightness(0) invert(1)' }}
                         />
@@ -670,7 +670,7 @@ export default function Header() {
                       onClick={() => {
                         toast({
                           title: "ℹ️ Informações Gerais",
-                          description: "Telemed - Sistema de Telemedicina com IA",
+                          description: "Tele<M3D> - Sistema de Telemedicina com IA",
                         });
                         navigate('/features');
                       }}

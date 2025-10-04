@@ -1,9 +1,9 @@
 {
   "app": {
-    "name": "Telemed",
+    "name": "Tele<M3D>",
     "subtitle": "远程医疗系统",
     "description": "集成人工智能的远程医疗系统",
-    "logo_alt": "Telemed 徽标"
+    "logo_alt": "Tele<M3D> 徽标"
   },
   "user": {
     "guest": "访客",

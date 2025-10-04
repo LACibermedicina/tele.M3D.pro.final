@@ -1,9 +1,9 @@
 {
   "app": {
-    "name": "Telemed",
+    "name": "Tele<M3D>",
     "subtitle": "Sistema di Telemedicina",
     "description": "Sistema di telemedicina con IA integrata",
-    "logo_alt": "Logo Telemed"
+    "logo_alt": "Logo Tele<M3D>"
   },
   "user": {
     "guest": "Ospite",

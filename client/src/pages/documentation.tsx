@@ -337,7 +337,7 @@ export default function Documentation() {
               </Button>
             </Link>
             <BookOpen className="w-16 h-16 mx-auto mb-4 text-white" />
-            <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-lg">Documentação do Sistema Telemed</h1>
+            <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-lg">Documentação do Sistema Tele{"<"}M3D{">"}</h1>
             <p className="text-xl text-white/90 mb-6 drop-shadow-md">
               Manual completo de recursos, funcionalidades e guias de uso
             </p>

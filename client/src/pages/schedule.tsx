@@ -381,7 +381,7 @@ export default function Schedule() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-foreground bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Agenda Telemed
+                  Agenda Tele{"<"}M3D{">"}
                 </h1>
                 <p className="text-muted-foreground flex items-center gap-2">
                   <Clock className="h-4 w-4" />

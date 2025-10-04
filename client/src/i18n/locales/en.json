@@ -1,9 +1,9 @@
 {
   "app": {
-    "name": "Telemed",
+    "name": "Tele<M3D>",
     "subtitle": "Telemedicine System",
     "description": "Telemedicine system with integrated AI",
-    "logo_alt": "Telemed Logo"
+    "logo_alt": "Tele<M3D> Logo"
   },
   "user": {
     "guest": "Guest",
@@ -140,8 +140,8 @@
     }
   },
   "ui": {
-    "app_title": "Telemed",
-    "app_subtitle": "Telemedicine System",
+    "app_title": "Tele<M3D>",
+    "app_subtitle": "Tele<M3D>icine System",
     "login_tab": "Login",
     "register_tab": "Register",
     "login_title": "Login",
@@ -172,7 +172,7 @@
   },
   "auth": {
     "login_success": "Login successful",
-    "login_success_desc": "Welcome to Telemed!",
+    "login_success_desc": "Welcome to Tele<M3D>!",
     "login_error": "Login error",
     "login_error_desc": "Invalid credentials",
     "register_success": "Registration successful",
@@ -221,7 +221,7 @@
     "link_copied_desc": "The link has been copied to the clipboard."
   },
   "footer": {
-    "copyright": "© 2024 Telemed - Telemedicine System",
+    "copyright": "© 2024 Tele<M3D> - Tele<M3D>icine System",
     "all_rights_reserved": "All rights reserved"
   },
   "chatbot": {
@@ -367,7 +367,7 @@
       "already_have_account": "Already have an account?",
       "login_link": "Sign in",
       "success_title": "Account created successfully!",
-      "success_description": "Welcome to Telemed platform. You can now sign in.",
+      "success_description": "Welcome to Tele<M3D> platform. You can now sign in.",
       "error_title": "Error creating account",
       "error_description": "An error occurred creating your account. Please try again.",
       "benefits_title": "Benefits for Doctors",

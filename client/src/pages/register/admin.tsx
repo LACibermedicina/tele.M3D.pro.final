@@ -56,7 +56,7 @@ export default function AdminRegister() {
       
       toast({
         title: "Conta de administrador criada com sucesso!",
-        description: "Bem-vindo à plataforma Telemed. Você já pode fazer login.",
+        description: "Bem-vindo à plataforma Tele<M3D>. Você já pode fazer login.",
       });
     } catch (error) {
       const errorInfo = formatErrorForToast(error);
