@@ -134,15 +134,15 @@ export default function DoctorRegister() {
         {/* Header */}
         <div className="text-center mb-8">
           <Link href="/">
-            <Button variant="ghost" className="mb-4" data-testid="button-back-home">
+            <Button variant="ghost" className="mb-4 text-white hover:bg-white/10" data-testid="button-back-home">
               {t("features.back_to_home")}
             </Button>
           </Link>
           <div className="flex items-center justify-center space-x-3 mb-4">
-            <Stethoscope className="w-12 h-12 text-medical-secondary" />
-            <h1 className="text-3xl font-bold text-medical-secondary">{t("register.doctor.title")}</h1>
+            <Stethoscope className="w-12 h-12 text-white drop-shadow-lg" />
+            <h1 className="text-3xl font-bold text-white drop-shadow-lg">{t("register.doctor.title")}</h1>
           </div>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-white/90 drop-shadow-md">
             {t("register.doctor.subtitle")}
           </p>
         </div>
@@ -151,7 +151,7 @@ export default function DoctorRegister() {
           
           {/* Registration Form */}
           <div className="lg:col-span-2">
-            <Card className="shadow-xl border-medical-secondary/20">
+            <Card className="shadow-xl border-medical-secondary/20 bg-white/95 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-center text-xl">{t("register.doctor.form_title")}</CardTitle>
               </CardHeader>
@@ -324,10 +324,10 @@ export default function DoctorRegister() {
 
           {/* Benefits Section */}
           <div className="space-y-6">
-            <Card className="shadow-lg">
+            <Card className="shadow-lg bg-white/95 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <CheckCircle className="w-6 h-6 mr-2 text-green-600" />
+                  <CheckCircle className="w-6 h-6 mr-2 text-emerald-600" />
                   Benefícios para Médicos
                 </CardTitle>
               </CardHeader>
@@ -346,24 +346,28 @@ export default function DoctorRegister() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+            <Card className="shadow-lg bg-white/95 backdrop-blur-sm border-emerald-300">
               <CardContent className="p-4">
                 <div className="text-center">
-                  <Shield className="w-8 h-8 mx-auto mb-2 text-green-600" />
-                  <h3 className="font-bold text-green-800 mb-1 text-sm">Validação Profissional</h3>
-                  <p className="text-xs text-green-600">
+                  <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <Shield className="w-8 h-8 text-emerald-700" />
+                  </div>
+                  <h3 className="font-bold text-emerald-900 mb-2 text-sm">Validação Profissional</h3>
+                  <p className="text-xs text-slate-700">
                     Todas as contas de médicos passam por validação de CRM e credenciais profissionais.
                   </p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+            <Card className="shadow-lg bg-white/95 backdrop-blur-sm border-sky-300">
               <CardContent className="p-4">
                 <div className="text-center">
-                  <TrendingUp className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                  <h3 className="font-bold text-blue-800 mb-1 text-sm">Oportunidade de Renda</h3>
-                  <p className="text-xs text-blue-600">
+                  <div className="w-12 h-12 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <TrendingUp className="w-8 h-8 text-sky-700" />
+                  </div>
+                  <h3 className="font-bold text-sky-900 mb-2 text-sm">Oportunidade de Renda</h3>
+                  <p className="text-xs text-slate-700">
                     Monetize seus conhecimentos médicos atendendo pacientes online.
                   </p>
                 </div>

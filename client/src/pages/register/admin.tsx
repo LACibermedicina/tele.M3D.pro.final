@@ -111,15 +111,15 @@ export default function AdminRegister() {
         {/* Header */}
         <div className="text-center mb-8">
           <Link href="/">
-            <Button variant="ghost" className="mb-4" data-testid="button-back-home">
+            <Button variant="ghost" className="mb-4 text-white hover:bg-white/10" data-testid="button-back-home">
               ← Voltar para Início
             </Button>
           </Link>
           <div className="flex items-center justify-center space-x-3 mb-4">
-            <Shield className="w-12 h-12 text-slate-700" />
-            <h1 className="text-3xl font-bold text-slate-700">Registro de Administrador</h1>
+            <Shield className="w-12 h-12 text-white drop-shadow-lg" />
+            <h1 className="text-3xl font-bold text-white drop-shadow-lg">Registro de Administrador</h1>
           </div>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-white/90 drop-shadow-md">
             Crie uma conta com privilégios administrativos completos
           </p>
         </div>
@@ -128,7 +128,7 @@ export default function AdminRegister() {
           
           {/* Registration Form */}
           <div className="lg:col-span-2">
-            <Card className="shadow-xl border-slate-300">
+            <Card className="shadow-xl border-slate-300 bg-white/95 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-center text-xl">Criar Conta de Administrador</CardTitle>
               </CardHeader>
@@ -256,10 +256,10 @@ export default function AdminRegister() {
 
           {/* Benefits Section */}
           <div className="space-y-6">
-            <Card className="shadow-lg">
+            <Card className="shadow-lg bg-white/95 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <CheckCircle className="w-6 h-6 mr-2 text-green-600" />
+                  <CheckCircle className="w-6 h-6 mr-2 text-emerald-600" />
                   Recursos de Administrador
                 </CardTitle>
               </CardHeader>

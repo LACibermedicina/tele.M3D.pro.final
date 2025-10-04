@@ -107,15 +107,15 @@ export default function PatientRegister() {
         {/* Header */}
         <div className="text-center mb-8">
           <Link href="/">
-            <Button variant="ghost" className="mb-4" data-testid="button-back-home">
+            <Button variant="ghost" className="mb-4 text-white hover:bg-white/10" data-testid="button-back-home">
               ← Voltar para Início
             </Button>
           </Link>
           <div className="flex items-center justify-center space-x-3 mb-4">
-            <Users className="w-12 h-12 text-medical-primary" />
-            <h1 className="text-3xl font-bold text-medical-primary">Registro de Paciente</h1>
+            <Users className="w-12 h-12 text-white drop-shadow-lg" />
+            <h1 className="text-3xl font-bold text-white drop-shadow-lg">Registro de Paciente</h1>
           </div>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-white/90 drop-shadow-md">
             Crie sua conta e tenha acesso completo aos serviços de telemedicina
           </p>
         </div>
@@ -123,7 +123,7 @@ export default function PatientRegister() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
           {/* Registration Form */}
-          <Card className="shadow-xl border-medical-primary/20">
+          <Card className="shadow-xl border-medical-primary/20 bg-white/95 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-center text-xl">Criar Conta de Paciente</CardTitle>
             </CardHeader>
@@ -290,10 +290,10 @@ export default function PatientRegister() {
 
           {/* Benefits Section */}
           <div className="space-y-6">
-            <Card className="shadow-lg">
+            <Card className="shadow-lg bg-white/95 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <CheckCircle className="w-6 h-6 mr-2 text-green-600" />
+                  <CheckCircle className="w-6 h-6 mr-2 text-emerald-600" />
                   Benefícios para Pacientes
                 </CardTitle>
               </CardHeader>

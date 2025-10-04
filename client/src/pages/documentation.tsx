@@ -355,23 +355,23 @@ export default function Documentation() {
 
           {/* Ilustrações principais */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <Card className="shadow-xl hover:shadow-2xl transition-all overflow-hidden">
+            <Card className="shadow-xl hover:shadow-2xl transition-all overflow-hidden bg-white/95 backdrop-blur-sm">
               <img src={randomImages.dashboard} alt="Dashboard" className="w-full h-48 object-cover" />
-              <CardContent className="p-4 text-center bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-4 text-center">
                 <h3 className="font-bold text-slate-800">Dashboard Intuitivo</h3>
                 <p className="text-sm text-slate-600">Interface moderna e fácil de usar</p>
               </CardContent>
             </Card>
-            <Card className="shadow-xl hover:shadow-2xl transition-all overflow-hidden">
+            <Card className="shadow-xl hover:shadow-2xl transition-all overflow-hidden bg-white/95 backdrop-blur-sm">
               <img src={randomImages.video} alt="Videochamada" className="w-full h-48 object-cover" />
-              <CardContent className="p-4 text-center bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-4 text-center">
                 <h3 className="font-bold text-slate-800">Consultas em Vídeo</h3>
                 <p className="text-sm text-slate-600">Atendimento online de qualidade</p>
               </CardContent>
             </Card>
-            <Card className="shadow-xl hover:shadow-2xl transition-all overflow-hidden">
+            <Card className="shadow-xl hover:shadow-2xl transition-all overflow-hidden bg-white/95 backdrop-blur-sm">
               <img src={randomImages.health} alt="Prontuários" className="w-full h-48 object-cover" />
-              <CardContent className="p-4 text-center bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-4 text-center">
                 <h3 className="font-bold text-slate-800">Prontuários Digitais</h3>
                 <p className="text-sm text-slate-600">Gestão completa de dados médicos</p>
               </CardContent>
@@ -424,7 +424,7 @@ export default function Documentation() {
             <h2 className="text-3xl font-bold text-white text-center mb-8 drop-shadow-lg">Especificações Técnicas</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {technicalSpecs.map((spec, idx) => (
-                <Card key={idx} className="shadow-xl bg-gradient-to-br from-white to-gray-50">
+                <Card key={idx} className="shadow-xl bg-white/95 backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle className="text-lg text-center">{spec.title}</CardTitle>
                   </CardHeader>
@@ -448,10 +448,10 @@ export default function Documentation() {
             <h2 className="text-3xl font-bold text-white text-center mb-8 drop-shadow-lg">Guias de Uso por Perfil</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {userGuides.map((guide, idx) => (
-                <Card key={idx} className="shadow-xl hover:shadow-2xl transition-all">
-                  <CardHeader className="bg-gradient-to-br from-primary/10 to-accent/10">
-                    <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <guide.icon className="w-8 h-8 text-primary" />
+                <Card key={idx} className="shadow-xl hover:shadow-2xl transition-all bg-white/95 backdrop-blur-sm">
+                  <CardHeader className="bg-gradient-to-br from-amber-50 to-orange-50">
+                    <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <guide.icon className="w-8 h-8 text-amber-700" />
                     </div>
                     <CardTitle className="text-xl text-center">{guide.role}</CardTitle>
                   </CardHeader>
@@ -459,7 +459,7 @@ export default function Documentation() {
                     <ul className="space-y-3">
                       {guide.guides.map((item, itemIdx) => (
                         <li key={itemIdx} className="flex items-center text-sm">
-                          <ArrowRight className="w-4 h-4 mr-2 text-primary" />
+                          <ArrowRight className="w-4 h-4 mr-2 text-amber-600" />
                           {item}
                         </li>
                       ))}
@@ -472,62 +472,70 @@ export default function Documentation() {
 
           {/* Suporte e Recursos Adicionais */}
           <section className="mb-12">
-            <Card className="shadow-xl bg-gradient-to-r from-primary to-accent text-white">
-              <CardContent className="p-8">
-                <div className="text-center">
-                  <Phone className="w-12 h-12 mx-auto mb-4" />
-                  <h2 className="text-2xl font-bold mb-4">Precisa de Ajuda?</h2>
-                  <p className="text-white/90 mb-6">
-                    Nossa equipe de suporte está disponível para auxiliar você
-                  </p>
-                  <div className="flex justify-center gap-4 flex-wrap">
-                    <Badge className="bg-white/20 text-white px-4 py-2">
-                      <Clock className="w-4 h-4 mr-2" />
-                      Suporte 24/7
-                    </Badge>
-                    <Badge className="bg-white/20 text-white px-4 py-2">
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      Chat Online
-                    </Badge>
-                    <Badge className="bg-white/20 text-white px-4 py-2">
-                      <Phone className="w-4 h-4 mr-2" />
-                      WhatsApp
-                    </Badge>
+            <Card className="shadow-xl bg-white/95 backdrop-blur-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+                <CardContent className="p-8">
+                  <div className="text-center">
+                    <Phone className="w-12 h-12 mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold mb-4">Precisa de Ajuda?</h2>
+                    <p className="text-white/90 mb-6">
+                      Nossa equipe de suporte está disponível para auxiliar você
+                    </p>
+                    <div className="flex justify-center gap-4 flex-wrap">
+                      <Badge className="bg-white/20 text-white px-4 py-2">
+                        <Clock className="w-4 h-4 mr-2" />
+                        Suporte 24/7
+                      </Badge>
+                      <Badge className="bg-white/20 text-white px-4 py-2">
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Chat Online
+                      </Badge>
+                      <Badge className="bg-white/20 text-white px-4 py-2">
+                        <Phone className="w-4 h-4 mr-2" />
+                        WhatsApp
+                      </Badge>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
+                </CardContent>
+              </div>
             </Card>
           </section>
 
           {/* Segurança e Privacidade */}
           <section>
-            <Card className="shadow-xl bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
-              <CardHeader>
+            <Card className="shadow-xl bg-white/95 backdrop-blur-sm border-emerald-300">
+              <CardHeader className="bg-gradient-to-br from-emerald-50 to-emerald-100">
                 <CardTitle className="text-center text-2xl flex items-center justify-center">
-                  <Lock className="w-8 h-8 mr-3 text-green-600" />
+                  <Lock className="w-8 h-8 mr-3 text-emerald-700" />
                   Segurança e Privacidade
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-                  <div>
-                    <Shield className="w-12 h-12 mx-auto mb-3 text-green-600" />
-                    <h3 className="font-bold text-green-800 mb-2">Dados Protegidos</h3>
-                    <p className="text-sm text-green-700">
+                  <div className="p-4">
+                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Shield className="w-12 h-12 text-emerald-700" />
+                    </div>
+                    <h3 className="font-bold text-emerald-900 mb-2">Dados Protegidos</h3>
+                    <p className="text-sm text-slate-700">
                       Criptografia de ponta a ponta e armazenamento seguro
                     </p>
                   </div>
-                  <div>
-                    <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-600" />
-                    <h3 className="font-bold text-green-800 mb-2">LGPD Compliant</h3>
-                    <p className="text-sm text-green-700">
+                  <div className="p-4">
+                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <CheckCircle className="w-12 h-12 text-emerald-700" />
+                    </div>
+                    <h3 className="font-bold text-emerald-900 mb-2">LGPD Compliant</h3>
+                    <p className="text-sm text-slate-700">
                       Total conformidade com a legislação de proteção de dados
                     </p>
                   </div>
-                  <div>
-                    <Lock className="w-12 h-12 mx-auto mb-3 text-green-600" />
-                    <h3 className="font-bold text-green-800 mb-2">Acesso Controlado</h3>
-                    <p className="text-sm text-green-700">
+                  <div className="p-4">
+                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Lock className="w-12 h-12 text-emerald-700" />
+                    </div>
+                    <h3 className="font-bold text-emerald-900 mb-2">Acesso Controlado</h3>
+                    <p className="text-sm text-slate-700">
                       Sistema robusto de autenticação e autorização
                     </p>
                   </div>
