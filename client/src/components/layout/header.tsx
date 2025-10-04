@@ -27,6 +27,17 @@ export default function Header() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Handle scroll effect for header background
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Get only first and second name
   const getShortName = (fullName: string) => {
@@ -272,7 +283,14 @@ export default function Header() {
   );
 
   return (
-    <header className="bg-card/95 backdrop-blur-sm border-b border-border shadow-sm sticky top-0 z-50" data-testid="header-main">
+    <header 
+      className={`backdrop-blur-md border-b border-border shadow-sm sticky top-0 z-50 transition-all duration-300 ${
+        isScrolled 
+          ? 'bg-slate-900/80' 
+          : 'bg-card/95'
+      }`} 
+      data-testid="header-main"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-24">
           <div className="flex items-center space-x-4">
