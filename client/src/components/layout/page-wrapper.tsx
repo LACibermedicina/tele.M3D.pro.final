@@ -8,6 +8,7 @@ interface PageWrapperProps {
   variant?: "default" | "gradient" | "subtle" | "medical" | "origami";
   medicalBg?: string;
   enableOrigamiShapes?: boolean;
+  origamiImage?: string;
 }
 
 export default function PageWrapper({ 
@@ -15,7 +16,8 @@ export default function PageWrapper({
   className = "", 
   variant = "default",
   medicalBg,
-  enableOrigamiShapes = false
+  enableOrigamiShapes = false,
+  origamiImage
 }: PageWrapperProps) {
   const variants = {
     default: "bg-background",
@@ -57,6 +59,20 @@ export default function PageWrapper({
       <div className={`min-h-screen ${variants[variant]} ${className}`}>
         <AnimatedOrigamiBackground />
         {enableOrigamiShapes && <FloatingOrigamiShapes />}
+        {/* Imagem de origami integrada */}
+        {origamiImage && (
+          <div 
+            className="fixed inset-0 pointer-events-none z-[3]"
+            style={{
+              backgroundImage: `url(${origamiImage})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              opacity: 0.08,
+              mixBlendMode: 'multiply'
+            }}
+          />
+        )}
         {/* Camada adicional de contraste */}
         <div 
           className="fixed inset-0 pointer-events-none z-[5]" 
