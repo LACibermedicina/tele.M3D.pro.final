@@ -5737,6 +5737,35 @@ Forneça uma resposta em JSON com:
     }
   });
 
+  // Update consultation request to select doctor
+  app.patch('/api/consultation-requests/:id/select-doctor', requireAuth, async (req, res) => {
+    try {
+      const { selectedDoctorId } = req.body;
+      const request = await storage.getConsultationRequest(req.params.id);
+
+      if (!request) {
+        return res.status(404).json({ message: 'Consultation request not found' });
+      }
+
+      // Authorization: only the patient who created the request
+      const patient = await storage.getPatientByUserId(req.user!.id);
+      if (!patient || patient.id !== request.patientId) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      // Update with selected doctor
+      const updated = await storage.updateConsultationRequest(req.params.id, {
+        selectedDoctorId,
+        status: 'pending'
+      });
+
+      res.json({ success: true, consultationRequest: updated });
+    } catch (error) {
+      console.error('Select doctor error:', error);
+      res.status(500).json({ message: 'Failed to select doctor' });
+    }
+  });
+
   // Get consultation requests
   app.get('/api/consultation-requests', requireAuth, async (req, res) => {
     try {
