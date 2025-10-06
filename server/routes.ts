@@ -149,6 +149,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   });
+
+  // Configure Multer for clinical asset uploads (exams, images)
+  const clinicalAssetsDir = path.join(process.cwd(), 'client', 'public', 'uploads', 'clinical-assets');
+  if (!fs.existsSync(clinicalAssetsDir)) {
+    fs.mkdirSync(clinicalAssetsDir, { recursive: true });
+  }
+
+  const clinicalAssetStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, clinicalAssetsDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      cb(null, `clinical-${uniqueSuffix}${ext}`);
+    }
+  });
+
+  const uploadClinicalAsset = multer({
+    storage: clinicalAssetStorage,
+    limits: {
+      fileSize: 20 * 1024 * 1024, // 20MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = /jpeg|jpg|png|pdf/;
+      const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+      const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+      const mimetype = allowedMimes.includes(file.mimetype);
+      
+      if (extname && mimetype) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only PDF and image files (JPEG, PNG) are allowed'));
+      }
+    }
+  });
   
   // Global middleware to populate req.user from JWT cookie (if present)
   app.use(async (req: any, res: any, next: any) => {
@@ -6116,6 +6152,282 @@ Forneça um resumo em JSON com:
     } catch (error) {
       console.error('Get clinical assets error:', error);
       res.status(500).json({ message: 'Failed to fetch clinical assets' });
+    }
+  });
+
+  // Upload clinical asset (exam) with AI analysis
+  app.post('/api/clinical-assets/upload', requireAuth, uploadClinicalAsset.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      const { patientId, assetType, consultationSessionId } = req.body;
+
+      if (!patientId || !assetType) {
+        return res.status(400).json({ message: 'Patient ID and asset type are required' });
+      }
+
+      // Authorization: doctor, patient themselves, or admin
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient not found' });
+      }
+
+      const userPatient = await storage.getPatientByUserId(req.user!.id);
+      const isPatient = userPatient && userPatient.id === patientId;
+      const isAdmin = req.user!.role === 'admin';
+      const isDoctor = req.user!.role === 'doctor';
+
+      if (!isPatient && !isDoctor && !isAdmin) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      const fileUrl = `/uploads/clinical-assets/${req.file.filename}`;
+      const filePath = req.file.path;
+
+      // AI Analysis based on file type
+      let aiAnalysis: any = {};
+      let extractedMetrics: any = {};
+
+      if (req.file.mimetype === 'application/pdf') {
+        // Extract text from PDF
+        const pdfParse = await import('pdf-parse');
+        const dataBuffer = fs.readFileSync(filePath);
+        const pdfData = await pdfParse.default(dataBuffer);
+        const pdfText = pdfData.text;
+
+        // Use Gemini to analyze exam results
+        const analysisPrompt = `Você é um especialista médico analisando um resultado de exame laboratorial. 
+
+Texto do exame:
+${pdfText.substring(0, 3000)}
+
+Extraia e estruture os dados em JSON com:
+1. examType: tipo de exame (ex: hemograma, glicemia, etc.)
+2. keyFindings: principais achados (array de strings)
+3. metrics: objeto com valores numéricos extraídos (ex: {glicose: 95, hemoglobina: 14.5})
+4. abnormalResults: resultados fora da normalidade (array)
+5. summary: resumo clínico em 2-3 frases
+
+Retorne apenas o JSON válido.`;
+
+        const analysisResponse = await geminiService.generateText(analysisPrompt);
+        
+        try {
+          aiAnalysis = JSON.parse(analysisResponse);
+          extractedMetrics = aiAnalysis.metrics || {};
+        } catch {
+          aiAnalysis = {
+            examType: assetType,
+            summary: analysisResponse.substring(0, 200),
+            keyFindings: ['Análise disponível no documento'],
+            abnormalResults: []
+          };
+        }
+      } else {
+        // For images, use simpler analysis
+        aiAnalysis = {
+          examType: assetType,
+          summary: `Imagem de ${assetType} carregada com sucesso`,
+          keyFindings: ['Análise visual pendente'],
+          abnormalResults: []
+        };
+      }
+
+      // Create clinical asset
+      const clinicalAsset = await storage.createClinicalAsset({
+        patientId,
+        consultationSessionId: consultationSessionId || null,
+        assetType,
+        fileUrl,
+        extractedMetrics,
+        aiAnalysisSummary: aiAnalysis.summary || 'Análise pendente',
+        timeline: new Date().toISOString()
+      });
+
+      res.json({
+        success: true,
+        asset: clinicalAsset,
+        analysis: aiAnalysis
+      });
+    } catch (error) {
+      console.error('Upload clinical asset error:', error);
+      res.status(500).json({ message: 'Failed to upload and analyze clinical asset' });
+    }
+  });
+
+  // Patient Portal - My Consultations
+  app.get('/api/my-consultations', requireAuth, async (req, res) => {
+    try {
+      // Get patient from authenticated user
+      const patient = await storage.getPatientByUserId(req.user!.id);
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient profile not found' });
+      }
+
+      // Get all consultation requests for this patient
+      const consultationRequests = await storage.getConsultationRequestsByPatient(patient.id);
+
+      // Get sessions for accepted consultations
+      const consultationsWithSessions = await Promise.all(
+        consultationRequests.map(async (request: any) => {
+          let session = null;
+          if (request.status === 'accepted') {
+            try {
+              session = await storage.getConsultationSessionByRequestId(request.id);
+            } catch {
+              // No session yet
+            }
+          }
+
+          // Get doctor info if assigned
+          let doctor = null;
+          if (request.selectedDoctorId) {
+            try {
+              doctor = await storage.getUser(request.selectedDoctorId);
+            } catch {
+              // Doctor not found
+            }
+          }
+
+          return {
+            ...request,
+            session,
+            doctor: doctor ? { id: doctor.id, name: doctor.name, specialty: doctor.specialty } : null
+          };
+        })
+      );
+
+      // Categorize consultations
+      const upcoming = consultationsWithSessions.filter((c: any) => 
+        c.status === 'accepted' || c.status === 'pending'
+      );
+      const past = consultationsWithSessions.filter((c: any) => 
+        c.status === 'completed' || c.status === 'declined'
+      );
+
+      res.json({
+        upcoming,
+        past,
+        total: consultationsWithSessions.length
+      });
+    } catch (error) {
+      console.error('Get my consultations error:', error);
+      res.status(500).json({ message: 'Failed to fetch consultations' });
+    }
+  });
+
+  // Patient chat threads
+  app.get('/api/patient-chat-threads', requireAuth, async (req, res) => {
+    try {
+      const patient = await storage.getPatientByUserId(req.user!.id);
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient profile not found' });
+      }
+
+      const threads = await storage.getChatThreadsByPatient(patient.id);
+      res.json(threads);
+    } catch (error) {
+      console.error('Get chat threads error:', error);
+      res.status(500).json({ message: 'Failed to fetch chat threads' });
+    }
+  });
+
+  app.post('/api/patient-chat-threads', requireAuth, async (req, res) => {
+    try {
+      const { doctorId } = req.body;
+
+      const patient = await storage.getPatientByUserId(req.user!.id);
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient profile not found' });
+      }
+
+      // Check if thread already exists
+      const existingThreads = await storage.getChatThreadsByPatient(patient.id);
+      const existingThread = existingThreads.find((t: any) => t.doctorId === doctorId);
+
+      if (existingThread) {
+        return res.json(existingThread);
+      }
+
+      // Create new thread
+      const thread = await storage.createChatThread({
+        patientId: patient.id,
+        doctorId,
+        messages: [],
+        lastMessageAt: new Date().toISOString()
+      });
+
+      res.json(thread);
+    } catch (error) {
+      console.error('Create chat thread error:', error);
+      res.status(500).json({ message: 'Failed to create chat thread' });
+    }
+  });
+
+  app.get('/api/patient-chat-threads/:threadId', requireAuth, async (req, res) => {
+    try {
+      const thread = await storage.getChatThread(req.params.threadId);
+      if (!thread) {
+        return res.status(404).json({ message: 'Chat thread not found' });
+      }
+
+      // Authorization: patient or doctor in the thread
+      const patient = await storage.getPatientByUserId(req.user!.id);
+      const isPatient = patient && patient.id === thread.patientId;
+      const isDoctor = req.user!.id === thread.doctorId;
+      const isAdmin = req.user!.role === 'admin';
+
+      if (!isPatient && !isDoctor && !isAdmin) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      res.json(thread);
+    } catch (error) {
+      console.error('Get chat thread error:', error);
+      res.status(500).json({ message: 'Failed to fetch chat thread' });
+    }
+  });
+
+  app.post('/api/patient-chat-threads/:threadId/messages', requireAuth, async (req, res) => {
+    try {
+      const { message } = req.body;
+      const thread = await storage.getChatThread(req.params.threadId);
+      
+      if (!thread) {
+        return res.status(404).json({ message: 'Chat thread not found' });
+      }
+
+      // Authorization
+      const patient = await storage.getPatientByUserId(req.user!.id);
+      const isPatient = patient && patient.id === thread.patientId;
+      const isDoctor = req.user!.id === thread.doctorId;
+
+      if (!isPatient && !isDoctor) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      const messages = thread.messages || [];
+      const newMessage = {
+        id: Date.now().toString(),
+        senderId: req.user!.id,
+        senderName: req.user!.name,
+        message,
+        timestamp: new Date().toISOString()
+      };
+
+      messages.push(newMessage);
+
+      const updated = await storage.updateChatThread(req.params.threadId, {
+        messages,
+        lastMessageAt: new Date().toISOString()
+      });
+
+      res.json({ success: true, thread: updated, message: newMessage });
+    } catch (error) {
+      console.error('Send chat message error:', error);
+      res.status(500).json({ message: 'Failed to send message' });
     }
   });
 
