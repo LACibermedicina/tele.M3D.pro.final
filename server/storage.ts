@@ -4,6 +4,7 @@ import {
   prescriptionShares, labOrders, hospitalReferrals, collaboratorIntegrations, collaboratorApiKeys,
   tmcTransactions, tmcConfig, supportConfig, systemSettings, chatbotReferences, patientNotes,
   consultationNotes, consultationRecordings, errorLogs, layoutSettings,
+  consultationRequests, consultationSessions, clinicalAssets, patientChatThreads,
   type User, type InsertUser, type Patient, type InsertPatient,
   type Appointment, type InsertAppointment, type MedicalRecord, type InsertMedicalRecord,
   type WhatsappMessage, type InsertWhatsappMessage, type ExamResult, type InsertExamResult,
@@ -15,7 +16,11 @@ import {
   type SystemSettings, type InsertSystemSettings, type ChatbotReference, type InsertChatbotReference,
   type PatientNote, type InsertPatientNote, type ConsultationNote, type InsertConsultationNote,
   type ConsultationRecording, type InsertConsultationRecording,
-  type LayoutSetting, type InsertLayoutSetting
+  type LayoutSetting, type InsertLayoutSetting,
+  type ConsultationRequest, type InsertConsultationRequest,
+  type ConsultationSession, type InsertConsultationSession,
+  type ClinicalAsset, type InsertClinicalAsset,
+  type PatientChatThread, type InsertPatientChatThread
 } from "@shared/schema";
 
 export type ErrorLog = typeof errorLogs.$inferSelect;
@@ -208,6 +213,36 @@ export interface IStorage {
   }): Promise<ErrorLog[]>;
   getErrorLog(id: string): Promise<ErrorLog | undefined>;
   markErrorAsResolved(id: string, resolvedById: string, adminNotes?: string): Promise<ErrorLog | undefined>;
+
+  // Consultation Requests
+  createConsultationRequest(request: InsertConsultationRequest): Promise<ConsultationRequest>;
+  getConsultationRequest(id: string): Promise<ConsultationRequest | undefined>;
+  getConsultationRequestsByPatient(patientId: string): Promise<ConsultationRequest[]>;
+  getConsultationRequestsByDoctor(doctorId: string): Promise<ConsultationRequest[]>;
+  getPendingConsultationRequests(): Promise<ConsultationRequest[]>;
+  updateConsultationRequest(id: string, request: Partial<InsertConsultationRequest>): Promise<ConsultationRequest | undefined>;
+
+  // Consultation Sessions
+  createConsultationSession(session: InsertConsultationSession): Promise<ConsultationSession>;
+  getConsultationSession(id: string): Promise<ConsultationSession | undefined>;
+  getConsultationSessionByConsultationId(consultationId: string): Promise<ConsultationSession | undefined>;
+  updateConsultationSession(id: string, session: Partial<InsertConsultationSession>): Promise<ConsultationSession | undefined>;
+
+  // Clinical Assets
+  createClinicalAsset(asset: InsertClinicalAsset): Promise<ClinicalAsset>;
+  getClinicalAsset(id: string): Promise<ClinicalAsset | undefined>;
+  getClinicalAssetsByPatient(patientId: string): Promise<ClinicalAsset[]>;
+  getClinicalAssetsByType(patientId: string, assetType: string): Promise<ClinicalAsset[]>;
+  updateClinicalAsset(id: string, asset: Partial<InsertClinicalAsset>): Promise<ClinicalAsset | undefined>;
+  deleteClinicalAsset(id: string): Promise<boolean>;
+
+  // Patient Chat Threads
+  createPatientChatThread(thread: InsertPatientChatThread): Promise<PatientChatThread>;
+  getPatientChatThread(id: string): Promise<PatientChatThread | undefined>;
+  getPatientChatThreadByParticipants(patientId: string, doctorId: string): Promise<PatientChatThread | undefined>;
+  getPatientChatThreadsByPatient(patientId: string): Promise<PatientChatThread[]>;
+  getPatientChatThreadsByDoctor(doctorId: string): Promise<PatientChatThread[]>;
+  updatePatientChatThread(id: string, thread: Partial<InsertPatientChatThread>): Promise<PatientChatThread | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1725,6 +1760,149 @@ export class DatabaseStorage implements IStorage {
       .where(eq(layoutSettings.settingKey, key))
       .returning();
     return result.length > 0;
+  }
+
+  // Consultation Requests methods
+  async createConsultationRequest(request: InsertConsultationRequest): Promise<ConsultationRequest> {
+    const [created] = await db.insert(consultationRequests).values(request).returning();
+    return created;
+  }
+
+  async getConsultationRequest(id: string): Promise<ConsultationRequest | undefined> {
+    const [request] = await db.select().from(consultationRequests).where(eq(consultationRequests.id, id));
+    return request || undefined;
+  }
+
+  async getConsultationRequestsByPatient(patientId: string): Promise<ConsultationRequest[]> {
+    return await db.select().from(consultationRequests)
+      .where(eq(consultationRequests.patientId, patientId))
+      .orderBy(desc(consultationRequests.createdAt));
+  }
+
+  async getConsultationRequestsByDoctor(doctorId: string): Promise<ConsultationRequest[]> {
+    return await db.select().from(consultationRequests)
+      .where(eq(consultationRequests.selectedDoctorId, doctorId))
+      .orderBy(desc(consultationRequests.createdAt));
+  }
+
+  async getPendingConsultationRequests(): Promise<ConsultationRequest[]> {
+    return await db.select().from(consultationRequests)
+      .where(eq(consultationRequests.status, 'pending'))
+      .orderBy(desc(consultationRequests.createdAt));
+  }
+
+  async updateConsultationRequest(id: string, request: Partial<InsertConsultationRequest>): Promise<ConsultationRequest | undefined> {
+    const [updated] = await db.update(consultationRequests)
+      .set({ ...request, updatedAt: sql`now()` })
+      .where(eq(consultationRequests.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Consultation Sessions methods
+  async createConsultationSession(session: InsertConsultationSession): Promise<ConsultationSession> {
+    const [created] = await db.insert(consultationSessions).values(session).returning();
+    return created;
+  }
+
+  async getConsultationSession(id: string): Promise<ConsultationSession | undefined> {
+    const [session] = await db.select().from(consultationSessions).where(eq(consultationSessions.id, id));
+    return session || undefined;
+  }
+
+  async getConsultationSessionByConsultationId(consultationId: string): Promise<ConsultationSession | undefined> {
+    const [session] = await db.select().from(consultationSessions)
+      .where(eq(consultationSessions.consultationId, consultationId));
+    return session || undefined;
+  }
+
+  async updateConsultationSession(id: string, session: Partial<InsertConsultationSession>): Promise<ConsultationSession | undefined> {
+    const [updated] = await db.update(consultationSessions)
+      .set({ ...session, updatedAt: sql`now()` })
+      .where(eq(consultationSessions.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Clinical Assets methods
+  async createClinicalAsset(asset: InsertClinicalAsset): Promise<ClinicalAsset> {
+    const [created] = await db.insert(clinicalAssets).values(asset).returning();
+    return created;
+  }
+
+  async getClinicalAsset(id: string): Promise<ClinicalAsset | undefined> {
+    const [asset] = await db.select().from(clinicalAssets).where(eq(clinicalAssets.id, id));
+    return asset || undefined;
+  }
+
+  async getClinicalAssetsByPatient(patientId: string): Promise<ClinicalAsset[]> {
+    return await db.select().from(clinicalAssets)
+      .where(eq(clinicalAssets.patientId, patientId))
+      .orderBy(desc(clinicalAssets.timeline));
+  }
+
+  async getClinicalAssetsByType(patientId: string, assetType: string): Promise<ClinicalAsset[]> {
+    return await db.select().from(clinicalAssets)
+      .where(and(
+        eq(clinicalAssets.patientId, patientId),
+        eq(clinicalAssets.assetType, assetType)
+      ))
+      .orderBy(desc(clinicalAssets.timeline));
+  }
+
+  async updateClinicalAsset(id: string, asset: Partial<InsertClinicalAsset>): Promise<ClinicalAsset | undefined> {
+    const [updated] = await db.update(clinicalAssets)
+      .set({ ...asset, updatedAt: sql`now()` })
+      .where(eq(clinicalAssets.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteClinicalAsset(id: string): Promise<boolean> {
+    const result = await db.delete(clinicalAssets)
+      .where(eq(clinicalAssets.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Patient Chat Threads methods
+  async createPatientChatThread(thread: InsertPatientChatThread): Promise<PatientChatThread> {
+    const [created] = await db.insert(patientChatThreads).values(thread).returning();
+    return created;
+  }
+
+  async getPatientChatThread(id: string): Promise<PatientChatThread | undefined> {
+    const [thread] = await db.select().from(patientChatThreads).where(eq(patientChatThreads.id, id));
+    return thread || undefined;
+  }
+
+  async getPatientChatThreadByParticipants(patientId: string, doctorId: string): Promise<PatientChatThread | undefined> {
+    const [thread] = await db.select().from(patientChatThreads)
+      .where(and(
+        eq(patientChatThreads.patientId, patientId),
+        eq(patientChatThreads.doctorId, doctorId)
+      ));
+    return thread || undefined;
+  }
+
+  async getPatientChatThreadsByPatient(patientId: string): Promise<PatientChatThread[]> {
+    return await db.select().from(patientChatThreads)
+      .where(eq(patientChatThreads.patientId, patientId))
+      .orderBy(desc(patientChatThreads.lastMessageAt));
+  }
+
+  async getPatientChatThreadsByDoctor(doctorId: string): Promise<PatientChatThread[]> {
+    return await db.select().from(patientChatThreads)
+      .where(eq(patientChatThreads.doctorId, doctorId))
+      .orderBy(desc(patientChatThreads.lastMessageAt));
+  }
+
+  async updatePatientChatThread(id: string, thread: Partial<InsertPatientChatThread>): Promise<PatientChatThread | undefined> {
+    const [updated] = await db.update(patientChatThreads)
+      .set({ ...thread, updatedAt: sql`now()` })
+      .where(eq(patientChatThreads.id, id))
+      .returning();
+    return updated || undefined;
   }
 }
 

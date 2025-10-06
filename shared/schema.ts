@@ -702,6 +702,79 @@ export const signatureVerifications = pgTable("signature_verifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Consultation Requests - AI-powered consultation triage and scheduling
+export const consultationRequests = pgTable("consultation_requests", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  patientId: uuid("patient_id").references(() => patients.id).notNull(),
+  symptoms: text("symptoms").notNull(), // Patient's description of symptoms
+  aiAnalysis: jsonb("ai_analysis"), // AI analysis of symptoms + medical history
+  clinicalPresentation: text("clinical_presentation"), // AI-generated summary for doctor
+  urgencyLevel: text("urgency_level").notNull().default("routine"), // immediate, urgent, emergency, routine
+  recommendedDoctors: jsonb("recommended_doctors"), // Array of suggested doctor IDs with reasoning
+  selectedDoctorId: uuid("selected_doctor_id").references(() => users.id),
+  status: text("status").notNull().default("pending"), // pending, accepted, rejected, scheduled, cancelled
+  whatsappNotificationSent: boolean("whatsapp_notification_sent").default(false),
+  acceptedAt: timestamp("accepted_at"),
+  scheduledAppointmentId: uuid("scheduled_appointment_id").references(() => appointments.id),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Consultation Sessions - Collaborative consultation rooms with specialists
+export const consultationSessions = pgTable("consultation_sessions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultationId: uuid("consultation_id").references(() => videoConsultations.id).notNull(),
+  primaryDoctorId: uuid("primary_doctor_id").references(() => users.id).notNull(),
+  invitedSpecialists: jsonb("invited_specialists"), // Array of specialist user IDs
+  activeParticipants: jsonb("active_participants"), // Current participants in session
+  privateChat: jsonb("private_chat").default(sql`'[]'::jsonb`), // Team chat messages
+  sessionNotes: jsonb("session_notes").default(sql`'[]'::jsonb`), // Collaborative notes
+  audioTranscripts: jsonb("audio_transcripts").default(sql`'[]'::jsonb`), // Audio→text segments
+  aiClinicalSummary: text("ai_clinical_summary"), // AI-generated summary from transcripts
+  status: text("status").notNull().default("active"), // active, completed, cancelled
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  endedAt: timestamp("ended_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Clinical Assets - Patient exam uploads with AI extraction
+export const clinicalAssets = pgTable("clinical_assets", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  patientId: uuid("patient_id").references(() => patients.id).notNull(),
+  uploadedBy: uuid("uploaded_by").references(() => users.id), // Patient or doctor
+  assetType: text("asset_type").notNull(), // lab_result, imaging_study, vital_signs, medical_report
+  fileUrl: text("file_url"),
+  fileName: text("file_name"),
+  fileSize: integer("file_size"),
+  extractedData: jsonb("extracted_data"), // AI-extracted structured data (glucose, hemoglobin, etc.)
+  interpretableMetrics: jsonb("interpretable_metrics"), // Converted to chartable format
+  abnormalFindings: jsonb("abnormal_findings"), // Highlighted anomalies
+  aiAnalysis: text("ai_analysis"), // AI interpretation of results
+  vitalSigns: jsonb("vital_signs"), // If asset contains vitals (BP, HR, temp, etc.)
+  timeline: timestamp("timeline"), // When this data point occurred
+  relatedStudyId: uuid("related_study_id"), // Link to previous/related studies
+  isProcessed: boolean("is_processed").default(false),
+  processingStatus: text("processing_status").default("pending"), // pending, processing, completed, failed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Patient Chat Threads - Direct patient-doctor messaging
+export const patientChatThreads = pgTable("patient_chat_threads", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  patientId: uuid("patient_id").references(() => patients.id).notNull(),
+  doctorId: uuid("doctor_id").references(() => users.id).notNull(),
+  appointmentId: uuid("appointment_id").references(() => appointments.id), // Optional link to appointment
+  messages: jsonb("messages").default(sql`'[]'::jsonb`), // Array of {senderId, content, timestamp, isRead}
+  lastMessageAt: timestamp("last_message_at").defaultNow(),
+  unreadCount: integer("unread_count").default(0), // Unread messages for patient
+  status: text("status").notNull().default("active"), // active, archived, closed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   appointments: many(appointments),
@@ -1215,6 +1288,30 @@ export const insertSignatureVerificationSchema = createInsertSchema(signatureVer
   createdAt: true,
 });
 
+export const insertConsultationRequestSchema = createInsertSchema(consultationRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertConsultationSessionSchema = createInsertSchema(consultationSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertClinicalAssetSchema = createInsertSchema(clinicalAssets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPatientChatThreadSchema = createInsertSchema(patientChatThreads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -1330,6 +1427,18 @@ export type InsertDigitalKey = z.infer<typeof insertDigitalKeySchema>;
 
 export type SignatureVerification = typeof signatureVerifications.$inferSelect;
 export type InsertSignatureVerification = z.infer<typeof insertSignatureVerificationSchema>;
+
+export type ConsultationRequest = typeof consultationRequests.$inferSelect;
+export type InsertConsultationRequest = z.infer<typeof insertConsultationRequestSchema>;
+
+export type ConsultationSession = typeof consultationSessions.$inferSelect;
+export type InsertConsultationSession = z.infer<typeof insertConsultationSessionSchema>;
+
+export type ClinicalAsset = typeof clinicalAssets.$inferSelect;
+export type InsertClinicalAsset = z.infer<typeof insertClinicalAssetSchema>;
+
+export type PatientChatThread = typeof patientChatThreads.$inferSelect;
+export type InsertPatientChatThread = z.infer<typeof insertPatientChatThreadSchema>;
 
 // Dashboard stats type
 export interface DashboardStats {
