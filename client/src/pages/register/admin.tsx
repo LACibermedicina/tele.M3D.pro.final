@@ -13,7 +13,6 @@ import { Shield, Settings, Users, FileText, TrendingUp, CheckCircle, Lock } from
 import { useTranslation } from "react-i18next";
 import { formatErrorForToast } from "@/lib/error-handler";
 import PageWrapper from "@/components/layout/page-wrapper";
-import medicalBgImage from "@assets/stock_images/modern_hospital_equi_a96c59f2.jpg";
 
 const registerSchema = z.object({
   username: z.string().min(3, "Nome de usuário deve ter pelo menos 3 caracteres"),
@@ -104,7 +103,7 @@ export default function AdminRegister() {
   ];
 
   return (
-    <PageWrapper variant="medical" medicalBg={medicalBgImage}>
+    <PageWrapper variant="origami">
       <div className="py-8 px-4">
         <div className="max-w-6xl mx-auto">
         

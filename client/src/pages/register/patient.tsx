@@ -13,7 +13,6 @@ import { Users, Heart, Calendar, FileText, Shield, CheckCircle } from "lucide-re
 import { useTranslation } from "react-i18next";
 import { formatErrorForToast } from "@/lib/error-handler";
 import PageWrapper from "@/components/layout/page-wrapper";
-import medicalBgImage from "@assets/stock_images/medical_laboratory_m_cc690ac1.jpg";
 
 const registerSchema = z.object({
   username: z.string().min(3, "Nome de usuário deve ter pelo menos 3 caracteres"),
@@ -100,7 +99,7 @@ export default function PatientRegister() {
   ];
 
   return (
-    <PageWrapper variant="medical" medicalBg={medicalBgImage}>
+    <PageWrapper variant="origami">
       <div className="py-8 px-4">
         <div className="max-w-4xl mx-auto">
         
