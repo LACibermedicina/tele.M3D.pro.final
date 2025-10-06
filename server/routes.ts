@@ -13,7 +13,7 @@ import * as tmcCreditsService from "./services/tmc-credits";
 import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./paypal";
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNotNull } from "drizzle-orm";
@@ -5611,6 +5611,199 @@ Format your response as valid JSON with this structure:
     } catch (error) {
       console.error('Save consultation error:', error);
       res.status(500).json({ message: 'Failed to save consultation' });
+    }
+  });
+
+  // Consultation Requests - AI-powered scheduling
+  app.post('/api/consultation-requests', requireAuth, async (req, res) => {
+    try {
+      const validatedData = insertConsultationRequestSchema.parse(req.body);
+      const userId = req.user!.id;
+
+      // Get patient data for AI analysis
+      const patient = await storage.getPatientByUserId(userId);
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient not found' });
+      }
+
+      const patientId = patient.id;
+
+      // Get patient medical history
+      const medicalHistory = await storage.getMedicalRecordsByPatient(patientId);
+      const recentExams = await storage.getExamResultsByPatient(patientId);
+
+      // AI Triage Analysis
+      const triagePrompt = `Como médico especialista, analise os seguintes dados e classifique a urgência:
+
+Sintomas relatados: ${validatedData.symptoms}
+
+Histórico médico do paciente:
+${medicalHistory.length > 0 ? medicalHistory.slice(0, 3).map((r: any) => `- ${r.diagnosis || 'Consulta'} (${new Date(r.date).toLocaleDateString()})`).join('\n') : 'Sem histórico relevante'}
+
+Exames recentes:
+${recentExams.length > 0 ? recentExams.slice(0, 3).map((e: any) => `- ${e.examType}: ${e.result}`).join('\n') : 'Sem exames recentes'}
+
+Forneça uma resposta em JSON com:
+1. aiTriageLevel: "routine", "urgent", ou "emergency"
+2. triageReasoning: explicação breve da classificação
+3. recommendedSpecialties: array com 1-3 especialidades médicas recomendadas
+4. keyFindings: array com 2-3 achados importantes`;
+
+      const aiResponse = await geminiService.generateText(triagePrompt);
+      
+      let triageData;
+      try {
+        triageData = JSON.parse(aiResponse);
+      } catch {
+        triageData = {
+          aiTriageLevel: 'routine',
+          triageReasoning: aiResponse.substring(0, 200),
+          recommendedSpecialties: ['Clínico Geral'],
+          keyFindings: ['Análise de sintomas necessária']
+        };
+      }
+
+      // Get available doctors (simplified - in production would check schedule)
+      const allUsers = await storage.getAllUsers();
+      const doctors = allUsers.filter((u: any) => u.role === 'doctor');
+      const availableDoctors = doctors
+        .slice(0, 3)
+        .map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          specialty: d.specialty || 'Clínico Geral',
+          availability: 'available' 
+        }));
+
+      // Create consultation request
+      const consultationRequest = await storage.createConsultationRequest({
+        patientId,
+        symptoms: validatedData.symptoms,
+        aiAnalysis: triageData,
+        clinicalPresentation: triageData.triageReasoning,
+        urgencyLevel: validatedData.urgencyLevel || triageData.aiTriageLevel,
+        selectedDoctorId: validatedData.selectedDoctorId || availableDoctors[0]?.id || null,
+        recommendedDoctors: availableDoctors.map((d: any) => d.id),
+        status: 'pending',
+        whatsappNotificationSent: false
+      });
+
+      res.json({
+        success: true,
+        consultationRequest,
+        triage: triageData,
+        availableDoctors
+      });
+
+    } catch (error) {
+      console.error('Create consultation request error:', error);
+      res.status(500).json({ message: 'Failed to create consultation request' });
+    }
+  });
+
+  // Get consultation requests
+  app.get('/api/consultation-requests', requireAuth, async (req, res) => {
+    try {
+      let requests;
+      
+      if (req.user!.role === 'doctor' || req.user!.role === 'admin') {
+        requests = await storage.getConsultationRequestsByDoctor(req.user!.id);
+      } else {
+        requests = await storage.getConsultationRequestsByPatient(req.user!.id);
+      }
+
+      res.json(requests);
+    } catch (error) {
+      console.error('Get consultation requests error:', error);
+      res.status(500).json({ message: 'Failed to fetch consultation requests' });
+    }
+  });
+
+  // Get single consultation request
+  app.get('/api/consultation-requests/:id', requireAuth, async (req, res) => {
+    try {
+      const request = await storage.getConsultationRequest(req.params.id);
+      
+      if (!request) {
+        return res.status(404).json({ message: 'Consultation request not found' });
+      }
+
+      // Check authorization
+      if (request.patientId !== req.user!.id && 
+          request.selectedDoctorId !== req.user!.id && 
+          req.user!.role !== 'admin') {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      res.json(request);
+    } catch (error) {
+      console.error('Get consultation request error:', error);
+      res.status(500).json({ message: 'Failed to fetch consultation request' });
+    }
+  });
+
+  // Accept consultation request
+  app.patch('/api/consultation-requests/:id/accept', requireAuth, async (req, res) => {
+    try {
+      const request = await storage.getConsultationRequest(req.params.id);
+      
+      if (!request) {
+        return res.status(404).json({ message: 'Consultation request not found' });
+      }
+
+      if (request.selectedDoctorId !== req.user!.id) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      const updated = await storage.updateConsultationRequest(req.params.id, {
+        status: 'accepted'
+      });
+
+      // Send WhatsApp notification to patient
+      const patient = await storage.getPatient(request.patientId);
+      if (patient?.whatsappNumber && !request.whatsappNotificationSent) {
+        try {
+          await whatsAppService.sendMessage(
+            patient.whatsappNumber,
+            `Sua solicitação de consulta foi aceita pelo Dr. ${req.user!.name}. Em breve você receberá mais informações.`
+          );
+          
+          await storage.updateConsultationRequest(req.params.id, {
+            whatsappNotificationSent: true
+          });
+        } catch (whatsappError) {
+          console.error('WhatsApp notification error:', whatsappError);
+        }
+      }
+
+      res.json({ success: true, consultationRequest: updated });
+    } catch (error) {
+      console.error('Accept consultation request error:', error);
+      res.status(500).json({ message: 'Failed to accept consultation request' });
+    }
+  });
+
+  // Decline consultation request
+  app.patch('/api/consultation-requests/:id/decline', requireAuth, async (req, res) => {
+    try {
+      const request = await storage.getConsultationRequest(req.params.id);
+      
+      if (!request) {
+        return res.status(404).json({ message: 'Consultation request not found' });
+      }
+
+      if (request.selectedDoctorId !== req.user!.id && req.user!.role !== 'admin') {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      const updated = await storage.updateConsultationRequest(req.params.id, {
+        status: 'declined'
+      });
+
+      res.json({ success: true, consultationRequest: updated });
+    } catch (error) {
+      console.error('Decline consultation request error:', error);
+      res.status(500).json({ message: 'Failed to decline consultation request' });
     }
   });
 
