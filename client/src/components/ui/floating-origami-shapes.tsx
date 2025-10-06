@@ -34,7 +34,7 @@ export default function FloatingOrigamiShapes() {
       delay: Math.random() * 10,
       size: 30 + Math.random() * 80,
       color: colors[Math.floor(Math.random() * colors.length)],
-      opacity: 0.08 + Math.random() * 0.12
+      opacity: 0.15 + Math.random() * 0.15 // Mais opaco
     }));
 
     setShapes(newShapes);

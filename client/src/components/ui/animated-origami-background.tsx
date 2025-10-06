@@ -32,14 +32,14 @@ export default function AnimatedOrigamiBackground() {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // Cores inspiradas nas formas de origami e tema autumn
+    // Cores inspiradas nas formas de origami e tema autumn (mais opacas)
     const colors = [
-      'rgba(245, 158, 11, 0.15)',  // amber
-      'rgba(251, 146, 60, 0.15)',  // orange
-      'rgba(251, 113, 133, 0.12)', // rose
-      'rgba(52, 211, 153, 0.12)',  // emerald
-      'rgba(56, 189, 248, 0.12)',  // sky
-      'rgba(71, 85, 105, 0.18)',   // slate dark
+      'rgba(245, 158, 11, 0.25)',  // amber
+      'rgba(251, 146, 60, 0.25)',  // orange
+      'rgba(251, 113, 133, 0.22)', // rose
+      'rgba(52, 211, 153, 0.22)',  // emerald
+      'rgba(56, 189, 248, 0.22)',  // sky
+      'rgba(71, 85, 105, 0.28)',   // slate dark
     ];
 
     // Criar polígonos inspirados nas formas geométricas da imagem
@@ -57,7 +57,7 @@ export default function AnimatedOrigamiBackground() {
           rotationSpeed: (Math.random() - 0.5) * 0.005,
           size: 30 + Math.random() * 100,
           points: 3 + Math.floor(Math.random() * 5), // 3 a 7 lados
-          opacity: 0.3 + Math.random() * 0.7,
+          opacity: 0.5 + Math.random() * 0.5, // Mais opaco
           color: colors[Math.floor(Math.random() * colors.length)]
         });
       }
@@ -134,12 +134,22 @@ export default function AnimatedOrigamiBackground() {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-0"
-      style={{
-        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
-      }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{
+          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
+        }}
+      />
+      {/* Máscara escura para aumentar contraste */}
+      <div 
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.15) 0%, rgba(30, 41, 59, 0.1) 100%)',
+          mixBlendMode: 'multiply'
+        }}
+      />
+    </>
   );
 }

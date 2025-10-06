@@ -57,6 +57,13 @@ export default function PageWrapper({
       <div className={`min-h-screen ${variants[variant]} ${className}`}>
         <AnimatedOrigamiBackground />
         {enableOrigamiShapes && <FloatingOrigamiShapes />}
+        {/* Camada adicional de contraste */}
+        <div 
+          className="fixed inset-0 pointer-events-none z-[5]" 
+          style={{
+            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 100%)'
+          }}
+        />
         <div className="relative z-10">
           {children}
         </div>

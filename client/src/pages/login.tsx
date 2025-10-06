@@ -651,7 +651,7 @@ export default function Login() {
           </p>
         </div>
 
-        <Card className="shadow-xl border-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
+        <Card className="shadow-xl border-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md">
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login" data-testid="tab-login">
