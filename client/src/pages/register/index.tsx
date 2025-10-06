@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import PageWrapper from "@/components/layout/page-wrapper";
-import origamiHeroImage from "@assets/image_1759773239051.png";
+import origamiHeroImage from "@assets/LogoOrigami_1759774106948.png";
 import telemedLogo from "@/assets/logo-fundo.png";
 import { Users, Stethoscope, Shield, Heart, CheckCircle } from "lucide-react";
 

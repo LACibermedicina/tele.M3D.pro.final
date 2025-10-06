@@ -58,28 +58,20 @@ export default function PageWrapper({
     return (
       <div className={`min-h-screen ${variants[variant]} ${className}`}>
         <AnimatedOrigamiBackground />
-        {enableOrigamiShapes && <FloatingOrigamiShapes />}
-        {/* Imagem de origami integrada */}
+        {/* Imagem de origami como vetor no fundo */}
         {origamiImage && (
           <div 
-            className="fixed inset-0 pointer-events-none z-[3]"
+            className="fixed inset-0 pointer-events-none z-[2]"
             style={{
               backgroundImage: `url(${origamiImage})`,
-              backgroundSize: 'cover',
+              backgroundSize: 'contain',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
-              opacity: 0.08,
+              opacity: 0.06,
               mixBlendMode: 'multiply'
             }}
           />
         )}
-        {/* Camada adicional de contraste */}
-        <div 
-          className="fixed inset-0 pointer-events-none z-[5]" 
-          style={{
-            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 100%)'
-          }}
-        />
         <div className="relative z-10">
           {children}
         </div>

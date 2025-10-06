@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { User, UserCheck, Stethoscope } from "lucide-react";
 import telemedLogo from "@/assets/logo-fundo.png";
-import origamiHeroImage from "@assets/image_1759773239051.png";
+import origamiHeroImage from "@assets/LogoOrigami_1759774106948.png";
 import { formatErrorForToast } from "@/lib/error-handler";
 import PageWrapper from "@/components/layout/page-wrapper";
 
@@ -630,7 +630,7 @@ export default function Login() {
   }
 
   return (
-    <PageWrapper variant="origami" enableOrigamiShapes={true} origamiImage={origamiHeroImage}>
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-md">
         <div className="text-center mb-8">

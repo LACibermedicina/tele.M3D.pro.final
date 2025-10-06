@@ -1,14 +1,11 @@
 import { useEffect, useRef } from 'react';
 
-interface Polygon {
+interface ExpandingOverlay {
   x: number;
   y: number;
-  vx: number;
-  vy: number;
-  rotation: number;
-  rotationSpeed: number;
-  size: number;
-  points: number;
+  radius: number;
+  maxRadius: number;
+  speed: number;
   opacity: number;
   color: string;
 }
@@ -16,7 +13,8 @@ interface Polygon {
 export default function AnimatedOrigamiBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
-  const polygonsRef = useRef<Polygon[]>([]);
+  const overlaysRef = useRef<ExpandingOverlay[]>([]);
+  const timeRef = useRef(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -32,71 +30,52 @@ export default function AnimatedOrigamiBackground() {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // Cores inspiradas nas formas de origami e tema autumn (mais opacas)
+    // Cores sutis de tecnologia e medicina
     const colors = [
-      'rgba(245, 158, 11, 0.25)',  // amber
-      'rgba(251, 146, 60, 0.25)',  // orange
-      'rgba(251, 113, 133, 0.22)', // rose
-      'rgba(52, 211, 153, 0.22)',  // emerald
-      'rgba(56, 189, 248, 0.22)',  // sky
-      'rgba(71, 85, 105, 0.28)',   // slate dark
+      'rgba(59, 130, 246, 0.08)',   // azul tecnologia
+      'rgba(16, 185, 129, 0.08)',   // verde medicina
+      'rgba(139, 92, 246, 0.06)',   // roxo tech
+      'rgba(249, 115, 22, 0.06)',   // laranja medical
+      'rgba(6, 182, 212, 0.07)',    // cyan tech
     ];
 
-    // Criar polígonos inspirados nas formas geométricas da imagem
-    const createPolygons = () => {
-      const count = Math.floor((window.innerWidth * window.innerHeight) / 80000);
-      polygonsRef.current = [];
+    // Criar overlays expandindo
+    const createOverlays = () => {
+      overlaysRef.current = [];
+      const count = 8;
 
       for (let i = 0; i < count; i++) {
-        polygonsRef.current.push({
+        overlaysRef.current.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.3,
-          rotation: Math.random() * Math.PI * 2,
-          rotationSpeed: (Math.random() - 0.5) * 0.005,
-          size: 30 + Math.random() * 100,
-          points: 3 + Math.floor(Math.random() * 5), // 3 a 7 lados
-          opacity: 0.5 + Math.random() * 0.5, // Mais opaco
+          radius: 0,
+          maxRadius: 200 + Math.random() * 300,
+          speed: 0.15 + Math.random() * 0.25,
+          opacity: 1,
           color: colors[Math.floor(Math.random() * colors.length)]
         });
       }
     };
 
-    createPolygons();
+    createOverlays();
 
-    // Desenhar polígono irregular (inspirado em origami)
-    const drawPolygon = (polygon: Polygon) => {
+    // Desenhar círculo expandindo
+    const drawExpandingCircle = (overlay: ExpandingOverlay) => {
       ctx.save();
-      ctx.translate(polygon.x, polygon.y);
-      ctx.rotate(polygon.rotation);
-      ctx.globalAlpha = polygon.opacity;
-
+      ctx.globalAlpha = overlay.opacity;
+      
+      // Criar gradiente radial
+      const gradient = ctx.createRadialGradient(
+        overlay.x, overlay.y, 0,
+        overlay.x, overlay.y, overlay.radius
+      );
+      gradient.addColorStop(0, overlay.color);
+      gradient.addColorStop(1, overlay.color.replace(/[\d.]+\)$/g, '0)'));
+      
+      ctx.fillStyle = gradient;
       ctx.beginPath();
-      
-      // Criar forma poligonal irregular (mais orgânica, como origami)
-      for (let i = 0; i <= polygon.points; i++) {
-        const angle = (Math.PI * 2 * i) / polygon.points;
-        const variance = 0.7 + Math.random() * 0.6; // Variação para forma irregular
-        const radius = polygon.size * variance;
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-        
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      }
-      
-      ctx.closePath();
-      ctx.fillStyle = polygon.color;
+      ctx.arc(overlay.x, overlay.y, overlay.radius, 0, Math.PI * 2);
       ctx.fill();
-      
-      // Adicionar borda sutil
-      ctx.strokeStyle = polygon.color.replace(/[\d.]+\)$/g, '0.3)');
-      ctx.lineWidth = 1;
-      ctx.stroke();
 
       ctx.restore();
     };
@@ -104,20 +83,24 @@ export default function AnimatedOrigamiBackground() {
     // Animar
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      timeRef.current += 1;
 
-      polygonsRef.current.forEach(polygon => {
-        // Atualizar posição
-        polygon.x += polygon.vx;
-        polygon.y += polygon.vy;
-        polygon.rotation += polygon.rotationSpeed;
+      overlaysRef.current.forEach(overlay => {
+        // Expandir
+        overlay.radius += overlay.speed;
+        
+        // Diminuir opacidade conforme expande
+        overlay.opacity = 1 - (overlay.radius / overlay.maxRadius);
 
-        // Wrap around nas bordas
-        if (polygon.x < -polygon.size) polygon.x = canvas.width + polygon.size;
-        if (polygon.x > canvas.width + polygon.size) polygon.x = -polygon.size;
-        if (polygon.y < -polygon.size) polygon.y = canvas.height + polygon.size;
-        if (polygon.y > canvas.height + polygon.size) polygon.y = -polygon.size;
+        // Resetar quando atingir tamanho máximo
+        if (overlay.radius >= overlay.maxRadius) {
+          overlay.radius = 0;
+          overlay.opacity = 1;
+          overlay.x = Math.random() * canvas.width;
+          overlay.y = Math.random() * canvas.height;
+        }
 
-        drawPolygon(polygon);
+        drawExpandingCircle(overlay);
       });
 
       animationRef.current = requestAnimationFrame(animate);
@@ -142,12 +125,11 @@ export default function AnimatedOrigamiBackground() {
           background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
         }}
       />
-      {/* Máscara escura para aumentar contraste */}
+      {/* Overlay de contraste suave */}
       <div 
-        className="fixed inset-0 pointer-events-none z-0"
+        className="fixed inset-0 pointer-events-none z-[1]"
         style={{
-          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.15) 0%, rgba(30, 41, 59, 0.1) 100%)',
-          mixBlendMode: 'multiply'
+          background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.08) 100%)'
         }}
       />
     </>
