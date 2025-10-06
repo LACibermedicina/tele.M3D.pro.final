@@ -9,7 +9,15 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
-The client-side is built with React and TypeScript, using Wouter for routing. It leverages Shadcn/ui components (based on Radix UI) styled with Tailwind CSS for a responsive, medical-themed design. State management is handled by TanStack React Query, form handling by React Hook Form with Zod validation, and real-time updates via a custom WebSocket hook. The UI features a warm autumn pastel color scheme.
+The client-side is built with React and TypeScript, using Wouter for routing. It leverages Shadcn/ui components (based on Radix UI) styled with Tailwind CSS for a responsive, medical-themed design. State management is handled by TanStack React Query, form handling by React Hook Form with Zod validation, and real-time updates via a custom WebSocket hook. The UI features a warm autumn pastel color scheme with an animated origami-inspired background system on public-facing pages.
+
+**Visual Design System**:
+- **Animated Origami Background**: Canvas API-based polygons (0.25 opacity) with rotation animation and floating SVG shapes (triangles, diamonds, pentagons)
+- **Enhanced Contrast**: Radial gradient dark mask (5-15% darkening) overlaying the background for improved text readability
+- **Card Design**: Semi-transparent cards (98% opacity) with backdrop blur and enhanced shadows for depth separation
+- **Page Variants**: 
+  - "origami" variant for public pages (login, features, registration pages, dashboard)
+  - "medical" variant for documentation and content-heavy pages with medical imagery
 
 ### Backend Architecture
 The server is a RESTful API built with Node.js and Express.js, using TypeScript in ESModule format. It includes middleware for JSON parsing, CORS, and request logging. A WebSocket server provides live updates. API endpoints are domain-organized, and centralized error handling ensures structured error responses.
