@@ -19,8 +19,8 @@ export default function RegisterSelect() {
               <img 
                 src={telemedLogo} 
                 alt="Tele<M3D> Logo" 
-                className="w-full h-full object-contain brightness-0 invert"
-                style={{ filter: 'brightness(0) invert(1)' }}
+                className="w-full h-full object-contain brightness-0"
+                style={{ filter: 'brightness(0)' }}
               />
             </div>
           </div>
