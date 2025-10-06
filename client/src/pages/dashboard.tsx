@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { type DashboardStats } from "@shared/schema";
 import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 
 export default function Dashboard() {
   const { t } = useTranslation();
@@ -27,7 +28,7 @@ export default function Dashboard() {
   }
 
   return (
-    <PageWrapper variant="origami">
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Quick Stats Section - Enhanced Healthcare Design */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 import { 
   Video, 
   Shield, 
@@ -147,7 +148,7 @@ export default function Features() {
   ];
 
   return (
-    <PageWrapper variant="origami">
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
       {/* Header */}
       <div className="bg-primary/10 backdrop-blur-sm text-white py-16">
         <div className="max-w-6xl mx-auto px-4">

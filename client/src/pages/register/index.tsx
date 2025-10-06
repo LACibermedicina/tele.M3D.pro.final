@@ -2,11 +2,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 import { Users, Stethoscope, ArrowRight, CheckCircle, Shield, Heart, Settings } from "lucide-react";
 
 export default function RegisterSelect() {
   return (
-    <PageWrapper variant="origami">
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
       <div className="py-8 px-4">
       <div className="max-w-4xl mx-auto">
         
