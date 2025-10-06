@@ -6006,6 +6006,119 @@ Forneça um resumo em JSON com:
     }
   });
 
+  // Clinical Dashboard - Aggregated patient data
+  app.get('/api/clinical-dashboard/:patientId', requireAuth, async (req, res) => {
+    try {
+      const { patientId } = req.params;
+
+      // Authorization: doctor, patient themselves, or admin
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient not found' });
+      }
+
+      const userPatient = await storage.getPatientByUserId(req.user!.id);
+      const isPatient = userPatient && userPatient.id === patientId;
+      const isAdmin = req.user!.role === 'admin';
+      const isDoctor = req.user!.role === 'doctor';
+
+      if (!isPatient && !isDoctor && !isAdmin) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      // Aggregate data from multiple sources
+      const [
+        medicalRecords,
+        examResults,
+        clinicalAssets,
+        consultationRequests
+      ] = await Promise.all([
+        storage.getMedicalRecordsByPatient(patientId),
+        storage.getExamResultsByPatient(patientId),
+        storage.getClinicalAssetsByPatient(patientId),
+        storage.getConsultationRequestsByPatient(patientId)
+      ]);
+
+      // Build timeline of clinical events
+      const timeline = [
+        ...medicalRecords.map((r: any) => ({
+          type: 'medical_record',
+          date: r.date,
+          title: r.diagnosis || 'Consulta médica',
+          description: r.notes || r.treatment
+        })),
+        ...examResults.map((e: any) => ({
+          type: 'exam_result',
+          date: e.date,
+          title: e.examType,
+          description: e.result
+        })),
+        ...clinicalAssets.map((a: any) => ({
+          type: 'clinical_asset',
+          date: a.timeline,
+          title: a.assetType,
+          description: a.aiAnalysisSummary
+        })),
+        ...consultationRequests.map((c: any) => ({
+          type: 'consultation_request',
+          date: c.createdAt,
+          title: 'Solicitação de consulta',
+          description: c.symptoms
+        }))
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      res.json({
+        patient,
+        summary: {
+          totalRecords: medicalRecords.length,
+          totalExams: examResults.length,
+          totalAssets: clinicalAssets.length,
+          pendingConsultations: consultationRequests.filter((c: any) => c.status === 'pending').length
+        },
+        timeline: timeline.slice(0, 20)
+      });
+    } catch (error) {
+      console.error('Clinical dashboard error:', error);
+      res.status(500).json({ message: 'Failed to load clinical dashboard' });
+    }
+  });
+
+  // Clinical Assets by patient
+  app.get('/api/clinical-assets/:patientId', requireAuth, async (req, res) => {
+    try {
+      const { patientId } = req.params;
+      const { assetType } = req.query;
+
+      // Authorization
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient not found' });
+      }
+
+      const userPatient = await storage.getPatientByUserId(req.user!.id);
+      const isPatient = userPatient && userPatient.id === patientId;
+      const isAdmin = req.user!.role === 'admin';
+      const isDoctor = req.user!.role === 'doctor';
+
+      if (!isPatient && !isDoctor && !isAdmin) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      // Get clinical assets
+      let assets;
+      if (assetType && typeof assetType === 'string') {
+        assets = await storage.getClinicalAssetsByType(patientId, assetType);
+      } else {
+        assets = await storage.getClinicalAssetsByPatient(patientId);
+      }
+
+      res.json(assets);
+    } catch (error) {
+      console.error('Get clinical assets error:', error);
+      res.status(500).json({ message: 'Failed to fetch clinical assets' });
+    }
+  });
+
   // SMS notification endpoint
   app.post('/api/notifications/sms', requireAuth, async (req, res) => {
     try {
