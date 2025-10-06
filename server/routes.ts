@@ -5807,6 +5807,205 @@ Forneça uma resposta em JSON com:
     }
   });
 
+  // Consultation Sessions - Collaborative consultation rooms
+  app.post('/api/consultation-sessions', requireAuth, async (req, res) => {
+    try {
+      const { consultationRequestId } = req.body;
+
+      // Get consultation request
+      const request = await storage.getConsultationRequest(consultationRequestId);
+      if (!request) {
+        return res.status(404).json({ message: 'Consultation request not found' });
+      }
+
+      // Authorization: only the assigned doctor can create a session
+      if (request.selectedDoctorId !== req.user!.id && req.user!.role !== 'admin') {
+        return res.status(403).json({ message: 'Not authorized to create session for this consultation' });
+      }
+
+      // Create consultation session
+      const session = await storage.createConsultationSession({
+        consultationId: consultationRequestId,
+        roomMetadata: {
+          createdAt: new Date().toISOString(),
+          createdBy: req.user!.id
+        },
+        invitedSpecialists: [],
+        status: 'active'
+      });
+
+      res.json({ success: true, session });
+    } catch (error) {
+      console.error('Create consultation session error:', error);
+      res.status(500).json({ message: 'Failed to create consultation session' });
+    }
+  });
+
+  app.get('/api/consultation-sessions/:id', requireAuth, async (req, res) => {
+    try {
+      const session = await storage.getConsultationSession(req.params.id);
+      
+      if (!session) {
+        return res.status(404).json({ message: 'Consultation session not found' });
+      }
+
+      // Get consultation request for authorization
+      const request = await storage.getConsultationRequest(session.consultationId);
+      if (!request) {
+        return res.status(404).json({ message: 'Consultation request not found' });
+      }
+
+      // Authorization: doctor, patient, invited specialists, or admin
+      const invitedSpecialists = session.invitedSpecialists || [];
+      const isDoctor = request.selectedDoctorId === req.user!.id;
+      const isInvited = invitedSpecialists.includes(req.user!.id);
+      const isAdmin = req.user!.role === 'admin';
+
+      // Check if user is the patient (need to get patient by userId)
+      const patient = await storage.getPatientByUserId(req.user!.id);
+      const isPatient = patient && patient.id === request.patientId;
+
+      if (!isDoctor && !isPatient && !isInvited && !isAdmin) {
+        return res.status(403).json({ message: 'Not authorized to view this session' });
+      }
+
+      res.json(session);
+    } catch (error) {
+      console.error('Get consultation session error:', error);
+      res.status(500).json({ message: 'Failed to fetch consultation session' });
+    }
+  });
+
+  app.post('/api/consultation-sessions/:id/invite', requireAuth, async (req, res) => {
+    try {
+      const { specialistIds } = req.body;
+      const session = await storage.getConsultationSession(req.params.id);
+      
+      if (!session) {
+        return res.status(404).json({ message: 'Consultation session not found' });
+      }
+
+      // Get consultation request for authorization
+      const request = await storage.getConsultationRequest(session.consultationId);
+      if (!request) {
+        return res.status(404).json({ message: 'Consultation request not found' });
+      }
+
+      // Authorization: only the assigned doctor can invite specialists
+      if (request.selectedDoctorId !== req.user!.id && req.user!.role !== 'admin') {
+        return res.status(403).json({ message: 'Not authorized to invite specialists' });
+      }
+
+      const currentInvited = session.invitedSpecialists || [];
+      const updatedInvited = [...new Set([...currentInvited, ...specialistIds])];
+
+      const updated = await storage.updateConsultationSession(req.params.id, {
+        invitedSpecialists: updatedInvited
+      });
+
+      res.json({ success: true, session: updated });
+    } catch (error) {
+      console.error('Invite specialist error:', error);
+      res.status(500).json({ message: 'Failed to invite specialist' });
+    }
+  });
+
+  app.post('/api/consultation-sessions/:id/clinical-notes', requireAuth, async (req, res) => {
+    try {
+      const { notes } = req.body;
+      const session = await storage.getConsultationSession(req.params.id);
+      
+      if (!session) {
+        return res.status(404).json({ message: 'Consultation session not found' });
+      }
+
+      // Get consultation request for authorization
+      const request = await storage.getConsultationRequest(session.consultationId);
+      if (!request) {
+        return res.status(404).json({ message: 'Consultation request not found' });
+      }
+
+      // Authorization: doctor or invited specialists can update notes
+      const invitedSpecialists = session.invitedSpecialists || [];
+      const isDoctor = request.selectedDoctorId === req.user!.id;
+      const isInvited = invitedSpecialists.includes(req.user!.id);
+      const isAdmin = req.user!.role === 'admin';
+
+      if (!isDoctor && !isInvited && !isAdmin) {
+        return res.status(403).json({ message: 'Not authorized to update clinical notes' });
+      }
+
+      const updated = await storage.updateConsultationSession(req.params.id, {
+        clinicalNotes: notes
+      });
+
+      res.json({ success: true, session: updated });
+    } catch (error) {
+      console.error('Update clinical notes error:', error);
+      res.status(500).json({ message: 'Failed to update clinical notes' });
+    }
+  });
+
+  app.post('/api/consultation-sessions/:id/summary', requireAuth, async (req, res) => {
+    try {
+      const session = await storage.getConsultationSession(req.params.id);
+      
+      if (!session) {
+        return res.status(404).json({ message: 'Consultation session not found' });
+      }
+
+      // Get consultation request for context and authorization
+      const request = await storage.getConsultationRequest(session.consultationId);
+      if (!request) {
+        return res.status(404).json({ message: 'Consultation request not found' });
+      }
+
+      // Authorization: doctor or invited specialists can generate summary
+      const invitedSpecialists = session.invitedSpecialists || [];
+      const isDoctor = request.selectedDoctorId === req.user!.id;
+      const isInvited = invitedSpecialists.includes(req.user!.id);
+      const isAdmin = req.user!.role === 'admin';
+
+      if (!isDoctor && !isInvited && !isAdmin) {
+        return res.status(403).json({ message: 'Not authorized to generate summary' });
+      }
+      
+      // Generate summary with Gemini
+      const summaryPrompt = `Como médico especialista, gere um resumo clínico profissional desta consulta:
+
+Sintomas iniciais: ${request?.symptoms || 'Não especificado'}
+Análise de triagem: ${request?.clinicalPresentation || 'Não disponível'}
+Notas clínicas: ${session.clinicalNotes || 'Nenhuma nota registrada'}
+
+Forneça um resumo em JSON com:
+1. chiefComplaint: queixa principal
+2. clinicalFindings: principais achados clínicos
+3. assessment: avaliação e diagnóstico
+4. plan: plano terapêutico
+5. followUp: orientações de acompanhamento`;
+
+      const summaryResponse = await geminiService.generateText(summaryPrompt);
+      
+      let summary;
+      try {
+        summary = JSON.parse(summaryResponse);
+      } catch {
+        summary = {
+          chiefComplaint: request?.symptoms || '',
+          clinicalFindings: summaryResponse.substring(0, 200),
+          assessment: 'Avaliação em andamento',
+          plan: 'Plano a ser definido',
+          followUp: 'Retorno conforme necessário'
+        };
+      }
+
+      res.json({ success: true, summary });
+    } catch (error) {
+      console.error('Generate summary error:', error);
+      res.status(500).json({ message: 'Failed to generate summary' });
+    }
+  });
+
   // SMS notification endpoint
   app.post('/api/notifications/sms', requireAuth, async (req, res) => {
     try {
