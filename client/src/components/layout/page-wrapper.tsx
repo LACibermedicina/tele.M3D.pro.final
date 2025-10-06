@@ -1,23 +1,28 @@
 import { ReactNode } from "react";
+import AnimatedOrigamiBackground from "@/components/ui/animated-origami-background";
+import FloatingOrigamiShapes from "@/components/ui/floating-origami-shapes";
 
 interface PageWrapperProps {
   children: ReactNode;
   className?: string;
-  variant?: "default" | "gradient" | "subtle" | "medical";
+  variant?: "default" | "gradient" | "subtle" | "medical" | "origami";
   medicalBg?: string;
+  enableOrigamiShapes?: boolean;
 }
 
 export default function PageWrapper({ 
   children, 
   className = "", 
   variant = "default",
-  medicalBg
+  medicalBg,
+  enableOrigamiShapes = false
 }: PageWrapperProps) {
   const variants = {
     default: "bg-background",
     gradient: "bg-gradient-to-br from-background via-muted/30 to-background",
     subtle: "bg-gradient-to-b from-background to-muted/20",
-    medical: "medical-page-wrapper"
+    medical: "medical-page-wrapper",
+    origami: "relative overflow-hidden"
   };
 
   if (variant === "medical") {
@@ -47,8 +52,21 @@ export default function PageWrapper({
     );
   }
 
+  if (variant === "origami") {
+    return (
+      <div className={`min-h-screen ${variants[variant]} ${className}`}>
+        <AnimatedOrigamiBackground />
+        {enableOrigamiShapes && <FloatingOrigamiShapes />}
+        <div className="relative z-10">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen ${variants[variant]} ${className}`}>
+      {enableOrigamiShapes && <FloatingOrigamiShapes />}
       {children}
     </div>
   );

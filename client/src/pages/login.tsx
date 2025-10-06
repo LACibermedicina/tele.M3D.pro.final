@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { User, UserCheck, Stethoscope } from "lucide-react";
 import telemedLogo from "@/assets/logo-fundo.png";
 import { formatErrorForToast } from "@/lib/error-handler";
+import PageWrapper from "@/components/layout/page-wrapper";
 
 // Create schemas using translation function
 const createLoginSchema = (t: any) => z.object({
@@ -628,8 +629,9 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
-      <div className="w-full max-w-md">
+    <PageWrapper variant="origami" enableOrigamiShapes={true}>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <div className="w-20 h-20 flex items-center justify-center">
@@ -735,6 +737,7 @@ export default function Login() {
           </p>
         </div>
       </div>
-    </div>
+      </div>
+    </PageWrapper>
   );
 }
