@@ -1451,14 +1451,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (user.role === 'patient') {
-        // Patients can only access their own medical records
-        if (patient.userId !== user.id) {
-          return res.status(403).json({ 
-            message: 'Acesso negado: Você só pode visualizar seus próprios prontuários médicos' 
-          });
-        }
-        const records = await storage.getMedicalRecordsByPatient(patientId);
-        return res.json(records);
+        // Patients cannot access medical records directly
+        return res.status(403).json({ 
+          message: 'Acesso negado: Pacientes não têm acesso direto a prontuários médicos. Consulte seu médico.' 
+        });
       }
 
       if (user.role === 'doctor') {
