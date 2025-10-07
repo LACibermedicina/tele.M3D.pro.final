@@ -76,11 +76,6 @@ export function DesktopVisitorDashboard() {
   const handleChatBot = () => {
     setShowChatBot(true);
   };
-
-  const handleServiceBooking = (serviceId: string) => {
-    // For now, redirect to AI assistant for symptom analysis and appointment booking
-    setShowChatBot(true);
-  };
   
   // Expanded services for desktop view
   const publicServices: Service[] = [
@@ -369,14 +364,15 @@ export function DesktopVisitorDashboard() {
                         {service.available ? "Disponível" : "Indisponível"}
                       </Badge>
                     </div>
-                    <Button 
-                      className="w-full hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg" 
-                      disabled={!service.available}
-                      onClick={() => handleServiceBooking(service.id)}
-                      data-testid={`button-book-${service.id}`}
-                    >
-                      {service.available ? "Agendar Consulta" : "Indisponível"}
-                    </Button>
+                    <Link href="/login">
+                      <Button 
+                        className="w-full hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg" 
+                        disabled={!service.available}
+                        data-testid={`button-book-${service.id}`}
+                      >
+                        {service.available ? "Faça Login para Agendar" : "Indisponível"}
+                      </Button>
+                    </Link>
                   </CardContent>
                 </Card>
               ))}
@@ -495,7 +491,7 @@ export function DesktopVisitorDashboard() {
             <p className="text-purple-600">
               Nosso assistente virtual pode ajudar com agendamento de consultas, análise de sintomas e orientações médicas iniciais.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Button 
                 className="bg-purple-600 text-white hover:bg-purple-700 hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg"
                 onClick={handleChatBot}
@@ -503,14 +499,6 @@ export function DesktopVisitorDashboard() {
               >
                 <Bot className="w-4 h-4 mr-2" />
                 Análise de Sintomas
-              </Button>
-              <Button 
-                className="bg-purple-600 text-white hover:bg-purple-700 hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg"
-                onClick={handleChatBot}
-                data-testid="button-ai-appointment"
-              >
-                <Calendar className="w-4 h-4 mr-2" />
-                Agendar Consulta
               </Button>
               <Button 
                 className="bg-purple-600 text-white hover:bg-purple-700 hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg"

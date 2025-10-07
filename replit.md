@@ -43,6 +43,7 @@ Security is implemented with user-based authentication and role-based access con
 - **Comprehensive Error Handling**: User-friendly error messages with practical suggestions for common HTTP errors, and an admin error logging system for detailed error tracking and resolution.
 - **Database Cleanup Endpoint**: Admin-only endpoint for removing test data with strict confirmation.
 - **Visitor Chatbot**: Publicly accessible AI chatbot with limited, safe functionality, referencing public medical PDFs.
+- **Guest Access Control**: Visitors (non-authenticated users) can view available services but cannot schedule appointments directly - they are prompted to login or register first.
 - **Doctor Availability Management**: Doctors can set weekly schedules, mark themselves as online, and enable/disable immediate consultation availability. Includes real-time status tracking and flexible scheduling with configurable consultation durations.
 - **Immediate Consultation System**: Patients can request instant consultations with doctors who are currently online and available, with auto-refresh to show real-time doctor availability and direct appointment creation for emergency needs.
 - **Doctor-Patient Chat System**: Real-time messaging between doctors and patients with pending consultation requests. Doctors can view patient medical history, send messages, and initiate video consultations directly from the chat interface. Only patients with open consultation requests can be attended.

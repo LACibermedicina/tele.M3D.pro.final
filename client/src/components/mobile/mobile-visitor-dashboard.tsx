@@ -57,10 +57,6 @@ export function MobileVisitorDashboard() {
   const handleChatBot = () => {
     setShowChatBot(true);
   };
-
-  const handleServiceBooking = (serviceId: string) => {
-    setShowChatBot(true);
-  };
   
   // Public services available for visitors
   const publicServices: Service[] = [
@@ -176,14 +172,15 @@ export function MobileVisitorDashboard() {
                     </Badge>
                   </div>
                 </div>
-                <Button 
-                  size="sm" 
-                  disabled={!service.available}
-                  onClick={() => handleServiceBooking(service.id)}
-                  data-testid={`button-book-${service.id}`}
-                >
-                  {service.available ? "Agendar" : "Indisponível"}
-                </Button>
+                <Link href="/login">
+                  <Button 
+                    size="sm" 
+                    disabled={!service.available}
+                    data-testid={`button-book-${service.id}`}
+                  >
+                    {service.available ? "Login" : "Indisponível"}
+                  </Button>
+                </Link>
               </div>
               {index < publicServices.length - 1 && <Separator className="mt-4" />}
             </div>
@@ -258,15 +255,6 @@ export function MobileVisitorDashboard() {
             >
               <Bot className="w-4 h-4 mr-2" />
               Análise de Sintomas
-            </Button>
-            <Button 
-              variant="outline" 
-              className="border-purple-300 text-purple-700 hover:bg-purple-50"
-              onClick={handleChatBot}
-              data-testid="button-ai-appointment"
-            >
-              <Calendar className="w-4 h-4 mr-2" />
-              Agendar Consulta
             </Button>
             <Button 
               variant="outline" 
