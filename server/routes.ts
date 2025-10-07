@@ -9067,13 +9067,13 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       // Add prescription items
       const prescriptionItemsData = items.map((item: any, index: number) => ({
         prescriptionId,
-        medicationId: item.medicationId,
+        medicationId: item.medicationId || null,
         dosage: item.dosage,
         frequency: item.frequency,
         duration: item.duration,
         quantity: item.quantity,
         instructions: item.instructions,
-        customMedication: item.customMedication,
+        customMedication: item.customMedication || null,
         isGenericAllowed: item.isGenericAllowed !== false,
         priority: index + 1,
         notes: item.notes || '',
