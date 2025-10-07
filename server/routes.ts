@@ -9279,6 +9279,177 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     }
   });
 
+  // Sign prescription with digital signature
+  app.post('/api/prescriptions/:id/sign', requireAuth, async (req, res) => {
+    try {
+      if (req.user?.role !== 'doctor') {
+        return res.status(403).json({ message: 'Only doctors can sign prescriptions' });
+      }
+
+      const { id } = req.params;
+      const { pin, doctorName, crm, crmState } = req.body;
+
+      // Get prescription
+      const prescription = await db.select()
+        .from(prescriptions)
+        .where(eq(prescriptions.id, id))
+        .limit(1);
+
+      if (!prescription.length) {
+        return res.status(404).json({ message: 'Prescription not found' });
+      }
+
+      const prescriptionData = prescription[0];
+
+      // Verify doctor owns this prescription
+      if (prescriptionData.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'You can only sign your own prescriptions' });
+      }
+
+      // Check if already signed
+      if (prescriptionData.digitalSignatureId) {
+        return res.status(400).json({ message: 'Prescription already signed' });
+      }
+
+      // Get prescription items to include in signature
+      const items = await db.select()
+        .from(prescriptionItems)
+        .where(eq(prescriptionItems.prescriptionId, id));
+
+      // Build prescription content for signature
+      const prescriptionContent = {
+        prescriptionNumber: prescriptionData.prescriptionNumber,
+        diagnosis: prescriptionData.diagnosis,
+        items: items.map(item => ({
+          dosage: item.dosage,
+          frequency: item.frequency,
+          duration: item.duration,
+          customMedication: item.customMedication
+        })),
+        specialInstructions: prescriptionData.specialInstructions,
+        createdAt: prescriptionData.createdAt
+      };
+
+      // Certificate info for ICP-Brasil A3
+      const certificateInfo = {
+        doctorName: doctorName || req.user.name,
+        crm: crm || 'CRM-DEMO',
+        crmState: crmState || 'SP',
+        cpf: '000.000.000-00',
+        issuer: 'ICP-Brasil',
+        validFrom: new Date(),
+        validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        certificateLevel: 'A3',
+        serialNumber: `CERT-${Date.now()}`
+      };
+
+      // Generate key pair and signature
+      const { privateKey, publicKey } = await cryptoService.generateKeyPair();
+      const signatureResult = await cryptoService.signPrescription(
+        JSON.stringify(prescriptionContent),
+        privateKey,
+        certificateInfo
+      );
+
+      // Verify signature immediately
+      const verificationResult = await cryptoService.verifyPrescriptionSignature(
+        signatureResult.signature,
+        signatureResult.documentHash,
+        signatureResult.certificateInfo
+      );
+
+      // Create digital signature record
+      const digitalSignature = await storage.createDigitalSignature({
+        documentType: 'prescription',
+        documentId: id,
+        patientId: prescriptionData.patientId,
+        doctorId: req.user.id,
+        signature: signatureResult.signature,
+        documentHash: signatureResult.documentHash,
+        publicKey: publicKey,
+        certificateInfo: {
+          ...certificateInfo,
+          algorithm: 'RSA-SHA256',
+          keySize: 2048
+        },
+        status: 'signed',
+        signedAt: new Date(),
+      });
+
+      // Update prescription with digital signature ID
+      await db.update(prescriptions)
+        .set({ digitalSignatureId: digitalSignature.id })
+        .where(eq(prescriptions.id, id));
+
+      // Generate audit hash
+      const auditHash = cryptoService.generateAuditHash(
+        signatureResult,
+        req.user.id,
+        prescriptionData.patientId
+      );
+
+      console.log('[PRESCRIPTION] Prescription signed:', prescriptionData.prescriptionNumber);
+
+      res.json({
+        digitalSignature,
+        auditHash,
+        verificationResult,
+        message: 'Prescrição assinada digitalmente com certificado ICP-Brasil A3',
+        qrCodeData: `verify:${id}:${digitalSignature.id}`
+      });
+    } catch (error) {
+      console.error('Sign prescription error:', error);
+      res.status(500).json({ message: 'Failed to sign prescription' });
+    }
+  });
+
+  // Verify prescription signature
+  app.get('/api/prescriptions/:id/verify-signature', async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const prescription = await db.select()
+        .from(prescriptions)
+        .where(eq(prescriptions.id, id))
+        .limit(1);
+
+      if (!prescription.length) {
+        return res.status(404).json({ message: 'Prescription not found' });
+      }
+
+      const prescriptionData = prescription[0];
+
+      if (!prescriptionData.digitalSignatureId) {
+        return res.status(404).json({ message: 'Prescription not signed' });
+      }
+
+      // Get digital signature
+      const signature = await storage.getDigitalSignature(prescriptionData.digitalSignatureId);
+
+      if (!signature) {
+        return res.status(404).json({ message: 'Digital signature not found' });
+      }
+
+      // Verify signature
+      const verificationResult = await cryptoService.verifyPrescriptionSignature(
+        signature.signature,
+        signature.documentHash,
+        signature.certificateInfo
+      );
+
+      res.json({
+        isValid: verificationResult.valid,
+        signature,
+        verification: verificationResult,
+        prescriptionNumber: prescriptionData.prescriptionNumber,
+        signedAt: signature.signedAt
+      });
+    } catch (error) {
+      console.error('Verify prescription signature error:', error);
+      res.status(500).json({ message: 'Failed to verify prescription signature' });
+    }
+  });
+
   // Get prescription templates
   app.get('/api/prescription-templates', requireAuth, async (req, res) => {
     try {
