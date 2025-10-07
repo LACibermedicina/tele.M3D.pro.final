@@ -9,7 +9,7 @@ import LanguageSelector from "@/components/ui/language-selector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee } from "lucide-react";
 import { formatErrorForToast } from "@/lib/error-handler";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import NotificationCenter from "@/components/notifications/notification-center";
@@ -624,6 +624,61 @@ export default function Header() {
             {user ? (
               <>
                 <NotificationCenter isScrolled={isScrolled} />
+                
+                {/* Doctor Office Button */}
+                {user.role === 'doctor' && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link href="/doctor-office">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className={`icon-link-primary group w-12 h-12 hover:bg-blue-500/20 transition-all duration-300 hover:scale-110 hover:shadow-xl ring-2 ring-blue-400/50 hover:ring-blue-500 ${
+                            isScrolled ? 'text-white' : 'text-blue-600 dark:text-blue-400'
+                          }`}
+                          data-testid="button-doctor-office"
+                        >
+                          <Stethoscope className={`h-6 w-6 transition-all duration-300 ${
+                            isScrolled 
+                              ? 'text-white drop-shadow-[0_2px_8px_rgba(96,165,250,0.5)]' 
+                              : 'text-blue-600 dark:text-blue-400'
+                          } group-hover:drop-shadow-[0_2px_12px_rgba(96,165,250,1)] animate-pulse`} />
+                        </Button>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="bg-blue-600 text-white font-medium px-3 py-2 shadow-lg">
+                      <p className="text-white">Abrir Consultório</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {/* Coffee Room Button - For Doctors */}
+                {user.role === 'doctor' && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link href="/coffee-room">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className={`icon-link-primary group w-10 h-10 hover:bg-amber-500/20 transition-all duration-300 hover:scale-110 hover:shadow-lg ${
+                            isScrolled ? 'text-white' : 'text-amber-700 dark:text-amber-500'
+                          }`}
+                          data-testid="button-coffee-room"
+                        >
+                          <Coffee className={`h-5 w-5 transition-all duration-300 ${
+                            isScrolled 
+                              ? 'text-white drop-shadow-[0_2px_8px_rgba(251,191,36,0.5)]' 
+                              : 'text-amber-700 dark:text-amber-500'
+                          } group-hover:drop-shadow-[0_2px_12px_rgba(251,191,36,0.8)]`} />
+                        </Button>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="bg-amber-600 text-white font-medium px-3 py-2 shadow-lg">
+                      <p className="text-white">Cafeteria Virtual</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button 
