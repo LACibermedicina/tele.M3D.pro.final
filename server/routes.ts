@@ -2532,173 +2532,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ===== DOCTOR OFFICE (CONSULTÓRIO) API ROUTES =====
-  
-  // Open doctor's office (creates a persistent video room)
-  app.post('/api/doctor-office/open', requireAuth, async (req: any, res) => {
-    try {
-      if (req.user.role !== 'doctor') {
-        return res.status(403).json({ message: 'Only doctors can open office' });
-      }
-
-      // Mark doctor as available for immediate consultation
-      await db.update(users)
-        .set({ 
-          isOnline: true, 
-          availableForImmediate: true,
-          onlineSince: new Date()
-        })
-        .where(eq(users.id, req.user.id));
-
-      // Broadcast office opened event
-      broadcastToAll({ 
-        type: 'doctor_office_opened', 
-        doctorId: req.user.id,
-        doctorName: req.user.name
-      });
-
-      res.json({ 
-        message: 'Office opened successfully', 
-        isOpen: true,
-        channelName: `doctor-office-${req.user.id}` 
-      });
-    } catch (error) {
-      console.error('Open office error:', error);
-      res.status(500).json({ message: 'Failed to open office' });
-    }
-  });
-
-  // Close doctor's office
-  app.post('/api/doctor-office/close', requireAuth, async (req: any, res) => {
-    try {
-      if (req.user.role !== 'doctor') {
-        return res.status(403).json({ message: 'Only doctors can close office' });
-      }
-
-      // Mark doctor as unavailable
-      await db.update(users)
-        .set({ 
-          availableForImmediate: false
-        })
-        .where(eq(users.id, req.user.id));
-
-      // Broadcast office closed event
-      broadcastToAll({ 
-        type: 'doctor_office_closed', 
-        doctorId: req.user.id 
-      });
-
-      res.json({ message: 'Office closed successfully', isOpen: false });
-    } catch (error) {
-      console.error('Close office error:', error);
-      res.status(500).json({ message: 'Failed to close office' });
-    }
-  });
-
-  // Get doctor's office status
-  app.get('/api/doctor-office/status/:doctorId', async (req, res) => {
-    try {
-      const doctor = await db.select()
-        .from(users)
-        .where(eq(users.id, req.params.doctorId))
-        .limit(1);
-
-      if (!doctor.length || doctor[0].role !== 'doctor') {
-        return res.status(404).json({ message: 'Doctor not found' });
-      }
-
-      res.json({
-        isOpen: doctor[0].availableForImmediate && doctor[0].isOnline,
-        doctorName: doctor[0].name,
-        channelName: `doctor-office-${req.params.doctorId}`
-      });
-    } catch (error) {
-      console.error('Get office status error:', error);
-      res.status(500).json({ message: 'Failed to get office status' });
-    }
-  });
-
-  // Patient joins doctor's office
-  app.post('/api/doctor-office/join/:doctorId', requireAuth, async (req: any, res) => {
-    try {
-      // Verify doctor's office is open
-      const doctor = await db.select()
-        .from(users)
-        .where(eq(users.id, req.params.doctorId))
-        .limit(1);
-
-      if (!doctor.length || doctor[0].role !== 'doctor') {
-        return res.status(404).json({ message: 'Doctor not found' });
-      }
-
-      if (!doctor[0].availableForImmediate || !doctor[0].isOnline) {
-        return res.status(400).json({ message: 'Doctor office is not open' });
-      }
-
-      // Get or create patient
-      let patient = await db.select()
-        .from(patients)
-        .where(eq(patients.userId, req.user.id))
-        .limit(1);
-
-      if (!patient.length) {
-        // Create patient profile if doesn't exist
-        const newPatient = await db.insert(patients)
-          .values({
-            userId: req.user.id,
-            name: req.user.name,
-            email: req.user.email || '',
-            phone: ''
-          })
-          .returning();
-        patient = newPatient;
-      }
-
-      // Create appointment for this consultation
-      const appointment = await db.insert(appointments)
-        .values({
-          doctorId: req.params.doctorId,
-          patientId: patient[0].id,
-          type: 'immediate',
-          status: 'scheduled',
-          scheduledAt: new Date(),
-          reason: 'Consulta imediata via consultório aberto'
-        })
-        .returning();
-
-      // Create video consultation session
-      const consultation = await db.insert(videoConsultations)
-        .values({
-          appointmentId: appointment[0].id,
-          patientId: patient[0].id,
-          doctorId: req.params.doctorId,
-          status: 'waiting',
-          channelName: `doctor-office-${req.params.doctorId}`
-        })
-        .returning();
-
-      // Notify doctor
-      broadcastToDoctor(req.params.doctorId, {
-        type: 'patient_joined_office',
-        patient: {
-          id: patient[0].id,
-          name: patient[0].name
-        },
-        consultationId: consultation[0].id
-      });
-
-      res.json({
-        message: 'Joined office successfully',
-        consultationId: consultation[0].id,
-        appointmentId: appointment[0].id,
-        channelName: `doctor-office-${req.params.doctorId}`
-      });
-    } catch (error) {
-      console.error('Join office error:', error);
-      res.status(500).json({ message: 'Failed to join office' });
-    }
-  });
-
   // ===== PHARMACY INTEGRATION API ROUTES =====
   
   // Get all pharmacy collaborators
@@ -4651,6 +4484,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
       next();
     };
   };
+
+  // ===== DOCTOR OFFICE (CONSULTÓRIO) API ROUTES =====
+  
+  // Open doctor's office (creates a persistent video room)
+  app.post('/api/doctor-office/open', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Only doctors can open office' });
+      }
+
+      // Mark doctor as available for immediate consultation
+      await db.update(users)
+        .set({ 
+          isOnline: true, 
+          availableForImmediate: true,
+          onlineSince: new Date()
+        })
+        .where(eq(users.id, req.user.id));
+
+      // Broadcast office opened event
+      broadcastToAll({ 
+        type: 'doctor_office_opened', 
+        doctorId: req.user.id,
+        doctorName: req.user.name
+      });
+
+      res.json({ 
+        message: 'Office opened successfully', 
+        isOpen: true,
+        channelName: `doctor-office-${req.user.id}` 
+      });
+    } catch (error) {
+      console.error('Open office error:', error);
+      res.status(500).json({ message: 'Failed to open office' });
+    }
+  });
+
+  // Close doctor's office
+  app.post('/api/doctor-office/close', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Only doctors can close office' });
+      }
+
+      // Mark doctor as unavailable
+      await db.update(users)
+        .set({ 
+          availableForImmediate: false
+        })
+        .where(eq(users.id, req.user.id));
+
+      // Broadcast office closed event
+      broadcastToAll({ 
+        type: 'doctor_office_closed', 
+        doctorId: req.user.id 
+      });
+
+      res.json({ message: 'Office closed successfully', isOpen: false });
+    } catch (error) {
+      console.error('Close office error:', error);
+      res.status(500).json({ message: 'Failed to close office' });
+    }
+  });
+
+  // Get doctor's office status
+  app.get('/api/doctor-office/status/:doctorId', async (req, res) => {
+    try {
+      const doctor = await db.select()
+        .from(users)
+        .where(eq(users.id, req.params.doctorId))
+        .limit(1);
+
+      if (!doctor.length || doctor[0].role !== 'doctor') {
+        return res.status(404).json({ message: 'Doctor not found' });
+      }
+
+      res.json({
+        isOpen: doctor[0].availableForImmediate && doctor[0].isOnline,
+        doctorName: doctor[0].name,
+        channelName: `doctor-office-${req.params.doctorId}`
+      });
+    } catch (error) {
+      console.error('Get office status error:', error);
+      res.status(500).json({ message: 'Failed to get office status' });
+    }
+  });
+
+  // Patient joins doctor's office
+  app.post('/api/doctor-office/join/:doctorId', requireAuth, async (req: any, res) => {
+    try {
+      // Verify doctor's office is open
+      const doctor = await db.select()
+        .from(users)
+        .where(eq(users.id, req.params.doctorId))
+        .limit(1);
+
+      if (!doctor.length || doctor[0].role !== 'doctor') {
+        return res.status(404).json({ message: 'Doctor not found' });
+      }
+
+      if (!doctor[0].availableForImmediate || !doctor[0].isOnline) {
+        return res.status(400).json({ message: 'Doctor office is not open' });
+      }
+
+      // Get or create patient
+      let patient = await db.select()
+        .from(patients)
+        .where(eq(patients.userId, req.user.id))
+        .limit(1);
+
+      if (!patient.length) {
+        // Create patient profile if doesn't exist
+        const newPatient = await db.insert(patients)
+          .values({
+            userId: req.user.id,
+            name: req.user.name,
+            email: req.user.email || '',
+            phone: ''
+          })
+          .returning();
+        patient = newPatient;
+      }
+
+      // Create appointment for this consultation
+      const appointment = await db.insert(appointments)
+        .values({
+          doctorId: req.params.doctorId,
+          patientId: patient[0].id,
+          type: 'immediate',
+          status: 'scheduled',
+          scheduledAt: new Date(),
+          reason: 'Consulta imediata via consultório aberto'
+        })
+        .returning();
+
+      // Create video consultation session
+      const consultation = await db.insert(videoConsultations)
+        .values({
+          appointmentId: appointment[0].id,
+          patientId: patient[0].id,
+          doctorId: req.params.doctorId,
+          status: 'waiting',
+          channelName: `doctor-office-${req.params.doctorId}`
+        })
+        .returning();
+
+      // Notify doctor
+      broadcastToDoctor(req.params.doctorId, {
+        type: 'patient_joined_office',
+        patient: {
+          id: patient[0].id,
+          name: patient[0].name
+        },
+        consultationId: consultation[0].id
+      });
+
+      res.json({
+        message: 'Joined office successfully',
+        consultationId: consultation[0].id,
+        appointmentId: appointment[0].id,
+        channelName: `doctor-office-${req.params.doctorId}`
+      });
+    } catch (error) {
+      console.error('Join office error:', error);
+      res.status(500).json({ message: 'Failed to join office' });
+    }
+  });
 
   // ===== AI ANALYSIS ENDPOINTS =====
   
