@@ -7,11 +7,13 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Clock, Calendar, Plus, Trash2, Power } from "lucide-react";
+import { Clock, Calendar, Plus, Trash2, Power, Clock3 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface DoctorSchedule {
   id?: string;
@@ -39,6 +41,7 @@ export default function DoctorAvailability() {
   const [isOnline, setIsOnline] = useState(false);
   const [availableForImmediate, setAvailableForImmediate] = useState(false);
   const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
+  const [onDutyUntil, setOnDutyUntil] = useState<Date | null>(null);
 
   // Fetch doctor's current schedule
   const { data: existingSchedule, isLoading } = useQuery({
@@ -71,6 +74,7 @@ export default function DoctorAvailability() {
     if (doctorStatus) {
       setIsOnline(doctorStatus.isOnline || false);
       setAvailableForImmediate(doctorStatus.availableForImmediate || false);
+      setOnDutyUntil(doctorStatus.onDutyUntil ? new Date(doctorStatus.onDutyUntil) : null);
     }
   }, [doctorStatus]);
 
@@ -118,6 +122,29 @@ export default function DoctorAvailability() {
     },
   });
 
+  // 24h on-duty mutation
+  const onDutyMutation = useMutation({
+    mutationFn: async (activate: boolean) => {
+      const res = await apiRequest('POST', '/api/doctors/on-duty', { activate });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: activate ? "Plantão Ativado" : "Plantão Desativado",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/doctors'] });
+      setOnDutyUntil(data.onDutyUntil ? new Date(data.onDutyUntil) : null);
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar plantão",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleStatusToggle = (field: 'isOnline' | 'availableForImmediate', value: boolean) => {
     if (field === 'isOnline') {
       setIsOnline(value);
@@ -136,7 +163,7 @@ export default function DoctorAvailability() {
         dayOfWeek: 1,
         startTime: '09:00',
         endTime: '17:00',
-        consultationDuration: 30,
+        consultationDuration: 15, // Changed to 15 minutes
         isActive: true,
       },
     ]);
@@ -239,6 +266,53 @@ export default function DoctorAvailability() {
         </CardContent>
       </Card>
 
+      {/* 24h On-Duty Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock3 className="h-5 w-5" />
+            Plantão 24 Horas
+          </CardTitle>
+          <CardDescription>
+            Ative o plantão e fique disponível automaticamente por 24 horas
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div className="space-y-0.5 flex-1">
+              <Label className="text-base">
+                Disponível 24hs
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {onDutyUntil && onDutyUntil > new Date() 
+                  ? `Plantão ativo - termina ${formatDistanceToNow(onDutyUntil, { addSuffix: true, locale: ptBR })}`
+                  : 'Ative para receber pacientes automaticamente por 24 horas'
+                }
+              </p>
+            </div>
+            <Button
+              variant={onDutyUntil && onDutyUntil > new Date() ? "destructive" : "default"}
+              onClick={() => onDutyMutation.mutate(!(onDutyUntil && onDutyUntil > new Date()))}
+              disabled={onDutyMutation.isPending}
+              data-testid="button-toggle-on-duty"
+            >
+              {onDutyMutation.isPending 
+                ? 'Processando...' 
+                : (onDutyUntil && onDutyUntil > new Date() ? 'Desativar Plantão' : 'Ativar Plantão')
+              }
+            </Button>
+          </div>
+
+          {onDutyUntil && onDutyUntil > new Date() && (
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                ✓ Você está em plantão! Sempre que fizer login, estará automaticamente disponível para atendimentos imediatos até o término do plantão.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Schedule Management Card */}
       <Card>
         <CardHeader>
@@ -306,14 +380,23 @@ export default function DoctorAvailability() {
 
                         <div className="space-y-2">
                           <Label>Duração (min)</Label>
-                          <Input
-                            type="number"
-                            value={schedule.consultationDuration}
-                            onChange={(e) => updateSchedule(index, 'consultationDuration', parseInt(e.target.value))}
-                            min={15}
-                            step={15}
-                            data-testid={`input-duration-${index}`}
-                          />
+                          <Select
+                            value={schedule.consultationDuration.toString()}
+                            onValueChange={(value) => updateSchedule(index, 'consultationDuration', parseInt(value))}
+                          >
+                            <SelectTrigger data-testid={`select-duration-${index}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="15">15 min</SelectItem>
+                              <SelectItem value="30">30 min (15+15 espaço)</SelectItem>
+                              <SelectItem value="45">45 min (30+15 espaço)</SelectItem>
+                              <SelectItem value="60">60 min (45+15 espaço)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            Inclui 15 min de espaço entre consultas
+                          </p>
                         </div>
                       </div>
 

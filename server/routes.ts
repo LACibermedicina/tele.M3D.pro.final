@@ -10958,6 +10958,41 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     }
   });
 
+  // Toggle 24h on-duty status
+  app.post('/api/doctors/on-duty', requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!req.user || req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Apenas médicos podem ativar plantão' });
+      }
+
+      const { activate } = req.body;
+      const now = new Date();
+      const onDutyUntil = activate ? new Date(now.getTime() + 24 * 60 * 60 * 1000) : null; // 24 hours from now
+      const onDutyStartedAt = activate ? now : null;
+
+      const updated = await db.update(users)
+        .set({
+          onDutyUntil,
+          onDutyStartedAt,
+          isOnline: activate ? true : undefined, // Activate online if starting duty
+          availableForImmediate: activate ? true : undefined, // Activate immediate if starting duty
+        })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      res.json({
+        message: activate 
+          ? 'Plantão ativado por 24 horas! Você estará disponível automaticamente.'
+          : 'Plantão desativado com sucesso.',
+        onDutyUntil: updated[0].onDutyUntil,
+        onDutyStartedAt: updated[0].onDutyStartedAt,
+      });
+    } catch (error) {
+      console.error('Toggle on-duty error:', error);
+      res.status(500).json({ message: 'Erro ao atualizar plantão' });
+    }
+  });
+
   // Get doctor schedule
   app.get('/api/doctors/:doctorId/schedule', async (req: Request, res: Response) => {
     try {
