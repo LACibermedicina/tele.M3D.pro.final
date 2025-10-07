@@ -227,12 +227,17 @@ export default function DoctorChat() {
                       data-testid={`thread-${thread.id}`}
                     >
                       <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={thread.patient.photoUrl || undefined} />
-                          <AvatarFallback>
-                            {thread.patient.name.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <div className="relative">
+                          <Avatar>
+                            <AvatarImage src={thread.patient.photoUrl || undefined} />
+                            <AvatarFallback>
+                              {thread.patient.name.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          {thread.consultationRequest.status === 'pending' && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full border-2 border-white animate-pulse" title="Solicitando atendimento" />
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <p className="font-medium truncate">{thread.patient.name}</p>
@@ -269,7 +274,21 @@ export default function DoctorChat() {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <CardTitle className="text-lg">{selectedThread.patient.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg">{selectedThread.patient.name}</CardTitle>
+                        {selectedThread.consultationRequest.status === 'pending' && (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                            <div className="w-2 h-2 rounded-full bg-orange-500 mr-1.5 animate-pulse" />
+                            Solicitando Atendimento
+                          </Badge>
+                        )}
+                        {selectedThread.consultationRequest.status === 'accepted' && (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5" />
+                            Em Atendimento
+                          </Badge>
+                        )}
+                      </div>
                       <CardDescription>
                         {selectedThread.patient.phone || selectedThread.patient.email}
                       </CardDescription>
@@ -349,14 +368,27 @@ export default function DoctorChat() {
                       </DialogContent>
                     </Dialog>
 
-                    <Button
-                      onClick={handleStartConsultation}
-                      disabled={startConsultationMutation.isPending}
-                      data-testid="button-start-consultation"
-                    >
-                      <Video className="h-4 w-4 mr-2" />
-                      Atender Paciente
-                    </Button>
+                    {selectedThread.consultationRequest.status === 'pending' && (
+                      <Button
+                        onClick={handleStartConsultation}
+                        disabled={startConsultationMutation.isPending}
+                        className="bg-orange-600 hover:bg-orange-700"
+                        data-testid="button-start-consultation"
+                      >
+                        <Video className="h-4 w-4 mr-2" />
+                        Atender Paciente
+                      </Button>
+                    )}
+                    {selectedThread.consultationRequest.status === 'accepted' && (
+                      <Button
+                        onClick={handleStartConsultation}
+                        disabled={startConsultationMutation.isPending}
+                        data-testid="button-start-consultation"
+                      >
+                        <Video className="h-4 w-4 mr-2" />
+                        Iniciar Vídeo Consulta
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardHeader>
