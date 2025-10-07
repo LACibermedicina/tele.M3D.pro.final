@@ -9713,6 +9713,99 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     }
   });
 
+  // Cancel prescription
+  app.patch('/api/prescriptions/:id/cancel', requireAuth, async (req, res) => {
+    try {
+      if (req.user?.role !== 'doctor') {
+        return res.status(403).json({ message: 'Only doctors can cancel prescriptions' });
+      }
+
+      const { id } = req.params;
+
+      const prescription = await db.select()
+        .from(prescriptions)
+        .where(eq(prescriptions.id, id))
+        .limit(1);
+
+      if (!prescription.length) {
+        return res.status(404).json({ message: 'Prescription not found' });
+      }
+
+      const prescriptionData = prescription[0];
+
+      // Verify doctor owns this prescription
+      if (prescriptionData.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'You can only cancel your own prescriptions' });
+      }
+
+      // Update prescription status
+      await db.update(prescriptions)
+        .set({ 
+          status: 'cancelled',
+          updatedAt: new Date()
+        })
+        .where(eq(prescriptions.id, id));
+
+      res.json({
+        message: 'Prescription cancelled successfully',
+        prescriptionNumber: prescriptionData.prescriptionNumber
+      });
+    } catch (error) {
+      console.error('Cancel prescription error:', error);
+      res.status(500).json({ message: 'Failed to cancel prescription' });
+    }
+  });
+
+  // Generate prescription PDF
+  app.get('/api/prescriptions/:id/pdf', requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const prescription = await db.select()
+        .from(prescriptions)
+        .where(eq(prescriptions.id, id))
+        .limit(1);
+
+      if (!prescription.length) {
+        return res.status(404).json({ message: 'Prescription not found' });
+      }
+
+      const prescriptionData = prescription[0];
+
+      // Get prescription items
+      const items = await db.select()
+        .from(prescriptionItems)
+        .where(eq(prescriptionItems.prescriptionId, id));
+
+      // Get patient info
+      const patientData = await db.select()
+        .from(patients)
+        .where(eq(patients.id, prescriptionData.patientId))
+        .limit(1);
+
+      // Get doctor info
+      const doctorData = await db.select()
+        .from(users)
+        .where(eq(users.id, prescriptionData.doctorId))
+        .limit(1);
+
+      // Generate PDF using pdf-generator service
+      const pdfBuffer = await pdfGeneratorService.generatePrescriptionPDF({
+        prescription: prescriptionData,
+        items,
+        patient: patientData[0],
+        doctor: doctorData[0]
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="prescricao-${prescriptionData.prescriptionNumber}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error('Generate prescription PDF error:', error);
+      res.status(500).json({ message: 'Failed to generate prescription PDF' });
+    }
+  });
+
   // Get prescription templates
   app.get('/api/prescription-templates', requireAuth, async (req, res) => {
     try {

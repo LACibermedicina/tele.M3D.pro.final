@@ -65,6 +65,8 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
   const { user } = useAuth();
   const { toast } = useToast();
   const [showSignDialog, setShowSignDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [signForm, setSignForm] = useState({
     pin: '',
     doctorName: '',
@@ -111,6 +113,78 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
       return;
     }
     signPrescriptionMutation.mutate(signForm);
+  };
+
+  // Download PDF mutation
+  const handleDownloadPDF = async () => {
+    try {
+      toast({
+        title: "Gerando PDF",
+        description: "Aguarde enquanto o PDF é gerado...",
+      });
+      
+      const response = await fetch(`/api/prescriptions/${prescriptionId}/pdf`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      
+      if (!response.ok) throw new Error('Failed to generate PDF');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `prescricao-${prescription?.prescriptionNumber || prescriptionId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "PDF Baixado",
+        description: "O PDF da prescrição foi baixado com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao Baixar PDF",
+        description: "Não foi possível gerar o PDF da prescrição.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Cancel prescription mutation
+  const cancelPrescriptionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('PATCH', `/api/prescriptions/${prescriptionId}/cancel`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Prescrição Cancelada",
+        description: "A prescrição foi cancelada com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/prescriptions', prescriptionId] });
+      setShowCancelDialog(false);
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao Cancelar",
+        description: "Não foi possível cancelar a prescrição.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCancelPrescription = () => {
+    cancelPrescriptionMutation.mutate();
+  };
+
+  const handleViewHistory = () => {
+    toast({
+      title: "Histórico da Prescrição",
+      description: "Visualização de histórico será implementada em breve.",
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -395,28 +469,43 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" data-testid="button-download-pdf">
+            <Button 
+              variant="outline" 
+              onClick={handleDownloadPDF}
+              data-testid="button-download-pdf"
+            >
               <Download className="h-4 w-4 mr-2" />
               Baixar PDF
             </Button>
             
-            <Button variant="outline" data-testid="button-share-pharmacy">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowShareDialog(true)}
+              data-testid="button-share-pharmacy"
+            >
               <Share2 className="h-4 w-4 mr-2" />
               Compartilhar com Farmácia
             </Button>
             
-            <Button variant="outline" data-testid="button-view-history">
+            <Button 
+              variant="outline" 
+              onClick={handleViewHistory}
+              data-testid="button-view-history"
+            >
               <Calendar className="h-4 w-4 mr-2" />
               Ver Histórico
             </Button>
             
-            {prescription.status === 'active' && (
-              <>
-                <Button variant="outline" className="text-orange-600 border-orange-600">
-                  <AlertTriangle className="h-4 w-4 mr-2" />
-                  Cancelar Prescrição
-                </Button>
-              </>
+            {prescription.status === 'active' && user?.role === 'doctor' && user.id === prescription.doctorId && (
+              <Button 
+                variant="outline" 
+                className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                onClick={() => setShowCancelDialog(true)}
+                data-testid="button-cancel-prescription"
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Cancelar Prescrição
+              </Button>
             )}
           </div>
         </CardContent>
@@ -539,6 +628,99 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
                 <>
                   <FileSignature className="h-4 w-4 mr-2" />
                   Assinar Prescrição
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Share with Pharmacy Dialog */}
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="h-5 w-5 text-primary" />
+              Compartilhar com Farmácia
+            </DialogTitle>
+            <DialogDescription>
+              Compartilhe esta prescrição com uma farmácia parceira para facilitar a dispensação dos medicamentos.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+              <p className="font-medium mb-2">Funcionalidade em Desenvolvimento</p>
+              <p className="text-xs">
+                Em breve você poderá compartilhar prescrições diretamente com farmácias parceiras
+                através da plataforma, facilitando a dispensação de medicamentos.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowShareDialog(false)}
+            >
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Cancel Prescription Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              Cancelar Prescrição
+            </DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja cancelar esta prescrição? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <div className="flex gap-3">
+                <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-orange-800">
+                  <p className="font-medium mb-1">Atenção</p>
+                  <ul className="text-xs space-y-1">
+                    <li>• A prescrição será marcada como cancelada</li>
+                    <li>• O paciente será notificado sobre o cancelamento</li>
+                    <li>• Esta ação é permanente e não pode ser revertida</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowCancelDialog(false)}
+              disabled={cancelPrescriptionMutation.isPending}
+            >
+              Voltar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelPrescription}
+              disabled={cancelPrescriptionMutation.isPending}
+              data-testid="button-confirm-cancel"
+            >
+              {cancelPrescriptionMutation.isPending ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Cancelando...
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Confirmar Cancelamento
                 </>
               )}
             </Button>
