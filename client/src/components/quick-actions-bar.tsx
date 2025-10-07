@@ -15,7 +15,9 @@ import {
   Zap,
   Sparkles,
   Grid3x3,
-  LayoutGrid
+  LayoutGrid,
+  Clock,
+  Power
 } from "lucide-react";
 
 interface QuickActionsBarProps {
@@ -111,6 +113,15 @@ export default function QuickActionsBar({ userRole }: QuickActionsBarProps) {
           const event = new CustomEvent('sign-prescription');
           window.dispatchEvent(event);
         }
+      },
+      {
+        id: 'availability',
+        title: 'Disponibilidade',
+        icon: <Power className="w-4 h-4" />,
+        shortcut: 'Ctrl+D',
+        action: () => {
+          window.location.href = '/doctor-availability';
+        }
       }
     ];
 
@@ -135,6 +146,27 @@ export default function QuickActionsBar({ userRole }: QuickActionsBarProps) {
       }
     ];
 
+    const patientActions: QuickAction[] = [
+      {
+        id: 'immediate-consultation',
+        title: 'Consulta Imediata',
+        icon: <Clock className="w-4 h-4" />,
+        shortcut: 'Ctrl+Q',
+        action: () => {
+          window.location.href = '/immediate-consultation';
+        }
+      },
+      {
+        id: 'my-consultations',
+        title: 'Minhas Consultas',
+        icon: <Calendar className="w-4 h-4" />,
+        shortcut: 'Ctrl+M',
+        action: () => {
+          window.location.href = '/my-consultations';
+        }
+      }
+    ];
+
     const emergencyAction: QuickAction = {
       id: 'emergency',
       title: 'Emergência',
@@ -151,6 +183,10 @@ export default function QuickActionsBar({ userRole }: QuickActionsBarProps) {
     
     if (userRole === 'doctor') {
       actions.push(...doctorActions);
+    }
+    
+    if (userRole === 'patient') {
+      actions.push(...patientActions);
     }
     
     if (userRole === 'admin') {
