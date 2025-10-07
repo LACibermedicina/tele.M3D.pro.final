@@ -12157,20 +12157,164 @@ REGRAS IMPORTANTES:
         timestamp: new Date().toISOString(),
       };
 
-      // Call Gemini API with context - geminiService.chatWithContext already handles reference fetching
-      const aiResult = await geminiService.chatWithContext(
-        message,
-        systemPrompt,
-        conversation.messages as Message[],
-        req.user.role
-      );
+      // First, check if this is a scheduling request (only for patients)
+      let schedulingAnalysis = null;
+      let responseType = 'general';
+      let aiResponse = '';
+      let referencesUsed: string[] = [];
+      let suggestedAppointment = null;
+
+      if (req.user.role === 'patient') {
+        // Analyze if message contains scheduling intent
+        const quickAnalysis = await geminiService.analyzeWhatsappMessage(message);
+        
+        if (quickAnalysis.isSchedulingRequest) {
+          responseType = 'appointment';
+          
+          // Get available doctors with their time slots
+          const today = new Date();
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const dayAfterTomorrow = new Date(today);
+          dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+
+          // Get all active doctors
+          const doctors = await db.select()
+            .from(users)
+            .where(eq(users.role, 'doctor'));
+
+          // Build availability data for each doctor
+          const availableDoctors = [];
+          
+          for (const doctor of doctors) {
+            // Get doctor's existing appointments
+            const existingAppointments = await db.select()
+              .from(appointments)
+              .where(and(
+                eq(appointments.doctorId, doctor.id),
+                sql`DATE(${appointments.scheduledAt}) >= DATE(${today.toISOString()})`
+              ));
+
+            // Get doctor's schedule
+            const scheduleData = await storage.getDoctorSchedule(doctor.id);
+            
+            const slots = [];
+            
+            // Check next 3 days
+            for (let dayOffset = 0; dayOffset < 3; dayOffset++) {
+              const checkDate = new Date(today);
+              checkDate.setDate(checkDate.getDate() + dayOffset);
+              const dayOfWeek = checkDate.getDay();
+              const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayOfWeek];
+
+              if (scheduleData && scheduleData[dayName]) {
+                const daySchedule = scheduleData[dayName];
+                
+                // Generate slots for morning
+                if (daySchedule.morning.enabled) {
+                  const [startHour] = daySchedule.morning.start.split(':').map(Number);
+                  const [endHour] = daySchedule.morning.end.split(':').map(Number);
+                  
+                  for (let hour = startHour; hour < endHour; hour++) {
+                    for (let min = 0; min < 60; min += 30) {
+                      const time = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+                      const slotDateTime = new Date(checkDate);
+                      slotDateTime.setHours(hour, min, 0, 0);
+                      
+                      // Check if slot is not occupied
+                      const isOccupied = existingAppointments.some(apt => {
+                        const aptTime = new Date(apt.scheduledAt);
+                        return Math.abs(aptTime.getTime() - slotDateTime.getTime()) < 30 * 60 * 1000;
+                      });
+                      
+                      if (!isOccupied && slotDateTime > new Date()) {
+                        const dateStr = checkDate.toISOString().split('T')[0];
+                        slots.push({
+                          dateIso: dateStr,
+                          time: time,
+                          label: `${checkDate.toLocaleDateString('pt-BR')} às ${time}`
+                        });
+                      }
+                    }
+                  }
+                }
+                
+                // Generate slots for afternoon
+                if (daySchedule.afternoon.enabled) {
+                  const [startHour] = daySchedule.afternoon.start.split(':').map(Number);
+                  const [endHour] = daySchedule.afternoon.end.split(':').map(Number);
+                  
+                  for (let hour = startHour; hour < endHour; hour++) {
+                    for (let min = 0; min < 60; min += 30) {
+                      const time = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+                      const slotDateTime = new Date(checkDate);
+                      slotDateTime.setHours(hour, min, 0, 0);
+                      
+                      const isOccupied = existingAppointments.some(apt => {
+                        const aptTime = new Date(apt.scheduledAt);
+                        return Math.abs(aptTime.getTime() - slotDateTime.getTime()) < 30 * 60 * 1000;
+                      });
+                      
+                      if (!isOccupied && slotDateTime > new Date()) {
+                        const dateStr = checkDate.toISOString().split('T')[0];
+                        slots.push({
+                          dateIso: dateStr,
+                          time: time,
+                          label: `${checkDate.toLocaleDateString('pt-BR')} às ${time}`
+                        });
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            if (slots.length > 0) {
+              availableDoctors.push({
+                doctorId: doctor.id,
+                doctorName: doctor.name,
+                availableSlots: slots.slice(0, 10) // Limit to 10 slots per doctor
+              });
+            }
+          }
+
+          // Use AI to process scheduling with available slots
+          schedulingAnalysis = await geminiService.processSchedulingRequest(
+            message,
+            availableDoctors
+          );
+
+          aiResponse = schedulingAnalysis.response;
+          suggestedAppointment = schedulingAnalysis.suggestedAppointment;
+        } else {
+          // Regular chat response
+          const aiResult = await geminiService.chatWithContext(
+            message,
+            systemPrompt,
+            conversation.messages as Message[],
+            req.user.role
+          );
+          aiResponse = aiResult.response;
+          referencesUsed = aiResult.referencesUsed;
+        }
+      } else {
+        // For doctors, use regular chat
+        const aiResult = await geminiService.chatWithContext(
+          message,
+          systemPrompt,
+          conversation.messages as Message[],
+          req.user.role
+        );
+        aiResponse = aiResult.response;
+        referencesUsed = aiResult.referencesUsed;
+      }
 
       // Add assistant response
       const assistantMessage = {
         role: 'assistant',
-        content: aiResult.response,
+        content: aiResponse,
         timestamp: new Date().toISOString(),
-        referencesUsed: aiResult.referencesUsed,
+        referencesUsed: referencesUsed,
       };
 
       // Update conversation
@@ -12179,15 +12323,15 @@ REGRAS IMPORTANTES:
       await db.update(chatbotConversations)
         .set({
           messages: updatedMessages,
-          referencesUsed: Array.from(new Set([...(conversation.referencesUsed || []), ...aiResult.referencesUsed])),
+          referencesUsed: Array.from(new Set([...(conversation.referencesUsed || []), ...referencesUsed])),
           lastMessageAt: new Date(),
           updatedAt: new Date(),
         })
         .where(eq(chatbotConversations.id, conversation.id));
 
       // Update usage count for references
-      if (aiResult.referencesUsed.length > 0) {
-        for (const refId of aiResult.referencesUsed) {
+      if (referencesUsed.length > 0) {
+        for (const refId of referencesUsed) {
           await db.update(chatbotReferences)
             .set({
               usageCount: sql`${chatbotReferences.usageCount} + 1`,
@@ -12200,6 +12344,10 @@ REGRAS IMPORTANTES:
       res.json({
         conversationId: conversation.id,
         message: assistantMessage,
+        type: responseType,
+        metadata: {
+          suggestedAppointment: suggestedAppointment
+        }
       });
     } catch (error) {
       console.error('Send message error:', error);
