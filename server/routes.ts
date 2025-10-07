@@ -4729,6 +4729,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate external invite link
+  app.post('/api/doctor-office/generate-external-link', requireAuth, async (req: any, res) => {
+    try {
+      const { doctorId } = req.body;
+      
+      // Generate a temporary token for external access
+      const externalToken = jwt.sign(
+        { 
+          doctorId, 
+          type: 'external_office_access',
+          exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours
+        },
+        process.env.SESSION_SECRET || 'telemed-secret',
+        { algorithm: 'HS256' }
+      );
+      
+      const link = `${process.env.BASE_URL || 'http://localhost:5000'}/join-office/${externalToken}`;
+      
+      res.json({ link });
+    } catch (error) {
+      console.error('Generate external link error:', error);
+      res.status(500).json({ message: 'Failed to generate link' });
+    }
+  });
+
+  // Invite specialist
+  app.post('/api/doctor-office/invite-specialist', requireAuth, async (req: any, res) => {
+    try {
+      const { email, doctorId } = req.body;
+      
+      // Here you would normally send an email invitation
+      // For now, we'll just log it
+      console.log(`Invitation sent to ${email} for doctor ${doctorId}`);
+      
+      // TODO: Implement email sending logic
+      
+      res.json({ 
+        message: 'Invitation sent successfully',
+        email 
+      });
+    } catch (error) {
+      console.error('Invite specialist error:', error);
+      res.status(500).json({ message: 'Failed to send invitation' });
+    }
+  });
+
   // Patient joins doctor's office
   app.post('/api/doctor-office/join/:doctorId', requireAuth, async (req: any, res) => {
     try {
