@@ -32,6 +32,8 @@ import MedicalAssistant from "@/pages/medical-assistant";
 import MedicalReferences from "@/pages/medical-references";
 import ConsultationRequest from "@/pages/consultation-request";
 import MyConsultations from "@/pages/my-consultations";
+import ConsultationSession from "@/pages/consultation-session";
+import ClinicalDashboard from "@/pages/clinical-dashboard";
 import Header from "@/components/layout/header";
 import FloatingChatbot from "@/components/ui/floating-chatbot";
 import CommandPalette from "@/components/command-palette";
@@ -194,6 +196,18 @@ function Router() {
         <Route path="/my-consultations">
           <ProtectedRoute requiredRoles={['patient']}>
             <MyConsultations />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/consultation-session/:sessionId">
+          <ProtectedRoute requiredRoles={['doctor', 'patient', 'admin']}>
+            <ConsultationSession />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/clinical-dashboard">
+          <ProtectedRoute requiredRoles={['doctor', 'patient', 'admin']}>
+            <ClinicalDashboard />
           </ProtectedRoute>
         </Route>
         
