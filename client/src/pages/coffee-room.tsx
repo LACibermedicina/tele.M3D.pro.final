@@ -6,8 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Coffee, Video, VideoOff, Users } from "lucide-react";
 import AgoraRTC, { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack } from "agora-rtc-sdk-ng";
-import PageWrapper from "@/components/page-wrapper";
-import origamiHeroImage from "@/assets/origami-hero.png";
+import PageWrapper from "@/components/layout/page-wrapper";
 
 export default function CoffeeRoom() {
   const { user } = useAuth();
@@ -147,7 +146,7 @@ export default function CoffeeRoom() {
 
   if (user?.role !== 'doctor') {
     return (
-      <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+      <PageWrapper variant="origami">
         <div className="text-center py-12">
           <p className="text-lg text-muted-foreground">Acesso restrito a médicos.</p>
         </div>
@@ -156,7 +155,7 @@ export default function CoffeeRoom() {
   }
 
   return (
-    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+    <PageWrapper variant="origami">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
