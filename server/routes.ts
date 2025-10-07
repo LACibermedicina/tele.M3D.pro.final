@@ -11794,7 +11794,98 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
-  // Schedule appointment via chatbot
+  // Confirm AI-suggested appointment via chatbot
+  app.post('/api/chatbot/confirm-appointment', async (req: any, res: Response) => {
+    try {
+      // Require authentication
+      if (!req.user) {
+        return res.status(401).json({ message: 'Autenticação necessária para agendar consultas' });
+      }
+
+      // Only patients can schedule appointments via chatbot
+      if (req.user.role !== 'patient') {
+        return res.status(403).json({ message: 'Apenas pacientes podem agendar consultas' });
+      }
+
+      const { dateIso, time, doctorId, doctorName, type } = req.body;
+
+      if (!dateIso || !time || !doctorId) {
+        return res.status(400).json({ message: 'Data, horário e médico são obrigatórios' });
+      }
+
+      // Create date from ISO date and time
+      const [hours, minutes] = time.split(':').map(Number);
+      const scheduledDate = new Date(dateIso);
+      scheduledDate.setHours(hours, minutes, 0, 0);
+
+      // Check if slot is still available
+      const existingAppointment = await db.select()
+        .from(appointments)
+        .where(and(
+          eq(appointments.doctorId, doctorId),
+          sql`ABS(EXTRACT(EPOCH FROM (${appointments.scheduledAt} - ${scheduledDate.toISOString()}::timestamp))) < 1800`
+        ))
+        .limit(1);
+
+      if (existingAppointment.length > 0) {
+        return res.status(409).json({
+          message: 'Desculpe, este horário já foi reservado. Por favor, solicite outro horário.'
+        });
+      }
+
+      // Get patient record
+      const patientRecord = await db.select()
+        .from(patients)
+        .where(eq(patients.userId, req.user.id))
+        .limit(1);
+
+      const patientId = patientRecord.length > 0 ? patientRecord[0].id : req.user.id;
+
+      // Create consultation request to link patient to doctor for chat
+      const existingRequests = await storage.getConsultationRequestsByDoctor(doctorId);
+      const hasExistingRequest = existingRequests.some(
+        req => req.patientId === patientId && 
+               (req.status === 'pending' || req.status === 'accepted')
+      );
+      
+      if (!hasExistingRequest) {
+        await storage.createConsultationRequest({
+          patientId,
+          symptoms: type || 'Consulta agendada via chatbot',
+          urgencyLevel: 'normal',
+          preferredDateTime: scheduledDate,
+          selectedDoctorId: doctorId,
+          status: 'accepted'
+        });
+      }
+
+      // Create appointment
+      const appointment = await storage.createAppointment({
+        patientId: req.user.id,
+        doctorId,
+        scheduledAt: scheduledDate.toISOString(),
+        type: type || 'Consulta Geral',
+        status: 'scheduled',
+        roomId: `room_${Date.now()}`,
+        duration: 30
+      });
+
+      res.json({
+        message: 'Consulta confirmada com sucesso!',
+        appointment: {
+          ...appointment,
+          doctorName,
+          scheduledAt: scheduledDate.toISOString()
+        }
+      });
+
+    } catch (error) {
+      console.error('Chatbot confirm appointment error:', error);
+      res.status(500).json({ message: 'Erro ao confirmar agendamento' });
+    }
+  });
+
+  // Schedule appointment via chatbot (legacy endpoint, kept for compatibility)
   app.post('/api/chatbot/schedule', async (req: Request, res: Response) => {
     try {
       // Require authentication
