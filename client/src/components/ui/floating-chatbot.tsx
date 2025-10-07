@@ -12,6 +12,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { MessageCircle, X, Send, Brain, Calendar, Stethoscope, Minimize2, Maximize2 } from 'lucide-react';
 
+interface SuggestedAppointment {
+  dateIso: string;
+  time: string;
+  doctorId: string;
+  doctorName: string;
+  type?: string;
+}
+
 interface ChatMessage {
   id: string;
   type: 'user' | 'ai';
@@ -26,6 +34,7 @@ interface ChatMessage {
       reasoning: string;
     }>;
     suggestedAction?: string;
+    suggestedAppointment?: SuggestedAppointment;
     interviewId?: string;
     interviewStage?: string;
     urgencyLevel?: 'low' | 'medium' | 'high' | 'emergency';
@@ -44,6 +53,7 @@ interface ChatbotResponse {
     reasoning: string;
   }>;
   suggestedAction?: string;
+  suggestedAppointment?: SuggestedAppointment;
   interviewId?: string;
   interviewStage?: string;
   urgencyLevel?: 'low' | 'medium' | 'high' | 'emergency';
@@ -79,6 +89,36 @@ export default function FloatingChatbot() {
     scrollToBottom();
   }, [messages]);
 
+  // Mutation for confirming appointment
+  const confirmAppointmentMutation = useMutation({
+    mutationFn: async (appointment: SuggestedAppointment) => {
+      const res = await apiRequest('POST', '/api/chatbot/confirm-appointment', appointment);
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Consulta Confirmada!",
+        description: `Sua consulta com Dr(a). ${data.appointment.doctorName} foi agendada com sucesso.`,
+      });
+      
+      // Add confirmation message to chat
+      const confirmMessage: ChatMessage = {
+        id: Date.now().toString(),
+        type: 'ai',
+        content: `✅ Perfeito! Sua consulta foi confirmada para ${new Date(data.appointment.scheduledAt).toLocaleDateString('pt-BR')} às ${new Date(data.appointment.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} com Dr(a). ${data.appointment.doctorName}.`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, confirmMessage]);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao Confirmar",
+        description: error.message || "Não foi possível confirmar o agendamento. Tente novamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Enhanced AI Chat mutation using unified chatbot endpoint
   const chatMutation = useMutation({
     mutationFn: async (message: string): Promise<ChatbotResponse> => {
@@ -98,6 +138,7 @@ export default function FloatingChatbot() {
           isSchedulingRequest: data.type === 'appointment',
           isClinicalQuestion: data.type === 'clinical',
           suggestedAction: data.metadata?.suggestedAppointment ? 'schedule' : undefined,
+          suggestedAppointment: data.metadata?.suggestedAppointment,
           diagnosticHypotheses: data.metadata?.diagnosticHypotheses,
           interviewId: data.metadata?.interviewId,
           interviewStage: data.metadata?.interviewStage,
@@ -123,6 +164,7 @@ export default function FloatingChatbot() {
           isClinicalQuestion: data.isClinicalQuestion,
           diagnosticHypotheses: data.diagnosticHypotheses,
           suggestedAction: data.suggestedAction,
+          suggestedAppointment: data.suggestedAppointment,
           interviewId: data.interviewId,
           interviewStage: data.interviewStage,
           urgencyLevel: data.urgencyLevel,
@@ -333,6 +375,39 @@ export default function FloatingChatbot() {
                                   </Badge>
                                 </div>
                               ))}
+                            </div>
+                          )}
+                          
+                          {/* Show appointment confirmation button if available */}
+                          {message.metadata?.suggestedAppointment && user && user.role === 'patient' && (
+                            <div className="mt-3 space-y-2">
+                              <div className="p-2 bg-primary/10 rounded-md">
+                                <p className="text-xs font-medium mb-1">Agendamento Sugerido:</p>
+                                <p className="text-xs">
+                                  📅 {new Date(message.metadata.suggestedAppointment.dateIso).toLocaleDateString('pt-BR')}<br/>
+                                  ⏰ {message.metadata.suggestedAppointment.time}<br/>
+                                  👨‍⚕️ Dr(a). {message.metadata.suggestedAppointment.doctorName}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                className="w-full"
+                                onClick={() => confirmAppointmentMutation.mutate(message.metadata!.suggestedAppointment!)}
+                                disabled={confirmAppointmentMutation.isPending}
+                                data-testid="button-confirm-appointment"
+                              >
+                                {confirmAppointmentMutation.isPending ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    Confirmando...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Calendar className="w-4 h-4 mr-2" />
+                                    Confirmar Agendamento
+                                  </>
+                                )}
+                              </Button>
                             </div>
                           )}
                           
