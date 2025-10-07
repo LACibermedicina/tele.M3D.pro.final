@@ -284,10 +284,10 @@ export default function Header() {
 
   return (
     <header 
-      className={`backdrop-blur-md border-b border-border shadow-sm sticky top-0 z-50 transition-all duration-300 ${
+      className={`border-b sticky top-0 z-50 transition-all duration-300 ${
         isScrolled 
-          ? 'bg-slate-900/80' 
-          : 'bg-card/95'
+          ? 'bg-slate-900/80 backdrop-blur-md border-slate-700 shadow-lg' 
+          : 'bg-transparent border-transparent'
       }`} 
       data-testid="header-main"
     >
@@ -301,10 +301,14 @@ export default function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="md:hidden w-10 h-10 hover:bg-primary/10 text-white"
+                      className={`md:hidden w-10 h-10 hover:bg-primary/10 transition-colors duration-300 ${
+                        isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
+                      }`}
                       data-testid="button-hamburger"
                     >
-                      <Menu className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
+                      <Menu className={`h-5 w-5 transition-colors duration-300 ${
+                        isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
+                      }`} />
                     </Button>
                   </SheetTrigger>
                 </TooltipTrigger>
@@ -430,11 +434,17 @@ export default function Header() {
                   <img 
                     src={telemedLogo} 
                     alt="Tele<M3D> Logo" 
-                    className="w-full h-full object-contain transition-transform group-hover:scale-110"
-                    style={{ filter: 'brightness(0) invert(1)' }}
+                    className="w-full h-full object-contain transition-all duration-300 group-hover:scale-110"
+                    style={{ 
+                      filter: isScrolled 
+                        ? 'brightness(0) invert(1)' 
+                        : 'brightness(0) invert(0) drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                    }}
                   />
                 </div>
-                <span className="hidden md:block text-xl font-bold text-white group-hover:text-primary transition-colors drop-shadow-lg">
+                <span className={`hidden md:block text-xl font-bold group-hover:text-primary transition-colors duration-300 drop-shadow-lg ${
+                  isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
+                }`}>
                   Tele&lt;M3D&gt;
                 </span>
               </div>
@@ -443,10 +453,14 @@ export default function Header() {
             {user && (
               <div className="hidden md:flex items-center space-x-2">
                 <div>
-                  <p className="text-sm font-semibold text-foreground" data-testid="text-greeting">
+                  <p className={`text-sm font-semibold transition-colors duration-300 ${
+                    isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
+                  }`} data-testid="text-greeting">
                     {t("greeting.hello")}, {getShortName(user.name)}!
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className={`text-xs transition-colors duration-300 ${
+                    isScrolled ? 'text-gray-300' : 'text-gray-600 dark:text-gray-400'
+                  }`}>
                     {getRoleDisplay(user.role)}
                   </p>
                 </div>
@@ -455,11 +469,15 @@ export default function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="w-8 h-8 hover:bg-primary/10 text-white"
+                      className={`w-8 h-8 hover:bg-primary/10 transition-colors duration-300 ${
+                        isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
+                      }`}
                       onClick={() => setIsCommandPaletteOpen(true)}
                       data-testid="button-command-palette"
                     >
-                      <Command className="h-4 w-4 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
+                      <Command className={`h-4 w-4 transition-colors duration-300 ${
+                        isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
+                      }`} />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -474,11 +492,15 @@ export default function Header() {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="icon-link-primary group w-10 h-10 hover:bg-primary/10 text-white transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                  className="icon-link-primary group w-10 h-10 hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
                   data-testid="button-support"
                   onClick={handleSupportContact}
                 >
-                  <i className="fas fa-headset text-lg text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300"></i>
+                  <i className={`fas fa-headset text-lg transition-all duration-300 ${
+                    isScrolled 
+                      ? 'text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]' 
+                      : 'text-gray-800 dark:text-gray-200'
+                  } group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}></i>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
@@ -507,7 +529,9 @@ export default function Header() {
                           className={`icon-link-primary group w-10 h-10 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg ${
                             isActive
                               ? "text-white shadow-md"
-                              : "text-white hover:text-white hover:bg-primary/10"
+                              : isScrolled
+                              ? "text-white hover:text-white hover:bg-primary/10"
+                              : "text-gray-800 dark:text-gray-200 hover:text-primary hover:bg-primary/10"
                           }`}
                           style={{
                             background: isActive
@@ -515,8 +539,12 @@ export default function Header() {
                               : "transparent"
                           }}
                         >
-                          <IconComponent className={`h-5 w-5 transition-all duration-300 drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] ${
-                            !isActive && "group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]"
+                          <IconComponent className={`h-5 w-5 transition-all duration-300 ${
+                            isActive 
+                              ? 'drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]'
+                              : isScrolled
+                              ? 'drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]'
+                              : 'group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]'
                           }`} />
                         </Button>
                       </Link>
@@ -537,10 +565,16 @@ export default function Header() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="icon-link-primary group w-10 h-10 hover:bg-primary/10 text-white transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                    className={`icon-link-primary group w-10 h-10 hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg ${
+                      isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
+                    }`}
                     data-testid="button-documentation"
                   >
-                    <BookOpen className="h-5 w-5 drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300" />
+                    <BookOpen className={`h-5 w-5 transition-all duration-300 ${
+                      isScrolled 
+                        ? 'drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]' 
+                        : ''
+                    } group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`} />
                   </Button>
                 </Link>
               </TooltipTrigger>
@@ -595,11 +629,17 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="icon-link-destructive group w-10 h-10 text-white hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                      className={`icon-link-destructive group w-10 h-10 hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg ${
+                        isScrolled ? 'text-white' : 'text-red-600 dark:text-red-400'
+                      }`}
                       data-testid="button-emergency"
                       onClick={handleEmergencyContact}
                     >
-                      <Ambulance className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)] transition-all duration-300" />
+                      <Ambulance className={`h-5 w-5 transition-all duration-300 ${
+                        isScrolled 
+                          ? 'text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]' 
+                          : 'text-red-600 dark:text-red-400'
+                      } group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)]`} />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-destructive text-white font-medium px-3 py-2 shadow-lg">
@@ -619,10 +659,14 @@ export default function Header() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="hidden sm:block text-left">
-                        <p className="text-sm font-semibold" data-testid="text-user-name">
+                        <p className={`text-sm font-semibold transition-colors duration-300 ${
+                          isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
+                        }`} data-testid="text-user-name">
                           {user.name}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className={`text-xs transition-colors duration-300 ${
+                          isScrolled ? 'text-gray-300' : 'text-gray-600 dark:text-gray-400'
+                        }`}>
                           {getRoleDisplay(user.role)}
                         </p>
                       </div>
