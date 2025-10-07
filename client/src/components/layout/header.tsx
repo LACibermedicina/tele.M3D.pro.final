@@ -623,7 +623,7 @@ export default function Header() {
             
             {user ? (
               <>
-                <NotificationCenter />
+                <NotificationCenter isScrolled={isScrolled} />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button 

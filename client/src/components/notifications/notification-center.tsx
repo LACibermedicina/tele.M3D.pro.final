@@ -9,7 +9,11 @@ import { ptBR } from 'date-fns/locale';
 import { Bell, BellRing, Check, X, AlertTriangle, MessageCircle, Calendar, FileText, Activity } from 'lucide-react';
 import { useLocation } from 'wouter';
 
-export default function NotificationCenter() {
+interface NotificationCenterProps {
+  isScrolled?: boolean;
+}
+
+export default function NotificationCenter({ isScrolled = false }: NotificationCenterProps) {
   const { notifications, unreadCount, isConnected, markAsRead, markAllAsRead, clearNotification } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const [, setLocation] = useLocation();
@@ -62,13 +66,23 @@ export default function NotificationCenter() {
         <Button 
           variant="ghost" 
           size="sm" 
-          className="relative text-white hover:bg-primary/10"
+          className={`relative hover:bg-primary/10 transition-colors duration-300 ${
+            isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
+          }`}
           data-testid="button-notification-center"
         >
           {unreadCount > 0 ? (
-            <BellRing className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
+            <BellRing className={`h-5 w-5 transition-colors duration-300 ${
+              isScrolled 
+                ? 'text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]' 
+                : 'text-gray-800 dark:text-gray-200'
+            }`} />
           ) : (
-            <Bell className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
+            <Bell className={`h-5 w-5 transition-colors duration-300 ${
+              isScrolled 
+                ? 'text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]' 
+                : 'text-gray-800 dark:text-gray-200'
+            }`} />
           )}
           
           {/* Connection Status Indicator */}
