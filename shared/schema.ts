@@ -28,6 +28,9 @@ export const users = pgTable("users", {
   medicalLicense: text("medical_license"), // CRM number for doctors
   specialization: text("specialization"),
   lastLogin: timestamp("last_login"),
+  isOnline: boolean("is_online").default(false), // Doctor online status
+  availableForImmediate: boolean("available_for_immediate").default(false), // Available for immediate consultations
+  onlineSince: timestamp("online_since"), // When doctor went online
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
