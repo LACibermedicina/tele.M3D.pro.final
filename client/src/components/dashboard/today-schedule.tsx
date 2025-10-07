@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { appointments } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { Video, VideoOff } from "lucide-react";
 
 type Appointment = typeof appointments.$inferSelect & {
   patient?: { name: string; id: string };
@@ -30,6 +31,7 @@ export default function TodaySchedule() {
   const [newScheduledDate, setNewScheduledDate] = useState("");
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
+  const [isOfficeOpen, setIsOfficeOpen] = useState(false);
 
   const { data: appointments, isLoading } = useQuery<Appointment[]>({
     queryKey: user?.id ? ['/api/appointments/today', user.id] : ['appointments-today-placeholder'],
@@ -80,6 +82,42 @@ export default function TodaySchedule() {
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
     },
   });
+
+  // Doctor office toggle mutations
+  const toggleOfficeMutation = useMutation({
+    mutationFn: async (open: boolean) => {
+      const endpoint = open ? '/api/doctor-office/open' : '/api/doctor-office/close';
+      const response = await apiRequest('POST', endpoint, {});
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      setIsOfficeOpen(data.isOpen);
+      toast({
+        title: data.isOpen ? "Consultório Aberto" : "Consultório Fechado",
+        description: data.isOpen 
+          ? "Pacientes podem entrar agora em sua sala de vídeo" 
+          : "Consultório fechado para novos pacientes",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/doctors/online'] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível alterar o status do consultório",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Check initial office status
+  useEffect(() => {
+    if (user?.id && user.role === 'doctor') {
+      apiRequest('GET', `/api/doctor-office/status/${user.id}`, null)
+        .then(res => res.json())
+        .then(data => setIsOfficeOpen(data.isOpen))
+        .catch(() => setIsOfficeOpen(false));
+    }
+  }, [user]);
 
   const handleStartConsultation = (appointmentId: string) => {
     updateAppointmentMutation.mutate(
@@ -228,10 +266,33 @@ export default function TodaySchedule() {
       <CardHeader className="border-b border-border">
         <div className="flex items-center justify-between">
           <CardTitle>Agenda de Hoje</CardTitle>
-          <Button data-testid="button-new-appointment">
-            <i className="fas fa-plus mr-2"></i>
-            Nova Consulta
-          </Button>
+          <div className="flex gap-2">
+            {user?.role === 'doctor' && (
+              <Button 
+                onClick={() => toggleOfficeMutation.mutate(!isOfficeOpen)}
+                variant={isOfficeOpen ? "destructive" : "default"}
+                size="sm"
+                disabled={toggleOfficeMutation.isPending}
+                data-testid="button-toggle-office"
+              >
+                {isOfficeOpen ? (
+                  <>
+                    <VideoOff className="h-4 w-4 mr-2" />
+                    Fechar Consultório
+                  </>
+                ) : (
+                  <>
+                    <Video className="h-4 w-4 mr-2" />
+                    Abrir Consultório
+                  </>
+                )}
+              </Button>
+            )}
+            <Button data-testid="button-new-appointment">
+              <i className="fas fa-plus mr-2"></i>
+              Nova Consulta
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-6">

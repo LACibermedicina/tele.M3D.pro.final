@@ -39,28 +39,29 @@ export default function ImmediateConsultation() {
     refetchInterval: 10000, // Refresh every 10 seconds
   });
 
-  // Request immediate consultation mutation
+  // Request immediate consultation mutation - joins doctor's open office
   const requestMutation = useMutation({
     mutationFn: async (data: { doctorId: string; reason: string }) => {
-      const res = await apiRequest('POST', '/api/appointments/immediate', data);
+      // Join doctor's office directly
+      const res = await apiRequest('POST', `/api/doctor-office/join/${data.doctorId}`, {});
       return res.json();
     },
     onSuccess: (data) => {
       toast({
-        title: "Consulta Agendada!",
-        description: "Sua consulta imediata foi agendada. Redirecionando...",
+        title: "Entrando no Consultório!",
+        description: "Conectando à sala de vídeo do médico...",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
       
-      // Redirect to consultation session or appointments page
+      // Redirect to video consultation with the consultation ID
       setTimeout(() => {
-        setLocation(`/consultation-session/${data.appointment.id}`);
+        setLocation(`/consultation/video/${data.consultationId}`);
       }, 1500);
     },
     onError: (error: any) => {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao solicitar consulta imediata",
+        description: error.message || "Erro ao entrar no consultório",
         variant: "destructive",
       });
     },
