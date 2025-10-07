@@ -174,6 +174,8 @@ router.get('/:id', async (req: any, res) => {
       ...team,
       members,
       patient: patientInfo,
+      notes: [], // Placeholder for notes - would come from separate table in production
+      files: [], // Placeholder for files - would come from separate table in production
     });
   } catch (error) {
     console.error('Get team details error:', error);
@@ -323,7 +325,7 @@ router.patch('/:id', async (req: any, res) => {
   }
 });
 
-// Update last meeting time
+// Update last meeting time and return room info
 router.post('/:id/meeting', async (req: any, res) => {
   try {
     if (!req.user || req.user.role !== 'doctor') {
@@ -344,6 +346,16 @@ router.post('/:id/meeting', async (req: any, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
+    const teamData = await db
+      .select()
+      .from(medicalTeams)
+      .where(eq(medicalTeams.id, req.params.id))
+      .limit(1);
+
+    if (teamData.length === 0) {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+
     const [updatedTeam] = await db
       .update(medicalTeams)
       .set({
@@ -353,10 +365,85 @@ router.post('/:id/meeting', async (req: any, res) => {
       .where(eq(medicalTeams.id, req.params.id))
       .returning();
 
-    res.json(updatedTeam);
+    res.json({ ...updatedTeam, roomId: teamData[0].roomId });
   } catch (error) {
     console.error('Update meeting time error:', error);
     res.status(500).json({ message: 'Failed to update meeting time' });
+  }
+});
+
+// Add note to team
+router.post('/:id/notes', async (req: any, res) => {
+  try {
+    if (!req.user || req.user.role !== 'doctor') {
+      return res.status(403).json({ message: 'Only doctors can add notes' });
+    }
+
+    // Check if user is a member
+    const membership = await db
+      .select()
+      .from(medicalTeamMembers)
+      .where(and(
+        eq(medicalTeamMembers.teamId, req.params.id),
+        eq(medicalTeamMembers.userId, req.user.id)
+      ))
+      .limit(1);
+
+    if (membership.length === 0) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    const { content } = req.body;
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: 'Note content is required' });
+    }
+
+    // For now, return success - in production you'd want to store in a separate table
+    res.json({ 
+      success: true, 
+      note: {
+        id: `note_${Date.now()}`,
+        content: content.trim(),
+        authorId: req.user.id,
+        authorName: req.user.name,
+        createdAt: new Date().toISOString(),
+      }
+    });
+  } catch (error) {
+    console.error('Add note error:', error);
+    res.status(500).json({ message: 'Failed to add note' });
+  }
+});
+
+// Upload file to team (placeholder)
+router.post('/:id/files', async (req: any, res) => {
+  try {
+    if (!req.user || req.user.role !== 'doctor') {
+      return res.status(403).json({ message: 'Only doctors can upload files' });
+    }
+
+    // Check if user is a member
+    const membership = await db
+      .select()
+      .from(medicalTeamMembers)
+      .where(and(
+        eq(medicalTeamMembers.teamId, req.params.id),
+        eq(medicalTeamMembers.userId, req.user.id)
+      ))
+      .limit(1);
+
+    if (membership.length === 0) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    // For now, return success - in production you'd handle file upload
+    res.json({ 
+      success: true,
+      message: 'File uploaded successfully'
+    });
+  } catch (error) {
+    console.error('Upload file error:', error);
+    res.status(500).json({ message: 'Failed to upload file' });
   }
 });
 

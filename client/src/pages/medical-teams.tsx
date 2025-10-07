@@ -109,11 +109,9 @@ export default function MedicalTeams() {
     createTeamMutation.mutate(data);
   };
 
-  const handleStartMeeting = (team: MedicalTeam) => {
-    if (team.roomId) {
-      // Navigate to video consultation with team room ID
-      setLocation(`/video-consultation/${team.roomId}`);
-    }
+  const handleOpenTeamRoom = (team: MedicalTeam) => {
+    // Navigate to team room
+    setLocation(`/team-room/${team.id}`);
   };
 
   const getTeamTypeLabel = (type: string) => {
@@ -308,12 +306,12 @@ export default function MedicalTeams() {
 
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => handleStartMeeting(team)}
+                      onClick={() => handleOpenTeamRoom(team)}
                       className="flex-1"
-                      data-testid={`button-start-meeting-${team.id}`}
+                      data-testid={`button-open-room-${team.id}`}
                     >
-                      <Video className="h-4 w-4 mr-2" />
-                      Iniciar Reunião
+                      <Users className="h-4 w-4 mr-2" />
+                      Abrir Sala
                     </Button>
                     <Button
                       variant="outline"
