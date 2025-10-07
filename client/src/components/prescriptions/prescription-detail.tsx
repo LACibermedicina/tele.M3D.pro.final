@@ -1,11 +1,18 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { FileText, Calendar, User, Pill, AlertTriangle, Download, Share2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { FileText, Calendar, User, Pill, AlertTriangle, Download, Share2, FileSignature, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PrescriptionDetailProps {
   prescriptionId: string;
@@ -50,14 +57,61 @@ interface PrescriptionDetail {
   updatedAt: string;
   patientId: string;
   doctorId: string;
+  digitalSignatureId?: string;
   items: PrescriptionItem[];
 }
 
 export default function PrescriptionDetail({ prescriptionId, onClose }: PrescriptionDetailProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [showSignDialog, setShowSignDialog] = useState(false);
+  const [signForm, setSignForm] = useState({
+    pin: '',
+    doctorName: '',
+    crm: '',
+    crmState: 'SP',
+  });
+
   const { data: prescription, isLoading, error } = useQuery<PrescriptionDetail>({
     queryKey: ['/api/prescriptions', prescriptionId],
     enabled: !!prescriptionId,
   });
+
+  // Sign prescription mutation
+  const signPrescriptionMutation = useMutation({
+    mutationFn: async (data: typeof signForm) => {
+      const res = await apiRequest('POST', `/api/prescriptions/${prescriptionId}/sign`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Prescrição Assinada!",
+        description: "A prescrição foi assinada digitalmente com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/prescriptions', prescriptionId] });
+      setShowSignDialog(false);
+      setSignForm({ pin: '', doctorName: '', crm: '', crmState: 'SP' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao Assinar",
+        description: error.message || "Não foi possível assinar a prescrição.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSignPrescription = () => {
+    if (!signForm.pin || signForm.pin.length < 6) {
+      toast({
+        title: "PIN Inválido",
+        description: "O PIN deve ter no mínimo 6 dígitos.",
+        variant: "destructive",
+      });
+      return;
+    }
+    signPrescriptionMutation.mutate(signForm);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -144,8 +198,40 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
               Digital
             </Badge>
           )}
+          {prescription.digitalSignatureId && (
+            <Badge variant="outline" className="text-blue-600 border-blue-600">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Assinada
+            </Badge>
+          )}
         </div>
       </div>
+      
+      {/* Sign button for doctors */}
+      {user?.role === 'doctor' && user.id === prescription.doctorId && !prescription.digitalSignatureId && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <FileSignature className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-medium text-foreground">Assinatura Digital</p>
+                  <p className="text-sm text-muted-foreground">
+                    Esta prescrição ainda não foi assinada digitalmente
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => setShowSignDialog(true)}
+                data-testid="button-sign-prescription"
+              >
+                <FileSignature className="h-4 w-4 mr-2" />
+                Assinar Prescrição
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Prescription Information */}
       <Card>
@@ -349,6 +435,116 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
           </CardContent>
         </Card>
       )}
+      
+      {/* Sign Prescription Dialog */}
+      <Dialog open={showSignDialog} onOpenChange={setShowSignDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSignature className="h-5 w-5 text-primary" />
+              Assinar Prescrição Digitalmente
+            </DialogTitle>
+            <DialogDescription>
+              Utilize seu certificado digital ICP-Brasil A3 para assinar esta prescrição médica.
+              A assinatura garante autenticidade e integridade do documento.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="pin">PIN do Token A3 *</Label>
+              <Input
+                id="pin"
+                type="password"
+                placeholder="Digite o PIN do seu token"
+                value={signForm.pin}
+                onChange={(e) => setSignForm({ ...signForm, pin: e.target.value })}
+                maxLength={8}
+                data-testid="input-pin"
+              />
+              <p className="text-xs text-muted-foreground">
+                Mínimo 6 dígitos
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="doctorName">Nome Completo do Médico</Label>
+              <Input
+                id="doctorName"
+                placeholder="Ex: Dr. João Silva"
+                value={signForm.doctorName}
+                onChange={(e) => setSignForm({ ...signForm, doctorName: e.target.value })}
+                data-testid="input-doctor-name"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="crm">CRM</Label>
+                <Input
+                  id="crm"
+                  placeholder="Ex: 123456"
+                  value={signForm.crm}
+                  onChange={(e) => setSignForm({ ...signForm, crm: e.target.value })}
+                  data-testid="input-crm"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="crmState">UF</Label>
+                <Input
+                  id="crmState"
+                  placeholder="Ex: SP"
+                  value={signForm.crmState}
+                  onChange={(e) => setSignForm({ ...signForm, crmState: e.target.value.toUpperCase() })}
+                  maxLength={2}
+                  data-testid="input-crm-state"
+                />
+              </div>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+              <div className="flex gap-2">
+                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium mb-1">Certificado Digital ICP-Brasil A3</p>
+                  <p className="text-xs">
+                    Esta assinatura utiliza padrão ICP-Brasil A3 com algoritmo RSA-PSS e SHA-256,
+                    garantindo conformidade com a legislação brasileira para documentos médicos eletrônicos.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowSignDialog(false)}
+              disabled={signPrescriptionMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSignPrescription}
+              disabled={signPrescriptionMutation.isPending || !signForm.pin}
+              data-testid="button-confirm-sign"
+            >
+              {signPrescriptionMutation.isPending ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Assinando...
+                </>
+              ) : (
+                <>
+                  <FileSignature className="h-4 w-4 mr-2" />
+                  Assinar Prescrição
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
