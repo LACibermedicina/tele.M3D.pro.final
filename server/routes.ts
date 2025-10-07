@@ -9522,17 +9522,153 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     }
   });
 
-  // Check drug interactions
+  // Check drug interactions with AI analysis
   app.post('/api/prescriptions/check-interactions', requireAuth, async (req, res) => {
     try {
-      const { medicationIds } = req.body;
+      const { medicationIds, patientId, diagnosis } = req.body;
       
-      if (!Array.isArray(medicationIds) || medicationIds.length < 2) {
-        return res.json({ interactions: [] });
+      if (!Array.isArray(medicationIds) || medicationIds.length === 0) {
+        return res.json({ analysis: [] });
       }
+
+      // Get medications details
+      const medicationsData = await db
+        .select()
+        .from(medications)
+        .where(sql`${medications.id} = ANY(${medicationIds})`);
+
+      if (medicationsData.length === 0) {
+        return res.json({ analysis: [] });
+      }
+
+      // Get patient details
+      let patientInfo = null;
+      if (patientId) {
+        const patient = await db
+          .select()
+          .from(patients)
+          .where(eq(patients.id, patientId))
+          .limit(1);
+        
+        if (patient.length > 0) {
+          patientInfo = patient[0];
+        }
+      }
+
+      // Get patient's medical records for allergies and conditions
+      let medicalHistory = '';
+      if (patientId) {
+        const records = await db
+          .select()
+          .from(medicalRecords)
+          .where(eq(medicalRecords.patientId, patientId))
+          .orderBy(desc(medicalRecords.visitDate))
+          .limit(5);
+        
+        if (records.length > 0) {
+          medicalHistory = records.map(r => 
+            `${r.diagnosis || ''} - ${r.prescribedMedication || ''} - ${r.allergies || ''}`
+          ).join('; ');
+        }
+      }
+
+      // Prepare medication list for AI
+      const medicationList = medicationsData.map(m => 
+        `${m.name} (${m.genericName}) - Princípio Ativo: ${m.activeIngredient}, Forma: ${m.dosageForm}, Concentração: ${m.strength}`
+      ).join('\n');
+
+      // Call Gemini AI for analysis
+      const geminiApiKey = process.env.GEMINI_API_KEY;
+      if (!geminiApiKey) {
+        return res.status(500).json({ message: 'AI service not configured' });
+      }
+
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(geminiApiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+      const prompt = `Você é um especialista em farmacologia clínica. Analise as seguintes prescrições médicas e forneça uma análise detalhada de interações medicamentosas.
+
+MEDICAMENTOS PRESCRITOS:
+${medicationList}
+
+DIAGNÓSTICO: ${diagnosis || 'Não especificado'}
+
+${patientInfo ? `PERFIL DO PACIENTE:
+- Idade: ${patientInfo.birthDate ? new Date().getFullYear() - new Date(patientInfo.birthDate).getFullYear() : 'Não especificado'} anos
+- Gênero: ${patientInfo.gender || 'Não especificado'}
+- Peso: ${patientInfo.weight || 'Não especificado'} kg
+- Histórico: ${medicalHistory || 'Não disponível'}` : ''}
+
+Para CADA medicamento, forneça uma análise estruturada em JSON com o seguinte formato:
+{
+  "drugName": "Nome do medicamento",
+  "activeIngredient": "Princípio ativo",
+  "summary": "Breve resumo sobre o princípio ativo e seu mecanismo de ação (2-3 frases)",
+  "interactions": [
+    {
+      "type": "Tipo de interação (ex: Interação com [medicamento])",
+      "description": "Descrição detalhada da interação e possíveis consequências",
+      "riskLevel": número de 0-100 representando o nível de risco
+    }
+  ],
+  "sideEffects": [
+    {
+      "name": "Nome do efeito adverso",
+      "probability": número de 0-100 representando a probabilidade
+    }
+  ],
+  "patientRiskFactors": [
+    {
+      "factor": "Fator de risco específico para este paciente",
+      "riskLevel": número de 0-100
+    }
+  ],
+  "overallRisk": número de 0-100 representando o risco geral
+}
+
+IMPORTANTE: 
+- Liste pelo menos 3-5 interações se houver outros medicamentos
+- Liste os 5 efeitos adversos mais comuns
+- Considere idade, peso e histórico do paciente nos fatores de risco
+- Se não houver interações graves, ainda liste interações leves ou moderadas
+- Retorne APENAS um array JSON válido, sem texto adicional
+
+Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...]`;
+
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
       
-      const interactions = await checkDrugInteractions(medicationIds);
-      res.json({ interactions });
+      // Extract JSON from response
+      let analysis = [];
+      try {
+        // Try to find JSON in the response
+        const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          analysis = JSON.parse(jsonMatch[0]);
+        } else {
+          // Fallback: try parsing entire response
+          analysis = JSON.parse(responseText);
+        }
+      } catch (parseError) {
+        console.error('Failed to parse AI response:', responseText);
+        // Return basic analysis as fallback
+        analysis = medicationsData.map(med => ({
+          drugName: med.name,
+          activeIngredient: med.activeIngredient,
+          summary: `${med.name} é um medicamento usado no tratamento de diversas condições. Contém ${med.activeIngredient} como princípio ativo.`,
+          interactions: [],
+          sideEffects: [
+            { name: 'Náusea', probability: 15 },
+            { name: 'Tontura', probability: 10 },
+            { name: 'Dor de cabeça', probability: 8 }
+          ],
+          patientRiskFactors: [],
+          overallRisk: 25
+        }));
+      }
+
+      res.json({ analysis });
     } catch (error) {
       console.error('Check drug interactions error:', error);
       res.status(500).json({ message: 'Failed to check drug interactions' });

@@ -12,8 +12,11 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Trash2, AlertTriangle, Activity, TrendingUp, Loader2 } from 'lucide-react';
 import { formatErrorForToast } from '@/lib/error-handler';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
 
 // Form validation schema
 const prescriptionFormSchema = z.object({
@@ -57,12 +60,35 @@ interface CreatePrescriptionFormProps {
   onSuccess: () => void;
 }
 
+interface DrugInteractionAnalysis {
+  drugName: string;
+  activeIngredient: string;
+  summary: string;
+  interactions: Array<{
+    type: string;
+    description: string;
+    riskLevel: number;
+  }>;
+  sideEffects: Array<{
+    name: string;
+    probability: number;
+  }>;
+  patientRiskFactors: Array<{
+    factor: string;
+    riskLevel: number;
+  }>;
+  overallRisk: number;
+}
+
 export default function CreatePrescriptionForm({ onSuccess }: CreatePrescriptionFormProps) {
   const { toast } = useToast();
   const [searchMedication, setSearchMedication] = useState('');
   const [searchPatient, setSearchPatient] = useState('');
   const [interactions, setInteractions] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showInteractionDialog, setShowInteractionDialog] = useState(false);
+  const [interactionAnalysis, setInteractionAnalysis] = useState<DrugInteractionAnalysis[]>([]);
+  const [isCheckingInteractions, setIsCheckingInteractions] = useState(false);
 
   const form = useForm<PrescriptionFormData>({
     resolver: zodResolver(prescriptionFormSchema),
@@ -133,19 +159,50 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
 
   const checkInteractions = async () => {
     const items = form.getValues('items');
+    const patientId = form.getValues('patientId');
+    const diagnosis = form.getValues('diagnosis');
+    
+    if (!patientId) {
+      toast({
+        title: 'Selecione um paciente',
+        description: 'É necessário selecionar um paciente para verificar interações.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const medicationIds = items
       .filter(item => item.medicationId)
       .map(item => item.medicationId);
 
-    if (medicationIds.length > 1) {
-      try {
-        const response = await apiRequest('POST', '/api/prescriptions/check-interactions', {
-          medicationIds
-        });
-        setInteractions(response.interactions || []);
-      } catch (error) {
-        console.error('Error checking interactions:', error);
-      }
+    if (medicationIds.length === 0) {
+      toast({
+        title: 'Adicione medicamentos',
+        description: 'É necessário adicionar medicamentos para verificar interações.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsCheckingInteractions(true);
+    try {
+      const response = await apiRequest('POST', '/api/prescriptions/check-interactions', {
+        medicationIds,
+        patientId,
+        diagnosis
+      });
+      const data = await response.json();
+      setInteractionAnalysis(data.analysis || []);
+      setShowInteractionDialog(true);
+    } catch (error) {
+      console.error('Error checking interactions:', error);
+      toast({
+        title: 'Erro ao verificar interações',
+        description: 'Não foi possível verificar interações medicamentosas. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCheckingInteractions(false);
     }
   };
 
@@ -292,9 +349,20 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
                   variant="outline"
                   onClick={checkInteractions}
                   size="sm"
+                  disabled={isCheckingInteractions}
                   data-testid="button-check-interactions"
                 >
-                  Verificar Interações
+                  {isCheckingInteractions ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Analisando...
+                    </>
+                  ) : (
+                    <>
+                      <Activity className="h-4 w-4 mr-2" />
+                      Verificar Interações
+                    </>
+                  )}
                 </Button>
                 <Button
                   type="button"
@@ -508,6 +576,151 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
           </Button>
         </div>
       </form>
+
+      {/* Drug Interaction Analysis Dialog */}
+      <Dialog open={showInteractionDialog} onOpenChange={setShowInteractionDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="dialog-drug-interactions">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Análise de Interações Medicamentosas
+            </DialogTitle>
+            <DialogDescription>
+              Análise detalhada dos medicamentos, interações e riscos para o paciente
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            {interactionAnalysis.map((drug, index) => (
+              <Card key={index} className="border-2" data-testid={`card-drug-analysis-${index}`}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg" data-testid={`text-drug-name-${index}`}>{drug.drugName}</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Princípio Ativo: <span className="font-medium" data-testid={`text-active-ingredient-${index}`}>{drug.activeIngredient}</span>
+                      </p>
+                    </div>
+                    <Badge 
+                      variant={drug.overallRisk > 70 ? "destructive" : drug.overallRisk > 40 ? "default" : "secondary"}
+                      className="text-lg px-4 py-2"
+                      data-testid={`badge-overall-risk-${index}`}
+                    >
+                      Risco: {drug.overallRisk}%
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Summary */}
+                  <div>
+                    <h4 className="font-semibold mb-2 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4" />
+                      Resumo do Princípio Ativo
+                    </h4>
+                    <p className="text-sm text-muted-foreground">{drug.summary}</p>
+                  </div>
+
+                  <Separator />
+
+                  {/* Drug Interactions */}
+                  {drug.interactions.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-3">Interações Medicamentosas</h4>
+                      <div className="space-y-3">
+                        {drug.interactions.map((interaction, idx) => (
+                          <div key={idx} className="p-3 bg-muted rounded-lg">
+                            <div className="flex items-start justify-between mb-2">
+                              <span className="font-medium text-sm">{interaction.type}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">
+                                  {interaction.riskLevel}%
+                                </span>
+                                <Progress value={interaction.riskLevel} className="w-20 h-2" />
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{interaction.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  {/* Side Effects Chart */}
+                  <div>
+                    <h4 className="font-semibold mb-3">Efeitos Adversos (Probabilidade)</h4>
+                    <div className="space-y-2">
+                      {drug.sideEffects.map((effect, idx) => (
+                        <div key={idx} className="space-y-1">
+                          <div className="flex justify-between items-center text-sm">
+                            <span>{effect.name}</span>
+                            <span className="font-medium">{effect.probability}%</span>
+                          </div>
+                          <Progress 
+                            value={effect.probability} 
+                            className="h-2"
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Visual Chart */}
+                    <div className="mt-4 p-4 bg-muted rounded-lg">
+                      <div className="flex items-end justify-around h-32 gap-2">
+                        {drug.sideEffects.map((effect, idx) => (
+                          <div key={idx} className="flex flex-col items-center flex-1">
+                            <div 
+                              className="w-full bg-primary rounded-t transition-all"
+                              style={{ height: `${effect.probability}%` }}
+                            />
+                            <span className="text-xs mt-2 text-center truncate w-full">
+                              {effect.name.split(' ')[0]}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Patient Risk Factors */}
+                  {drug.patientRiskFactors.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-orange-500" />
+                        Fatores de Risco do Paciente
+                      </h4>
+                      <div className="space-y-3">
+                        {drug.patientRiskFactors.map((risk, idx) => (
+                          <div key={idx} className="p-3 bg-orange-50 dark:bg-orange-950 rounded-lg border border-orange-200 dark:border-orange-800">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">{risk.factor}</span>
+                              <Badge 
+                                variant={risk.riskLevel > 70 ? "destructive" : "default"}
+                                className="ml-2"
+                              >
+                                {risk.riskLevel}% risco
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="flex justify-end mt-4">
+            <Button onClick={() => setShowInteractionDialog(false)} data-testid="button-close-interaction-analysis">
+              Fechar Análise
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Form>
   );
 }
