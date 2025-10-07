@@ -2268,6 +2268,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generic Agora token generation endpoint
+  app.post('/api/agora/generate-token', async (req: any, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const { channelName, uid, role } = req.body;
+
+      if (!channelName) {
+        return res.status(400).json({ message: 'Channel name is required' });
+      }
+
+      // Use provided UID or generate from user ID
+      const numericUid = uid || Math.abs(req.user.id.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0));
+
+      const token = generateAgoraToken({
+        channelName,
+        uid: numericUid,
+        role: (role as 'publisher' | 'subscriber') || 'publisher',
+        expirationTimeInSeconds: 3600 // 1 hour
+      });
+
+      res.json({
+        token,
+        appId: getAgoraAppId(),
+        channelName,
+        uid: numericUid
+      });
+    } catch (error) {
+      console.error('Generate Agora token error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate token';
+      res.status(500).json({ message: errorMessage });
+    }
+  });
+
   // Generate Agora token for video consultation (specific route before /:id)
   app.post('/api/video-consultations/agora-token', async (req: any, res) => {
     try {

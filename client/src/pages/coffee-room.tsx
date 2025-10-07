@@ -25,17 +25,25 @@ export default function CoffeeRoom() {
       const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
       setAgoraClient(client);
       
-      const appId = import.meta.env.VITE_AGORA_APP_ID || "YOUR_AGORA_APP_ID";
       const channelName = "coffee-room-telemed";
+      
+      // Generate numeric UID from user ID (Agora requires numeric UID)
+      const numericUid = user?.id ? parseInt(user.id.replace(/\D/g, '').slice(0, 10)) || 0 : 0;
       
       const tokenResponse = await fetch('/api/agora/generate-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelName, uid: user?.id }),
+        body: JSON.stringify({ channelName, uid: numericUid }),
       });
-      const { token } = await tokenResponse.json();
       
-      await client.join(appId, channelName, token, user?.id);
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.json();
+        throw new Error(errorData.message || 'Falha ao gerar token de acesso');
+      }
+      
+      const { token, appId } = await tokenResponse.json();
+      
+      await client.join(appId, channelName, token, numericUid);
       
       const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
       const videoTrack = await AgoraRTC.createCameraVideoTrack();
@@ -69,7 +77,10 @@ export default function CoffeeRoom() {
         }
         
         // Update participants
-        setParticipants(prev => [...new Set([...prev, `User ${remoteUser.uid}`])]);
+        setParticipants(prev => {
+          const newSet = new Set([...prev, `User ${remoteUser.uid}`]);
+          return Array.from(newSet);
+        });
       });
       
       client.on("user-unpublished", (remoteUser) => {
@@ -86,9 +97,12 @@ export default function CoffeeRoom() {
       });
     } catch (error) {
       console.error('Agora initialization error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       toast({
-        title: "Erro",
-        description: "Não foi possível entrar na sala.",
+        title: "Erro ao Entrar na Cafeteria",
+        description: errorMessage.includes('credentials') 
+          ? "Credenciais do Agora.io não configuradas. Entre em contato com o administrador."
+          : "Não foi possível entrar na sala. Verifique suas permissões de câmera e microfone.",
         variant: "destructive",
       });
     }
