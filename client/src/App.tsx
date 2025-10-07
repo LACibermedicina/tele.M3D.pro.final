@@ -39,6 +39,7 @@ import ImmediateConsultation from "@/pages/immediate-consultation";
 import DoctorChat from "@/pages/doctor-chat";
 import MedicalTeams from "@/pages/medical-teams";
 import TeamRoom from "@/pages/team-room";
+import MedicalCafe from "@/pages/medical-cafe";
 import Header from "@/components/layout/header";
 import FloatingChatbot from "@/components/ui/floating-chatbot";
 import CommandPalette from "@/components/command-palette";
@@ -262,6 +263,13 @@ function Router() {
           <ProtectedRoute requiredRoles={['doctor']}>
             <Header />
             <TeamRoom />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/medical-cafe">
+          <ProtectedRoute requiredRoles={['doctor']}>
+            <Header />
+            <MedicalCafe />
           </ProtectedRoute>
         </Route>
         

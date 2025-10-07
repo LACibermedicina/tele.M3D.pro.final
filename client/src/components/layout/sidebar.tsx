@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, Menu, Settings, User, Lock, Shield, Headphones, Ambulance, Plus, AlertTriangle, Pill, Clock3 } from "lucide-react";
+import { LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, Menu, Settings, User, Lock, Shield, Headphones, Ambulance, Plus, AlertTriangle, Pill, Clock3, Coffee } from "lucide-react";
 import telemedLogo from "@/assets/logo-fundo.png";
 
 interface SidebarProps {
@@ -77,6 +77,12 @@ function SidebarContent() {
       label: "Equipes Médicas",
       icon: Users,
       description: "Salas de reunião e colaboração médica"
+    },
+    {
+      path: "/medical-cafe",
+      label: "Cafeteria Médica",
+      icon: Coffee,
+      description: "Canal público para médicos - suporte e socialização"
     },
   ];
 
