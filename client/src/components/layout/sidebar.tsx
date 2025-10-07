@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, Menu, Settings, User, Lock, Shield, Headphones, Ambulance, Plus, AlertTriangle, Pill } from "lucide-react";
+import { LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, Menu, Settings, User, Lock, Shield, Headphones, Ambulance, Plus, AlertTriangle, Pill, Clock3 } from "lucide-react";
 import telemedLogo from "@/assets/logo-fundo.png";
 
 interface SidebarProps {
@@ -37,10 +37,10 @@ function SidebarContent() {
       description: t("patients.title")
     },
     {
-      path: "/schedule",
-      label: t("navigation.schedule"),
-      icon: CalendarClock,
-      description: t("appointments.title")
+      path: user?.role === 'doctor' ? "/doctor-availability" : "/schedule",
+      label: user?.role === 'doctor' ? "Disponibilidade" : t("navigation.schedule"),
+      icon: user?.role === 'doctor' ? Clock3 : CalendarClock,
+      description: user?.role === 'doctor' ? "Gerencie seus horários e plantões" : t("appointments.title")
     },
     {
       path: "/whatsapp",

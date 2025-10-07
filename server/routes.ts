@@ -4827,6 +4827,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       });
       
+      // Auto-activate doctors on 24h duty when they login
+      if (user.role === 'doctor' && user.onDutyUntil && new Date(user.onDutyUntil) > new Date()) {
+        await db.update(users)
+          .set({
+            isOnline: true,
+            availableForImmediate: true,
+            onlineSince: new Date(),
+          })
+          .where(eq(users.id, user.id));
+        
+        console.log(`Doctor ${user.name} auto-activated for on-duty shift`);
+      }
+      
       // Return user data (without password)
       const { password: _, ...userWithoutPassword} = user;
       res.json({ 
