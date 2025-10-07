@@ -780,6 +780,30 @@ export const patientChatThreads = pgTable("patient_chat_threads", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Medical Teams - Collaboration between doctors
+export const medicalTeams = pgTable("medical_teams", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  teamType: text("team_type").notNull().default("clinical_discussion"), // clinical_discussion, patient_case, study_group
+  patientId: uuid("patient_id").references(() => patients.id), // If team is for a specific patient case
+  isActive: boolean("is_active").default(true),
+  roomId: text("room_id"), // Agora video room ID for meetings
+  lastMeetingAt: timestamp("last_meeting_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Medical Team Members
+export const medicalTeamMembers = pgTable("medical_team_members", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: uuid("team_id").references(() => medicalTeams.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  role: text("role").notNull().default("member"), // leader, member, observer
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   appointments: many(appointments),
@@ -1444,6 +1468,21 @@ export type InsertClinicalAsset = z.infer<typeof insertClinicalAssetSchema>;
 
 export type PatientChatThread = typeof patientChatThreads.$inferSelect;
 export type InsertPatientChatThread = z.infer<typeof insertPatientChatThreadSchema>;
+
+export const insertMedicalTeamSchema = createInsertSchema(medicalTeams).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type MedicalTeam = typeof medicalTeams.$inferSelect;
+export type InsertMedicalTeam = z.infer<typeof insertMedicalTeamSchema>;
+
+export const insertMedicalTeamMemberSchema = createInsertSchema(medicalTeamMembers).omit({
+  id: true,
+  joinedAt: true,
+});
+export type MedicalTeamMember = typeof medicalTeamMembers.$inferSelect;
+export type InsertMedicalTeamMember = z.infer<typeof insertMedicalTeamMemberSchema>;
 
 // Dashboard stats type
 export interface DashboardStats {

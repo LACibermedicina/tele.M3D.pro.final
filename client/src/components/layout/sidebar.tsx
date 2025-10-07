@@ -72,6 +72,12 @@ function SidebarContent() {
       icon: BookOpenCheck,
       description: t("medical.knowledge_base")
     },
+    {
+      path: "/medical-teams",
+      label: "Equipes Médicas",
+      icon: Users,
+      description: "Salas de reunião e colaboração médica"
+    },
   ];
 
   const quickActions = [

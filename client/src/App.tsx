@@ -37,6 +37,7 @@ import ClinicalDashboard from "@/pages/clinical-dashboard";
 import DoctorAvailability from "@/pages/doctor-availability";
 import ImmediateConsultation from "@/pages/immediate-consultation";
 import DoctorChat from "@/pages/doctor-chat";
+import MedicalTeams from "@/pages/medical-teams";
 import Header from "@/components/layout/header";
 import FloatingChatbot from "@/components/ui/floating-chatbot";
 import CommandPalette from "@/components/command-palette";
@@ -246,6 +247,13 @@ function Router() {
           <ProtectedRoute requiredRoles={['doctor']}>
             <Header />
             <DoctorChat />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/medical-teams">
+          <ProtectedRoute requiredRoles={['doctor']}>
+            <Header />
+            <MedicalTeams />
           </ProtectedRoute>
         </Route>
         

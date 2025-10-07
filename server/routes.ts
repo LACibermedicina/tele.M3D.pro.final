@@ -13,7 +13,8 @@ import * as tmcCreditsService from "./services/tmc-credits";
 import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./paypal";
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations } from "@shared/schema";
+import medicalTeamsRouter from "./routes/medical-teams";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNotNull } from "drizzle-orm";
@@ -69,6 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Migrate database schema for new features
   await migrateOnDutyColumns();
+  await migrateMedicalTeamsTables();
   
   // Initialize default doctor if not exists and get the actual ID
   const actualDoctorId = await initializeDefaultDoctor();
@@ -11716,6 +11718,7 @@ Você é um assistente de saúde especializado que ajuda visitantes da Tele<M3D>
   // Register credit and signature routers
   app.use('/api/credits', creditsRouter);
   app.use('/api/signatures', signaturesRouter);
+  app.use('/api/medical-teams', requireAuth, medicalTeamsRouter);
 
   return httpServer;
 }
@@ -11728,6 +11731,43 @@ async function migrateOnDutyColumns() {
     console.log('✓ On-duty columns migrated successfully');
   } catch (error) {
     console.error('Failed to migrate on-duty columns:', error);
+  }
+}
+
+async function migrateMedicalTeamsTables() {
+  try {
+    // Create medical_teams table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS medical_teams (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name TEXT NOT NULL,
+        description TEXT,
+        created_by UUID NOT NULL REFERENCES users(id),
+        team_type TEXT NOT NULL DEFAULT 'clinical_discussion',
+        patient_id UUID REFERENCES patients(id),
+        is_active BOOLEAN DEFAULT true,
+        room_id TEXT,
+        last_meeting_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    
+    // Create medical_team_members table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS medical_team_members (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        team_id UUID NOT NULL REFERENCES medical_teams(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id),
+        role TEXT NOT NULL DEFAULT 'member',
+        joined_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        UNIQUE(team_id, user_id)
+      )
+    `);
+    
+    console.log('✓ Medical teams tables migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate medical teams tables:', error);
   }
 }
 
