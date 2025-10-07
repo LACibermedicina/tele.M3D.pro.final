@@ -569,6 +569,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
 
+  // Broadcast to all connected WebSocket clients
+  const broadcastToAll = (data: any) => {
+    authenticatedClients.forEach((clientSet, userId) => {
+      clientSet.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            ...data,
+            timestamp: new Date().toISOString()
+          }));
+        }
+      });
+    });
+  };
+
   // Legacy broadcast function removed for security - use broadcastToDoctor exclusively
 
   // API Key Authentication Middleware for External Collaborators
