@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLocation } from "wouter";
+import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 
 interface Doctor {
   id: string;
@@ -99,20 +101,23 @@ export default function ImmediateConsultation() {
 
   if (!user || user.role !== 'patient') {
     return (
-      <div className="p-8">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              Acesso restrito a pacientes
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+        <div className="p-8">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-center text-muted-foreground">
+                Acesso restrito a pacientes
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </PageWrapper>
     );
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+      <div className="p-8 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Atendimento Imediato</h1>
         <p className="text-muted-foreground mt-2">
@@ -234,5 +239,6 @@ export default function ImmediateConsultation() {
         </Card>
       )}
     </div>
+    </PageWrapper>
   );
 }

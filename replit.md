@@ -16,8 +16,9 @@ The client-side is built with React and TypeScript, using Wouter for routing. It
 - **Enhanced Contrast**: Radial gradient dark mask (5-15% darkening) overlaying the background for improved text readability
 - **Card Design**: Semi-transparent cards (98% opacity) with backdrop blur and enhanced shadows for depth separation
 - **Page Variants**: 
-  - "origami" variant for public pages (login, features, registration pages, dashboard)
+  - "origami" variant for public pages (login, features, registration pages, dashboard) and authenticated pages (doctor-availability, immediate-consultation, doctor-chat)
   - "medical" variant for documentation and content-heavy pages with medical imagery
+- **Consistent Theme**: All authenticated pages now use the same autumn pastel color scheme and animated origami background as the public-facing pages for visual consistency
 
 ### Backend Architecture
 The server is a RESTful API built with Node.js and Express.js, using TypeScript in ESModule format. It includes middleware for JSON parsing, CORS, and request logging. A WebSocket server provides live updates. API endpoints are domain-organized, and centralized error handling ensures structured error responses.

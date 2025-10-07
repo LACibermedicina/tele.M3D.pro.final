@@ -13,6 +13,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
+import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 
 interface ChatThread {
   id: string;
@@ -171,20 +173,23 @@ export default function DoctorChat() {
 
   if (!user || user.role !== 'doctor') {
     return (
-      <div className="p-8">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              Acesso restrito a médicos
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+        <div className="p-8">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-center text-muted-foreground">
+                Acesso restrito a médicos
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </PageWrapper>
     );
   }
 
   return (
-    <div className="p-8">
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+      <div className="p-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Chat com Pacientes</h1>
         <p className="text-muted-foreground mt-2">
@@ -434,5 +439,6 @@ export default function DoctorChat() {
         </Card>
       </div>
     </div>
+    </PageWrapper>
   );
 }

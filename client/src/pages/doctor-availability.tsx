@@ -10,6 +10,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Clock, Calendar, Plus, Trash2, Power } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 
 interface DoctorSchedule {
   id?: string;
@@ -156,20 +158,23 @@ export default function DoctorAvailability() {
 
   if (!user || user.role !== 'doctor') {
     return (
-      <div className="p-8">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              Acesso restrito a médicos
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+        <div className="p-8">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-center text-muted-foreground">
+                Acesso restrito a médicos
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </PageWrapper>
     );
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+      <div className="p-8 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Gerenciar Disponibilidade</h1>
         <p className="text-muted-foreground mt-2">
@@ -356,5 +361,6 @@ export default function DoctorAvailability() {
         </CardContent>
       </Card>
     </div>
+    </PageWrapper>
   );
 }
