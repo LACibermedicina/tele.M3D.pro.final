@@ -5862,6 +5862,217 @@ Forneça uma resposta em JSON com:
     }
   });
 
+  // Patient Chat - Direct messaging between doctor and patient
+  
+  // Get doctor's chat threads (only with pending consultation requests)
+  app.get('/api/chat/doctor/threads', requireAuth, async (req, res) => {
+    try {
+      if (req.user!.role !== 'doctor') {
+        return res.status(403).json({ message: 'Only doctors can access this endpoint' });
+      }
+
+      // Get all pending consultation requests for this doctor
+      const consultationRequests = await storage.getConsultationRequestsByDoctor(req.user!.id);
+      const pendingRequests = consultationRequests.filter((r: any) => 
+        r.status === 'pending' || r.status === 'accepted'
+      );
+
+      // Get or create chat threads for each request
+      const threadsWithPatients = await Promise.all(
+        pendingRequests.map(async (request: any) => {
+          const patient = await storage.getPatient(request.patientId);
+          
+          // Get existing thread or create new one
+          let thread = await storage.getPatientChatThreadByParticipants(
+            request.patientId,
+            req.user!.id
+          );
+
+          if (!thread) {
+            thread = await storage.createPatientChatThread({
+              patientId: request.patientId,
+              doctorId: req.user!.id,
+              messages: [],
+              status: 'active'
+            });
+          }
+
+          return {
+            ...thread,
+            patient,
+            consultationRequest: request
+          };
+        })
+      );
+
+      res.json(threadsWithPatients);
+    } catch (error) {
+      console.error('Get doctor chat threads error:', error);
+      res.status(500).json({ message: 'Failed to fetch chat threads' });
+    }
+  });
+
+  // Get specific chat thread
+  app.get('/api/chat/threads/:id', requireAuth, async (req, res) => {
+    try {
+      const thread = await storage.getPatientChatThread(req.params.id);
+      
+      if (!thread) {
+        return res.status(404).json({ message: 'Chat thread not found' });
+      }
+
+      // Authorization check
+      if (thread.doctorId !== req.user!.id) {
+        const patient = await storage.getPatientByUserId(req.user!.id);
+        if (!patient || patient.id !== thread.patientId) {
+          return res.status(403).json({ message: 'Not authorized' });
+        }
+      }
+
+      // Get patient details
+      const patient = await storage.getPatient(thread.patientId);
+      
+      res.json({ ...thread, patient });
+    } catch (error) {
+      console.error('Get chat thread error:', error);
+      res.status(500).json({ message: 'Failed to fetch chat thread' });
+    }
+  });
+
+  // Send message in chat
+  app.post('/api/chat/threads/:id/messages', requireAuth, async (req, res) => {
+    try {
+      const thread = await storage.getPatientChatThread(req.params.id);
+      
+      if (!thread) {
+        return res.status(404).json({ message: 'Chat thread not found' });
+      }
+
+      // Authorization check
+      const isDoctor = thread.doctorId === req.user!.id;
+      let isPatient = false;
+      
+      if (!isDoctor) {
+        const patient = await storage.getPatientByUserId(req.user!.id);
+        isPatient = patient && patient.id === thread.patientId;
+      }
+
+      if (!isDoctor && !isPatient) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      const { content } = req.body;
+      
+      if (!content || !content.trim()) {
+        return res.status(400).json({ message: 'Message content is required' });
+      }
+
+      // Add message to thread
+      const messages = thread.messages as any[] || [];
+      const newMessage = {
+        senderId: req.user!.id,
+        senderName: req.user!.name,
+        content: content.trim(),
+        timestamp: new Date().toISOString(),
+        isRead: false
+      };
+
+      messages.push(newMessage);
+
+      // Update thread
+      const updated = await storage.updatePatientChatThread(req.params.id, {
+        messages,
+        lastMessageAt: new Date()
+      });
+
+      res.json({ success: true, message: newMessage, thread: updated });
+    } catch (error) {
+      console.error('Send chat message error:', error);
+      res.status(500).json({ message: 'Failed to send message' });
+    }
+  });
+
+  // Get patient medical history for chat
+  app.get('/api/chat/patient/:patientId/history', requireAuth, async (req, res) => {
+    try {
+      if (req.user!.role !== 'doctor' && req.user!.role !== 'admin') {
+        return res.status(403).json({ message: 'Only doctors can access patient history' });
+      }
+
+      const { patientId } = req.params;
+      
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient not found' });
+      }
+
+      const medicalRecords = await storage.getMedicalRecordsByPatient(patientId);
+      const appointments = await storage.getAppointmentsByPatient(patientId);
+
+      res.json({
+        patient,
+        medicalRecords,
+        appointments
+      });
+    } catch (error) {
+      console.error('Get patient history error:', error);
+      res.status(500).json({ message: 'Failed to fetch patient history' });
+    }
+  });
+
+  // Start consultation from chat (accept request and redirect)
+  app.post('/api/chat/start-consultation/:requestId', requireAuth, async (req, res) => {
+    try {
+      if (req.user!.role !== 'doctor') {
+        return res.status(403).json({ message: 'Only doctors can start consultations' });
+      }
+
+      const request = await storage.getConsultationRequest(req.params.requestId);
+      
+      if (!request) {
+        return res.status(404).json({ message: 'Consultation request not found' });
+      }
+
+      if (request.selectedDoctorId !== req.user!.id) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      if (request.status !== 'pending' && request.status !== 'accepted') {
+        return res.status(400).json({ message: 'Request is not available for consultation' });
+      }
+
+      // Update request status
+      await storage.updateConsultationRequest(req.params.requestId, {
+        status: 'accepted',
+        acceptedAt: new Date()
+      });
+
+      // Create or get consultation session
+      let session = await storage.getConsultationSessionByRequestId(req.params.requestId);
+      
+      if (!session) {
+        session = await storage.createConsultationSession({
+          consultationId: req.params.requestId,
+          roomMetadata: {
+            createdAt: new Date().toISOString(),
+            createdBy: req.user!.id
+          },
+          invitedSpecialists: [],
+          status: 'active'
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        session,
+        redirectUrl: `/consultation-session/${session.id}`
+      });
+    } catch (error) {
+      console.error('Start consultation error:', error);
+      res.status(500).json({ message: 'Failed to start consultation' });
+    }
+  });
+
   // Consultation Sessions - Collaborative consultation rooms
   app.post('/api/consultation-sessions', requireAuth, async (req, res) => {
     try {
