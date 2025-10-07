@@ -67,6 +67,9 @@ import fs from 'fs';
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
+  // Migrate database schema for new features
+  await migrateOnDutyColumns();
+  
   // Initialize default doctor if not exists and get the actual ID
   const actualDoctorId = await initializeDefaultDoctor();
   
@@ -11578,6 +11581,17 @@ Você é um assistente de saúde especializado que ajuda visitantes da Tele<M3D>
   app.use('/api/signatures', signaturesRouter);
 
   return httpServer;
+}
+
+// Migrate database schema to add new columns for 24h on-duty system
+async function migrateOnDutyColumns() {
+  try {
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS on_duty_until TIMESTAMP`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS on_duty_started_at TIMESTAMP`);
+    console.log('✓ On-duty columns migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate on-duty columns:', error);
+  }
 }
 
 // Initialize default doctor if not exists
