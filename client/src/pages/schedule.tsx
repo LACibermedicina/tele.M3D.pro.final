@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { format, startOfDay, endOfDay, isToday, addMinutes, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2, Video, Plus, MoreHorizontal } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2, Video, Plus, MoreHorizontal, Download, Upload } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import VideoConsultation from "@/components/video-consultation/VideoConsultation";
@@ -311,6 +311,77 @@ export default function Schedule() {
     });
   };
 
+  // Export calendar to iCal format
+  const handleExportCalendar = async () => {
+    try {
+      const response = await fetch(`/api/appointments/export/${DEFAULT_DOCTOR_ID}?format=ical`);
+      if (!response.ok) throw new Error('Failed to export calendar');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `agenda-telemed-${format(new Date(), 'yyyy-MM-dd')}.ics`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Agenda exportada",
+        description: "Seu calendário foi exportado com sucesso em formato iCal.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao exportar",
+        description: "Não foi possível exportar a agenda.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Import calendar from file
+  const handleImportCalendar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('doctorId', DEFAULT_DOCTOR_ID);
+
+      const response = await fetch('/api/appointments/import', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to import calendar');
+      }
+
+      const result = await response.json();
+      
+      toast({
+        title: "Agenda importada",
+        description: `${result.imported} eventos importados com sucesso.`,
+      });
+
+      // Refresh appointments
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
+      
+      // Reset file input
+      event.target.value = '';
+    } catch (error) {
+      toast({
+        title: "Erro ao importar",
+        description: error instanceof Error ? error.message : "Não foi possível importar a agenda.",
+        variant: "destructive",
+      });
+      event.target.value = '';
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'scheduled':
@@ -467,7 +538,18 @@ export default function Schedule() {
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={(date) => date && setSelectedDate(date)}
+                  onSelect={(date) => {
+                    if (date) {
+                      setSelectedDate(date);
+                      // Quick create appointment on double-click handled by day cell click
+                    }
+                  }}
+                  onDayClick={(day) => {
+                    // Double-click to quick create appointment
+                    setSelectedDate(day);
+                    setQuickBookMode(true);
+                    setIsCreateModalOpen(true);
+                  }}
                   locale={ptBR}
                   className="w-full backdrop-blur-sm bg-white/50 dark:bg-black/20 rounded-lg p-2"
                   data-testid="calendar-schedule"
@@ -494,6 +576,38 @@ export default function Schedule() {
                       <span className="text-muted-foreground">Em andamento</span>
                     </div>
                   </div>
+                </div>
+
+                {/* Export/Import Actions */}
+                <div className="mt-6 border-t border-white/10 dark:border-white/5 pt-4 space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground mb-3">Gerenciar Agenda</div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start gap-2"
+                    onClick={handleExportCalendar}
+                    data-testid="button-export-calendar"
+                  >
+                    <Download className="h-4 w-4" />
+                    Exportar Agenda
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start gap-2"
+                    onClick={() => document.getElementById('import-file-input')?.click()}
+                    data-testid="button-import-calendar"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Importar Agenda
+                  </Button>
+                  <input
+                    id="import-file-input"
+                    type="file"
+                    accept=".ics,.json"
+                    className="hidden"
+                    onChange={handleImportCalendar}
+                  />
                 </div>
               </CardContent>
             </Card>

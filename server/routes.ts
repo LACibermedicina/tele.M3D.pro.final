@@ -1413,6 +1413,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export appointments to iCal format
+  app.get('/api/appointments/export/:doctorId', async (req, res) => {
+    try {
+      const { doctorId } = req.params;
+      const { format: exportFormat } = req.query;
+      
+      // Get all appointments for doctor
+      const appointments = await storage.getAppointmentsByDoctor(doctorId);
+      
+      if (exportFormat === 'ical') {
+        // Generate iCal format
+        let icalContent = [
+          'BEGIN:VCALENDAR',
+          'VERSION:2.0',
+          'PRODID:-//Tele<M3D>//Telemedicine Platform//PT',
+          'CALSCALE:GREGORIAN',
+          'METHOD:PUBLISH',
+          'X-WR-CALNAME:Agenda Tele<M3D>',
+          'X-WR-TIMEZONE:America/Sao_Paulo',
+        ];
+
+        for (const apt of appointments) {
+          const startDate = new Date(apt.scheduledAt);
+          const endDate = new Date(startDate.getTime() + 30 * 60000); // 30 min default
+          
+          const formatICalDate = (date: Date) => {
+            return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+          };
+
+          icalContent.push(
+            'BEGIN:VEVENT',
+            `UID:${apt.id}@telemed.app`,
+            `DTSTAMP:${formatICalDate(new Date())}`,
+            `DTSTART:${formatICalDate(startDate)}`,
+            `DTEND:${formatICalDate(endDate)}`,
+            `SUMMARY:${apt.patientName || 'Consulta'}`,
+            `DESCRIPTION:Tipo: ${apt.type || 'consultation'}\\nStatus: ${apt.status}${apt.notes ? '\\nNotas: ' + apt.notes : ''}`,
+            `STATUS:${apt.status === 'scheduled' ? 'CONFIRMED' : 'TENTATIVE'}`,
+            `SEQUENCE:0`,
+            'END:VEVENT'
+          );
+        }
+
+        icalContent.push('END:VCALENDAR');
+        
+        res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="agenda-telemed-${new Date().toISOString().split('T')[0]}.ics"`);
+        res.send(icalContent.join('\r\n'));
+      } else {
+        // JSON format
+        res.json(appointments);
+      }
+    } catch (error) {
+      console.error('Export appointments error:', error);
+      res.status(500).json({ message: 'Failed to export appointments' });
+    }
+  });
+
+  // Import appointments from iCal or JSON
+  app.post('/api/appointments/import', upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file provided' });
+      }
+
+      const doctorId = req.body.doctorId || DEFAULT_DOCTOR_ID;
+      const fileContent = req.file.buffer.toString('utf-8');
+      let imported = 0;
+
+      if (req.file.originalname.endsWith('.ics')) {
+        // Parse iCal format
+        const lines = fileContent.split(/\r?\n/);
+        let currentEvent: any = null;
+
+        for (const line of lines) {
+          if (line.startsWith('BEGIN:VEVENT')) {
+            currentEvent = {};
+          } else if (line.startsWith('END:VEVENT') && currentEvent) {
+            // Create appointment from parsed event
+            if (currentEvent.dtstart) {
+              try {
+                const appointment = await storage.createAppointment({
+                  doctorId,
+                  patientId: '', // Will need to be matched or created
+                  scheduledAt: currentEvent.dtstart,
+                  type: 'consultation',
+                  status: 'scheduled',
+                  notes: currentEvent.description || '',
+                  aiScheduled: false,
+                });
+                imported++;
+              } catch (error) {
+                console.error('Failed to import event:', error);
+              }
+            }
+            currentEvent = null;
+          } else if (currentEvent) {
+            if (line.startsWith('DTSTART:')) {
+              const dateStr = line.split(':')[1];
+              currentEvent.dtstart = new Date(
+                `${dateStr.substring(0,4)}-${dateStr.substring(4,6)}-${dateStr.substring(6,8)}T${dateStr.substring(9,11)}:${dateStr.substring(11,13)}:${dateStr.substring(13,15)}Z`
+              );
+            } else if (line.startsWith('SUMMARY:')) {
+              currentEvent.summary = line.split(':').slice(1).join(':');
+            } else if (line.startsWith('DESCRIPTION:')) {
+              currentEvent.description = line.split(':').slice(1).join(':').replace(/\\n/g, '\n');
+            }
+          }
+        }
+      } else if (req.file.originalname.endsWith('.json')) {
+        // Parse JSON format
+        const events = JSON.parse(fileContent);
+        
+        for (const event of events) {
+          try {
+            await storage.createAppointment({
+              doctorId,
+              patientId: event.patientId || '',
+              scheduledAt: new Date(event.scheduledAt),
+              type: event.type || 'consultation',
+              status: event.status || 'scheduled',
+              notes: event.notes || '',
+              aiScheduled: false,
+            });
+            imported++;
+          } catch (error) {
+            console.error('Failed to import event:', error);
+          }
+        }
+      } else {
+        return res.status(400).json({ message: 'Unsupported file format. Use .ics or .json' });
+      }
+
+      res.json({ 
+        message: 'Import successful',
+        imported,
+        total: imported 
+      });
+    } catch (error) {
+      console.error('Import appointments error:', error);
+      res.status(500).json({ message: 'Failed to import appointments' });
+    }
+  });
+
   // WhatsApp Messages API
   app.get('/api/whatsapp/messages/:patientId', async (req, res) => {
     try {
