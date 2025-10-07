@@ -10666,6 +10666,208 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     }
   });
 
+  // Get all doctors
+  app.get('/api/doctors', async (req: Request, res: Response) => {
+    try {
+      const doctors = await db.select({
+        id: users.id,
+        name: users.name,
+        specialization: users.specialization,
+        medicalLicense: users.medicalLicense,
+        profilePicture: users.profilePicture,
+        isOnline: users.isOnline,
+        availableForImmediate: users.availableForImmediate,
+        onlineSince: users.onlineSince,
+      })
+        .from(users)
+        .where(eq(users.role, 'doctor'));
+
+      res.json(doctors);
+    } catch (error) {
+      console.error('Get doctors error:', error);
+      res.status(500).json({ message: 'Erro ao listar médicos' });
+    }
+  });
+
+  // Get online/available doctors
+  app.get('/api/doctors/online', async (req: Request, res: Response) => {
+    try {
+      const onlineDoctors = await db.select({
+        id: users.id,
+        name: users.name,
+        specialization: users.specialization,
+        medicalLicense: users.medicalLicense,
+        profilePicture: users.profilePicture,
+        isOnline: users.isOnline,
+        availableForImmediate: users.availableForImmediate,
+        onlineSince: users.onlineSince,
+      })
+        .from(users)
+        .where(and(
+          eq(users.role, 'doctor'),
+          eq(users.isOnline, true),
+          eq(users.availableForImmediate, true)
+        ));
+
+      res.json(onlineDoctors);
+    } catch (error) {
+      console.error('Get online doctors error:', error);
+      res.status(500).json({ message: 'Erro ao listar médicos disponíveis' });
+    }
+  });
+
+  // Update doctor online status
+  app.post('/api/doctors/status', requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!req.user || req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Apenas médicos podem atualizar status' });
+      }
+
+      const { isOnline, availableForImmediate } = req.body;
+
+      const updated = await db.update(users)
+        .set({
+          isOnline: isOnline ?? false,
+          availableForImmediate: availableForImmediate ?? false,
+          onlineSince: isOnline ? new Date() : null,
+        })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      res.json({
+        message: isOnline ? 'Status atualizado para online' : 'Status atualizado para offline',
+        doctor: updated[0]
+      });
+    } catch (error) {
+      console.error('Update doctor status error:', error);
+      res.status(500).json({ message: 'Erro ao atualizar status' });
+    }
+  });
+
+  // Get doctor schedule
+  app.get('/api/doctors/:doctorId/schedule', async (req: Request, res: Response) => {
+    try {
+      const { doctorId } = req.params;
+
+      const schedule = await db.select()
+        .from(doctorSchedule)
+        .where(eq(doctorSchedule.doctorId, doctorId));
+
+      res.json(schedule);
+    } catch (error) {
+      console.error('Get doctor schedule error:', error);
+      res.status(500).json({ message: 'Erro ao buscar agenda do médico' });
+    }
+  });
+
+  // Update doctor schedule
+  app.put('/api/doctors/:doctorId/schedule', requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!req.user || req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Apenas médicos podem definir horários' });
+      }
+
+      const { doctorId } = req.params;
+
+      // Verify the doctor is updating their own schedule or is admin
+      if (req.user.id !== doctorId && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Você só pode editar sua própria agenda' });
+      }
+
+      const { schedules } = req.body; // Array of schedule objects
+
+      // Delete existing schedules
+      await db.delete(doctorSchedule)
+        .where(eq(doctorSchedule.doctorId, doctorId));
+
+      // Insert new schedules
+      if (schedules && schedules.length > 0) {
+        await db.insert(doctorSchedule).values(
+          schedules.map((s: any) => ({
+            doctorId,
+            dayOfWeek: s.dayOfWeek,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            consultationDuration: s.consultationDuration || 30,
+            isActive: s.isActive ?? true,
+          }))
+        );
+      }
+
+      // Get updated schedule
+      const updatedSchedule = await db.select()
+        .from(doctorSchedule)
+        .where(eq(doctorSchedule.doctorId, doctorId));
+
+      res.json({
+        message: 'Horários atualizados com sucesso',
+        schedule: updatedSchedule
+      });
+    } catch (error) {
+      console.error('Update doctor schedule error:', error);
+      res.status(500).json({ message: 'Erro ao atualizar horários' });
+    }
+  });
+
+  // Request immediate consultation
+  app.post('/api/appointments/immediate', requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Autenticação necessária' });
+      }
+
+      // Get patient record
+      const patientRecord = await db.select()
+        .from(patients)
+        .where(eq(patients.userId, req.user.id))
+        .limit(1);
+
+      if (patientRecord.length === 0) {
+        return res.status(404).json({ message: 'Registro de paciente não encontrado' });
+      }
+
+      const patient = patientRecord[0];
+      const { doctorId, reason } = req.body;
+
+      if (!doctorId) {
+        return res.status(400).json({ message: 'Médico é obrigatório' });
+      }
+
+      // Verify doctor is online and available
+      const doctor = await db.select()
+        .from(users)
+        .where(and(
+          eq(users.id, doctorId),
+          eq(users.role, 'doctor'),
+          eq(users.isOnline, true),
+          eq(users.availableForImmediate, true)
+        ))
+        .limit(1);
+
+      if (doctor.length === 0) {
+        return res.status(400).json({ message: 'Médico não está disponível para atendimento imediato' });
+      }
+
+      // Create immediate appointment (scheduled for now)
+      const appointment = await db.insert(appointments).values({
+        patientId: patient.id,
+        doctorId,
+        scheduledAt: new Date(),
+        type: 'emergency',
+        status: 'scheduled',
+        notes: reason || 'Consulta imediata solicitada',
+      }).returning();
+
+      res.json({
+        message: 'Consulta imediata agendada com sucesso',
+        appointment: appointment[0]
+      });
+    } catch (error) {
+      console.error('Request immediate consultation error:', error);
+      res.status(500).json({ message: 'Erro ao solicitar consulta imediata' });
+    }
+  });
+
   // Schedule appointment via chatbot
   app.post('/api/chatbot/schedule', async (req: Request, res: Response) => {
     try {
