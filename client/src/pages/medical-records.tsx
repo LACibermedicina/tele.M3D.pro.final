@@ -121,7 +121,7 @@ export default function MedicalRecords() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Prontuários Médicos</h1>
-          <p className="text-muted-foreground">Sistema seguro de gestão de prontuários com assinatura digital demo</p>
+          <p className="text-muted-foreground">Acesso restrito a médicos e administradores - Sistema seguro com assinatura digital</p>
         </div>
         <div className="flex items-center space-x-2">
           <div className="security-badge px-3 py-1 rounded-full text-white text-xs font-medium">
