@@ -9348,10 +9348,10 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       );
 
       // Verify signature immediately
-      const verificationResult = await cryptoService.verifyPrescriptionSignature(
+      const verificationResult = await cryptoService.verifySignature(
+        JSON.stringify(prescriptionContent),
         signatureResult.signature,
-        signatureResult.documentHash,
-        signatureResult.certificateInfo
+        publicKey
       );
 
       // Create digital signature record
@@ -9362,11 +9362,11 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         doctorId: req.user.id,
         signature: signatureResult.signature,
         documentHash: signatureResult.documentHash,
-        publicKey: publicKey,
         certificateInfo: {
           ...certificateInfo,
           algorithm: 'RSA-SHA256',
-          keySize: 2048
+          keySize: 2048,
+          publicKey: publicKey
         },
         status: 'signed',
         signedAt: new Date(),
@@ -9426,19 +9426,22 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         return res.status(404).json({ message: 'Digital signature not found' });
       }
 
+      // Get public key from certificate info
+      const publicKey = signature.certificateInfo?.publicKey || '';
+      
       // Verify signature
-      const verificationResult = await cryptoService.verifyPrescriptionSignature(
-        signature.signature,
+      const isValid = await cryptoService.verifySignature(
         signature.documentHash,
-        signature.certificateInfo
+        signature.signature,
+        publicKey
       );
 
       res.json({
-        isValid: verificationResult.valid,
+        isValid,
         signature,
-        verification: verificationResult,
         prescriptionNumber: prescriptionData.prescriptionNumber,
-        signedAt: signature.signedAt
+        signedAt: signature.signedAt,
+        certificateInfo: signature.certificateInfo
       });
     } catch (error) {
       console.error('Verify prescription signature error:', error);
