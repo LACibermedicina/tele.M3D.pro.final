@@ -96,6 +96,15 @@ export default function QuickActionsBar({ userRole }: QuickActionsBarProps) {
         }
       },
       {
+        id: 'doctor-chat',
+        title: 'Chat Pacientes',
+        icon: <MessageSquare className="w-4 h-4" />,
+        shortcut: 'Ctrl+C',
+        action: () => {
+          window.location.href = '/doctor-chat';
+        }
+      },
+      {
         id: 'whatsapp',
         title: 'WhatsApp',
         icon: <MessageSquare className="w-4 h-4" />,
