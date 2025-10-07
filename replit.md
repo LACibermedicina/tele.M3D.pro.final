@@ -45,7 +45,8 @@ Security is implemented with user-based authentication and role-based access con
 - **Visitor Chatbot**: Publicly accessible AI chatbot with limited, safe functionality, referencing public medical PDFs.
 - **Guest Access Control**: Visitors (non-authenticated users) can view available services but cannot schedule appointments directly - they are prompted to login or register first.
 - **Doctor Availability Management**: Doctors can set weekly schedules, mark themselves as online, and enable/disable immediate consultation availability. Includes real-time status tracking and flexible scheduling with configurable consultation durations.
-- **Immediate Consultation System**: Patients can request instant consultations with doctors who are currently online and available, with auto-refresh to show real-time doctor availability and direct appointment creation for emergency needs.
+- **24-Hour On-Call (Plantão) System**: Doctors can activate a 24-hour on-call shift that automatically marks them as online/available when they login during the shift period. Features auto-countdown timer, priority display for on-duty doctors in patient consultation requests, and seamless scheduling with 15-minute interval appointments.
+- **Immediate Consultation System**: Patients can request instant consultations with doctors who are currently online and available, with auto-refresh to show real-time doctor availability, priority routing to on-duty doctors, and direct appointment creation for emergency needs.
 - **Doctor-Patient Chat System**: Real-time messaging between doctors and patients with pending consultation requests. Doctors can view patient medical history, send messages, and initiate video consultations directly from the chat interface. Only patients with open consultation requests can be attended.
 
 ## External Dependencies
