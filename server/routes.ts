@@ -964,6 +964,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (hasConflict) {
               aiResponse = 'Desculpe, esse horário não está mais disponível. Por favor, escolha outro horário.';
             } else {
+              // Create consultation request to link patient to doctor for chat
+              // Check if consultation request already exists
+              const existingRequests = await storage.getConsultationRequestsByDoctor(doctorId);
+              const hasExistingRequest = existingRequests.some(
+                req => req.patientId === patient.id && 
+                       (req.status === 'pending' || req.status === 'accepted')
+              );
+              
+              if (!hasExistingRequest) {
+                await storage.createConsultationRequest({
+                  patientId: patient.id,
+                  symptoms: message.text || 'Consulta agendada via WhatsApp',
+                  urgencyLevel: 'normal',
+                  preferredDateTime: scheduledAt,
+                  selectedDoctorId: doctorId,
+                  status: 'accepted'
+                });
+              }
+
               // Create appointment automatically
               const appointment = await storage.createAppointment({
                 patientId: patient.id,
@@ -1336,6 +1355,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const validatedData = insertAppointmentSchema.parse(requestData);
       const appointment = await storage.createAppointment(validatedData);
+      
+      // Create consultation request to link patient to doctor for chat
+      if (appointment.patientId && appointment.doctorId) {
+        // Check if consultation request already exists
+        const existingRequests = await storage.getConsultationRequestsByDoctor(appointment.doctorId);
+        const hasExistingRequest = existingRequests.some(
+          req => req.patientId === appointment.patientId && 
+                 (req.status === 'pending' || req.status === 'accepted')
+        );
+        
+        if (!hasExistingRequest) {
+          await storage.createConsultationRequest({
+            patientId: appointment.patientId,
+            symptoms: appointment.notes || appointment.type || 'Consulta agendada',
+            urgencyLevel: appointment.type === 'emergency' ? 'immediate' : 'normal',
+            preferredDateTime: new Date(appointment.scheduledAt),
+            selectedDoctorId: appointment.doctorId,
+            status: 'accepted'
+          });
+        }
+      }
+      
       broadcastToDoctor(appointment.doctorId || actualDoctorId || DEFAULT_DOCTOR_ID, { type: 'appointment_created', data: appointment });
       res.status(201).json(appointment);
     } catch (error) {
@@ -11110,6 +11151,26 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         return res.status(400).json({ message: 'Médico não está disponível para atendimento imediato' });
       }
 
+      // Create consultation request to link patient to doctor for chat
+      // Check if consultation request already exists
+      const existingRequests = await storage.getConsultationRequestsByDoctor(doctorId);
+      const hasExistingRequest = existingRequests.some(
+        req => req.patientId === patient.id && 
+               (req.status === 'pending' || req.status === 'accepted')
+      );
+      
+      let consultationRequest;
+      if (!hasExistingRequest) {
+        consultationRequest = await storage.createConsultationRequest({
+          patientId: patient.id,
+          symptoms: reason || 'Consulta imediata solicitada',
+          urgencyLevel: 'immediate',
+          preferredDateTime: new Date(),
+          selectedDoctorId: doctorId,
+          status: 'accepted'
+        });
+      }
+
       // Create immediate appointment (scheduled for now)
       const appointment = await db.insert(appointments).values({
         patientId: patient.id,
@@ -11122,7 +11183,8 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
 
       res.json({
         message: 'Consulta imediata agendada com sucesso',
-        appointment: appointment[0]
+        appointment: appointment[0],
+        consultationRequest
       });
     } catch (error) {
       console.error('Request immediate consultation error:', error);
@@ -11188,6 +11250,33 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         return res.status(409).json({
           message: 'Este horário não está disponível. Por favor, escolha outro horário.',
           availableSlots: await getAvailableSlots(doctorId, scheduledDate)
+        });
+      }
+
+      // Get patient record
+      const patientRecord = await db.select()
+        .from(patients)
+        .where(eq(patients.userId, req.user.id))
+        .limit(1);
+
+      const patientId = patientRecord.length > 0 ? patientRecord[0].id : req.user.id;
+
+      // Create consultation request to link patient to doctor for chat
+      // Check if consultation request already exists
+      const existingRequests = await storage.getConsultationRequestsByDoctor(doctorId);
+      const hasExistingRequest = existingRequests.some(
+        req => req.patientId === patientId && 
+               (req.status === 'pending' || req.status === 'accepted')
+      );
+      
+      if (!hasExistingRequest) {
+        await storage.createConsultationRequest({
+          patientId,
+          symptoms: type || 'Consulta via chatbot',
+          urgencyLevel: 'normal',
+          preferredDateTime: scheduledDate,
+          selectedDoctorId: doctorId,
+          status: 'accepted'
         });
       }
 
