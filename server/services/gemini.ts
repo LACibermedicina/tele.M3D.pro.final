@@ -204,6 +204,60 @@ export class GeminiService {
     }
   }
 
+  async analyzeSymptomsForMedicalRecord(symptoms: string, patientHistory: string): Promise<{
+    diagnosis: string;
+    treatment: string;
+    prescription: string;
+    hypotheses: DiagnosticHypothesis[];
+    recommendations: string;
+  }> {
+    try {
+      const prompt = `
+        Como um assistente médico especializado em medicina brasileira, analise os sintomas e histórico do paciente para auxiliar o médico na redação do prontuário médico.
+        
+        Sintomas apresentados: "${symptoms}"
+        Histórico do paciente: "${patientHistory}"
+        
+        IMPORTANTE: Esta é uma análise de suporte. O médico é responsável pela decisão final.
+        
+        Forneça uma análise completa em JSON com:
+        
+        1. diagnosis: Diagnóstico sugerido (hipótese diagnóstica principal com justificativa clínica detalhada)
+        
+        2. treatment: Plano de tratamento sugerido (incluindo medidas não-farmacológicas, orientações gerais, e quando necessário retorno)
+        
+        3. prescription: Prescrição médica sugerida (medicamentos com dosagem, via de administração, frequência e duração - use nomenclatura técnica adequada)
+        
+        4. hypotheses: Array de hipóteses diagnósticas diferenciais, cada uma com:
+           - condition: nome da condição
+           - probability: probabilidade (0-100)
+           - reasoning: justificativa
+           - ministryGuidelines: referência às diretrizes do MS quando aplicável
+        
+        5. recommendations: Recomendações adicionais (exames complementares, sinais de alerta, quando procurar pronto-socorro)
+        
+        Use terminologia médica apropriada e siga as diretrizes do Ministério da Saúde e protocolos clínicos brasileiros.
+        Responda APENAS com o objeto JSON válido.
+      `;
+
+      const result = await generateWithJSON(prompt);
+      
+      return {
+        diagnosis: result.diagnosis || '',
+        treatment: result.treatment || '',
+        prescription: result.prescription || '',
+        hypotheses: result.hypotheses || [],
+        recommendations: result.recommendations || ''
+      };
+    } catch (error) {
+      console.error('Gemini medical record analysis error:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : 'Failed to analyze symptoms for medical record'
+      });
+      throw error;
+    }
+  }
+
   async transcribeAndSummarizeConsultation(audioTranscript: string): Promise<{
     summary: string;
     keyPoints: string[];

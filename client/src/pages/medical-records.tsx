@@ -62,16 +62,23 @@ export default function MedicalRecords() {
   const analyzeSymptomsMutation = useMutation({
     mutationFn: (data: { symptoms: string; history: string }) =>
       apiRequest('POST', `/api/medical-records/${selectedPatientId}/analyze`, data),
-    onSuccess: (response) => {
-      toast({
-        title: "Análise IA Concluída",
-        description: "Hipóteses diagnósticas geradas com sucesso!",
-      });
+    onSuccess: (response: any) => {
+      if (response.analysis) {
+        // Preencher os campos do formulário com a análise IA
+        form.setValue('diagnosis', response.analysis.diagnosis || '');
+        form.setValue('treatment', response.analysis.treatment || '');
+        form.setValue('prescription', response.analysis.prescription || '');
+        
+        toast({
+          title: "Análise IA Concluída",
+          description: response.message || "Os campos foram preenchidos com as sugestões da IA. Revise e edite conforme necessário.",
+        });
+      }
     },
     onError: () => {
       toast({
         title: "Erro na Análise",
-        description: "Erro ao gerar hipóteses diagnósticas.",
+        description: "Erro ao gerar análise IA. Tente novamente.",
         variant: "destructive",
       });
     },

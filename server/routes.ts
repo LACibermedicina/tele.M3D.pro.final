@@ -1618,39 +1618,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Generate AI diagnostic hypotheses
-      let hypotheses;
+      // Generate comprehensive AI analysis for medical record
+      let analysis;
       try {
-        hypotheses = await geminiService.generateDiagnosticHypotheses(symptoms, history || '');
-      } catch (openaiError) {
-        console.error('OpenAI service unavailable:', {
-          status: openaiError instanceof Error ? openaiError.name : 'Unknown',
+        analysis = await geminiService.analyzeSymptomsForMedicalRecord(symptoms, history || '');
+      } catch (aiError) {
+        console.error('AI analysis service error:', {
+          status: aiError instanceof Error ? aiError.name : 'Unknown',
           message: 'AI diagnostic service temporarily unavailable'
         });
         return res.status(502).json({ 
           message: 'AI diagnostic service temporarily unavailable',
-          hypotheses: [] 
+          analysis: null
         });
       }
       
-      // Only create medical record if we have hypotheses
-      if (!hypotheses || hypotheses.length === 0) {
-        return res.json({ hypotheses: [], message: 'No diagnostic hypotheses generated' });
-      }
-      
-      // Save the AI analysis to medical records
-      const doctorId = actualDoctorId || DEFAULT_DOCTOR_ID;
-      const medicalRecord = await storage.createMedicalRecord({
-        patientId,
-        doctorId,
-        appointmentId,
-        symptoms,
-        diagnosticHypotheses: hypotheses,
-        isEncrypted: true
+      // Return the complete analysis without creating a medical record yet
+      // The frontend will use this to populate the form fields
+      res.json({
+        analysis: {
+          diagnosis: analysis.diagnosis,
+          treatment: analysis.treatment,
+          prescription: analysis.prescription,
+          recommendations: analysis.recommendations,
+          hypotheses: analysis.hypotheses
+        },
+        message: 'Análise IA concluída com sucesso. Revise e edite conforme necessário antes de salvar.'
       });
-      
-      // Return both hypotheses and the created medical record
-      res.json({ hypotheses, medicalRecordId: medicalRecord.id });
     } catch (error) {
       console.error('Diagnostic analysis error:', {
         message: error instanceof Error ? error.message : 'Unknown error',
