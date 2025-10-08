@@ -13,6 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { z } from "zod";
 import { formatErrorForToast } from "@/lib/error-handler";
+import { MessageCircle, Calendar } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const patientFormSchema = insertPatientSchema.extend({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -26,6 +29,11 @@ export default function Patients() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isWhatsAppInviteOpen, setIsWhatsAppInviteOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [inviteDate, setInviteDate] = useState("");
+  const [inviteTime, setInviteTime] = useState("");
+  const [inviteMessage, setInviteMessage] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -147,6 +155,55 @@ export default function Patients() {
     if (confirm(`Tem certeza que deseja remover o paciente ${patient.name}? Esta ação não pode ser desfeita.`)) {
       deletePatientMutation.mutate(patient.id);
     }
+  };
+
+  const sendWhatsAppInviteMutation = useMutation({
+    mutationFn: (data: { patientId: string; date: string; time: string; message?: string }) => 
+      apiRequest('POST', '/api/whatsapp/invite-consultation', data),
+    onSuccess: () => {
+      toast({
+        title: "Convite Enviado!",
+        description: "O paciente receberá o convite via WhatsApp em breve.",
+      });
+      setIsWhatsAppInviteOpen(false);
+      setSelectedPatient(null);
+      setInviteDate("");
+      setInviteTime("");
+      setInviteMessage("");
+    },
+    onError: (error) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({
+        title: errorInfo.title,
+        description: errorInfo.description,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleWhatsAppInvite = (patient: Patient) => {
+    setSelectedPatient(patient);
+    // Set default message
+    setInviteMessage(`Olá ${patient.name}! Gostaria de agendar uma consulta com você. Por favor, confirme sua disponibilidade para a data sugerida.`);
+    setIsWhatsAppInviteOpen(true);
+  };
+
+  const handleSendInvite = () => {
+    if (!selectedPatient || !inviteDate || !inviteTime) {
+      toast({
+        title: "Campos Obrigatórios",
+        description: "Por favor, preencha data e hora da consulta.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    sendWhatsAppInviteMutation.mutate({
+      patientId: selectedPatient.id,
+      date: inviteDate,
+      time: inviteTime,
+      message: inviteMessage,
+    });
   };
 
   const filteredPatients = (patients || []).filter((patient: Patient) =>
@@ -421,14 +478,26 @@ export default function Patients() {
           filteredPatients.map((patient: any) => (
             <Card key={patient.id} className="patient-card" data-testid={`card-patient-${patient.id}`}>
               <CardHeader className="pb-3">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(210, 85%, 95%)' }}>
-                    <i className="fas fa-user text-lg" style={{ color: 'var(--medical-primary)' }}></i>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(210, 85%, 95%)' }}>
+                      <i className="fas fa-user text-lg" style={{ color: 'var(--medical-primary)' }}></i>
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg" data-testid={`text-patient-name-${patient.id}`}>{patient.name}</CardTitle>
+                      <p className="text-sm text-muted-foreground" data-testid={`text-patient-phone-${patient.id}`}>{patient.phone}</p>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-lg" data-testid={`text-patient-name-${patient.id}`}>{patient.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground" data-testid={`text-patient-phone-${patient.id}`}>{patient.phone}</p>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleWhatsAppInvite(patient)}
+                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                    title="Convidar para consulta via WhatsApp"
+                    data-testid={`button-whatsapp-invite-${patient.id}`}
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -493,6 +562,96 @@ export default function Patients() {
           ))
         )}
       </div>
+
+      {/* WhatsApp Invite Dialog */}
+      <Dialog open={isWhatsAppInviteOpen} onOpenChange={setIsWhatsAppInviteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-green-600" />
+              Convidar via WhatsApp
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedPatient && (
+            <div className="space-y-4">
+              <div className="bg-muted p-3 rounded-lg">
+                <p className="text-sm font-medium">Paciente: {selectedPatient.name}</p>
+                <p className="text-xs text-muted-foreground">{selectedPatient.phone}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="invite-date">Data da Consulta</Label>
+                  <div className="relative">
+                    <Input
+                      id="invite-date"
+                      type="date"
+                      value={inviteDate}
+                      onChange={(e) => setInviteDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      data-testid="input-invite-date"
+                    />
+                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="invite-time">Horário</Label>
+                  <Input
+                    id="invite-time"
+                    type="time"
+                    value={inviteTime}
+                    onChange={(e) => setInviteTime(e.target.value)}
+                    data-testid="input-invite-time"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="invite-message">Mensagem Personalizada</Label>
+                <Textarea
+                  id="invite-message"
+                  value={inviteMessage}
+                  onChange={(e) => setInviteMessage(e.target.value)}
+                  placeholder="Digite uma mensagem para o paciente..."
+                  rows={4}
+                  data-testid="textarea-invite-message"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                <MessageCircle className="h-4 w-4 text-green-600" />
+                <p className="text-xs text-green-700 dark:text-green-400">
+                  O convite será enviado via WhatsApp automaticamente
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsWhatsAppInviteOpen(false);
+                    setSelectedPatient(null);
+                  }}
+                  data-testid="button-cancel-invite"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSendInvite}
+                  disabled={sendWhatsAppInviteMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  data-testid="button-send-invite"
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  {sendWhatsAppInviteMutation.isPending ? "Enviando..." : "Enviar Convite"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

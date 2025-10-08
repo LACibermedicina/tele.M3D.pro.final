@@ -1629,6 +1629,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // WhatsApp invite patient for consultation
+  app.post('/api/whatsapp/invite-consultation', async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const { patientId, date, time, message } = req.body;
+
+      if (!patientId || !date || !time) {
+        return res.status(400).json({ message: 'Patient ID, date and time are required' });
+      }
+
+      // Get patient details
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient not found' });
+      }
+
+      // Format date and time
+      const appointmentDate = new Date(`${date}T${time}`);
+      const formattedDate = appointmentDate.toLocaleDateString('pt-BR', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      const formattedTime = appointmentDate.toLocaleTimeString('pt-BR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+
+      // Prepare WhatsApp message
+      const whatsappMessage = message || 
+        `Olá ${patient.name}! 🏥\n\n` +
+        `Gostaria de agendar uma consulta com você:\n\n` +
+        `📅 Data: ${formattedDate}\n` +
+        `🕐 Horário: ${formattedTime}\n\n` +
+        `Por favor, confirme sua disponibilidade respondendo esta mensagem.\n\n` +
+        `Att,\nDr(a). ${req.user.name}`;
+
+      // Get patient's WhatsApp number
+      const whatsappNumber = patient.whatsappNumber || patient.phone;
+      
+      // Send message via WhatsApp API
+      const success = await whatsAppService.sendMessage(whatsappNumber, whatsappMessage);
+      
+      if (success) {
+        // Save sent message to database
+        await storage.createWhatsappMessage({
+          patientId: patient.id,
+          fromNumber: process.env.WHATSAPP_PHONE_NUMBER_ID || 'system',
+          toNumber: whatsappNumber,
+          message: whatsappMessage,
+          messageType: 'text',
+          isFromAI: false,
+          processed: true
+        });
+
+        console.log(`📤 Consultation invite sent to ${patient.name} via WhatsApp`);
+
+        res.json({ 
+          success: true, 
+          message: 'Convite enviado com sucesso',
+          sentTo: whatsappNumber
+        });
+      } else {
+        res.status(500).json({ message: 'Falha ao enviar mensagem via WhatsApp' });
+      }
+    } catch (error) {
+      console.error('WhatsApp invite consultation error:', error);
+      res.status(500).json({ message: 'Erro ao enviar convite' });
+    }
+  });
+
   // Medical Records API with role-based access control
   app.get('/api/medical-records/:patientId', async (req, res) => {
     try {
