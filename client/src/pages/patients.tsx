@@ -16,6 +16,8 @@ import { formatErrorForToast } from "@/lib/error-handler";
 import { MessageCircle, Calendar } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@/assets/origami-hero.svg";
 
 const patientFormSchema = insertPatientSchema.extend({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -220,7 +222,8 @@ export default function Patients() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Pacientes</h1>
@@ -652,6 +655,7 @@ export default function Patients() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </PageWrapper>
   );
 }
