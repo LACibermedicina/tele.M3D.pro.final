@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Download, Eye, Printer, Shield, Calendar } from "lucide-react";
+import QRCodeGenerator from "@/components/ui/qr-code-generator";
 
 interface PrescriptionPDFViewerProps {
   medicalRecordId: string;
@@ -185,6 +186,12 @@ export default function PrescriptionPDFViewer({
             <Download className="w-4 h-4 mr-2" />
             {downloadPrescriptionPDF.isPending ? "Gerando..." : "Receita PDF"}
           </Button>
+
+          <QRCodeGenerator
+            url={`${window.location.origin}/medical-records/${medicalRecordId}`}
+            title="QR Code do Prontuário"
+            description="Compartilhe este QR code para acesso rápido ao prontuário médico"
+          />
 
           <Button 
             variant="outline" 

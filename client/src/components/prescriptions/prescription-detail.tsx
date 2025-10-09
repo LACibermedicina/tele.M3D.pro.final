@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useAuth } from '@/contexts/AuthContext';
+import QRCodeGenerator from '@/components/ui/qr-code-generator';
 
 interface PrescriptionDetailProps {
   prescriptionId: string;
@@ -485,6 +486,12 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
               <Download className="h-4 w-4 mr-2" />
               Baixar PDF
             </Button>
+            
+            <QRCodeGenerator
+              url={`${window.location.origin}/prescriptions/${prescriptionId}`}
+              title="QR Code da Prescrição"
+              description="Compartilhe este QR code para acesso rápido à prescrição"
+            />
             
             <Button 
               variant="outline" 
