@@ -16,7 +16,6 @@ import { useToast } from "@/hooks/use-toast";
 import VideoConsultation from "@/components/video-consultation/VideoConsultation";
 import { formatErrorForToast } from "@/lib/error-handler";
 import PageWrapper from "@/components/layout/page-wrapper";
-import origamiHeroImage from "@/assets/origami-hero.svg";
 
 export default function Schedule() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -440,7 +439,7 @@ export default function Schedule() {
   }
 
   return (
-    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+    <PageWrapper variant="origami">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" data-testid="schedule-page-background">
         {/* Modern Header with Notifications */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
