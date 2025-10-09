@@ -591,16 +591,17 @@ export default function Header() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className={`icon-link-primary group w-10 h-10 hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg ${
-                      isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
-                    }`}
+                    className="icon-link-primary group w-10 h-10 hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg text-white"
                     data-testid="button-documentation"
                   >
-                    <BookOpen className={`h-5 w-5 transition-all duration-300 ${
-                      isScrolled 
-                        ? 'drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]' 
-                        : ''
-                    } group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`} />
+                    <BookOpen 
+                      className="h-5 w-5 transition-all duration-300 text-white group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]" 
+                      style={{
+                        filter: isScrolled 
+                          ? 'none' 
+                          : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                      }}
+                    />
                   </Button>
                 </Link>
               </TooltipTrigger>
