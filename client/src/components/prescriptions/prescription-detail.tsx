@@ -130,24 +130,32 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
       
       if (!response.ok) throw new Error('Failed to generate PDF');
       
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `prescricao-${prescription?.prescriptionNumber || prescriptionId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      const htmlContent = await response.text();
       
-      toast({
-        title: "PDF Baixado",
-        description: "O PDF da prescrição foi baixado com sucesso.",
-      });
+      // Open HTML in new window for printing/saving as PDF
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        // Wait for content to load then trigger print dialog
+        printWindow.onload = () => {
+          setTimeout(() => {
+            printWindow.print();
+          }, 250);
+        };
+        
+        toast({
+          title: "PDF Pronto",
+          description: "Use a opção 'Salvar como PDF' na janela de impressão.",
+        });
+      } else {
+        throw new Error('Popup bloqueado. Permita popups para baixar o PDF.');
+      }
     } catch (error) {
       toast({
-        title: "Erro ao Baixar PDF",
-        description: "Não foi possível gerar o PDF da prescrição.",
+        title: "Erro ao Gerar PDF",
+        description: error instanceof Error ? error.message : "Não foi possível gerar o PDF da prescrição.",
         variant: "destructive",
       });
     }

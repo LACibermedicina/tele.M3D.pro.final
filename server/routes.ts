@@ -10407,17 +10407,52 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         .where(eq(users.id, prescriptionData.doctorId))
         .limit(1);
 
-      // Generate PDF using pdf-generator service
-      const pdfBuffer = await pdfGeneratorService.generatePrescriptionPDF({
-        prescription: prescriptionData,
-        items,
-        patient: patientData[0],
-        doctor: doctorData[0]
+      // Get digital signature if available
+      let digitalSignature = null;
+      if (prescriptionData.digitalSignatureId) {
+        const signatureData = await db.select()
+          .from(digitalSignatures)
+          .where(eq(digitalSignatures.id, prescriptionData.digitalSignatureId))
+          .limit(1);
+        
+        if (signatureData.length) {
+          digitalSignature = {
+            signature: signatureData[0].signature,
+            certificateInfo: signatureData[0].certificateInfo,
+            timestamp: signatureData[0].signedAt?.toISOString() || new Date().toISOString()
+          };
+        }
+      }
+
+      // Build prescription text from items
+      const prescriptionText = items
+        .sort((a, b) => (a.priority || 0) - (b.priority || 0))
+        .map((item, index) => {
+          const medName = item.customMedication || 'Medicamento';
+          return `${index + 1}. ${medName}\n   Dosagem: ${item.dosage}\n   Frequência: ${item.frequency}\n   Duração: ${item.duration}\n   Quantidade: ${item.quantity} unidades\n   Instruções: ${item.instructions}${item.notes ? '\n   Obs: ' + item.notes : ''}`;
+        })
+        .join('\n\n');
+
+      // Generate HTML for PDF
+      const htmlContent = await pdfGeneratorService.generatePrescriptionPDF({
+        patientName: patientData[0]?.name || 'Paciente',
+        patientAge: new Date().getFullYear() - (patientData[0]?.dateOfBirth ? new Date(patientData[0].dateOfBirth).getFullYear() : 0),
+        patientAddress: patientData[0]?.address || 'Não informado',
+        doctorName: doctorData[0]?.name || 'Médico',
+        doctorCRM: doctorData[0]?.digitalCertificate?.split('-')[1] || '000000',
+        doctorCRMState: doctorData[0]?.digitalCertificate?.split('-')[2] || 'SP',
+        prescriptionText: prescriptionText,
+        date: new Date(prescriptionData.createdAt).toLocaleDateString('pt-BR', { 
+          day: 'numeric', 
+          month: 'long', 
+          year: 'numeric' 
+        }),
+        digitalSignature: digitalSignature
       });
 
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="prescricao-${prescriptionData.prescriptionNumber}.pdf"`);
-      res.send(pdfBuffer);
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Disposition', `inline; filename="prescricao-${prescriptionData.prescriptionNumber}.html"`);
+      res.send(htmlContent);
     } catch (error) {
       console.error('Generate prescription PDF error:', error);
       res.status(500).json({ message: 'Failed to generate prescription PDF' });
