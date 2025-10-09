@@ -39,6 +39,46 @@ export default function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Determine if we're on an authenticated page (not home/login)
+  const isAuthenticatedPage = user !== null && location !== '/' && location !== '/login';
+
+  // Get text color based on page type and scroll state
+  const getTextColor = () => {
+    if (isAuthenticatedPage) {
+      // Authenticated pages: dark when not scrolled, light when scrolled
+      return isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-900';
+    } else {
+      // Home/Login: always white
+      return 'text-white';
+    }
+  };
+
+  // Get logo filter based on page type and scroll state
+  const getLogoFilter = () => {
+    if (isAuthenticatedPage) {
+      // Authenticated pages: dark logo when not scrolled, white when scrolled
+      return isScrolled 
+        ? 'brightness(0) invert(1)' 
+        : 'brightness(0) invert(0)';
+    } else {
+      // Home/Login: always white with shadow when not scrolled
+      return isScrolled 
+        ? 'brightness(0) invert(1)' 
+        : 'brightness(0) invert(1) drop-shadow(0 4px 20px rgba(0,0,0,0.3))';
+    }
+  };
+
+  // Get shadow effect based on page type and scroll state
+  const getShadowEffect = () => {
+    if (isAuthenticatedPage) {
+      // No shadow on authenticated pages when not scrolled
+      return isScrolled ? 'none' : 'none';
+    } else {
+      // Shadow on home/login when not scrolled
+      return isScrolled ? 'none' : '0 4px 20px rgba(0,0,0,0.3), 0 2px 10px rgba(0,0,0,0.2)';
+    }
+  };
+
   // Get only first and second name
   const getShortName = (fullName: string) => {
     const names = fullName.trim().split(' ');
@@ -301,15 +341,13 @@ export default function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="md:hidden w-10 h-10 hover:bg-primary/10 transition-colors duration-300 text-white"
+                      className={`md:hidden w-10 h-10 hover:bg-primary/10 transition-colors duration-300 ${getTextColor()}`}
                       data-testid="button-hamburger"
                     >
                       <Menu 
-                        className="h-5 w-5 transition-all duration-300 text-white" 
+                        className={`h-5 w-5 transition-all duration-300 ${getTextColor()}`}
                         style={{
-                          filter: isScrolled 
-                            ? 'none' 
-                            : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                          filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
                         }}
                       />
                     </Button>
@@ -439,18 +477,14 @@ export default function Header() {
                     alt="Tele<M3D> Logo" 
                     className="w-full h-full object-contain transition-all duration-300 group-hover:scale-110"
                     style={{ 
-                      filter: isScrolled 
-                        ? 'brightness(0) invert(1)' 
-                        : 'brightness(0) invert(1) drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                      filter: getLogoFilter()
                     }}
                   />
                 </div>
                 <span 
-                  className="hidden md:block text-xl font-bold group-hover:text-primary transition-all duration-300 text-white"
+                  className={`hidden md:block text-xl font-bold group-hover:text-primary transition-all duration-300 ${getTextColor()}`}
                   style={{
-                    textShadow: isScrolled 
-                      ? 'none' 
-                      : '0 4px 20px rgba(0,0,0,0.3), 0 2px 10px rgba(0,0,0,0.2)'
+                    textShadow: getShadowEffect()
                   }}
                 >
                   Tele&lt;M3D&gt;
@@ -462,22 +496,18 @@ export default function Header() {
               <div className="hidden md:flex items-center space-x-2">
                 <div>
                   <p 
-                    className="text-sm font-semibold transition-all duration-300 text-white" 
+                    className={`text-sm font-semibold transition-all duration-300 ${getTextColor()}`}
                     data-testid="text-greeting"
                     style={{
-                      textShadow: isScrolled 
-                        ? 'none' 
-                        : '0 4px 20px rgba(0,0,0,0.3), 0 2px 10px rgba(0,0,0,0.2)'
+                      textShadow: getShadowEffect()
                     }}
                   >
                     {t("greeting.hello")}, {getShortName(user.name)}!
                   </p>
                   <p 
-                    className="text-xs transition-all duration-300 text-gray-200" 
+                    className={`text-xs transition-all duration-300 ${isAuthenticatedPage && !isScrolled ? 'text-gray-600' : 'text-gray-200'}`}
                     style={{
-                      textShadow: isScrolled 
-                        ? 'none' 
-                        : '0 2px 10px rgba(0,0,0,0.25)'
+                      textShadow: isAuthenticatedPage ? 'none' : getShadowEffect()
                     }}
                   >
                     {getRoleDisplay(user.role)}
@@ -488,16 +518,14 @@ export default function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="w-8 h-8 hover:bg-primary/10 transition-colors duration-300 text-white"
+                      className={`w-8 h-8 hover:bg-primary/10 transition-colors duration-300 ${getTextColor()}`}
                       onClick={() => setIsCommandPaletteOpen(true)}
                       data-testid="button-command-palette"
                     >
                       <Command 
-                        className="h-4 w-4 transition-all duration-300 text-white" 
+                        className={`h-4 w-4 transition-all duration-300 ${getTextColor()}`}
                         style={{
-                          filter: isScrolled 
-                            ? 'none' 
-                            : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                          filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
                         }}
                       />
                     </Button>
@@ -514,16 +542,14 @@ export default function Header() {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="icon-link-primary group w-10 h-10 hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                  className={`icon-link-primary group w-10 h-10 hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg ${getTextColor()}`}
                   data-testid="button-support"
                   onClick={handleSupportContact}
                 >
                   <i 
-                    className="fas fa-headset text-lg transition-all duration-300 text-white group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]"
+                    className={`fas fa-headset text-lg transition-all duration-300 ${getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
                     style={{
-                      filter: isScrolled 
-                        ? 'none' 
-                        : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                      filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
                     }}
                   ></i>
                 </Button>
@@ -551,10 +577,10 @@ export default function Header() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className={`icon-link-primary group w-10 h-10 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg text-white ${
+                          className={`icon-link-primary group w-10 h-10 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg ${
                             isActive
-                              ? "shadow-md"
-                              : "hover:text-white hover:bg-primary/10"
+                              ? "text-white shadow-md"
+                              : `${getTextColor()} hover:bg-primary/10`
                           }`}
                           style={{
                             background: isActive
@@ -563,13 +589,11 @@ export default function Header() {
                           }}
                         >
                           <IconComponent 
-                            className="h-5 w-5 transition-all duration-300 text-white group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]" 
+                            className={`h-5 w-5 transition-all duration-300 ${isActive ? 'text-white' : getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
                             style={{
                               filter: isActive 
                                 ? 'drop-shadow(0 2px 8px rgba(255,255,255,0.3))'
-                                : isScrolled
-                                ? 'none'
-                                : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                                : (isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'))
                             }}
                           />
                         </Button>
@@ -591,15 +615,13 @@ export default function Header() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="icon-link-primary group w-10 h-10 hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg text-white"
+                    className={`icon-link-primary group w-10 h-10 hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg ${getTextColor()}`}
                     data-testid="button-documentation"
                   >
                     <BookOpen 
-                      className="h-5 w-5 transition-all duration-300 text-white group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]" 
+                      className={`h-5 w-5 transition-all duration-300 ${getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
                       style={{
-                        filter: isScrolled 
-                          ? 'none' 
-                          : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                        filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
                       }}
                     />
                   </Button>
@@ -687,15 +709,13 @@ export default function Header() {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          className="icon-link-primary group w-10 h-10 hover:bg-amber-500/20 transition-all duration-300 hover:scale-110 hover:shadow-lg text-white"
+                          className={`icon-link-primary group w-10 h-10 hover:bg-amber-500/20 transition-all duration-300 hover:scale-110 hover:shadow-lg ${getTextColor()}`}
                           data-testid="button-coffee-room"
                         >
                           <Coffee 
-                            className="h-5 w-5 transition-all duration-300 text-white group-hover:drop-shadow-[0_2px_12px_rgba(251,191,36,0.8)]" 
+                            className={`h-5 w-5 transition-all duration-300 ${getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(251,191,36,0.8)]`}
                             style={{
-                              filter: isScrolled 
-                                ? 'none' 
-                                : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                              filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
                             }}
                           />
                         </Button>
@@ -712,16 +732,14 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="icon-link-destructive group w-10 h-10 hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg text-white"
+                      className={`icon-link-destructive group w-10 h-10 hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg ${isAuthenticatedPage && !isScrolled ? 'text-red-600' : 'text-white'}`}
                       data-testid="button-emergency"
                       onClick={handleEmergencyContact}
                     >
                       <Ambulance 
-                        className="h-5 w-5 transition-all duration-300 text-white group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)]" 
+                        className={`h-5 w-5 transition-all duration-300 ${isAuthenticatedPage && !isScrolled ? 'text-red-600' : 'text-white'} group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)]`}
                         style={{
-                          filter: isScrolled 
-                            ? 'none' 
-                            : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                          filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
                         }}
                       />
                     </Button>
@@ -744,22 +762,18 @@ export default function Header() {
                       </Avatar>
                       <div className="hidden sm:block text-left">
                         <p 
-                          className="text-sm font-semibold transition-all duration-300 text-white" 
+                          className={`text-sm font-semibold transition-all duration-300 ${getTextColor()}`}
                           data-testid="text-user-name"
                           style={{
-                            textShadow: isScrolled 
-                              ? 'none' 
-                              : '0 4px 20px rgba(0,0,0,0.3), 0 2px 10px rgba(0,0,0,0.2)'
+                            textShadow: getShadowEffect()
                           }}
                         >
                           {user.name}
                         </p>
                         <p 
-                          className="text-xs transition-all duration-300 text-gray-200" 
+                          className={`text-xs transition-all duration-300 ${isAuthenticatedPage && !isScrolled ? 'text-gray-600' : 'text-gray-200'}`}
                           style={{
-                            textShadow: isScrolled 
-                              ? 'none' 
-                              : '0 2px 10px rgba(0,0,0,0.25)'
+                            textShadow: isAuthenticatedPage ? 'none' : getShadowEffect()
                           }}
                         >
                           {getRoleDisplay(user.role)}
