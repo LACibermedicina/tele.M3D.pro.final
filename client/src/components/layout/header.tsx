@@ -301,14 +301,17 @@ export default function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`md:hidden w-10 h-10 hover:bg-primary/10 transition-colors duration-300 ${
-                        isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
-                      }`}
+                      className="md:hidden w-10 h-10 hover:bg-primary/10 transition-colors duration-300 text-white"
                       data-testid="button-hamburger"
                     >
-                      <Menu className={`h-5 w-5 transition-colors duration-300 ${
-                        isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
-                      }`} />
+                      <Menu 
+                        className="h-5 w-5 transition-all duration-300 text-white" 
+                        style={{
+                          filter: isScrolled 
+                            ? 'none' 
+                            : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                        }}
+                      />
                     </Button>
                   </SheetTrigger>
                 </TooltipTrigger>
@@ -438,13 +441,18 @@ export default function Header() {
                     style={{ 
                       filter: isScrolled 
                         ? 'brightness(0) invert(1)' 
-                        : 'brightness(0) invert(0) drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                        : 'brightness(0) invert(1) drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
                     }}
                   />
                 </div>
-                <span className={`hidden md:block text-xl font-bold group-hover:text-primary transition-colors duration-300 drop-shadow-lg ${
-                  isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
-                }`}>
+                <span 
+                  className="hidden md:block text-xl font-bold group-hover:text-primary transition-all duration-300 text-white"
+                  style={{
+                    textShadow: isScrolled 
+                      ? 'none' 
+                      : '0 4px 20px rgba(0,0,0,0.3), 0 2px 10px rgba(0,0,0,0.2)'
+                  }}
+                >
                   Tele&lt;M3D&gt;
                 </span>
               </div>
@@ -453,14 +461,25 @@ export default function Header() {
             {user && (
               <div className="hidden md:flex items-center space-x-2">
                 <div>
-                  <p className={`text-sm font-semibold transition-colors duration-300 ${
-                    isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
-                  }`} data-testid="text-greeting">
+                  <p 
+                    className="text-sm font-semibold transition-all duration-300 text-white" 
+                    data-testid="text-greeting"
+                    style={{
+                      textShadow: isScrolled 
+                        ? 'none' 
+                        : '0 4px 20px rgba(0,0,0,0.3), 0 2px 10px rgba(0,0,0,0.2)'
+                    }}
+                  >
                     {t("greeting.hello")}, {getShortName(user.name)}!
                   </p>
-                  <p className={`text-xs transition-colors duration-300 ${
-                    isScrolled ? 'text-gray-300' : 'text-gray-600 dark:text-gray-400'
-                  }`}>
+                  <p 
+                    className="text-xs transition-all duration-300 text-gray-200" 
+                    style={{
+                      textShadow: isScrolled 
+                        ? 'none' 
+                        : '0 2px 10px rgba(0,0,0,0.25)'
+                    }}
+                  >
                     {getRoleDisplay(user.role)}
                   </p>
                 </div>
@@ -469,15 +488,18 @@ export default function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`w-8 h-8 hover:bg-primary/10 transition-colors duration-300 ${
-                        isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
-                      }`}
+                      className="w-8 h-8 hover:bg-primary/10 transition-colors duration-300 text-white"
                       onClick={() => setIsCommandPaletteOpen(true)}
                       data-testid="button-command-palette"
                     >
-                      <Command className={`h-4 w-4 transition-colors duration-300 ${
-                        isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
-                      }`} />
+                      <Command 
+                        className="h-4 w-4 transition-all duration-300 text-white" 
+                        style={{
+                          filter: isScrolled 
+                            ? 'none' 
+                            : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                        }}
+                      />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -496,11 +518,14 @@ export default function Header() {
                   data-testid="button-support"
                   onClick={handleSupportContact}
                 >
-                  <i className={`fas fa-headset text-lg transition-all duration-300 ${
-                    isScrolled 
-                      ? 'text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]' 
-                      : 'text-gray-800 dark:text-gray-200'
-                  } group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}></i>
+                  <i 
+                    className="fas fa-headset text-lg transition-all duration-300 text-white group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]"
+                    style={{
+                      filter: isScrolled 
+                        ? 'none' 
+                        : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                    }}
+                  ></i>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
@@ -526,12 +551,10 @@ export default function Header() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className={`icon-link-primary group w-10 h-10 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg ${
+                          className={`icon-link-primary group w-10 h-10 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg text-white ${
                             isActive
-                              ? "text-white shadow-md"
-                              : isScrolled
-                              ? "text-white hover:text-white hover:bg-primary/10"
-                              : "text-gray-800 dark:text-gray-200 hover:text-primary hover:bg-primary/10"
+                              ? "shadow-md"
+                              : "hover:text-white hover:bg-primary/10"
                           }`}
                           style={{
                             background: isActive
@@ -539,13 +562,16 @@ export default function Header() {
                               : "transparent"
                           }}
                         >
-                          <IconComponent className={`h-5 w-5 transition-all duration-300 ${
-                            isActive 
-                              ? 'drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]'
-                              : isScrolled
-                              ? 'drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]'
-                              : 'group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]'
-                          }`} />
+                          <IconComponent 
+                            className="h-5 w-5 transition-all duration-300 text-white group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]" 
+                            style={{
+                              filter: isActive 
+                                ? 'drop-shadow(0 2px 8px rgba(255,255,255,0.3))'
+                                : isScrolled
+                                ? 'none'
+                                : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                            }}
+                          />
                         </Button>
                       </Link>
                     </TooltipTrigger>
@@ -660,16 +686,17 @@ export default function Header() {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          className={`icon-link-primary group w-10 h-10 hover:bg-amber-500/20 transition-all duration-300 hover:scale-110 hover:shadow-lg ${
-                            isScrolled ? 'text-white' : 'text-amber-700 dark:text-amber-500'
-                          }`}
+                          className="icon-link-primary group w-10 h-10 hover:bg-amber-500/20 transition-all duration-300 hover:scale-110 hover:shadow-lg text-white"
                           data-testid="button-coffee-room"
                         >
-                          <Coffee className={`h-5 w-5 transition-all duration-300 ${
-                            isScrolled 
-                              ? 'text-white drop-shadow-[0_2px_8px_rgba(251,191,36,0.5)]' 
-                              : 'text-amber-700 dark:text-amber-500'
-                          } group-hover:drop-shadow-[0_2px_12px_rgba(251,191,36,0.8)]`} />
+                          <Coffee 
+                            className="h-5 w-5 transition-all duration-300 text-white group-hover:drop-shadow-[0_2px_12px_rgba(251,191,36,0.8)]" 
+                            style={{
+                              filter: isScrolled 
+                                ? 'none' 
+                                : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                            }}
+                          />
                         </Button>
                       </Link>
                     </TooltipTrigger>
@@ -684,17 +711,18 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className={`icon-link-destructive group w-10 h-10 hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg ${
-                        isScrolled ? 'text-white' : 'text-red-600 dark:text-red-400'
-                      }`}
+                      className="icon-link-destructive group w-10 h-10 hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg text-white"
                       data-testid="button-emergency"
                       onClick={handleEmergencyContact}
                     >
-                      <Ambulance className={`h-5 w-5 transition-all duration-300 ${
-                        isScrolled 
-                          ? 'text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]' 
-                          : 'text-red-600 dark:text-red-400'
-                      } group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)]`} />
+                      <Ambulance 
+                        className="h-5 w-5 transition-all duration-300 text-white group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)]" 
+                        style={{
+                          filter: isScrolled 
+                            ? 'none' 
+                            : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                        }}
+                      />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-destructive text-white font-medium px-3 py-2 shadow-lg">
@@ -714,14 +742,25 @@ export default function Header() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="hidden sm:block text-left">
-                        <p className={`text-sm font-semibold transition-colors duration-300 ${
-                          isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
-                        }`} data-testid="text-user-name">
+                        <p 
+                          className="text-sm font-semibold transition-all duration-300 text-white" 
+                          data-testid="text-user-name"
+                          style={{
+                            textShadow: isScrolled 
+                              ? 'none' 
+                              : '0 4px 20px rgba(0,0,0,0.3), 0 2px 10px rgba(0,0,0,0.2)'
+                          }}
+                        >
                           {user.name}
                         </p>
-                        <p className={`text-xs transition-colors duration-300 ${
-                          isScrolled ? 'text-gray-300' : 'text-gray-600 dark:text-gray-400'
-                        }`}>
+                        <p 
+                          className="text-xs transition-all duration-300 text-gray-200" 
+                          style={{
+                            textShadow: isScrolled 
+                              ? 'none' 
+                              : '0 2px 10px rgba(0,0,0,0.25)'
+                          }}
+                        >
                           {getRoleDisplay(user.role)}
                         </p>
                       </div>
@@ -774,7 +813,14 @@ export default function Header() {
                         navigate('/features');
                       }}
                     >
-                      <Shield className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(59,130,246,0.8)] transition-all duration-300" />
+                      <Shield 
+                        className="h-5 w-5 text-white group-hover:drop-shadow-[0_2px_12px_rgba(59,130,246,0.8)] transition-all duration-300" 
+                        style={{
+                          filter: isScrolled 
+                            ? 'none' 
+                            : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                        }}
+                      />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-blue-500 text-white font-medium px-3 py-2 shadow-lg">
@@ -798,7 +844,14 @@ export default function Header() {
                         window.open('tel:192', '_blank');
                       }}
                     >
-                      <Ambulance className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)] transition-all duration-300" />
+                      <Ambulance 
+                        className="h-5 w-5 text-white group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)] transition-all duration-300" 
+                        style={{
+                          filter: isScrolled 
+                            ? 'none' 
+                            : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                        }}
+                      />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-destructive text-white font-medium px-3 py-2 shadow-lg">
@@ -815,7 +868,14 @@ export default function Header() {
                       data-testid="button-register-icon"
                       onClick={() => navigate('/register')}
                     >
-                      <UserPlus className="h-5 w-5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)] group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300" />
+                      <UserPlus 
+                        className="h-5 w-5 text-white group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300" 
+                        style={{
+                          filter: isScrolled 
+                            ? 'none' 
+                            : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+                        }}
+                      />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
