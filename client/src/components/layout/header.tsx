@@ -45,26 +45,11 @@ export default function Header() {
   // Get text color based on page type and scroll state
   const getTextColor = () => {
     if (isAuthenticatedPage) {
-      // Authenticated pages: dark when not scrolled, light when scrolled
-      return isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-900';
+      // Authenticated pages: dark when not scrolled (light mode), white in dark mode or when scrolled
+      return isScrolled ? 'text-white' : 'text-gray-800 dark:text-white';
     } else {
       // Home/Login: always white
       return 'text-white';
-    }
-  };
-
-  // Get logo filter based on page type and scroll state
-  const getLogoFilter = () => {
-    if (isAuthenticatedPage) {
-      // Authenticated pages: dark logo when not scrolled, white when scrolled
-      return isScrolled 
-        ? 'brightness(0) invert(1)' 
-        : 'brightness(0) invert(0)';
-    } else {
-      // Home/Login: always white with shadow when not scrolled
-      return isScrolled 
-        ? 'brightness(0) invert(1)' 
-        : 'brightness(0) invert(1) drop-shadow(0 4px 20px rgba(0,0,0,0.3))';
     }
   };
 
@@ -477,9 +462,21 @@ export default function Header() {
                     alt="Tele<M3D> Logo" 
                     className="w-full h-full object-contain transition-all duration-300 group-hover:scale-110"
                     style={{ 
-                      filter: getLogoFilter()
+                      filter: isAuthenticatedPage 
+                        ? (isScrolled 
+                            ? 'brightness(0) invert(1)' 
+                            : 'brightness(0) invert(0)')
+                        : (isScrolled 
+                            ? 'brightness(0) invert(1)' 
+                            : 'brightness(0) invert(1) drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
                     }}
                   />
+                  {/* Dark mode override for authenticated pages when not scrolled */}
+                  <style>{`
+                    .dark img[alt="Tele<M3D> Logo"] {
+                      ${isAuthenticatedPage && !isScrolled ? 'filter: brightness(0) invert(1) !important;' : ''}
+                    }
+                  `}</style>
                 </div>
                 <span 
                   className={`hidden md:block text-xl font-bold group-hover:text-primary transition-all duration-300 ${getTextColor()}`}
@@ -505,7 +502,7 @@ export default function Header() {
                     {t("greeting.hello")}, {getShortName(user.name)}!
                   </p>
                   <p 
-                    className={`text-xs transition-all duration-300 ${isAuthenticatedPage && !isScrolled ? 'text-gray-600' : 'text-gray-200'}`}
+                    className={`text-xs transition-all duration-300 ${isAuthenticatedPage && !isScrolled ? 'text-gray-600 dark:text-gray-300' : 'text-gray-200'}`}
                     style={{
                       textShadow: isAuthenticatedPage ? 'none' : getShadowEffect()
                     }}
@@ -771,7 +768,7 @@ export default function Header() {
                           {user.name}
                         </p>
                         <p 
-                          className={`text-xs transition-all duration-300 ${isAuthenticatedPage && !isScrolled ? 'text-gray-600' : 'text-gray-200'}`}
+                          className={`text-xs transition-all duration-300 ${isAuthenticatedPage && !isScrolled ? 'text-gray-600 dark:text-gray-300' : 'text-gray-200'}`}
                           style={{
                             textShadow: isAuthenticatedPage ? 'none' : getShadowEffect()
                           }}
