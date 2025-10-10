@@ -45,9 +45,13 @@ The client-side is built with React and TypeScript, using Wouter for routing. It
 - **Enhanced Contrast**: Radial gradient dark mask (5-15% darkening) overlaying the background for improved text readability
 - **Card Design**: Semi-transparent cards (98% opacity) with backdrop blur and enhanced shadows for depth separation
 - **Page Variants**: 
-  - "origami" variant for public pages (login, features, registration pages, dashboard) and authenticated pages (doctor-availability, immediate-consultation, doctor-chat, patients, schedule, whatsapp)
+  - "origami" variant for all public pages (login, features, registration pages) and ALL authenticated pages (dashboard, doctor-availability, immediate-consultation, doctor-chat, patients, schedule, whatsapp, consultation-request, my-consultations, coffee-room, doctor-office, medical-teams, medical-cafe, team-room)
   - "medical" variant for documentation and content-heavy pages with medical imagery
-- **Consistent Theme**: All authenticated pages now use the same autumn pastel color scheme and animated origami background as the public-facing pages for visual consistency
+- **Complete Visual Consistency**: 
+  - ALL authenticated pages use PageWrapper with variant="origami" and origamiImage={origamiHeroImage} for unified autumn pastel theme
+  - Autumn pastel color scheme (warm oranges, soft greens, terracotta accents) is applied consistently across the entire platform
+  - Every area of the system - public and restricted - shares the same visual identity and background animation
+  - Seamless visual transition between authentication and authenticated states maintains user experience continuity
 - **Dynamic Header Colors**: The header intelligently adjusts colors based on page type and scroll state:
   - Authenticated pages (not scrolled): Dark text/icons/logo (light mode) or white text/icons/logo (dark mode) for contrast with light background
   - Authenticated pages (scrolled): White text/icons/logo with dark background
