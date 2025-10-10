@@ -13,6 +13,8 @@ import CreatePrescriptionForm from '@/components/prescriptions/create-prescripti
 import PrescriptionDetail from '@/components/prescriptions/prescription-detail';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import PageWrapper from '@/components/layout/page-wrapper';
+import origamiHeroImage from '@assets/image_1759773239051.png';
 
 interface Prescription {
   id: string;
@@ -98,27 +100,30 @@ export default function PrescriptionsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
+      <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        </div>
+      </PageWrapper>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            {isPatient ? 'Minhas Prescrições' : 'Sistema de Prescrições'}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {isPatient 
-              ? 'Visualize e baixe suas prescrições médicas' 
-              : 'Gerencie prescrições médicas com validação e integração farmácia'
-            }
-          </p>
-        </div>
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">
+              {isPatient ? 'Minhas Prescrições' : 'Sistema de Prescrições'}
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              {isPatient 
+                ? 'Visualize e baixe suas prescrições médicas' 
+                : 'Gerencie prescrições médicas com validação e integração farmácia'
+              }
+            </p>
+          </div>
         
         {!isPatient && (
           <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
@@ -288,6 +293,7 @@ export default function PrescriptionsPage() {
           </DialogContent>
         </Dialog>
       )}
-    </div>
+      </div>
+    </PageWrapper>
   );
 }

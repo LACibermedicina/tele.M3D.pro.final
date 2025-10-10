@@ -15,6 +15,8 @@ import { Shield, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, T
 import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { formatErrorForToast } from '@/lib/error-handler';
+import PageWrapper from '@/components/layout/page-wrapper';
+import origamiHeroImage from '@assets/image_1759773239051.png';
 
 interface Collaborator {
   id: string;
@@ -310,11 +312,12 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="container mx-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 lg:space-y-8" data-testid="admin-page">
-      <div className="flex items-center gap-2 sm:gap-3">
-        <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">System Administration</h1>
-      </div>
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+      <div className="container mx-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 lg:space-y-8" data-testid="admin-page">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">System Administration</h1>
+        </div>
 
       {/* Analytics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -1495,7 +1498,8 @@ export default function AdminPage() {
         {/* Database Cleanup Tab */}
         <DatabaseCleanupTab />
       </Tabs>
-    </div>
+      </div>
+    </PageWrapper>
   );
 }
 

@@ -14,6 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { DEFAULT_DOCTOR_ID } from "@shared/schema";
 import type { Patient, Appointment, MedicalRecord, VideoConsultation as VideoConsultationType } from "@shared/schema";
 import VideoConsultation from "@/components/video-consultation/VideoConsultation";
+import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 
 export default function PatientProfile() {
   const { id } = useParams();
@@ -78,36 +80,41 @@ export default function PatientProfile() {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-      </div>
+      <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+        </div>
+      </PageWrapper>
     );
   }
 
   if (error || !patient) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-red-600 mb-2">Paciente não encontrado</h2>
-              <p className="text-muted-foreground mb-4">
-                Não foi possível encontrar as informações do paciente.
-              </p>
-              <Link href="/patients">
-                <Button>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Voltar para Lista de Pacientes
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-red-600 mb-2">Paciente não encontrado</h2>
+                <p className="text-muted-foreground mb-4">
+                  Não foi possível encontrar as informações do paciente.
+                </p>
+                <Link href="/patients">
+                  <Button>
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Voltar para Lista de Pacientes
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </PageWrapper>
     );
   }
 
   return (
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -356,5 +363,6 @@ export default function PatientProfile() {
         </DialogContent>
       </Dialog>
     </div>
+    </PageWrapper>
   );
 }

@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { User, Mail, Phone, CreditCard, Shield, Save, Upload, Trash2, Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 
 interface RatingStats {
   averageRating: number;
@@ -197,15 +199,16 @@ export default function Profile() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground" data-testid="title-profile">
-          {t("auth.profile")}
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Gerencie suas informações pessoais e configurações da conta
-        </p>
-      </div>
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-foreground" data-testid="title-profile">
+            {t("auth.profile")}
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Gerencie suas informações pessoais e configurações da conta
+          </p>
+        </div>
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Profile Summary Card */}
@@ -498,6 +501,7 @@ export default function Profile() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </PageWrapper>
   );
 }

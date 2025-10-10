@@ -6,6 +6,8 @@ import { Loader2, CreditCard, Check, Coins } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PayPalButton from '@/components/PayPalButton';
 import { useState } from 'react';
+import PageWrapper from '@/components/layout/page-wrapper';
+import origamiHeroImage from '@assets/image_1759773239051.png';
 
 export default function CreditsPage() {
   const { toast } = useToast();
@@ -69,18 +71,21 @@ export default function CreditsPage() {
 
   if (packagesLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
+      <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </PageWrapper>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Comprar Créditos TMC</h1>
-        <p className="text-muted-foreground">Recarregue sua conta com créditos para usar as funcionalidades da plataforma</p>
-      </div>
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Comprar Créditos TMC</h1>
+          <p className="text-muted-foreground">Recarregue sua conta com créditos para usar as funcionalidades da plataforma</p>
+        </div>
 
       {balance && (
         <Card className="mb-8 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950 dark:to-amber-950 border-orange-200 dark:border-orange-800">
@@ -198,6 +203,7 @@ export default function CreditsPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </PageWrapper>
   );
 }

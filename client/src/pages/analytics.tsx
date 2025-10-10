@@ -40,6 +40,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import PageWrapper from '@/components/layout/page-wrapper';
+import origamiHeroImage from '@assets/image_1759773239051.png';
 
 interface DashboardMetrics {
   overview: {
@@ -218,17 +220,18 @@ export default function Analytics() {
   };
 
   return (
-    <div className="space-y-6 p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Analytics e Relatórios Avançados
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Insights detalhados do sistema de telemedicina
-          </p>
-        </div>
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+      <div className="space-y-6 p-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">
+              Analytics e Relatórios Avançados
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Insights detalhados do sistema de telemedicina
+            </p>
+          </div>
         
         <div className="flex items-center space-x-4">
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
@@ -798,6 +801,7 @@ export default function Analytics() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </PageWrapper>
   );
 }
