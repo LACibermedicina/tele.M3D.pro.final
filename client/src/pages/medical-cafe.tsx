@@ -22,9 +22,8 @@ export default function MedicalCafe() {
   }, []);
 
   const handleJoinCafe = () => {
-    // Use a fixed public room ID for all doctors
-    const publicRoomId = "medical-cafe-public";
-    setLocation(`/video-consultation/${publicRoomId}`);
+    // Redirect to the coffee room page
+    setLocation('/coffee-room');
   };
 
   if (!user || user.role !== 'doctor') {
