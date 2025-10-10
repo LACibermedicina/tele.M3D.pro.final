@@ -124,11 +124,11 @@ export default function MedicalRecords() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Prontuários Médicos</h1>
-          <p className="text-muted-foreground">Acesso restrito a médicos e administradores - Sistema seguro com assinatura digital</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">Prontuários Médicos</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Acesso restrito a médicos e administradores - Sistema seguro com assinatura digital</p>
         </div>
         <div className="flex items-center space-x-2">
           <div className="security-badge px-3 py-1 rounded-full text-white text-xs font-medium">

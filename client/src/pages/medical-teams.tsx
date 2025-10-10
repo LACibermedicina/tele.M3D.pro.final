@@ -276,7 +276,7 @@ export default function MedicalTeams() {
                       </CardDescription>
                     </div>
                     {team.memberRole === 'leader' && (
-                      <Crown className="h-5 w-5 text-yellow-600" title="Líder da equipe" />
+                      <Crown className="h-5 w-5 text-yellow-600" />
                     )}
                   </div>
                   

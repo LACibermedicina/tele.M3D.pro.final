@@ -172,9 +172,9 @@ export default function ConsultationRequest() {
   return (
     <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
       <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-4xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Solicitar Consulta</h1>
-          <p className="text-muted-foreground">
+        <div className="mb-4 sm:mb-6 lg:mb-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2">Solicitar Consulta</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Descreva seus sintomas e nossa IA analisará a urgência e recomendará médicos disponíveis
           </p>
         </div>
