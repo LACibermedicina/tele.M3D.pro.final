@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator"
 import { Stethoscope, Calendar, FileText, Shield, Users, Clock, DollarSign, Star } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { useAuth } from "@/contexts/AuthContext"
+import { type DashboardStats } from "@shared/schema"
 
 interface Patient {
   id: string;
@@ -14,6 +15,17 @@ interface Patient {
   time: string;
   status: string;
   profilePicture?: string;
+}
+
+interface Appointment {
+  id: string;
+  patient?: {
+    name: string;
+    profilePicture?: string;
+  };
+  type?: string;
+  appointmentTime?: string;
+  status: string;
 }
 
 interface TMCStats {
@@ -25,37 +37,21 @@ interface TMCStats {
 export function MobileDoctorDashboard() {
   const { user } = useAuth();
   
-  // Mock data - replace with real API calls
-  const nextPatients: Patient[] = [
-    {
-      id: "1",
-      name: "Maria Silva",
-      type: "Retorno • Hipertensão",
-      time: "14:30",
-      status: "Online",
-      profilePicture: "https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-1.jpg"
-    },
-    {
-      id: "2", 
-      name: "Carlos Oliveira",
-      type: "Primeira consulta • Check-up",
-      time: "15:00",
-      status: "Online",
-      profilePicture: "https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-3.jpg"
-    },
-    {
-      id: "3",
-      name: "Ana Costa", 
-      type: "Acompanhamento • Diabetes",
-      time: "15:30",
-      status: "Presencial",
-      profilePicture: "https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-5.jpg"
-    }
-  ];
+  // Fetch real dashboard stats
+  const { data: stats } = useQuery<DashboardStats>({
+    queryKey: user?.id ? ['/api/dashboard/stats', user.id] : [],
+    enabled: !!user?.id,
+  });
+
+  // Fetch today's appointments for next patients
+  const { data: todayAppointments } = useQuery<Appointment[]>({
+    queryKey: user?.id ? ['/api/appointments/today', user.id] : [],
+    enabled: !!user?.id,
+  });
 
   const tmcStats: TMCStats = {
     todayEarnings: 2450,
-    totalCredits: 245.00,
+    totalCredits: user?.tmcCredits || 0,
     consultationRate: 150
   };
 
@@ -67,17 +63,21 @@ export function MobileDoctorDashboard() {
         <CardContent className="p-6">
           <div className="flex items-start space-x-4">
             <Avatar className="w-16 h-16 border-2 border-white/20">
-              <AvatarImage src="https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-2.jpg" />
+              <AvatarImage src={user?.profilePicture || undefined} />
               <AvatarFallback className="bg-white/20 text-white text-lg">
                 {user?.name?.charAt(0) || 'D'}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h1 className="text-xl font-bold">{user?.name || "Dr. João Santos"}</h1>
-              <p className="text-white/90 text-sm">Cardiologista • CRM: 12345-SP</p>
+              <h1 className="text-xl font-bold">{user?.name}</h1>
+              <p className="text-white/90 text-sm">
+                {user?.specialization || 'Medicina Geral'} {user?.medicalLicense ? `• CRM: ${user.medicalLicense}` : ''}
+              </p>
               <div className="flex items-center space-x-2 mt-2">
                 <Star className="w-4 h-4 fill-yellow-300 text-yellow-300" />
-                <span className="text-sm">4.9 • 1,245 consultas</span>
+                <span className="text-sm">
+                  {stats?.todayConsultations ? `${stats.todayConsultations} consultas hoje` : 'Nenhuma consulta hoje'}
+                </span>
               </div>
             </div>
           </div>
@@ -85,15 +85,19 @@ export function MobileDoctorDashboard() {
           {/* Today's Stats */}
           <div className="grid grid-cols-3 gap-4 mt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold">12</div>
+              <div className="text-2xl font-bold">{stats?.todayConsultations || 0}</div>
               <div className="text-white/80 text-xs">Hoje</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold">3</div>
+              <div className="text-2xl font-bold">
+                {todayAppointments ? todayAppointments.filter((apt) => apt.status === 'pending').length : 0}
+              </div>
               <div className="text-white/80 text-xs">Pendentes</div>
             </div>
             <div className="text-center">
-              <Badge className="bg-green-500 text-white">Online</Badge>
+              <Badge className="bg-green-500 text-white">
+                Online
+              </Badge>
               <div className="text-white/80 text-xs mt-1">Status</div>
             </div>
           </div>
@@ -150,38 +154,44 @@ export function MobileDoctorDashboard() {
               <Users className="w-5 h-5 mr-2 text-medical-primary" />
               Próximos Pacientes
             </h2>
-            <Badge variant="secondary">{nextPatients.length} pendentes</Badge>
+            <Badge variant="secondary">{todayAppointments?.length || 0} hoje</Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {nextPatients.map((patient, index) => (
-            <div key={patient.id}>
+          {todayAppointments && todayAppointments.length > 0 ? (
+            todayAppointments.slice(0, 3).map((appointment: any, index: number) => (
+            <div key={appointment.id}>
               <div className="flex items-center space-x-3">
                 <Avatar className="w-12 h-12">
-                  <AvatarImage src={patient.profilePicture} />
-                  <AvatarFallback>{patient.name.charAt(0)}</AvatarFallback>
+                  <AvatarImage src={appointment.patient?.profilePicture || undefined} />
+                  <AvatarFallback>{appointment.patient?.name?.charAt(0) || 'P'}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h3 className="font-medium">{patient.name}</h3>
-                  <p className="text-sm text-muted-foreground">{patient.type}</p>
+                  <h3 className="font-medium">{appointment.patient?.name || 'Paciente'}</h3>
+                  <p className="text-sm text-muted-foreground">{appointment.type || 'Consulta'}</p>
                   <div className="flex items-center space-x-2 mt-1">
                     <Clock className="w-3 h-3 text-medical-primary" />
-                    <span className="text-sm text-medical-primary font-medium">{patient.time}</span>
+                    <span className="text-sm text-medical-primary font-medium">
+                      {appointment.appointmentTime ? new Date(appointment.appointmentTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                    </span>
                     <Badge 
-                      variant={patient.status === "Online" ? "default" : "secondary"}
+                      variant={appointment.status === "confirmed" ? "default" : "secondary"}
                       className="text-xs"
                     >
-                      {patient.status}
+                      {appointment.status === 'confirmed' ? 'Confirmado' : appointment.status === 'pending' ? 'Pendente' : 'Concluído'}
                     </Badge>
                   </div>
                 </div>
-                <Button size="sm" data-testid={`button-attend-${patient.id}`}>
+                <Button size="sm" data-testid={`button-attend-${appointment.id}`}>
                   Atender
                 </Button>
               </div>
-              {index < nextPatients.length - 1 && <Separator className="mt-4" />}
+              {index < todayAppointments.length - 1 && index < 2 && <Separator className="mt-4" />}
             </div>
-          ))}
+          ))
+          ) : (
+            <p className="text-center text-muted-foreground py-4">Nenhuma consulta agendada para hoje</p>
+          )}
         </CardContent>
       </Card>
 
