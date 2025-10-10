@@ -15,6 +15,9 @@ export interface ShortcutAction {
 export function useShortcuts(actions: ShortcutAction[]) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Guard against undefined event.key (e.g., Safari autofill synthetic events)
+      if (!event.key) return;
+      
       const matchedAction = actions.find(action => {
         if (!action.enabled && action.enabled !== undefined) return false;
         
