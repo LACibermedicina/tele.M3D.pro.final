@@ -255,17 +255,17 @@ export default function CoffeeRoom() {
                           variant={isVideoOn ? "default" : "destructive"}
                           size="icon"
                           onClick={toggleVideo}
-                          className="w-8 h-8 sm:w-10 sm:h-10"
+                          className="w-11 h-11 sm:w-12 sm:h-12"
                         >
-                          {isVideoOn ? <Video className="h-3 w-3 sm:h-4 sm:w-4" /> : <VideoOff className="h-3 w-3 sm:h-4 sm:w-4" />}
+                          {isVideoOn ? <Video className="h-4 w-4 sm:h-5 sm:w-5" /> : <VideoOff className="h-4 w-4 sm:h-5 sm:w-5" />}
                         </Button>
                         <Button
                           variant={isAudioOn ? "default" : "destructive"}
                           size="icon"
                           onClick={toggleAudio}
-                          className="w-8 h-8 sm:w-10 sm:h-10"
+                          className="w-11 h-11 sm:w-12 sm:h-12"
                         >
-                          <i className={`fas fa-${isAudioOn ? 'microphone' : 'microphone-slash'} text-xs sm:text-sm`}></i>
+                          <i className={`fas fa-${isAudioOn ? 'microphone' : 'microphone-slash'} text-sm`}></i>
                         </Button>
                       </div>
 

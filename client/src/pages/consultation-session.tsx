@@ -303,27 +303,27 @@ export default function ConsultationSession() {
                     variant={isVideoOn ? 'default' : 'destructive'}
                     size="icon"
                     onClick={toggleVideo}
-                    className="rounded-full w-10 h-10 sm:w-14 sm:h-14"
+                    className="rounded-full w-12 h-12 sm:w-14 sm:h-14"
                   >
-                    {isVideoOn ? <Video className="w-4 h-4 sm:w-6 sm:h-6" /> : <VideoOff className="w-4 h-4 sm:w-6 sm:h-6" />}
+                    {isVideoOn ? <Video className="w-5 h-5 sm:w-6 sm:h-6" /> : <VideoOff className="w-5 h-5 sm:w-6 sm:h-6" />}
                   </Button>
                   <Button
                     data-testid="button-toggle-audio"
                     variant={isAudioOn ? 'default' : 'destructive'}
                     size="icon"
                     onClick={toggleAudio}
-                    className="rounded-full w-10 h-10 sm:w-14 sm:h-14"
+                    className="rounded-full w-12 h-12 sm:w-14 sm:h-14"
                   >
-                    {isAudioOn ? <Mic className="w-4 h-4 sm:w-6 sm:h-6" /> : <MicOff className="w-4 h-4 sm:w-6 sm:h-6" />}
+                    {isAudioOn ? <Mic className="w-5 h-5 sm:w-6 sm:h-6" /> : <MicOff className="w-5 h-5 sm:w-6 sm:h-6" />}
                   </Button>
                   <Button
                     data-testid="button-leave"
                     variant="destructive"
                     size="icon"
                     onClick={handleLeave}
-                    className="rounded-full w-10 h-10 sm:w-14 sm:h-14"
+                    className="rounded-full w-12 h-12 sm:w-14 sm:h-14"
                   >
-                    <PhoneOff className="w-4 h-4 sm:w-6 sm:h-6" />
+                    <PhoneOff className="w-5 h-5 sm:w-6 sm:h-6" />
                   </Button>
                 </div>
 
