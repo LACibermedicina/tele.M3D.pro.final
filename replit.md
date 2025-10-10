@@ -15,20 +15,21 @@ The client-side is built with React and TypeScript, using Wouter for routing. It
 - **Breakpoints**: Mobile (<768px), Tablet (768px-1024px), Desktop (>1024px)
 - **Device Detection**: Custom hooks (useIsMobile, useIsTablet, useDeviceType) for device-specific rendering
 - **Adaptive Layouts**: Conditional component rendering based on device type with separate mobile/desktop dashboard components
-- **Tailwind Responsive Classes**: Extensive use of sm:, md:, lg:, xl: prefixes for responsive styling across all pages
+- **Tailwind Responsive Classes**: Extensive use of sm:, md:, lg:, xl: prefixes for responsive styling across ALL pages
 - **Mobile Optimizations**: Touch-friendly interfaces with accessibility-compliant tap targets (44-48px minimum), optimized font sizes (text-xs sm:text-sm md:text-base), and gesture-aware scrolling
 - **Flexible Grid Systems**: CSS Grid and Flexbox with responsive column adjustments:
   - Mobile: Single column layouts (grid-cols-1, flex-col)
-  - Tablet: 2-column grids (md:grid-cols-2) 
+  - Tablet: 2-column grids (sm:grid-cols-2, md:grid-cols-2) 
   - Desktop: 3-4 column grids (lg:grid-cols-3, lg:grid-cols-4)
 - **Responsive Spacing**: Consistent spacing patterns across all pages:
-  - Padding: p-3 sm:p-6 lg:p-8
-  - Gaps: gap-2 sm:gap-4 lg:gap-6
+  - Padding: p-3 sm:p-4 lg:p-6 sm:p-6 lg:p-8
+  - Gaps: gap-3 sm:gap-4 lg:gap-6
   - Margins: mb-4 sm:mb-6 lg:mb-8
-- **Typography Scaling**: Font sizes adapt to screen size:
-  - Headings: text-2xl sm:text-3xl lg:text-4xl
+- **Typography Scaling**: Font sizes adapt to screen size across ALL pages:
+  - Page Titles: text-2xl sm:text-3xl lg:text-4xl
   - Body text: text-sm sm:text-base
   - Small text: text-xs sm:text-sm
+  - Icons: w-6 h-6 sm:w-8 sm:h-8 for headers
 - **Video Call Responsiveness**: 
   - Consultation Session: w-12 h-12 (48px) mobile controls, w-14 h-14 (56px) tablet/desktop
   - Coffee Room: w-11 h-11 (44px) mobile controls, w-12 h-12 (48px) tablet/desktop
@@ -37,6 +38,11 @@ The client-side is built with React and TypeScript, using Wouter for routing. It
 - **Page-Specific Optimizations**:
   - Doctor Chat: Flex column on mobile (min-h-[500px]), grid layout on desktop (lg:h-[calc(100vh-200px)])
   - Immediate Consultation: Doctor cards stack vertically on mobile (flex-col sm:flex-row)
+  - Medical Teams: Header flex-col sm:flex-row with responsive typography
+  - Consultation Request: Responsive containers (px-3 sm:px-6 lg:px-8) and adaptive spacing
+  - Patient Agenda: Responsive grid (grid-cols-1 lg:grid-cols-3) with adaptive padding
+  - Medical Records: Flex-col sm:flex-row header layout with responsive text
+  - Admin Page: Responsive analytics grid (grid-cols-1 sm:grid-cols-2 lg:grid-cols-4)
   - All forms and inputs: Optimized for mobile with text-sm classes and proper spacing
 - **Theme Consistency**: All color schemes and themes work seamlessly across all device sizes in both light and dark modes
 
