@@ -464,6 +464,7 @@ export default function AdminPage() {
               {loadingUsers ? (
                 <div className="text-center py-8">Loading users...</div>
               ) : (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -541,6 +542,7 @@ export default function AdminPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -759,6 +761,7 @@ export default function AdminPage() {
               {loadingCollaborators ? (
                 <div className="text-center py-8">Loading collaborators...</div>
               ) : (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -789,6 +792,7 @@ export default function AdminPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -832,6 +836,7 @@ export default function AdminPage() {
               {loadingApiKeys ? (
                 <div className="text-center py-8">Loading API keys...</div>
               ) : (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -899,6 +904,7 @@ export default function AdminPage() {
                     })}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -917,6 +923,7 @@ export default function AdminPage() {
               {loadingIntegrations ? (
                 <div className="text-center py-8">Loading integration logs...</div>
               ) : (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -961,6 +968,7 @@ export default function AdminPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -976,6 +984,7 @@ export default function AdminPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1019,6 +1028,7 @@ export default function AdminPage() {
                     ))}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1349,7 +1359,7 @@ export default function AdminPage() {
 
               {selectedErrorLog && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm font-semibold">Tipo de Erro</Label>
                       <p className="text-sm capitalize">{selectedErrorLog.errorType.replace('_', ' ')}</p>
@@ -1405,7 +1415,7 @@ export default function AdminPage() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm font-semibold">IP Address</Label>
                       <p className="text-sm font-mono">{selectedErrorLog.ipAddress || 'N/A'}</p>
@@ -1602,7 +1612,7 @@ function CreateCollaboratorForm({ onSubmit, isLoading }: { onSubmit: (data: any)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="name">Name</Label>
           <Input
@@ -1628,7 +1638,7 @@ function CreateCollaboratorForm({ onSubmit, isLoading }: { onSubmit: (data: any)
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -1663,7 +1673,7 @@ function CreateCollaboratorForm({ onSubmit, isLoading }: { onSubmit: (data: any)
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="cnpj">CNPJ</Label>
           <Input
@@ -1757,7 +1767,7 @@ function CreateApiKeyForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="rateLimit">Rate Limit (per hour)</Label>
           <Input
