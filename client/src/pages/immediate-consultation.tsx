@@ -137,10 +137,10 @@ export default function ImmediateConsultation() {
 
   return (
     <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
-      <div className="p-8 space-y-6">
+      <div className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Atendimento Imediato</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-2xl sm:text-3xl font-bold">Atendimento Imediato</h1>
+        <p className="text-sm sm:text-base text-muted-foreground mt-2">
           Solicite uma consulta com médicos disponíveis agora
         </p>
       </div>
@@ -171,11 +171,11 @@ export default function ImmediateConsultation() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {sortedDoctors.map((doctor) => (
                 <div
                   key={doctor.id}
-                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                  className={`border rounded-lg p-3 sm:p-4 cursor-pointer transition-all ${
                     selectedDoctor?.id === doctor.id
                       ? 'border-primary bg-primary/5'
                       : 'hover:border-primary/50'
@@ -183,29 +183,29 @@ export default function ImmediateConsultation() {
                   onClick={() => setSelectedDoctor(doctor)}
                   data-testid={`doctor-card-${doctor.id}`}
                 >
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-12 w-12">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+                    <Avatar className="h-12 w-12 sm:h-14 sm:w-14">
                       <AvatarImage src={doctor.profilePicture || undefined} />
                       <AvatarFallback>
                         {doctor.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
 
-                    <div className="flex-1">
+                    <div className="flex-1 w-full sm:w-auto">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold">{doctor.name}</h3>
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <h3 className="text-base sm:text-lg font-semibold">{doctor.name}</h3>
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
                           <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
                           Online {getOnlineTime(doctor.onlineSince)}
                         </Badge>
                         {isOnDuty(doctor) && (
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
                             <Clock className="w-3 h-3 mr-1" />
                             Plantão 24h
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">{doctor.specialization || 'Clínico Geral'}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-1">{doctor.specialization || 'Clínico Geral'}</p>
                       <p className="text-xs text-muted-foreground">CRM: {doctor.medicalLicense}</p>
                     </div>
 
@@ -229,9 +229,9 @@ export default function ImmediateConsultation() {
               Explique brevemente o que você está sentindo
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 sm:space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="reason">Motivo da Consulta</Label>
+              <Label htmlFor="reason" className="text-sm sm:text-base">Motivo da Consulta</Label>
               <Textarea
                 id="reason"
                 placeholder="Descreva seus sintomas, há quanto tempo está sentindo, etc..."
@@ -239,10 +239,11 @@ export default function ImmediateConsultation() {
                 onChange={(e) => setReason(e.target.value)}
                 rows={5}
                 data-testid="textarea-reason"
+                className="text-sm"
               />
             </div>
 
-            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4">
               <p className="text-sm text-blue-800 dark:text-blue-200">
                 <strong>Médico selecionado:</strong> {selectedDoctor.name}
               </p>
