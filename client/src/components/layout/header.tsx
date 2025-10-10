@@ -309,15 +309,15 @@ export default function Header() {
 
   return (
     <header 
-      className={`border-b sticky top-0 z-50 transition-all duration-300 ${
+      className={`border-b sticky top-0 z-50 transition-all duration-300 w-full ${
         isScrolled 
           ? 'bg-slate-900/80 backdrop-blur-md border-slate-700 shadow-lg' 
           : 'bg-transparent border-transparent'
       }`} 
       data-testid="header-main"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-24">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16 sm:h-20 lg:h-24">
           <div className="flex items-center space-x-4">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <Tooltip>
