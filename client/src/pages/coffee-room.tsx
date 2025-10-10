@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Coffee, Video, VideoOff, Users } from "lucide-react";
+import { Coffee, Video, VideoOff, Users, Send, MessageCircle } from "lucide-react";
 import AgoraRTC, { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack } from "agora-rtc-sdk-ng";
 import PageWrapper from "@/components/layout/page-wrapper";
 
@@ -19,6 +21,11 @@ export default function CoffeeRoom() {
   const [isAudioOn, setIsAudioOn] = useState(false);
   const [isInRoom, setIsInRoom] = useState(false);
   const [participants, setParticipants] = useState<string[]>([]);
+  
+  // Chat states
+  const [messages, setMessages] = useState<Array<{id: string, user: string, text: string, timestamp: Date}>>([]);
+  const [messageText, setMessageText] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const joinCoffeeRoom = async () => {
     try {
@@ -149,6 +156,29 @@ export default function CoffeeRoom() {
     }
   };
 
+  const sendMessage = () => {
+    if (messageText.trim() && agoraClient) {
+      const newMessage = {
+        id: Date.now().toString(),
+        user: user?.name || 'Anônimo',
+        text: messageText.trim(),
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, newMessage]);
+      
+      // Send via Agora data channel (if available) or use WebSocket
+      // For now, just local display - implement real-time sync as needed
+      
+      setMessageText("");
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   useEffect(() => {
     return () => {
       // Cleanup on unmount
@@ -261,40 +291,77 @@ export default function CoffeeRoom() {
               </Card>
             </div>
 
-            {/* Participants Panel */}
-            <div className="lg:col-span-1">
+            {/* Chat and Participants Panel */}
+            <div className="lg:col-span-1 space-y-4">
+              {/* Chat Panel */}
               <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <MessageCircle className="h-5 w-5" />
+                    Chat
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <ScrollArea className="h-[300px] px-4">
+                    <div className="space-y-3 pb-4">
+                      {messages.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-8">
+                          Nenhuma mensagem ainda. Comece a conversar!
+                        </p>
+                      ) : (
+                        messages.map((msg) => (
+                          <div key={msg.id} className="space-y-1">
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-sm font-medium">{msg.user}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {msg.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-sm bg-muted px-3 py-2 rounded-lg">{msg.text}</p>
+                          </div>
+                        ))
+                      )}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </ScrollArea>
+                  <div className="p-4 border-t">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Digite sua mensagem..."
+                        value={messageText}
+                        onChange={(e) => setMessageText(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                        className="flex-1"
+                      />
+                      <Button size="icon" onClick={sendMessage} disabled={!messageText.trim()}>
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Participants Panel */}
+              <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <Users className="h-5 w-5" />
-                    Na Cafeteria ({participants.length + 1})
+                    Participantes ({participants.length + 1})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between p-2 bg-primary/10 rounded-lg">
                       <span className="text-sm font-medium">{user?.name}</span>
-                      <Badge variant="outline">Você</Badge>
+                      <Badge variant="outline" className="text-xs">Você</Badge>
                     </div>
                     {participants.map((p, i) => (
                       <div key={i} className="flex items-center justify-between p-2 bg-muted rounded-lg">
                         <span className="text-sm font-medium">{p}</span>
-                        <Badge variant="outline">Médico</Badge>
+                        <Badge variant="outline" className="text-xs">Médico</Badge>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20 mt-4">
-                <CardHeader>
-                  <CardTitle className="text-lg">Sobre a Cafeteria</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm text-muted-foreground">
-                  <p>☕ Espaço informal para networking</p>
-                  <p>👥 Converse com colegas médicos</p>
-                  <p>💡 Troque experiências e conhecimento</p>
-                  <p>🤝 Faça novas conexões profissionais</p>
                 </CardContent>
               </Card>
             </div>
