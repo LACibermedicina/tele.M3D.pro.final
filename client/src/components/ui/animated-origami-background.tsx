@@ -120,17 +120,11 @@ export default function AnimatedOrigamiBackground() {
     <>
       <canvas
         ref={canvasRef}
-        className="fixed inset-0 pointer-events-none z-0"
-        style={{
-          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
-        }}
+        className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950"
       />
       {/* Overlay de contraste suave */}
       <div 
-        className="fixed inset-0 pointer-events-none z-[1]"
-        style={{
-          background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.08) 100%)'
-        }}
+        className="fixed inset-0 pointer-events-none z-[1] bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.02)_0%,rgba(0,0,0,0.08)_100%)] dark:bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.05)_100%)]"
       />
     </>
   );
