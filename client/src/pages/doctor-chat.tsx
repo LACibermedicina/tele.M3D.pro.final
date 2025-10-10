@@ -189,32 +189,32 @@ export default function DoctorChat() {
 
   return (
     <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
-      <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Chat com Pacientes</h1>
-        <p className="text-muted-foreground mt-2">
+      <div className="p-3 sm:p-6 lg:p-8">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold">Chat com Pacientes</h1>
+        <p className="text-sm sm:text-base text-muted-foreground mt-2">
           Converse com pacientes que solicitaram atendimento
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
+      <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 sm:gap-6 min-h-[500px] lg:h-[calc(100vh-200px)]">
         {/* Threads List */}
         <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-lg">Solicitações de Atendimento</CardTitle>
-            <CardDescription>Pacientes aguardando resposta</CardDescription>
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Solicitações de Atendimento</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Pacientes aguardando resposta</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="h-[calc(100vh-320px)]">
+            <ScrollArea className="h-64 lg:h-[calc(100vh-320px)]">
               {isLoading ? (
-                <div className="p-4 text-center text-muted-foreground">Carregando...</div>
+                <div className="p-3 sm:p-4 text-center text-muted-foreground text-sm">Carregando...</div>
               ) : threads.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">
-                  <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Nenhuma solicitação pendente</p>
+                <div className="p-3 sm:p-4 text-center text-muted-foreground">
+                  <MessageSquare className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhuma solicitação pendente</p>
                 </div>
               ) : (
-                <div className="space-y-2 p-2">
+                <div className="space-y-2 p-2 sm:p-3">
                   {threads.map((thread) => (
                     <div
                       key={thread.id}

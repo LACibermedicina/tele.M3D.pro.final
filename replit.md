@@ -15,14 +15,29 @@ The client-side is built with React and TypeScript, using Wouter for routing. It
 - **Breakpoints**: Mobile (<768px), Tablet (768px-1024px), Desktop (>1024px)
 - **Device Detection**: Custom hooks (useIsMobile, useIsTablet, useDeviceType) for device-specific rendering
 - **Adaptive Layouts**: Conditional component rendering based on device type with separate mobile/desktop dashboard components
-- **Tailwind Responsive Classes**: Extensive use of sm:, md:, lg:, xl: prefixes for responsive styling
-- **Mobile Optimizations**: Touch-friendly interfaces with accessibility-compliant tap targets (44-48px minimum), optimized font sizes (text-xs sm:text-sm), and gesture-aware scrolling
-- **Flexible Grid Systems**: CSS Grid and Flexbox with responsive column adjustments (grid-cols-1 md:grid-cols-2 lg:grid-cols-3)
+- **Tailwind Responsive Classes**: Extensive use of sm:, md:, lg:, xl: prefixes for responsive styling across all pages
+- **Mobile Optimizations**: Touch-friendly interfaces with accessibility-compliant tap targets (44-48px minimum), optimized font sizes (text-xs sm:text-sm md:text-base), and gesture-aware scrolling
+- **Flexible Grid Systems**: CSS Grid and Flexbox with responsive column adjustments:
+  - Mobile: Single column layouts (grid-cols-1, flex-col)
+  - Tablet: 2-column grids (md:grid-cols-2) 
+  - Desktop: 3-4 column grids (lg:grid-cols-3, lg:grid-cols-4)
+- **Responsive Spacing**: Consistent spacing patterns across all pages:
+  - Padding: p-3 sm:p-6 lg:p-8
+  - Gaps: gap-2 sm:gap-4 lg:gap-6
+  - Margins: mb-4 sm:mb-6 lg:mb-8
+- **Typography Scaling**: Font sizes adapt to screen size:
+  - Headings: text-2xl sm:text-3xl lg:text-4xl
+  - Body text: text-sm sm:text-base
+  - Small text: text-xs sm:text-sm
 - **Video Call Responsiveness**: 
   - Consultation Session: w-12 h-12 (48px) mobile controls, w-14 h-14 (56px) tablet/desktop
   - Coffee Room: w-11 h-11 (44px) mobile controls, w-12 h-12 (48px) tablet/desktop
   - Adaptive video panels, resizable chat interfaces, and mobile-optimized layouts
   - Responsive padding (p-2 sm:p-4), spacing (gap-2 sm:gap-4), and icon scaling
+- **Page-Specific Optimizations**:
+  - Doctor Chat: Flex column on mobile (min-h-[500px]), grid layout on desktop (lg:h-[calc(100vh-200px)])
+  - Immediate Consultation: Doctor cards stack vertically on mobile (flex-col sm:flex-row)
+  - All forms and inputs: Optimized for mobile with text-sm classes and proper spacing
 - **Theme Consistency**: All color schemes and themes work seamlessly across all device sizes in both light and dark modes
 
 **Visual Design System**:
