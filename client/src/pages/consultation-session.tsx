@@ -29,6 +29,7 @@ import {
   Send,
   Users,
   Stethoscope,
+  MessageCircle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,9 +54,14 @@ export default function ConsultationSession() {
   const [clinicalNotes, setClinicalNotes] = useState('');
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [selectedSpecialists, setSelectedSpecialists] = useState<string[]>([]);
+  
+  // Chat states
+  const [messages, setMessages] = useState<Array<{id: string, user: string, text: string, timestamp: Date}>>([]);
+  const [messageText, setMessageText] = useState('');
 
   const localVideoRef = useRef<HTMLDivElement>(null);
   const remoteVideoRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch session data
   const { data: session, isLoading } = useQuery<any>({
@@ -232,6 +238,25 @@ export default function ConsultationSession() {
     }
   };
 
+  const sendMessage = () => {
+    if (messageText.trim()) {
+      const newMessage = {
+        id: Date.now().toString(),
+        user: user?.name || 'Anônimo',
+        text: messageText.trim(),
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, newMessage]);
+      setMessageText('');
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background p-4">
@@ -352,10 +377,14 @@ export default function ConsultationSession() {
           <Card className="h-[85vh]">
             <Tabs defaultValue="notes" className="h-full flex flex-col">
               <CardHeader className="pb-3">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="notes" data-testid="tab-notes">
                     <FileText className="w-4 h-4 mr-2" />
                     Notas
+                  </TabsTrigger>
+                  <TabsTrigger value="chat" data-testid="tab-chat">
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Chat
                   </TabsTrigger>
                   <TabsTrigger value="ai" data-testid="tab-ai">
                     <Brain className="w-4 h-4 mr-2" />
@@ -385,6 +414,48 @@ export default function ConsultationSession() {
                       Salvar Notas
                     </Button>
                   )}
+                </TabsContent>
+
+                <TabsContent value="chat" className="h-full flex flex-col mt-0">
+                  <ScrollArea className="flex-1 pr-4">
+                    <div className="space-y-3 pb-4">
+                      {messages.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-8">
+                          Nenhuma mensagem ainda. Comece a conversar!
+                        </p>
+                      ) : (
+                        messages.map((msg) => (
+                          <div key={msg.id} className="space-y-1">
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-sm font-medium">{msg.user}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {msg.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-sm bg-muted px-3 py-2 rounded-lg">{msg.text}</p>
+                          </div>
+                        ))
+                      )}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </ScrollArea>
+                  <div className="flex gap-2 pt-3">
+                    <Input
+                      data-testid="input-chat-message"
+                      placeholder="Digite sua mensagem..."
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                    />
+                    <Button 
+                      size="icon" 
+                      onClick={sendMessage} 
+                      disabled={!messageText.trim()}
+                      data-testid="button-send-message"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="ai" className="h-full space-y-3 mt-0">
