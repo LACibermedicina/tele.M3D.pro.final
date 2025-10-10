@@ -13,6 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Stethoscope, UserPlus, Copy, Link as LinkIcon, Users, Video, VideoOff, X } from "lucide-react";
 import AgoraRTC, { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack } from "agora-rtc-sdk-ng";
 import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 
 export default function DoctorOffice() {
   const { user } = useAuth();
@@ -242,7 +243,7 @@ export default function DoctorOffice() {
 
   if (user?.role !== 'doctor') {
     return (
-      <PageWrapper variant="origami">
+      <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
         <div className="text-center py-12">
           <p className="text-lg text-muted-foreground">Acesso restrito a médicos.</p>
         </div>
@@ -251,7 +252,7 @@ export default function DoctorOffice() {
   }
 
   return (
-    <PageWrapper variant="origami">
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">

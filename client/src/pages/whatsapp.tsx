@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 
 export default function WhatsApp() {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
@@ -89,7 +90,7 @@ export default function WhatsApp() {
   const patientsWithMessages = patientsList.filter((p: any) => p.whatsappNumber || p.phone);
 
   return (
-    <PageWrapper variant="origami">
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="flex justify-between items-center mb-6">
         <div>
