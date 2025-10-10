@@ -16,9 +16,13 @@ The client-side is built with React and TypeScript, using Wouter for routing. It
 - **Device Detection**: Custom hooks (useIsMobile, useIsTablet, useDeviceType) for device-specific rendering
 - **Adaptive Layouts**: Conditional component rendering based on device type with separate mobile/desktop dashboard components
 - **Tailwind Responsive Classes**: Extensive use of sm:, md:, lg:, xl: prefixes for responsive styling
-- **Mobile Optimizations**: Touch-friendly interfaces, larger tap targets (min 44px), optimized font sizes, and gesture-aware scrolling
+- **Mobile Optimizations**: Touch-friendly interfaces with accessibility-compliant tap targets (44-48px minimum), optimized font sizes (text-xs sm:text-sm), and gesture-aware scrolling
 - **Flexible Grid Systems**: CSS Grid and Flexbox with responsive column adjustments (grid-cols-1 md:grid-cols-2 lg:grid-cols-3)
-- **Video Call Responsiveness**: Adaptive video controls, resizable panels, and mobile-optimized chat interfaces
+- **Video Call Responsiveness**: 
+  - Consultation Session: w-12 h-12 (48px) mobile controls, w-14 h-14 (56px) tablet/desktop
+  - Coffee Room: w-11 h-11 (44px) mobile controls, w-12 h-12 (48px) tablet/desktop
+  - Adaptive video panels, resizable chat interfaces, and mobile-optimized layouts
+  - Responsive padding (p-2 sm:p-4), spacing (gap-2 sm:gap-4), and icon scaling
 - **Theme Consistency**: All color schemes and themes work seamlessly across all device sizes in both light and dark modes
 
 **Visual Design System**:
