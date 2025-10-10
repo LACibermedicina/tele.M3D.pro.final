@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Coffee, Video, VideoOff, Users, Send, MessageCircle } from "lucide-react";
 import AgoraRTC, { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack } from "agora-rtc-sdk-ng";
 import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 
 export default function CoffeeRoom() {
   const { user } = useAuth();
@@ -199,7 +200,7 @@ export default function CoffeeRoom() {
   }
 
   return (
-    <PageWrapper variant="origami">
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-8 gap-4">
           <div className="flex items-center gap-2 sm:gap-3">

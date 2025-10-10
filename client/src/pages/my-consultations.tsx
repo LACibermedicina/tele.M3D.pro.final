@@ -16,9 +16,10 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import Header from "@/components/layout/header";
+import PageWrapper from "@/components/layout/page-wrapper";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 
 interface ConsultationRequest {
   id: string;
@@ -185,8 +186,7 @@ export default function MyConsultations() {
 
   if (!user || user.role !== 'patient') {
     return (
-      <>
-        <Header />
+      <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
         <div className="container mx-auto px-4 py-8">
           <Card>
             <CardContent className="p-6">
@@ -194,14 +194,13 @@ export default function MyConsultations() {
             </CardContent>
           </Card>
         </div>
-      </>
+      </PageWrapper>
     );
   }
 
   return (
-    <>
-      <Header />
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+      <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-5xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Minhas Consultas</h1>
           <p className="text-muted-foreground">
@@ -264,6 +263,6 @@ export default function MyConsultations() {
           </Tabs>
         )}
       </div>
-    </>
+    </PageWrapper>
   );
 }

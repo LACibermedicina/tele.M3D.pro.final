@@ -21,7 +21,8 @@ import {
   ArrowRight
 } from "lucide-react";
 import { useLocation } from "wouter";
-import Header from "@/components/layout/header";
+import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 
 interface Doctor {
   id: string;
@@ -156,8 +157,7 @@ export default function ConsultationRequest() {
 
   if (!user || user.role !== 'patient') {
     return (
-      <>
-        <Header />
+      <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
         <div className="container mx-auto px-4 py-8">
           <Card>
             <CardContent className="p-6">
@@ -165,14 +165,13 @@ export default function ConsultationRequest() {
             </CardContent>
           </Card>
         </div>
-      </>
+      </PageWrapper>
     );
   }
 
   return (
-    <>
-      <Header />
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+      <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-4xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Solicitar Consulta</h1>
           <p className="text-muted-foreground">
@@ -351,6 +350,6 @@ export default function ConsultationRequest() {
           </div>
         )}
       </div>
-    </>
+    </PageWrapper>
   );
 }
