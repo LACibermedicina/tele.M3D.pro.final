@@ -9,7 +9,7 @@ import LanguageSelector from "@/components/ui/language-selector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap } from "lucide-react";
 import { formatErrorForToast } from "@/lib/error-handler";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import NotificationCenter from "@/components/notifications/notification-center";
@@ -510,51 +510,8 @@ export default function Header() {
                     {getRoleDisplay(user.role)}
                   </p>
                 </div>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={`w-8 h-8 hover:bg-primary/10 transition-colors duration-300 ${getTextColor()}`}
-                      onClick={() => setIsCommandPaletteOpen(true)}
-                      data-testid="button-command-palette"
-                    >
-                      <Command 
-                        className={`h-4 w-4 transition-all duration-300 ${getTextColor()}`}
-                        style={{
-                          filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
-                        }}
-                      />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-white">Comandos (⌘K)</p>
-                  </TooltipContent>
-                </Tooltip>
               </div>
             )}
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={`icon-link-primary group w-10 h-10 hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg ${getTextColor()}`}
-                  data-testid="button-support"
-                  onClick={handleSupportContact}
-                >
-                  <i 
-                    className={`fas fa-headset text-lg transition-all duration-300 ${getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
-                    style={{
-                      filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
-                    }}
-                  ></i>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
-                <p className="text-white">{t("support.contact")}</p>
-              </TooltipContent>
-            </Tooltip>
           </div>
 
           {/* Desktop Navigation */}
@@ -606,28 +563,118 @@ export default function Header() {
           </TooltipProvider>
 
           <div className="flex items-center space-x-3">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/documentation">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className={`icon-link-primary group w-10 h-10 hover:bg-primary/10 transition-all duration-300 hover:scale-110 hover:shadow-lg ${getTextColor()}`}
-                    data-testid="button-documentation"
+            {/* Quick Actions Menu */}
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className={`icon-link-primary group w-10 h-10 hover:bg-gradient-to-r hover:from-orange-500 hover:to-amber-500 transition-all duration-300 hover:scale-110 hover:shadow-xl ${getTextColor()}`}
+                      data-testid="button-quick-actions"
+                    >
+                      <Zap 
+                        className={`h-5 w-5 transition-all duration-300 ${getTextColor()} group-hover:text-white group-hover:drop-shadow-[0_2px_12px_rgba(251,191,36,1)]`}
+                        style={{
+                          filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
+                        }}
+                      />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-gradient-to-r from-orange-500 to-amber-500 text-white font-medium px-3 py-2 shadow-lg">
+                  <p className="text-white">Ações Rápidas</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <DropdownMenuContent align="end" className="w-64 bg-background/95 backdrop-blur-lg border-primary/20 shadow-2xl">
+                <DropdownMenuLabel className="text-base font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
+                  ⚡ Ações Rápidas
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                {user && (
+                  <DropdownMenuItem 
+                    onClick={() => setIsCommandPaletteOpen(true)}
+                    className="cursor-pointer hover:bg-primary/10 py-3"
+                    data-testid="menu-command-palette"
                   >
-                    <BookOpen 
-                      className={`h-5 w-5 transition-all duration-300 ${getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
-                      style={{
-                        filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
-                      }}
-                    />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
-                <p className="text-white">Documentação do Sistema</p>
-              </TooltipContent>
-            </Tooltip>
+                    <Command className="mr-3 h-5 w-5 text-blue-500" />
+                    <div>
+                      <p className="font-semibold">Paleta de Comandos</p>
+                      <p className="text-xs text-muted-foreground">⌘K para abrir</p>
+                    </div>
+                  </DropdownMenuItem>
+                )}
+                
+                <DropdownMenuItem 
+                  onClick={handleSupportContact}
+                  className="cursor-pointer hover:bg-primary/10 py-3"
+                  data-testid="menu-support"
+                >
+                  <i className="fas fa-headset mr-3 text-lg text-orange-500"></i>
+                  <div>
+                    <p className="font-semibold">{t("support.contact")}</p>
+                    <p className="text-xs text-muted-foreground">Contato com suporte</p>
+                  </div>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem 
+                  onClick={() => navigate('/documentation')}
+                  className="cursor-pointer hover:bg-primary/10 py-3"
+                  data-testid="menu-documentation"
+                >
+                  <BookOpen className="mr-3 h-5 w-5 text-purple-500" />
+                  <div>
+                    <p className="font-semibold">Documentação</p>
+                    <p className="text-xs text-muted-foreground">Guias e tutoriais</p>
+                  </div>
+                </DropdownMenuItem>
+                
+                {user?.role === 'doctor' && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => navigate('/doctor-office')}
+                      className="cursor-pointer hover:bg-blue-500/10 py-3"
+                      data-testid="menu-doctor-office"
+                    >
+                      <Stethoscope className="mr-3 h-5 w-5 text-blue-500 animate-pulse" />
+                      <div>
+                        <p className="font-semibold text-blue-600 dark:text-blue-400">Abrir Consultório</p>
+                        <p className="text-xs text-muted-foreground">Sala de atendimento</p>
+                      </div>
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuItem 
+                      onClick={() => navigate('/coffee-room')}
+                      className="cursor-pointer hover:bg-amber-500/10 py-3"
+                      data-testid="menu-coffee-room"
+                    >
+                      <Coffee className="mr-3 h-5 w-5 text-amber-600" />
+                      <div>
+                        <p className="font-semibold">Cafeteria Virtual</p>
+                        <p className="text-xs text-muted-foreground">Área de descanso</p>
+                      </div>
+                    </DropdownMenuItem>
+                  </>
+                )}
+                
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={handleEmergencyContact}
+                  className="cursor-pointer hover:bg-destructive/10 py-3"
+                  data-testid="menu-emergency"
+                >
+                  <Ambulance className="mr-3 h-5 w-5 text-red-500" />
+                  <div>
+                    <p className="font-semibold text-red-600 dark:text-red-400">Emergência Médica</p>
+                    <p className="text-xs text-muted-foreground">Contato de emergência</p>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {!user && (
               <form onSubmit={handleQuickLogin} className="hidden md:flex items-center space-x-2 bg-background/30 backdrop-blur-sm rounded-full px-3 py-1.5 border border-primary/10 animate-fade-in">
@@ -671,80 +718,6 @@ export default function Header() {
               <>
                 <NotificationCenter isScrolled={isScrolled} />
                 
-                {/* Doctor Office Button */}
-                {user.role === 'doctor' && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Link href="/doctor-office">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className={`icon-link-primary group w-12 h-12 hover:bg-blue-500/20 transition-all duration-300 hover:scale-110 hover:shadow-xl ring-2 ring-blue-400/50 hover:ring-blue-500 ${
-                            isScrolled ? 'text-white' : 'text-blue-600 dark:text-blue-400'
-                          }`}
-                          data-testid="button-doctor-office"
-                        >
-                          <Stethoscope className={`h-6 w-6 transition-all duration-300 ${
-                            isScrolled 
-                              ? 'text-white drop-shadow-[0_2px_8px_rgba(96,165,250,0.5)]' 
-                              : 'text-blue-600 dark:text-blue-400'
-                          } group-hover:drop-shadow-[0_2px_12px_rgba(96,165,250,1)] animate-pulse`} />
-                        </Button>
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="bg-blue-600 text-white font-medium px-3 py-2 shadow-lg">
-                      <p className="text-white">Abrir Consultório</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-
-                {/* Coffee Room Button - For Doctors */}
-                {user.role === 'doctor' && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Link href="/coffee-room">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className={`icon-link-primary group w-10 h-10 hover:bg-amber-500/20 transition-all duration-300 hover:scale-110 hover:shadow-lg ${getTextColor()}`}
-                          data-testid="button-coffee-room"
-                        >
-                          <Coffee 
-                            className={`h-5 w-5 transition-all duration-300 ${getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(251,191,36,0.8)]`}
-                            style={{
-                              filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
-                            }}
-                          />
-                        </Button>
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="bg-amber-600 text-white font-medium px-3 py-2 shadow-lg">
-                      <p className="text-white">Cafeteria Virtual</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className={`icon-link-destructive group w-10 h-10 hover:bg-destructive/10 transition-all duration-300 hover:scale-110 hover:shadow-lg ${isAuthenticatedPage && !isScrolled ? 'text-red-600' : 'text-white'}`}
-                      data-testid="button-emergency"
-                      onClick={handleEmergencyContact}
-                    >
-                      <Ambulance 
-                        className={`h-5 w-5 transition-all duration-300 ${isAuthenticatedPage && !isScrolled ? 'text-red-600' : 'text-white'} group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)]`}
-                        style={{
-                          filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
-                        }}
-                      />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="bg-destructive text-white font-medium px-3 py-2 shadow-lg">
-                    <p className="text-white">Emergência Médica</p>
-                  </TooltipContent>
-                </Tooltip>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
