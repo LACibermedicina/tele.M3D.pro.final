@@ -282,48 +282,48 @@ export default function ConsultationSession() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 h-screen">
+      <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 p-2 sm:p-4 min-h-screen">
         {/* Video Area */}
-        <div className="lg:col-span-2 space-y-4">
-          <Card className="h-[70vh]">
-            <CardContent className="p-4 h-full">
+        <div className="lg:col-span-2 space-y-2 sm:space-y-4">
+          <Card className="h-[50vh] sm:h-[60vh] lg:h-[70vh]">
+            <CardContent className="p-2 sm:p-4 h-full">
               <div className="relative h-full bg-gray-900 rounded-lg overflow-hidden">
                 {/* Remote Video */}
                 <div ref={remoteVideoRef} className="w-full h-full" data-testid="video-remote" />
                 
                 {/* Local Video (Picture-in-Picture) */}
-                <div className="absolute bottom-4 right-4 w-48 h-36 bg-gray-800 rounded-lg overflow-hidden border-2 border-white">
+                <div className="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 w-24 h-18 sm:w-48 sm:h-36 bg-gray-800 rounded-lg overflow-hidden border-2 border-white">
                   <div ref={localVideoRef} className="w-full h-full" data-testid="video-local" />
                 </div>
 
                 {/* Video Controls */}
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3">
+                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1 sm:gap-3">
                   <Button
                     data-testid="button-toggle-video"
                     variant={isVideoOn ? 'default' : 'destructive'}
-                    size="lg"
+                    size="icon"
                     onClick={toggleVideo}
-                    className="rounded-full w-14 h-14"
+                    className="rounded-full w-10 h-10 sm:w-14 sm:h-14"
                   >
-                    {isVideoOn ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+                    {isVideoOn ? <Video className="w-4 h-4 sm:w-6 sm:h-6" /> : <VideoOff className="w-4 h-4 sm:w-6 sm:h-6" />}
                   </Button>
                   <Button
                     data-testid="button-toggle-audio"
                     variant={isAudioOn ? 'default' : 'destructive'}
-                    size="lg"
+                    size="icon"
                     onClick={toggleAudio}
-                    className="rounded-full w-14 h-14"
+                    className="rounded-full w-10 h-10 sm:w-14 sm:h-14"
                   >
-                    {isAudioOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
+                    {isAudioOn ? <Mic className="w-4 h-4 sm:w-6 sm:h-6" /> : <MicOff className="w-4 h-4 sm:w-6 sm:h-6" />}
                   </Button>
                   <Button
                     data-testid="button-leave"
                     variant="destructive"
-                    size="lg"
+                    size="icon"
                     onClick={handleLeave}
-                    className="rounded-full w-14 h-14"
+                    className="rounded-full w-10 h-10 sm:w-14 sm:h-14"
                   >
-                    <PhoneOff className="w-6 h-6" />
+                    <PhoneOff className="w-4 h-4 sm:w-6 sm:h-6" />
                   </Button>
                 </div>
 
@@ -373,11 +373,11 @@ export default function ConsultationSession() {
         </div>
 
         {/* Side Panel */}
-        <div className="space-y-4">
-          <Card className="h-[85vh]">
+        <div className="space-y-2 sm:space-y-4">
+          <Card className="h-auto lg:h-[85vh]">
             <Tabs defaultValue="notes" className="h-full flex flex-col">
-              <CardHeader className="pb-3">
-                <TabsList className="grid w-full grid-cols-3">
+              <CardHeader className="pb-2 sm:pb-3">
+                <TabsList className="grid w-full grid-cols-3 text-xs sm:text-sm">
                   <TabsTrigger value="notes" data-testid="tab-notes">
                     <FileText className="w-4 h-4 mr-2" />
                     Notas
@@ -393,14 +393,14 @@ export default function ConsultationSession() {
                 </TabsList>
               </CardHeader>
 
-              <CardContent className="flex-1 overflow-hidden">
-                <TabsContent value="notes" className="h-full space-y-3 mt-0">
+              <CardContent className="flex-1 overflow-hidden p-3 sm:p-6">
+                <TabsContent value="notes" className="h-full space-y-2 sm:space-y-3 mt-0">
                   <Textarea
                     data-testid="textarea-clinical-notes"
                     placeholder="Anote observações clínicas durante a consulta..."
                     value={clinicalNotes}
                     onChange={(e) => setClinicalNotes(e.target.value)}
-                    className="h-[calc(100%-50px)] resize-none"
+                    className="h-48 sm:h-[calc(100%-50px)] resize-none text-sm"
                     disabled={!isDoctor}
                   />
                   {isDoctor && (
@@ -417,8 +417,8 @@ export default function ConsultationSession() {
                 </TabsContent>
 
                 <TabsContent value="chat" className="h-full flex flex-col mt-0">
-                  <ScrollArea className="flex-1 pr-4">
-                    <div className="space-y-3 pb-4">
+                  <ScrollArea className="h-48 sm:flex-1 pr-2 sm:pr-4">
+                    <div className="space-y-2 sm:space-y-3 pb-4">
                       {messages.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-8">
                           Nenhuma mensagem ainda. Comece a conversar!
@@ -439,28 +439,30 @@ export default function ConsultationSession() {
                       <div ref={messagesEndRef} />
                     </div>
                   </ScrollArea>
-                  <div className="flex gap-2 pt-3">
+                  <div className="flex gap-2 pt-2 sm:pt-3">
                     <Input
                       data-testid="input-chat-message"
                       placeholder="Digite sua mensagem..."
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                      className="text-sm"
                     />
                     <Button 
                       size="icon" 
                       onClick={sendMessage} 
                       disabled={!messageText.trim()}
                       data-testid="button-send-message"
+                      className="shrink-0"
                     >
                       <Send className="h-4 w-4" />
                     </Button>
                   </div>
                 </TabsContent>
 
-                <TabsContent value="ai" className="h-full space-y-3 mt-0">
-                  <ScrollArea className="h-[calc(100%-50px)]">
-                    <div className="space-y-3 pr-4">
+                <TabsContent value="ai" className="h-full space-y-2 sm:space-y-3 mt-0">
+                  <ScrollArea className="h-32 sm:h-[calc(100%-50px)]">
+                    <div className="space-y-2 sm:space-y-3 pr-2 sm:pr-4">
                       <p className="text-sm text-muted-foreground">
                         Gere um resumo clínico automatizado da consulta usando IA
                       </p>
