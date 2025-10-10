@@ -9,7 +9,17 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
-The client-side is built with React and TypeScript, using Wouter for routing. It leverages Shadcn/ui components (based on Radix UI) styled with Tailwind CSS for a responsive, medical-themed design. State management is handled by TanStack React Query, form handling by React Hook Form with Zod validation, and real-time updates via a custom WebSocket hook. The UI features a warm autumn pastel color scheme with an animated origami-inspired background system on public-facing pages.
+The client-side is built with React and TypeScript, using Wouter for routing. It leverages Shadcn/ui components (based on Radix UI) styled with Tailwind CSS for a fully responsive, medical-themed design. State management is handled by TanStack React Query, form handling by React Hook Form with Zod validation, and real-time updates via a custom WebSocket hook. The UI features a warm autumn pastel color scheme with an animated origami-inspired background system on public-facing pages.
+
+**Responsive Design System**:
+- **Breakpoints**: Mobile (<768px), Tablet (768px-1024px), Desktop (>1024px)
+- **Device Detection**: Custom hooks (useIsMobile, useIsTablet, useDeviceType) for device-specific rendering
+- **Adaptive Layouts**: Conditional component rendering based on device type with separate mobile/desktop dashboard components
+- **Tailwind Responsive Classes**: Extensive use of sm:, md:, lg:, xl: prefixes for responsive styling
+- **Mobile Optimizations**: Touch-friendly interfaces, larger tap targets (min 44px), optimized font sizes, and gesture-aware scrolling
+- **Flexible Grid Systems**: CSS Grid and Flexbox with responsive column adjustments (grid-cols-1 md:grid-cols-2 lg:grid-cols-3)
+- **Video Call Responsiveness**: Adaptive video controls, resizable panels, and mobile-optimized chat interfaces
+- **Theme Consistency**: All color schemes and themes work seamlessly across all device sizes in both light and dark modes
 
 **Visual Design System**:
 - **Animated Origami Background**: Canvas API-based polygons (0.25 opacity) with rotation animation and floating SVG shapes (triangles, diamonds, pentagons)
