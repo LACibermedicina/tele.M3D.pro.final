@@ -47,7 +47,7 @@ export interface SchedulingResponse {
 async function generateWithJSON(prompt: string): Promise<any> {
   const client = getGeminiClient();
   const model = client.getGenerativeModel({ 
-    model: "gemini-2.0-flash-exp",
+    model: "gemini-2.0-flash",
     generationConfig: {
       responseMimeType: "application/json"
     }
@@ -61,7 +61,7 @@ async function generateWithJSON(prompt: string): Promise<any> {
 async function generateText(prompt: string, systemInstruction?: string): Promise<string> {
   const client = getGeminiClient();
   const model = client.getGenerativeModel({ 
-    model: "gemini-2.0-flash-exp"
+    model: "gemini-2.0-flash"
   });
   
   // Include system instruction in the prompt if provided
@@ -509,7 +509,7 @@ Formato: texto corrido, máximo 300 palavras.
     try {
       const client = getGeminiClient();
       const model = client.getGenerativeModel({ 
-        model: "gemini-2.0-flash-exp"
+        model: "gemini-2.0-flash"
       });
 
       // Search for relevant PDF references from database with keyword matching
