@@ -1,0 +1,31 @@
+# Medical Practice Management App
+
+## Overview
+A full-stack medical practice management application built with Express.js backend and React frontend.
+
+## Architecture
+- **Backend**: Express.js with TypeScript (`server/`)
+- **Frontend**: React with Vite (`client/`)
+- **Database**: PostgreSQL via Neon (Drizzle ORM with `drizzle-orm/node-postgres`)
+- **Shared types**: `shared/schema.ts`
+
+## Key Files
+- `server/db.ts` - Database connection (constructs URL from individual PG env vars if DATABASE_URL is not a full connection string)
+- `server/routes.ts` - API routes
+- `server/storage.ts` - Database storage layer
+- `server/index.ts` - Server entry point
+- `shared/schema.ts` - Drizzle schema and types
+- `client/src/App.tsx` - Frontend entry point
+
+## Database
+- PostgreSQL hosted on Neon
+- Uses `drizzle-orm/node-postgres` with `pg` driver
+- Environment variables: `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`
+- Schema migrations via `npm run db:push`
+
+## Dependencies
+- jspdf v4.2.0 (PDF generation, listed as dependency but not currently imported in source)
+- See `package.json` for full list
+
+## Running
+- `npm run dev` starts the development server (Express + Vite on port 5000)
