@@ -1,21 +1,37 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { db } from "../db";
 import { chatbotReferences } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 
-// Lazy initialization to prevent crashes when API key is missing
 let genAI: GoogleGenerativeAI | null = null;
+let openaiClient: OpenAI | null = null;
 
 function getGeminiClient(): GoogleGenerativeAI {
   if (!process.env.GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY environment variable is not configured. Please add it to your deployment configuration.');
+    throw new Error('GEMINI_API_KEY environment variable is not configured.');
   }
-  
   if (!genAI) {
     genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   }
-  
   return genAI;
+}
+
+function getOpenAIFallback(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined,
+    });
+  }
+  return openaiClient;
+}
+
+function isGeminiUnavailable(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message;
+  return msg.includes('429') || msg.includes('quota') || msg.includes('rate limit') ||
+    msg.includes('GEMINI_API_KEY') || msg.includes('not found for API') || msg.includes('Too Many Requests');
 }
 
 export interface DiagnosticHypothesis {
@@ -45,30 +61,66 @@ export interface SchedulingResponse {
 }
 
 async function generateWithJSON(prompt: string): Promise<any> {
-  const client = getGeminiClient();
-  const model = client.getGenerativeModel({ 
-    model: "gemini-2.0-flash",
-    generationConfig: {
-      responseMimeType: "application/json"
+  try {
+    const client = getGeminiClient();
+    const model = client.getGenerativeModel({ 
+      model: "gemini-2.0-flash",
+      generationConfig: {
+        responseMimeType: "application/json"
+      }
+    });
+    const result = await model.generateContent(prompt);
+    const response = result.response.text();
+    return JSON.parse(response);
+  } catch (error) {
+    if (isGeminiUnavailable(error)) {
+      console.log('Gemini unavailable, falling back to OpenAI integration');
+      return generateWithJSONOpenAI(prompt);
     }
+    throw error;
+  }
+}
+
+async function generateWithJSONOpenAI(prompt: string): Promise<any> {
+  const client = getOpenAIFallback();
+  const response = await client.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [{ role: "user", content: prompt }],
+    response_format: { type: "json_object" },
   });
-  
-  const result = await model.generateContent(prompt);
-  const response = result.response.text();
-  return JSON.parse(response);
+  return JSON.parse(response.choices[0].message.content || '{}');
 }
 
 async function generateText(prompt: string, systemInstruction?: string): Promise<string> {
-  const client = getGeminiClient();
-  const model = client.getGenerativeModel({ 
-    model: "gemini-2.0-flash"
+  try {
+    const client = getGeminiClient();
+    const model = client.getGenerativeModel({ 
+      model: "gemini-2.0-flash"
+    });
+    const fullPrompt = systemInstruction ? `${systemInstruction}\n\n${prompt}` : prompt;
+    const result = await model.generateContent(fullPrompt);
+    return result.response.text();
+  } catch (error) {
+    if (isGeminiUnavailable(error)) {
+      console.log('Gemini unavailable, falling back to OpenAI integration');
+      return generateTextOpenAI(prompt, systemInstruction);
+    }
+    throw error;
+  }
+}
+
+async function generateTextOpenAI(prompt: string, systemInstruction?: string): Promise<string> {
+  const client = getOpenAIFallback();
+  const messages: any[] = [];
+  if (systemInstruction) {
+    messages.push({ role: "system", content: systemInstruction });
+  }
+  messages.push({ role: "user", content: prompt });
+  const response = await client.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages,
   });
-  
-  // Include system instruction in the prompt if provided
-  const fullPrompt = systemInstruction ? `${systemInstruction}\n\n${prompt}` : prompt;
-  
-  const result = await model.generateContent(fullPrompt);
-  return result.response.text();
+  return response.choices[0].message.content || '';
 }
 
 export class GeminiService {
@@ -642,8 +694,18 @@ Formato: texto corrido, máximo 300 palavras.
       
       fullPrompt += `═══ 💬 NOVA PERGUNTA ═══\n${userMessage}\n\n═══ 🤖 SUA RESPOSTA ═══\n`;
 
-      const result = await model.generateContent(fullPrompt);
-      const responseText = result.response.text();
+      let responseText: string;
+      try {
+        const result = await model.generateContent(fullPrompt);
+        responseText = result.response.text();
+      } catch (geminiError) {
+        if (isGeminiUnavailable(geminiError)) {
+          console.log('Gemini unavailable in chatWithContext, falling back to OpenAI');
+          responseText = await generateTextOpenAI(fullPrompt);
+        } else {
+          throw geminiError;
+        }
+      }
       
       // Update usage count for used references
       if (referencesUsed.length > 0) {

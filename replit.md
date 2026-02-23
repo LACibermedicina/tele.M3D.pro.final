@@ -24,8 +24,15 @@ A full-stack medical practice management application built with Express.js backe
 - Schema migrations via `npm run db:push`
 - On startup, creates default doctor user and schedule if not present
 
+## AI Services
+- **Primary**: Google Gemini API (`gemini-2.0-flash`) via `server/services/gemini.ts`
+- **Fallback**: Replit OpenAI AI Integrations (`gpt-4o-mini`) — auto-fallback when Gemini quota/rate limits are hit
+- **Environment**: `GEMINI_API_KEY`, `AI_INTEGRATIONS_OPENAI_API_KEY`, `AI_INTEGRATIONS_OPENAI_BASE_URL`
+- **Integration files**: `server/replit_integrations/` (chat, audio, image, batch)
+
 ## Dependencies
 - jspdf v4.2.0 (PDF generation)
+- openai (for Replit AI Integrations fallback)
 - See `package.json` for full list
 
 ## Running
