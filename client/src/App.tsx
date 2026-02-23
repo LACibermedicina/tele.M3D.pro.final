@@ -197,24 +197,28 @@ function Router() {
         
         <Route path="/consultation-request">
           <ProtectedRoute requiredRoles={['patient']}>
+            <Header />
             <ConsultationRequest />
           </ProtectedRoute>
         </Route>
         
         <Route path="/my-consultations">
           <ProtectedRoute requiredRoles={['patient']}>
+            <Header />
             <MyConsultations />
           </ProtectedRoute>
         </Route>
         
         <Route path="/consultation-session/:sessionId">
           <ProtectedRoute requiredRoles={['doctor', 'patient', 'admin']}>
+            <Header />
             <ConsultationSession />
           </ProtectedRoute>
         </Route>
         
         <Route path="/clinical-dashboard">
           <ProtectedRoute requiredRoles={['doctor', 'patient', 'admin']}>
+            <Header />
             <ClinicalDashboard />
           </ProtectedRoute>
         </Route>
@@ -241,10 +245,8 @@ function Router() {
         </Route>
         
         <Route path="/immediate-consultation">
-          <ProtectedRoute requiredRoles={['patient']}>
-            <Header />
-            <ImmediateConsultation />
-          </ProtectedRoute>
+          <Header />
+          <ImmediateConsultation />
         </Route>
         
         <Route path="/doctor-chat">

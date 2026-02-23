@@ -42,7 +42,9 @@ export default function ImmediateConsultation() {
   // Request immediate consultation mutation - joins doctor's open office
   const requestMutation = useMutation({
     mutationFn: async (data: { doctorId: string; reason: string }) => {
-      // Join doctor's office directly
+      if (!user) {
+        throw new Error('Faça login para solicitar uma consulta');
+      }
       const res = await apiRequest('POST', `/api/doctor-office/join/${data.doctorId}`, {});
       return res.json();
     },
@@ -53,7 +55,6 @@ export default function ImmediateConsultation() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
       
-      // Redirect to video consultation with the consultation ID
       setTimeout(() => {
         setLocation(`/consultation/video/${data.consultationId}`);
       }, 1500);
@@ -68,6 +69,11 @@ export default function ImmediateConsultation() {
   });
 
   const handleRequest = () => {
+    if (!user) {
+      setLocation('/login');
+      return;
+    }
+
     if (!selectedDoctor) {
       toast({
         title: "Erro",
@@ -119,29 +125,20 @@ export default function ImmediateConsultation() {
     return aTime - bTime; // Earlier online time first
   });
 
-  if (!user || user.role !== 'patient') {
-    return (
-      <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
-        <div className="p-8">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-center text-muted-foreground">
-                Acesso restrito a pacientes
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </PageWrapper>
-    );
-  }
+  const isLoggedIn = !!user;
+  const isPatient = user?.role === 'patient';
 
   return (
     <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
       <div className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Atendimento Imediato</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">
+          {isLoggedIn ? 'Sala de Espera & Atendimento Imediato' : 'Sala de Espera'}
+        </h1>
         <p className="text-sm sm:text-base text-muted-foreground mt-2">
-          Solicite uma consulta com médicos disponíveis agora
+          {isLoggedIn 
+            ? 'Veja médicos disponíveis agora e solicite atendimento imediato' 
+            : 'Veja os médicos disponíveis. Faça login para solicitar uma consulta.'}
         </p>
       </div>
 
@@ -230,38 +227,54 @@ export default function ImmediateConsultation() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 sm:space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="reason" className="text-sm sm:text-base">Motivo da Consulta</Label>
-              <Textarea
-                id="reason"
-                placeholder="Descreva seus sintomas, há quanto tempo está sentindo, etc..."
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={5}
-                data-testid="textarea-reason"
-                className="text-sm"
-              />
-            </div>
+            {!isLoggedIn ? (
+              <div className="text-center py-6 space-y-4">
+                <p className="text-muted-foreground">
+                  Para solicitar atendimento, é necessário estar logado.
+                </p>
+                <Button onClick={() => setLocation('/login')} size="lg">
+                  Fazer Login
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Não tem conta? <a href="/register/patient" className="text-primary underline">Cadastre-se</a>
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="reason" className="text-sm sm:text-base">Motivo da Consulta</Label>
+                  <Textarea
+                    id="reason"
+                    placeholder="Descreva seus sintomas, há quanto tempo está sentindo, etc..."
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    rows={5}
+                    data-testid="textarea-reason"
+                    className="text-sm"
+                  />
+                </div>
 
-            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>Médico selecionado:</strong> {selectedDoctor.name}
-              </p>
-              <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
-                Você será atendido imediatamente após a confirmação.
-              </p>
-            </div>
+                <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <strong>Médico selecionado:</strong> {selectedDoctor.name}
+                  </p>
+                  <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
+                    Você será atendido imediatamente após a confirmação.
+                  </p>
+                </div>
 
-            <Button
-              onClick={handleRequest}
-              disabled={requestMutation.isPending || !reason.trim()}
-              className="w-full"
-              size="lg"
-              data-testid="button-request-consultation"
-            >
-              <Clock className="h-5 w-5 mr-2" />
-              {requestMutation.isPending ? 'Agendando...' : 'Solicitar Atendimento Imediato'}
-            </Button>
+                <Button
+                  onClick={handleRequest}
+                  disabled={requestMutation.isPending || !reason.trim()}
+                  className="w-full"
+                  size="lg"
+                  data-testid="button-request-consultation"
+                >
+                  <Clock className="h-5 w-5 mr-2" />
+                  {requestMutation.isPending ? 'Agendando...' : 'Solicitar Atendimento Imediato'}
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       )}

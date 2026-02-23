@@ -1704,6 +1704,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/medical-records/my', async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.json([]);
+      }
+      const userId = req.user.id;
+      const patient = await storage.getPatientByUserId(userId);
+      if (!patient) {
+        return res.json([]);
+      }
+      const records = await storage.getMedicalRecordsByPatient(patient.id);
+      res.json(records || []);
+    } catch (error) {
+      console.error('Get my medical records error:', error);
+      res.json([]);
+    }
+  });
+
   // Medical Records API with role-based access control
   app.get('/api/medical-records/:patientId', async (req, res) => {
     try {
@@ -6184,7 +6202,6 @@ Format your response as valid JSON with this structure:
   // Consultation Requests - AI-powered scheduling
   app.post('/api/consultation-requests', requireAuth, async (req, res) => {
     try {
-      const validatedData = insertConsultationRequestSchema.parse(req.body);
       const userId = req.user!.id;
 
       // Get patient data for AI analysis
@@ -6194,6 +6211,10 @@ Format your response as valid JSON with this structure:
       }
 
       const patientId = patient.id;
+      const { symptoms, whatsappOptIn } = req.body;
+      if (!symptoms || typeof symptoms !== 'string' || symptoms.trim().length === 0) {
+        return res.status(400).json({ message: 'Symptoms description is required' });
+      }
 
       // Get patient medical history
       const medicalHistory = await storage.getMedicalRecordsByPatient(patientId);
@@ -6202,7 +6223,7 @@ Format your response as valid JSON with this structure:
       // AI Triage Analysis
       const triagePrompt = `Como médico especialista, analise os seguintes dados e classifique a urgência:
 
-Sintomas relatados: ${validatedData.symptoms}
+Sintomas relatados: ${symptoms}
 
 Histórico médico do paciente:
 ${medicalHistory.length > 0 ? medicalHistory.slice(0, 3).map((r: any) => `- ${r.diagnosis || 'Consulta'} (${new Date(r.date).toLocaleDateString()})`).join('\n') : 'Sem histórico relevante'}
@@ -6245,14 +6266,14 @@ Forneça uma resposta em JSON com:
       // Create consultation request
       const consultationRequest = await storage.createConsultationRequest({
         patientId,
-        symptoms: validatedData.symptoms,
+        symptoms,
         aiAnalysis: triageData,
         clinicalPresentation: triageData.triageReasoning,
-        urgencyLevel: validatedData.urgencyLevel || triageData.aiTriageLevel,
-        selectedDoctorId: validatedData.selectedDoctorId || availableDoctors[0]?.id || null,
+        urgencyLevel: triageData.aiTriageLevel || 'routine',
+        selectedDoctorId: availableDoctors[0]?.id || null,
         recommendedDoctors: availableDoctors.map((d: any) => d.id),
         status: 'pending',
-        whatsappNotificationSent: false
+        whatsappNotificationSent: whatsappOptIn || false
       });
 
       res.json({

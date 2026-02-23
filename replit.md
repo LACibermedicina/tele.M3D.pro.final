@@ -35,5 +35,13 @@ A full-stack medical practice management application built with Express.js backe
 - openai (for Replit AI Integrations fallback)
 - See `package.json` for full list
 
+## Patient Features
+- **Consultation Request**: `/consultation-request` - AI-powered symptom triage and doctor recommendations
+- **Waiting Room**: `/immediate-consultation` - View online doctors (accessible to visitors and logged-in users)
+- **My Consultations**: `/my-consultations` - Track consultation requests
+- **Prescriptions**: Only visible when patient has active prescriptions within validity dates
+- **Medical Records**: "Ver Prontuário" only shown if patient has existing records
+- Navigation: Top header bar always visible for patient pages
+
 ## Running
 - `npm run dev` starts the development server (Express + Vite on port 5000)

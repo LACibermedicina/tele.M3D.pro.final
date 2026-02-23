@@ -59,7 +59,8 @@ export default function ConsultationRequest() {
   // Request consultation mutation
   const requestMutation = useMutation({
     mutationFn: async (data: { symptoms: string; whatsappOptIn: boolean }) => {
-      return await apiRequest('/api/consultation-requests', 'POST', data);
+      const res = await apiRequest('POST', '/api/consultation-requests', data);
+      return await res.json();
     },
     onSuccess: (data: any) => {
       // Store request ID and triage result

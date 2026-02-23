@@ -16,9 +16,12 @@ import {
   Share, 
   Phone,
   Coins,
-  TrendingUp
+  TrendingUp,
+  Stethoscope
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import { Link } from "wouter"
+import { useQuery } from "@tanstack/react-query"
 
 interface Appointment {
   id: string;
@@ -142,44 +145,52 @@ export function MobilePatientDashboard() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-4">
-        <Button 
-          size="lg" 
-          className="h-20 flex flex-col items-center justify-center space-y-2 bg-gradient-to-br from-medical-primary to-blue-600 text-white shadow-lg"
-          data-testid="button-quick-consultation"
-        >
-          <Video className="w-6 h-6" />
-          <span className="text-sm font-medium">Consulta Rápida</span>
-        </Button>
+        <Link href="/consultation-request">
+          <Button 
+            size="lg" 
+            className="w-full h-20 flex flex-col items-center justify-center space-y-2 bg-gradient-to-br from-medical-primary to-blue-600 text-white shadow-lg"
+            data-testid="button-consultation-request"
+          >
+            <Stethoscope className="w-6 h-6" />
+            <span className="text-sm font-medium">Solicitar Consulta</span>
+          </Button>
+        </Link>
         
-        <Button 
-          size="lg" 
-          variant="outline"
-          className="h-20 flex flex-col items-center justify-center space-y-2 border-medical-secondary text-medical-secondary hover:bg-medical-secondary/10 shadow-lg"
-          data-testid="button-schedule-appointment"
-        >
-          <Calendar className="w-6 h-6" />
-          <span className="text-sm font-medium">Agendar</span>
-        </Button>
+        <Link href="/immediate-consultation">
+          <Button 
+            size="lg" 
+            variant="outline"
+            className="w-full h-20 flex flex-col items-center justify-center space-y-2 border-medical-secondary text-medical-secondary hover:bg-medical-secondary/10 shadow-lg"
+            data-testid="button-waiting-room"
+          >
+            <Video className="w-6 h-6" />
+            <span className="text-sm font-medium">Sala de Espera</span>
+          </Button>
+        </Link>
         
-        <Button 
-          size="lg" 
-          variant="outline"
-          className="h-20 flex flex-col items-center justify-center space-y-2 border-medical-accent text-medical-accent hover:bg-medical-accent/10 shadow-lg"
-          data-testid="button-medical-chat"
-        >
-          <MessageCircle className="w-6 h-6" />
-          <span className="text-sm font-medium">Chat Médico</span>
-        </Button>
+        <Link href="/my-consultations">
+          <Button 
+            size="lg" 
+            variant="outline"
+            className="w-full h-20 flex flex-col items-center justify-center space-y-2 border-medical-accent text-medical-accent hover:bg-medical-accent/10 shadow-lg"
+            data-testid="button-my-consultations"
+          >
+            <Calendar className="w-6 h-6" />
+            <span className="text-sm font-medium">Minhas Consultas</span>
+          </Button>
+        </Link>
         
-        <Button 
-          size="lg" 
-          variant="outline"
-          className="h-20 flex flex-col items-center justify-center space-y-2 border-medical-primary text-medical-primary hover:bg-medical-primary/10 shadow-lg"
-          data-testid="button-exam-results"
-        >
-          <FileText className="w-6 h-6" />
-          <span className="text-sm font-medium">Meus Exames</span>
-        </Button>
+        <Link href="/assistant">
+          <Button 
+            size="lg" 
+            variant="outline"
+            className="w-full h-20 flex flex-col items-center justify-center space-y-2 border-medical-primary text-medical-primary hover:bg-medical-primary/10 shadow-lg"
+            data-testid="button-ai-assistant"
+          >
+            <MessageCircle className="w-6 h-6" />
+            <span className="text-sm font-medium">Assistente IA</span>
+          </Button>
+        </Link>
       </div>
 
       {/* Next Appointments */}

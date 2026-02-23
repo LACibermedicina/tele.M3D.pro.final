@@ -215,10 +215,12 @@ export default function PrescriptionsPage() {
               <p className="text-muted-foreground mb-4">
                 {searchTerm || statusFilter !== 'all' 
                   ? 'Tente ajustar os filtros de busca'
-                  : 'Crie sua primeira prescrição para começar'
+                  : isPatient 
+                    ? 'Você não possui prescrições ativas no momento'
+                    : 'Crie sua primeira prescrição para começar'
                 }
               </p>
-              {!searchTerm && statusFilter === 'all' && (
+              {!isPatient && !searchTerm && statusFilter === 'all' && (
                 <Button onClick={() => setIsCreateModalOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Criar Primeira Prescrição

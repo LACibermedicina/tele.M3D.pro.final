@@ -124,6 +124,14 @@ async function generateTextOpenAI(prompt: string, systemInstruction?: string): P
 }
 
 export class GeminiService {
+  async generateText(prompt: string, systemInstruction?: string): Promise<string> {
+    return generateText(prompt, systemInstruction);
+  }
+
+  async generateWithJSON(prompt: string): Promise<any> {
+    return generateWithJSON(prompt);
+  }
+
   async analyzeWhatsappMessage(message: string, patientHistory?: string): Promise<{
     isSchedulingRequest: boolean;
     isClinicalQuestion: boolean;
