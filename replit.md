@@ -14,17 +14,18 @@ A full-stack medical practice management application built with Express.js backe
 - `server/routes.ts` - API routes
 - `server/storage.ts` - Database storage layer
 - `server/index.ts` - Server entry point
-- `shared/schema.ts` - Drizzle schema and types
+- `shared/schema.ts` - Drizzle schema and types (46 tables)
 - `client/src/App.tsx` - Frontend entry point
 
 ## Database
-- PostgreSQL hosted on Neon
+- PostgreSQL hosted on Neon (heliumdb)
 - Uses `drizzle-orm/node-postgres` with `pg` driver
 - Environment variables: `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`
 - Schema migrations via `npm run db:push`
+- On startup, creates default doctor user and schedule if not present
 
 ## Dependencies
-- jspdf v4.2.0 (PDF generation, listed as dependency but not currently imported in source)
+- jspdf v4.2.0 (PDF generation)
 - See `package.json` for full list
 
 ## Running
