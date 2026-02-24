@@ -6692,7 +6692,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
           triageData = JSON.parse(cleanedResponse);
         } catch {
           triageData = {
-            aiTriageLevel: 'routine',
+            aiTriageLevel: 'standard',
             triageReasoning: aiResponse
               .replace(/```json\s*/gi, '')
               .replace(/```\s*/g, '')
@@ -6713,7 +6713,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
       } catch (aiError) {
         console.error('AI triage failed, using fallback:', aiError);
         triageData = {
-          aiTriageLevel: 'routine',
+          aiTriageLevel: 'standard',
           triageReasoning: 'Análise clínica dos sintomas reportados pelo paciente. Recomenda-se avaliação médica presencial.',
           recommendedSpecialties: ['Clínico Geral'],
           keyFindings: ['Avaliação médica necessária'],
@@ -6749,7 +6749,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         symptoms,
         aiAnalysis: triageData,
         clinicalPresentation: cleanReasoning,
-        urgencyLevel: triageData.aiTriageLevel || 'routine',
+        urgencyLevel: triageData.aiTriageLevel || 'standard',
         selectedDoctorId: availableDoctors[0]?.id || null,
         recommendedDoctors: availableDoctors.map((d: any) => d.id),
         status: 'pending',
@@ -6765,7 +6765,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         triage: {
           ...triageData,
           triageReasoning: cleanReasoning,
-          urgencyScore: triageData.aiTriageLevel === 'emergency' ? 9 : triageData.aiTriageLevel === 'urgent' ? 7 : 4,
+          urgencyScore: triageData.aiTriageLevel === 'emergency' ? 10 : triageData.aiTriageLevel === 'very_urgent' ? 8 : triageData.aiTriageLevel === 'urgent' ? 6 : triageData.aiTriageLevel === 'standard' ? 4 : 2,
           protocolsApplied: triageData.protocolsApplied || ['Diretrizes gerais'],
         },
         availableDoctors

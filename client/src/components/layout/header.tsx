@@ -316,7 +316,7 @@ export default function Header() {
     { path: "/records", label: "Prontuários", icon: FileText, faIcon: "fas fa-file-medical", roles: ["admin", "doctor"] },
     { path: "/prescriptions", label: "Prescrições", icon: ClipboardList, faIcon: "fas fa-prescription-bottle-alt", roles: ["admin", "doctor"] },
     { path: "/consultation-request", label: "Solicitar Consulta", icon: Stethoscope, faIcon: "fas fa-stethoscope", roles: ["patient"] },
-    { path: "/immediate-consultation", label: "Sala de Espera", icon: Video, faIcon: "fas fa-hospital", roles: ["patient"] },
+    { path: "/immediate-consultation", label: "Sala de Espera", icon: Video, faIcon: "fas fa-hospital", roles: ["patient", "visitor"] },
     { path: "/my-consultations", label: "Minhas Consultas", icon: CalendarClock, faIcon: "fas fa-calendar-check", roles: ["patient"] },
     { path: "/doctor-notes", label: "Anotações", icon: StickyNote, faIcon: "fas fa-sticky-note", roles: ["doctor"] },
     { path: "/assistant", label: "Assistente IA", icon: BrainCircuit, faIcon: "fas fa-robot", roles: ["admin", "doctor", "patient"] },
@@ -333,10 +333,11 @@ export default function Header() {
     allNavItems.push({ path: "/records", label: hasRecords ? "Meu Prontuário" : "Minhas Solicitações", icon: hasRecords ? FileText : ClipboardList, faIcon: hasRecords ? "fas fa-file-medical" : "fas fa-clipboard-list", roles: ["patient"] });
   }
 
-  // Filter navigation items based on user role
-  const navItems = allNavItems.filter(item => 
-    user?.role && item.roles.includes(user.role)
-  );
+  // Filter navigation items based on user role (visitors see items with 'visitor' role)
+  const navItems = allNavItems.filter(item => {
+    if (user?.role) return item.roles.includes(user.role);
+    return item.roles.includes('visitor');
+  });
 
   return (
     <header 
