@@ -234,43 +234,59 @@ export default function WhatsApp() {
                   ) : (
                     <div className="p-4 space-y-4">
                       {messages.map((message: any) => {
-                        // Message from patient if fromNumber matches patient's whatsapp/phone
+                        const isDoctor = message.senderRole === 'doctor' || message.direction === 'doctor_to_patient';
+                        const isAI = message.isFromAI || message.senderRole === 'ai';
                         const patientNumber = selectedPatient.whatsappNumber || selectedPatient.phone;
-                        const isFromPatient = message.fromNumber === patientNumber;
-                        const isOutgoing = !message.isFromAI && !isFromPatient;
+                        const isFromPatient = message.senderRole === 'patient' || message.direction === 'inbound' || message.fromNumber === patientNumber;
+                        const isOutgoing = isDoctor || (!isAI && !isFromPatient);
                         
                         return (
                         <div
                           key={message.id}
-                          className={`flex ${message.isFromAI || isFromPatient ? 'justify-start' : 'justify-end'}`}
+                          className={`flex ${isOutgoing ? 'justify-end' : 'justify-start'}`}
                           data-testid={`message-${message.id}`}
                         >
                           <div
                             className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                              message.isFromAI
+                              isAI
                                 ? 'message-bubble-ai border border-border'
                                 : isFromPatient
                                 ? 'bg-muted'
-                                : 'message-bubble-user text-white'
+                                : 'bg-blue-600 text-white'
                             }`}
                           >
-                            {message.isFromAI && (
-                              <div className="flex items-center space-x-2 mb-2">
+                            {isAI && (
+                              <div className="flex items-center space-x-2 mb-1">
                                 <div className="ai-indicator w-4 h-4 rounded-full flex items-center justify-center">
                                   <i className="fas fa-robot text-white text-xs"></i>
                                 </div>
                                 <span className="text-xs font-medium text-secondary">IA MedPro</span>
                               </div>
                             )}
+                            {isDoctor && !isAI && (
+                              <div className="flex items-center space-x-1 mb-1">
+                                <i className="fas fa-user-md text-xs text-blue-200"></i>
+                                <span className="text-xs font-medium text-blue-200">Doutor(a)</span>
+                              </div>
+                            )}
+                            {isFromPatient && (
+                              <div className="flex items-center space-x-1 mb-1">
+                                <i className="fas fa-user text-xs text-muted-foreground"></i>
+                                <span className="text-xs font-medium text-muted-foreground">Paciente</span>
+                              </div>
+                            )}
                             <p className="text-sm" data-testid={`message-text-${message.id}`}>
                               {message.message}
                             </p>
                             <p className={`text-xs mt-1 ${
-                              message.isFromAI || isFromPatient 
-                                ? 'text-muted-foreground' 
-                                : 'text-white/80'
+                              isOutgoing ? 'text-white/80' : 'text-muted-foreground'
                             }`}>
                               {format(new Date(message.createdAt), 'HH:mm', { locale: ptBR })}
+                              {isDoctor && (
+                                <span className="ml-1">
+                                  <i className="fas fa-check text-xs"></i>
+                                </span>
+                              )}
                             </p>
                             {message.appointmentScheduled && (
                               <div className="mt-2 pt-2 border-t border-muted">
@@ -293,28 +309,37 @@ export default function WhatsApp() {
               <div className="border-t border-border p-4">
                 <div className="flex space-x-2">
                   <Input
-                    placeholder="Digite sua mensagem..."
+                    placeholder="Escreva uma mensagem para o paciente..."
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                     disabled={sendMessageMutation.isPending}
+                    className="flex-1"
                     data-testid="input-new-message"
                   />
                   <Button
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim() || sendMessageMutation.isPending}
+                    className="bg-blue-600 hover:bg-blue-700"
                     data-testid="button-send-message"
                   >
                     {sendMessageMutation.isPending ? (
-                      <i className="fas fa-spinner fa-spin"></i>
+                      <i className="fas fa-spinner fa-spin mr-2"></i>
                     ) : (
-                      <i className="fas fa-paper-plane"></i>
+                      <i className="fas fa-paper-plane mr-2"></i>
                     )}
+                    Enviar
                   </Button>
                 </div>
-                <div className="flex items-center space-x-2 mt-2 text-xs text-muted-foreground">
-                  <i className="fas fa-info-circle"></i>
-                  <span>As mensagens são processadas automaticamente pela IA para agendamentos e dúvidas clínicas</span>
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                    <i className="fas fa-user-md text-blue-500"></i>
+                    <span>Enviando como Doutor(a)</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                    <i className="fas fa-info-circle"></i>
+                    <span>Mensagens do paciente são processadas pela IA automaticamente</span>
+                  </div>
                 </div>
               </div>
             </Card>
