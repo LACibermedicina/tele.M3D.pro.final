@@ -30,6 +30,15 @@ A full-stack medical practice management application built with Express.js backe
 - **Environment**: `GEMINI_API_KEY`, `AI_INTEGRATIONS_OPENAI_API_KEY`, `AI_INTEGRATIONS_OPENAI_BASE_URL`
 - **Integration files**: `server/replit_integrations/` (chat, audio, image, batch)
 
+## Clinical Reference Guidelines (Default)
+All AI prompts (chatbot, triage, video consultation, medical records, SOAP reports) reference these three standard guideline sets:
+1. **OMS (WHO)**: Diretrizes clínicas internacionais, mhGAP, GINA, GOLD, ETAT, Lista de Medicamentos Essenciais
+2. **Protocolos de Atenção Primária - MS/Brasil**: Cadernos de Atenção Básica (CAB 19, 32, 36, 37), PCDT/CONITEC, PNAB, ESF, RENAME, Previne Brasil, vigilância epidemiológica
+3. **DSM-5/DSM-5-TR (APA)**: Critérios diagnósticos para transtornos mentais, classificação e terapêutica psiquiátrica, complementado por diretrizes ABP e mhGAP-OMS
+- Stored in `chatbot_references` table with priority 10 and `use_for_diagnostics = true`
+- Keyword matching in `server/services/gemini.ts` boosts relevance for psychiatric terms, OMS protocols, and primary care queries
+- Doctor system prompt in `server/routes.ts` explicitly lists all three guideline sets
+
 ## Dependencies
 - jspdf v4.2.0 (PDF generation)
 - openai (for Replit AI Integrations fallback)

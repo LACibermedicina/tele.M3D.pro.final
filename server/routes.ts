@@ -2894,8 +2894,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const recentNotes = existingNotes.filter((n: any) => n.type === 'doctor_note' || n.type === 'transcription').slice(-5);
             const notesContext = recentNotes.length > 0 ? `\nAnotações da consulta: ${recentNotes.map((n: any) => n.content).join(' | ')}` : '';
 
-            const aiPrompt = `Você é um assistente médico IA auxiliando um médico durante uma consulta por vídeo. Responda de forma concisa e técnica em português.${patientContext}${notesContext}\n\nPergunta do médico: ${content}`;
-            const aiResponse = await geminiService.generateText(aiPrompt, 'Você é um assistente médico especializado. Responda de forma precisa, concisa e profissional em português brasileiro.');
+            const aiPrompt = `Você é um assistente médico IA auxiliando um médico durante uma consulta por vídeo. Responda de forma concisa e técnica em português.
+
+DIRETRIZES DE REFERÊNCIA: Baseie suas respostas nas diretrizes da OMS, Protocolos de Atenção Primária do Ministério da Saúde do Brasil (CAB, PCDT/CONITEC), e DSM-5/DSM-5-TR para condições psiquiátricas. Cite fontes quando relevante.${patientContext}${notesContext}\n\nPergunta do médico: ${content}`;
+            const aiResponse = await geminiService.generateText(aiPrompt, 'Você é um assistente médico especializado. Responda de forma precisa, concisa e profissional em português brasileiro. Baseie condutas nas diretrizes OMS, protocolos do Ministério da Saúde/Brasil e DSM-5 para questões psiquiátricas.');
 
             const aiNote = await storage.createConsultationNote({
               consultationId: req.params.id,
@@ -6641,6 +6643,12 @@ Format your response as valid JSON with this structure:
 PROTOCOLOS E DIRETRIZES A SEGUIR:
 ${regionContext}
 Aplique critérios e indicações gerais oferecidas pelas fontes oficiais e protocolos legais estabelecidos na área médica da região identificada. Em caso de dúvida, utilize sempre os protocolos mais conservadores e seguros para o paciente.
+
+DIRETRIZES PADRÃO OBRIGATÓRIAS:
+- OMS (Organização Mundial da Saúde): Diretrizes clínicas, ETAT, mhGAP para saúde mental
+- Ministério da Saúde do Brasil: Cadernos de Atenção Básica (CAB 36 DM, CAB 37 HAS, CAB 19 Criança, CAB 32 Pré-natal), PCDT/CONITEC, PNAB, RENAME
+- DSM-5/DSM-5-TR (APA): Critérios diagnósticos para transtornos mentais e condições psiquiátricas
+- Para sintomas psiquiátricos (ansiedade, depressão, insônia, uso de substâncias, etc.): aplicar critérios DSM-5 e escalas de rastreamento (PHQ-9, GAD-7, AUDIT)
 ${doctorProtocolContext}
 
 DADOS DO PACIENTE:
@@ -12886,13 +12894,19 @@ SUAS CAPACIDADES PARA MÉDICOS:
 - Informações sobre tratamentos, medicações e interações medicamentosas
 - Apoio em decisões clínicas
 
+DIRETRIZES PADRÃO DE REFERÊNCIA (use como base para todas as condutas e aconselhamentos):
+1. **OMS (Organização Mundial da Saúde)**: Diretrizes clínicas internacionais, mhGAP para saúde mental, GINA (asma), GOLD (DPOC), protocolos de triagem ETAT, Lista de Medicamentos Essenciais.
+2. **Protocolos de Atenção Primária à Saúde - Ministério da Saúde do Brasil**: Cadernos de Atenção Básica (CAB 19, 32, 36, 37), PCDT CONITEC, PNAB, ESF, RENAME, Previne Brasil, vigilância epidemiológica, notificação compulsória.
+3. **DSM-5 / DSM-5-TR (APA)**: Critérios diagnósticos para transtornos mentais, classificação e terapêutica psiquiátrica. Para condições psiquiátricas, utilize os critérios diagnósticos do DSM-5, complementados pelas diretrizes ABP e mhGAP-OMS.
+
 REGRAS IMPORTANTES:
 1. Use linguagem técnica médica apropriada para profissionais de saúde.
-2. REFERÊNCIAS MÉDICAS: Se houver referências disponíveis, use-as como fonte PRIORITÁRIA.
+2. REFERÊNCIAS MÉDICAS: Se houver referências disponíveis, use-as como fonte PRIORITÁRIA. Sempre baseie condutas nas diretrizes OMS, protocolos do MS/Brasil e DSM-5 quando aplicável.
 3. OBJETIVIDADE: Respostas diretas e técnicas (~50 palavras), exceto quando análises detalhadas forem solicitadas.
 4. NÃO REPETIR: Evite repetir informações já ditas. Sempre traga informação nova.
 5. NUNCA sugira agendamento de consultas ou triagem de sintomas — isso é para pacientes.
-6. Cite fontes quando disponíveis e seja preciso nas informações.`;
+6. Cite fontes quando disponíveis (OMS, MS/Brasil, DSM-5, PCDT, CAB) e seja preciso nas informações.
+7. Para questões psiquiátricas: use critérios DSM-5 para diagnóstico, escalas de rastreamento (PHQ-9, GAD-7, AUDIT, CAGE), e terapêutica baseada em evidências.`;
       } else if (req.user.role === 'admin') {
         systemPrompt = `Você é um assistente AI da plataforma Tele<M3D>, conversando com o administrador ${userName}.
 

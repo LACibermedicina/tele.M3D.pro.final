@@ -296,7 +296,7 @@ export class GeminiService {
         
         5. recommendations: Recomendações adicionais (exames complementares, sinais de alerta, quando procurar pronto-socorro)
         
-        Use terminologia médica apropriada e siga as diretrizes do Ministério da Saúde e protocolos clínicos brasileiros.
+        Use terminologia médica apropriada e siga as diretrizes da OMS, protocolos do Ministério da Saúde do Brasil (Cadernos de Atenção Básica, PCDT/CONITEC) e, para condições psiquiátricas, os critérios diagnósticos do DSM-5/DSM-5-TR complementados pelas diretrizes da ABP e mhGAP-OMS.
         Responda APENAS com o objeto JSON válido.
       `;
 
@@ -358,7 +358,7 @@ export class GeminiService {
         Forneça uma resposta clara, precisa e baseada em evidências científicas. Sempre cite as fontes quando possível e lembre o paciente de que esta resposta não substitui uma consulta médica presencial.
       `;
 
-      const systemInstruction = "Você é um assistente médico especializado que responde dúvidas clínicas baseado exclusivamente nas diretrizes do Ministério da Saúde brasileiro e protocolos clínicos oficiais. Sempre seja preciso e responsável em suas respostas.";
+      const systemInstruction = "Você é um assistente médico especializado que responde dúvidas clínicas baseado nas diretrizes da OMS (Organização Mundial da Saúde), Protocolos de Atenção Primária do Ministério da Saúde do Brasil (Cadernos de Atenção Básica, PCDT/CONITEC, RENAME), e DSM-5/DSM-5-TR para condições psiquiátricas. Sempre seja preciso, cite as fontes das diretrizes utilizadas e seja responsável em suas respostas.";
 
       return await generateText(prompt, systemInstruction);
     } catch (error) {
@@ -404,7 +404,7 @@ export class GeminiService {
 
   async generateClinicalAnalysis(prompt: string): Promise<string> {
     try {
-      const systemInstruction = "You are a medical AI assistant specialized in generating SOAP reports for Brazilian healthcare (SUS). Always respond in Portuguese and follow medical documentation standards.";
+      const systemInstruction = "You are a medical AI assistant specialized in generating SOAP reports for Brazilian healthcare (SUS). Always respond in Portuguese and follow medical documentation standards. Base your clinical reasoning on WHO guidelines, Brazilian Ministry of Health protocols (Cadernos de Atenção Básica, PCDT/CONITEC), and DSM-5/DSM-5-TR criteria for psychiatric conditions.";
       
       return await generateText(prompt, systemInstruction);
     } catch (error) {
@@ -461,7 +461,7 @@ Gere um resumo estruturado em português brasileiro incluindo:
 Formato: texto corrido, máximo 300 palavras.
 `;
 
-      const systemInstruction = "You are a medical AI assistant specialized in patient summary generation for Brazilian healthcare.";
+      const systemInstruction = "You are a medical AI assistant specialized in patient summary generation for Brazilian healthcare. Follow WHO guidelines, Brazilian Ministry of Health protocols (CAB, PCDT/CONITEC), and DSM-5/DSM-5-TR for psychiatric conditions.";
       
       return await generateText(prompt, systemInstruction);
     } catch (error) {
@@ -583,7 +583,15 @@ Formato: texto corrido, máximo 300 palavras.
           'pressão', 'diabetes', 'hipertensão', 'covid', 'gripe', 'resfriado',
           'sintoma', 'diagnóstico', 'tratamento', 'medicamento', 'exame',
           'harrison', 'medicina interna', 'emergência', 'cardiovascular', 
-          'respiratório', 'gastrointestinal', 'neurológico', 'infecção'
+          'respiratório', 'gastrointestinal', 'neurológico', 'infecção',
+          'depressão', 'ansiedade', 'pânico', 'bipolar', 'esquizofrenia', 'psiquiátrico',
+          'saúde mental', 'suicídio', 'insônia', 'TOC', 'TDAH', 'autismo', 'fobia',
+          'trauma', 'TEPT', 'estresse', 'álcool', 'tabaco', 'substância', 'drogas',
+          'personalidade', 'borderline', 'anorexia', 'bulimia', 'alimentar',
+          'antidepressivo', 'antipsicótico', 'estabilizador', 'benzodiazepínico',
+          'OMS', 'DSM', 'protocolo', 'atenção primária', 'pré-natal', 'gestante',
+          'criança', 'puericultura', 'vacina', 'imunização', 'tuberculose', 'HIV',
+          'dengue', 'hepatite', 'sífilis', 'IST', 'câncer', 'rastreamento'
         ];
 
         // Get all active references for this role
@@ -623,6 +631,32 @@ Formato: texto corrido, máximo 300 palavras.
           if ((titleLower.includes('harrison') || contentLower.includes('harrison')) &&
               (messageLower.includes('diagnóstico') || messageLower.includes('tratamento') || 
                messageLower.includes('sintoma') || messageLower.includes('doença'))) {
+            score += 20;
+          }
+
+          // Prioritize OMS/WHO guidelines for clinical protocol questions
+          if ((titleLower.includes('oms') || titleLower.includes('who') || titleLower.includes('organização mundial')) &&
+              (messageLower.includes('protocolo') || messageLower.includes('diretriz') || messageLower.includes('guideline') ||
+               messageLower.includes('tratamento') || messageLower.includes('diagnóstico') || messageLower.includes('triagem'))) {
+            score += 15;
+          }
+
+          // Prioritize Brazilian Primary Care protocols
+          if ((titleLower.includes('atenção primária') || titleLower.includes('ministério da saúde') || titleLower.includes('caderno')) &&
+              (messageLower.includes('sus') || messageLower.includes('atenção básica') || messageLower.includes('protocolo') ||
+               messageLower.includes('tratamento') || messageLower.includes('pré-natal') || messageLower.includes('vacinação') ||
+               messageLower.includes('hipertensão') || messageLower.includes('diabetes'))) {
+            score += 15;
+          }
+
+          // Prioritize DSM-5 for psychiatric/mental health questions
+          if ((titleLower.includes('dsm') || titleLower.includes('psiquiátric') || titleLower.includes('transtornos mentais')) &&
+              (messageLower.includes('depressão') || messageLower.includes('ansiedade') || messageLower.includes('bipolar') ||
+               messageLower.includes('esquizofrenia') || messageLower.includes('pânico') || messageLower.includes('toc') ||
+               messageLower.includes('tdah') || messageLower.includes('autismo') || messageLower.includes('personalidade') ||
+               messageLower.includes('psiquiátric') || messageLower.includes('saúde mental') || messageLower.includes('suicíd') ||
+               messageLower.includes('insônia') || messageLower.includes('álcool') || messageLower.includes('substância') ||
+               messageLower.includes('antidepressivo') || messageLower.includes('antipsicótico'))) {
             score += 20;
           }
           
