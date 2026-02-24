@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, FileText, MessageCircle, Stethoscope, ClipboardList, Video } from "lucide-react";
+import { Calendar, FileText, MessageCircle, Stethoscope, ClipboardList, Video, CalendarCheck } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -60,21 +60,25 @@ export function DesktopPatientDashboard() {
               </CardContent>
             </Card>
 
-            {hasRecords && (
-              <Card data-testid="card-my-records">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Meus Registros</p>
-                      <p className="text-2xl font-bold" data-testid="text-my-records">
-                        {stats.secureRecords || 0}
-                      </p>
-                    </div>
-                    <FileText className="w-8 h-8 text-muted-foreground" />
+            <Card data-testid="card-my-records">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {hasRecords ? 'Meus Registros' : 'Minhas Solicitações'}
+                    </p>
+                    <p className="text-2xl font-bold" data-testid="text-my-records">
+                      {hasRecords ? (stats.secureRecords || 0) : (stats.todayConsultations || 0)}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                  {hasRecords ? (
+                    <FileText className="w-8 h-8 text-muted-foreground" />
+                  ) : (
+                    <ClipboardList className="w-8 h-8 text-muted-foreground" />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -103,6 +107,34 @@ export function DesktopPatientDashboard() {
               </Button>
             </Link>
 
+            <Link href="/my-consultations">
+              <Button
+                className="w-full h-24 flex flex-col items-center justify-center gap-2"
+                variant="outline"
+                data-testid="button-my-consultations"
+              >
+                <CalendarCheck className="w-6 h-6" />
+                <span className="font-medium">Minhas Consultas</span>
+              </Button>
+            </Link>
+
+            <Link href="/records">
+              <Button
+                className="w-full h-24 flex flex-col items-center justify-center gap-2"
+                variant="outline"
+                data-testid="button-records"
+              >
+                {hasRecords ? (
+                  <FileText className="w-6 h-6" />
+                ) : (
+                  <ClipboardList className="w-6 h-6" />
+                )}
+                <span className="font-medium">
+                  {hasRecords ? 'Meu Prontuário' : 'Minhas Solicitações'}
+                </span>
+              </Button>
+            </Link>
+
             <Link href="/patient-agenda">
               <Button
                 className="w-full h-24 flex flex-col items-center justify-center gap-2"
@@ -123,19 +155,6 @@ export function DesktopPatientDashboard() {
                 >
                   <ClipboardList className="w-6 h-6" />
                   <span className="font-medium">Minhas Prescrições</span>
-                </Button>
-              </Link>
-            )}
-
-            {hasRecords && (
-              <Link href="/records">
-                <Button
-                  className="w-full h-24 flex flex-col items-center justify-center gap-2"
-                  variant="outline"
-                  data-testid="button-records"
-                >
-                  <FileText className="w-6 h-6" />
-                  <span className="font-medium">Ver Prontuário</span>
                 </Button>
               </Link>
             )}
