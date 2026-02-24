@@ -43,6 +43,13 @@ A full-stack medical practice management application built with Express.js backe
 - **Medical Records**: Nav item "Meu Prontuário" conditionally shown if patient has existing records (via `/api/medical-records/my` query in header). Route `/records` accessible to patients.
 - Navigation: Top header bar always visible for patient pages. Prescription and records nav items only appear for patients who have data.
 
+## Doctor Notes (macOS Notes-style)
+- **Route**: `/doctor-notes` - Full-featured note-taking interface for doctors
+- **Database**: `doctor_notes` table with title, content, folder, color, isPinned, optional patientId
+- **Features**: Sidebar with folder tabs (Todas, Clínicas, Pacientes, Estudos, Pessoais), search, pinned notes, color labels, auto-save (800ms debounce)
+- **API**: CRUD at `/api/doctor-notes` (GET, POST, PATCH /:id, DELETE /:id) - doctor-only access
+- **Files**: `client/src/pages/doctor-notes.tsx`, schema in `shared/schema.ts`, storage in `server/storage.ts`
+
 ## Video Consultation Features (Doctor)
 - **Route**: `/consultation/video/:patientId`
 - **Chat**: Real-time chat with sender identity (doctor/patient), bubble-style messages

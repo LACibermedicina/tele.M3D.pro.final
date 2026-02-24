@@ -1317,6 +1317,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Doctor Notes API (macOS Notes-style)
+  const validFolders = ['all', 'clinical', 'patients', 'study', 'personal'];
+  const validColors = ['default', 'yellow', 'green', 'blue', 'purple', 'pink', 'red'];
+
+  app.get('/api/doctor-notes', async (req: any, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+      if (req.user.role !== 'doctor') return res.status(403).json({ message: 'Access denied' });
+      const notes = await storage.getDoctorNotes(req.user.id);
+      res.json(notes);
+    } catch (error) {
+      console.error('Error fetching doctor notes:', error);
+      res.status(500).json({ message: 'Failed to fetch notes' });
+    }
+  });
+
+  app.post('/api/doctor-notes', async (req: any, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+      if (req.user.role !== 'doctor') return res.status(403).json({ message: 'Access denied' });
+      const { title, content, folder, color, isPinned, patientId } = req.body;
+      const safeFolder = typeof folder === 'string' && validFolders.includes(folder) ? folder : 'all';
+      const safeColor = typeof color === 'string' && validColors.includes(color) ? color : 'default';
+      const note = await storage.createDoctorNote({
+        doctorId: req.user.id,
+        title: typeof title === 'string' ? title : '',
+        content: typeof content === 'string' ? content : '',
+        folder: safeFolder,
+        color: safeColor,
+        isPinned: typeof isPinned === 'boolean' ? isPinned : false,
+        patientId: typeof patientId === 'string' ? patientId : null,
+      });
+      res.status(201).json(note);
+    } catch (error) {
+      console.error('Error creating doctor note:', error);
+      res.status(500).json({ message: 'Failed to create note' });
+    }
+  });
+
+  app.patch('/api/doctor-notes/:id', async (req: any, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+      if (req.user.role !== 'doctor') return res.status(403).json({ message: 'Access denied' });
+      const existing = await storage.getDoctorNoteById(req.params.id);
+      if (!existing) return res.status(404).json({ message: 'Note not found' });
+      if (existing.doctorId !== req.user.id) return res.status(403).json({ message: 'Access denied' });
+      const { title, content, folder, color, isPinned, patientId } = req.body;
+      const update: any = {};
+      if (typeof title === 'string') update.title = title;
+      if (typeof content === 'string') update.content = content;
+      if (typeof folder === 'string' && validFolders.includes(folder)) update.folder = folder;
+      if (typeof color === 'string' && validColors.includes(color)) update.color = color;
+      if (typeof isPinned === 'boolean') update.isPinned = isPinned;
+      if (patientId !== undefined) update.patientId = typeof patientId === 'string' ? patientId : null;
+      const note = await storage.updateDoctorNote(req.params.id, update);
+      res.json(note);
+    } catch (error) {
+      console.error('Error updating doctor note:', error);
+      res.status(500).json({ message: 'Failed to update note' });
+    }
+  });
+
+  app.delete('/api/doctor-notes/:id', async (req: any, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+      if (req.user.role !== 'doctor') return res.status(403).json({ message: 'Access denied' });
+      const existing = await storage.getDoctorNoteById(req.params.id);
+      if (!existing) return res.status(404).json({ message: 'Note not found' });
+      if (existing.doctorId !== req.user.id) return res.status(403).json({ message: 'Access denied' });
+      await storage.deleteDoctorNote(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting doctor note:', error);
+      res.status(500).json({ message: 'Failed to delete note' });
+    }
+  });
+
   // Appointments API
   app.get('/api/appointments/today/:doctorId', async (req, res) => {
     try {
@@ -6449,7 +6526,7 @@ Format your response as valid JSON with this structure:
           patient = await storage.createPatient({
             userId,
             name: userRecord.name,
-            email: userRecord.email || undefined,
+            email: userRecord.email || null,
             phone: userRecord.phone || 'não informado',
             healthStatus: 'a_determinar',
           });
@@ -6581,9 +6658,9 @@ Valores possíveis para aiTriageLevel: "routine", "urgent", "emergency"`;
         availableDoctors
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Create consultation request error:', error);
-      res.status(500).json({ message: 'Failed to create consultation request' });
+      res.status(500).json({ message: 'Erro ao processar sua solicitação. Tente novamente em alguns instantes.' });
     }
   });
 

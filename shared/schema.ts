@@ -638,6 +638,20 @@ export const patientNotes = pgTable("patient_notes", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Doctor Notes (macOS Notes-style personal notes for doctors)
+export const doctorNotes = pgTable("doctor_notes", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  doctorId: uuid("doctor_id").references(() => users.id).notNull(),
+  patientId: uuid("patient_id").references(() => patients.id),
+  title: text("title").default("").notNull(),
+  content: text("content").default("").notNull(),
+  folder: text("folder").default("all").notNull(),
+  color: text("color").default("default").notNull(),
+  isPinned: boolean("is_pinned").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // TMC Credit Packages for purchase via PayPal
 export const tmcCreditPackages = pgTable("tmc_credit_packages", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1306,6 +1320,12 @@ export const insertPatientNoteSchema = createInsertSchema(patientNotes).omit({
   updatedAt: true,
 });
 
+export const insertDoctorNoteSchema = createInsertSchema(doctorNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertErrorLogSchema = createInsertSchema(errorLogs).omit({
   id: true,
   createdAt: true,
@@ -1461,6 +1481,9 @@ export type InsertDrugInteraction = z.infer<typeof insertDrugInteractionSchema>;
 
 export type PatientNote = typeof patientNotes.$inferSelect;
 export type InsertPatientNote = z.infer<typeof insertPatientNoteSchema>;
+
+export type DoctorNote = typeof doctorNotes.$inferSelect;
+export type InsertDoctorNote = z.infer<typeof insertDoctorNoteSchema>;
 
 export type ErrorLog = typeof errorLogs.$inferSelect;
 export type InsertErrorLog = z.infer<typeof insertErrorLogSchema>;

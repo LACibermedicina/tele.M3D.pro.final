@@ -37,6 +37,7 @@ import ClinicalDashboard from "@/pages/clinical-dashboard";
 import DoctorAvailability from "@/pages/doctor-availability";
 import ImmediateConsultation from "@/pages/immediate-consultation";
 import DoctorChat from "@/pages/doctor-chat";
+import DoctorNotesPage from "@/pages/doctor-notes";
 import MedicalTeams from "@/pages/medical-teams";
 import TeamRoom from "@/pages/team-room";
 import MedicalCafe from "@/pages/medical-cafe";
@@ -257,6 +258,13 @@ function Router() {
         <Route path="/immediate-consultation">
           <Header />
           <ImmediateConsultation />
+        </Route>
+        
+        <Route path="/doctor-notes">
+          <ProtectedRoute requiredRoles={['doctor']}>
+            <Header />
+            <DoctorNotesPage />
+          </ProtectedRoute>
         </Route>
         
         <Route path="/doctor-chat">

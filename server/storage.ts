@@ -4,7 +4,7 @@ import {
   prescriptionShares, labOrders, hospitalReferrals, collaboratorIntegrations, collaboratorApiKeys,
   tmcTransactions, tmcConfig, supportConfig, systemSettings, chatbotReferences, patientNotes,
   consultationNotes, consultationRecordings, errorLogs, layoutSettings,
-  consultationRequests, consultationSessions, clinicalAssets, patientChatThreads,
+  consultationRequests, consultationSessions, clinicalAssets, patientChatThreads, doctorNotes,
   type User, type InsertUser, type Patient, type InsertPatient,
   type Appointment, type InsertAppointment, type MedicalRecord, type InsertMedicalRecord,
   type WhatsappMessage, type InsertWhatsappMessage, type ExamResult, type InsertExamResult,
@@ -20,7 +20,8 @@ import {
   type ConsultationRequest, type InsertConsultationRequest,
   type ConsultationSession, type InsertConsultationSession,
   type ClinicalAsset, type InsertClinicalAsset,
-  type PatientChatThread, type InsertPatientChatThread
+  type PatientChatThread, type InsertPatientChatThread,
+  type DoctorNote, type InsertDoctorNote
 } from "@shared/schema";
 
 export type ErrorLog = typeof errorLogs.$inferSelect;
@@ -195,6 +196,13 @@ export interface IStorage {
   createPatientNote(note: InsertPatientNote): Promise<PatientNote>;
   updatePatientNote(id: string, note: Partial<InsertPatientNote>): Promise<PatientNote | undefined>;
   deletePatientNote(id: string): Promise<boolean>;
+
+  // Doctor Notes (macOS Notes-style)
+  getDoctorNotes(doctorId: string): Promise<DoctorNote[]>;
+  getDoctorNoteById(id: string): Promise<DoctorNote | undefined>;
+  createDoctorNote(note: InsertDoctorNote): Promise<DoctorNote>;
+  updateDoctorNote(id: string, note: Partial<InsertDoctorNote>): Promise<DoctorNote | undefined>;
+  deleteDoctorNote(id: string): Promise<boolean>;
 
   // Consultation Notes & Recordings
   getConsultationNotes(consultationId: string): Promise<ConsultationNote[]>;
@@ -1637,6 +1645,36 @@ export class DatabaseStorage implements IStorage {
   async deletePatientNote(id: string): Promise<boolean> {
     const result = await db.delete(patientNotes)
       .where(eq(patientNotes.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Doctor Notes (macOS Notes-style) Implementation
+  async getDoctorNotes(doctorId: string): Promise<DoctorNote[]> {
+    return await db.select().from(doctorNotes)
+      .where(eq(doctorNotes.doctorId, doctorId))
+      .orderBy(desc(doctorNotes.isPinned), desc(doctorNotes.updatedAt));
+  }
+
+  async getDoctorNoteById(id: string): Promise<DoctorNote | undefined> {
+    const [note] = await db.select().from(doctorNotes).where(eq(doctorNotes.id, id));
+    return note || undefined;
+  }
+
+  async createDoctorNote(note: InsertDoctorNote): Promise<DoctorNote> {
+    const [created] = await db.insert(doctorNotes).values(note).returning();
+    return created;
+  }
+
+  async updateDoctorNote(id: string, update: Partial<InsertDoctorNote>): Promise<DoctorNote | undefined> {
+    const [note] = await db.update(doctorNotes)
+      .set({ ...update, updatedAt: new Date() })
+      .where(eq(doctorNotes.id, id))
+      .returning();
+    return note || undefined;
+  }
+
+  async deleteDoctorNote(id: string): Promise<boolean> {
+    const result = await db.delete(doctorNotes).where(eq(doctorNotes.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 
