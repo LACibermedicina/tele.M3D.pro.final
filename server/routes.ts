@@ -6221,7 +6221,7 @@ Format your response as valid JSON with this structure:
       const recentExams = await storage.getExamResultsByPatient(patientId);
 
       // AI Triage Analysis
-      const triagePrompt = `Como médico especialista, analise os seguintes dados e classifique a urgência:
+      const triagePrompt = `Como médico especialista, analise os seguintes dados e classifique a urgência.
 
 Sintomas relatados: ${symptoms}
 
@@ -6231,21 +6231,35 @@ ${medicalHistory.length > 0 ? medicalHistory.slice(0, 3).map((r: any) => `- ${r.
 Exames recentes:
 ${recentExams.length > 0 ? recentExams.slice(0, 3).map((e: any) => `- ${e.examType}: ${e.result}`).join('\n') : 'Sem exames recentes'}
 
-Forneça uma resposta em JSON com:
-1. aiTriageLevel: "routine", "urgent", ou "emergency"
-2. triageReasoning: explicação breve da classificação
-3. recommendedSpecialties: array com 1-3 especialidades médicas recomendadas
-4. keyFindings: array com 2-3 achados importantes`;
+IMPORTANTE: Responda APENAS com JSON válido, sem markdown, sem blocos de código, sem texto extra. O JSON deve ter exatamente este formato:
+{"aiTriageLevel": "routine", "triageReasoning": "texto explicativo em português sem aspas internas", "recommendedSpecialties": ["Especialidade1"], "keyFindings": ["achado1", "achado2"]}
+
+Valores possíveis para aiTriageLevel: "routine", "urgent", "emergency"`;
 
       const aiResponse = await geminiService.generateText(triagePrompt);
       
       let triageData;
       try {
-        triageData = JSON.parse(aiResponse);
+        const cleanedResponse = aiResponse
+          .replace(/```json\s*/gi, '')
+          .replace(/```\s*/g, '')
+          .replace(/^\s*\n/gm, '')
+          .trim();
+        triageData = JSON.parse(cleanedResponse);
       } catch {
         triageData = {
           aiTriageLevel: 'routine',
-          triageReasoning: aiResponse.substring(0, 200),
+          triageReasoning: aiResponse
+            .replace(/```json\s*/gi, '')
+            .replace(/```\s*/g, '')
+            .replace(/[{}"]/g, '')
+            .replace(/aiTriageLevel.*?,/gi, '')
+            .replace(/recommendedSpecialties.*?\]/gi, '')
+            .replace(/keyFindings.*?\]/gi, '')
+            .replace(/triageReasoning\s*:\s*/gi, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .substring(0, 300) || 'Análise clínica dos sintomas reportados pelo paciente.',
           recommendedSpecialties: ['Clínico Geral'],
           keyFindings: ['Análise de sintomas necessária']
         };
@@ -6263,12 +6277,22 @@ Forneça uma resposta em JSON com:
           availability: 'available' 
         }));
 
+      // Clean triageReasoning to remove any JSON artifacts
+      const cleanReasoning = (triageData.triageReasoning || '')
+        .replace(/```json\s*/gi, '')
+        .replace(/```\s*/g, '')
+        .replace(/[{}]/g, '')
+        .replace(/"[a-zA-Z]+"\s*:\s*/g, '')
+        .replace(/"/g, '')
+        .replace(/\s+/g, ' ')
+        .trim() || 'Análise clínica dos sintomas reportados pelo paciente.';
+
       // Create consultation request
       const consultationRequest = await storage.createConsultationRequest({
         patientId,
         symptoms,
         aiAnalysis: triageData,
-        clinicalPresentation: triageData.triageReasoning,
+        clinicalPresentation: cleanReasoning,
         urgencyLevel: triageData.aiTriageLevel || 'routine',
         selectedDoctorId: availableDoctors[0]?.id || null,
         recommendedDoctors: availableDoctors.map((d: any) => d.id),
@@ -6278,8 +6302,15 @@ Forneça uma resposta em JSON com:
 
       res.json({
         success: true,
-        consultationRequest,
-        triage: triageData,
+        consultationRequest: {
+          ...consultationRequest,
+          clinicalPresentation: cleanReasoning,
+        },
+        triage: {
+          ...triageData,
+          triageReasoning: cleanReasoning,
+          urgencyScore: triageData.aiTriageLevel === 'emergency' ? 9 : triageData.aiTriageLevel === 'urgent' ? 7 : 4,
+        },
         availableDoctors
       });
 
@@ -12378,34 +12409,67 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         }).returning();
       }
 
-      // Build system prompt based on user role
+      // Build system prompt based on user role and profile
+      const userName = req.user.name?.split(' ')[0] || 'usuário';
       let systemPrompt = '';
       if (req.user.role === 'doctor') {
-        systemPrompt = `Você é um assistente médico AI especializado em ajudar médicos com:
-- Verificação de hipóteses diagnósticas
+        systemPrompt = `Você é um assistente médico AI da plataforma Tele<M3D>, conversando com o(a) Dr(a). ${userName}.
+
+PERFIL DO USUÁRIO: Médico(a) da plataforma.
+
+SUAS CAPACIDADES PARA MÉDICOS:
+- Verificação de hipóteses diagnósticas e diagnóstico diferencial
 - Consulta a guidelines e protocolos médicos atualizados
-- Análise de casos clínicos
-- Sugestões de exames complementares
-- Informações sobre tratamentos e medicações
+- Análise de casos clínicos complexos
+- Sugestões de exames complementares baseados em evidências
+- Informações sobre tratamentos, medicações e interações medicamentosas
+- Apoio em decisões clínicas
 
 REGRAS IMPORTANTES:
-1. REFERÊNCIAS MÉDICAS: Se houver referências médicas disponíveis (PDFs carregados), use-as como fonte PRIORITÁRIA. Baseie suas respostas PRIMEIRO nas referências disponíveis.
-2. OBJETIVIDADE: Mantenha respostas objetivas e diretas, aproximadamente 30 palavras, exceto quando análises mais detalhadas forem solicitadas.
-3. NÃO REPETIR: Evite repetir informações já ditas no histórico da conversa. Sempre traga informação nova ou complementar.
-4. PRECISÃO: Sempre cite as fontes quando disponíveis e seja preciso e técnico nas respostas.`;
+1. Use linguagem técnica médica apropriada para profissionais de saúde.
+2. REFERÊNCIAS MÉDICAS: Se houver referências disponíveis, use-as como fonte PRIORITÁRIA.
+3. OBJETIVIDADE: Respostas diretas e técnicas (~50 palavras), exceto quando análises detalhadas forem solicitadas.
+4. NÃO REPETIR: Evite repetir informações já ditas. Sempre traga informação nova.
+5. NUNCA sugira agendamento de consultas ou triagem de sintomas — isso é para pacientes.
+6. Cite fontes quando disponíveis e seja preciso nas informações.`;
+      } else if (req.user.role === 'admin') {
+        systemPrompt = `Você é um assistente AI da plataforma Tele<M3D>, conversando com o administrador ${userName}.
+
+PERFIL DO USUÁRIO: Administrador da plataforma.
+
+SUAS CAPACIDADES PARA ADMINISTRADORES:
+- Relatórios e estatísticas da plataforma
+- Visão geral de consultas agendadas e em andamento
+- Status de pacientes em fila de espera
+- Informações sobre médicos ativos e disponíveis
+- Configurações gerais do sistema
+
+REGRAS IMPORTANTES:
+1. Foque em informações gerenciais e operacionais.
+2. OBJETIVIDADE: Respostas diretas (~30 palavras).
+3. NÃO sugira triagem de sintomas ou agendamento pessoal — isso é para pacientes.
+4. Forneça dados e métricas quando solicitado.`;
       } else {
-        systemPrompt = `Você é um assistente de saúde AI que ajuda pacientes com:
+        systemPrompt = `Você é um assistente de saúde AI da plataforma Tele<M3D>, conversando com o paciente ${userName}.
+
+PERFIL DO USUÁRIO: Paciente da plataforma.
+
+SUAS CAPACIDADES PARA PACIENTES:
 - Orientações gerais sobre sintomas e condições de saúde
+- Triagem inicial e classificação de urgência de sintomas
 - Informações sobre quando procurar atendimento médico
-- Explicações sobre exames e procedimentos
+- Ajuda com agendamento de consultas
+- Explicações sobre exames e procedimentos em linguagem acessível
 - Dicas de prevenção e autocuidado
 
 REGRAS IMPORTANTES:
-1. REFERÊNCIAS MÉDICAS: Se houver referências médicas disponíveis (PDFs), baseie suas respostas PRIORITARIAMENTE nelas.
-2. OBJETIVIDADE: Mantenha respostas objetivas e diretas, aproximadamente 30 palavras, exceto quando mais detalhes forem explicitamente solicitados.
-3. NÃO REPETIR: Evite repetir informações já ditas anteriormente na conversa. Sempre traga algo novo.
-4. NÃO DIAGNOSTICAR: Você NÃO faz diagnósticos. Sempre recomende consulta médica para avaliação adequada.
-5. EMERGÊNCIAS: Em casos de emergência, oriente a procurar atendimento imediato (UPA, Pronto Socorro, SAMU 192).`;
+1. Use linguagem simples e acessível, sem jargão médico complexo.
+2. REFERÊNCIAS MÉDICAS: Se disponíveis, baseie suas respostas nelas.
+3. OBJETIVIDADE: Respostas claras e acolhedoras (~30 palavras), exceto quando mais detalhes forem solicitados.
+4. NÃO REPETIR: Evite repetir informações já ditas. Sempre traga algo novo.
+5. NÃO DIAGNOSTICAR: Você NÃO faz diagnósticos. Sempre recomende consulta médica.
+6. EMERGÊNCIAS: Em casos de emergência, oriente a procurar atendimento imediato (SAMU 192, UPA, Pronto Socorro).
+7. NUNCA forneça apoio clínico técnico ou análise de casos — isso é para médicos.`;
       }
 
       // Add user message to conversation

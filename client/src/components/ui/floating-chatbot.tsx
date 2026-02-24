@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { MessageCircle, X, Send, Brain, Calendar, Stethoscope, Minimize2, Maximize2 } from 'lucide-react';
+import { MessageCircle, X, Send, Brain, Calendar, Stethoscope, Minimize2, Maximize2, ClipboardList, Users, Activity, FileText, HeartPulse, BarChart3 } from 'lucide-react';
 
 interface SuggestedAppointment {
   dateIso: string;
@@ -480,30 +480,105 @@ export default function FloatingChatbot() {
                 </div>
               )}
               
-              {/* Quick Actions */}
+              {/* Role-specific Quick Actions */}
               <div className="flex flex-wrap gap-1 mt-2">
-                {!activeInterviewId && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentMessage('Estou com alguns sintomas e gostaria de uma orientação médica')}
-                    className="text-xs"
-                    data-testid="button-start-clinical-interview"
-                  >
-                    <Stethoscope className="w-3 h-3 mr-1" />
-                    Consulta Clínica
-                  </Button>
+                {(!user || user.role === 'patient') && (
+                  <>
+                    {!activeInterviewId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentMessage('Estou com alguns sintomas e gostaria de uma orientação médica')}
+                        className="text-xs"
+                        data-testid="button-start-clinical-interview"
+                      >
+                        <HeartPulse className="w-3 h-3 mr-1" />
+                        Triagem
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentMessage(t('chatbot.quick_scheduling'))}
+                      className="text-xs"
+                      data-testid="button-quick-scheduling"
+                    >
+                      <Calendar className="w-3 h-3 mr-1" />
+                      Agendar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentMessage('Quais são minhas consultas agendadas?')}
+                      className="text-xs"
+                    >
+                      <ClipboardList className="w-3 h-3 mr-1" />
+                      Consultas
+                    </Button>
+                  </>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentMessage(t('chatbot.quick_scheduling'))}
-                  className="text-xs"
-                  data-testid="button-quick-scheduling"
-                >
-                  <Calendar className="w-3 h-3 mr-1" />
-                  {t('chatbot.schedule')}
-                </Button>
+                {user?.role === 'doctor' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentMessage('Quais pacientes tenho agendados para hoje?')}
+                      className="text-xs"
+                    >
+                      <Users className="w-3 h-3 mr-1" />
+                      Pacientes Hoje
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentMessage('Preciso de uma segunda opinião sobre um caso clínico')}
+                      className="text-xs"
+                    >
+                      <Brain className="w-3 h-3 mr-1" />
+                      Apoio Clínico
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentMessage('Mostrar protocolos e guidelines médicos disponíveis')}
+                      className="text-xs"
+                    >
+                      <FileText className="w-3 h-3 mr-1" />
+                      Protocolos
+                    </Button>
+                  </>
+                )}
+                {user?.role === 'admin' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentMessage('Mostre as estatísticas gerais da plataforma')}
+                      className="text-xs"
+                    >
+                      <BarChart3 className="w-3 h-3 mr-1" />
+                      Estatísticas
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentMessage('Quantos pacientes estão em espera agora?')}
+                      className="text-xs"
+                    >
+                      <Users className="w-3 h-3 mr-1" />
+                      Fila de Espera
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentMessage('Ver todas as consultas agendadas de hoje')}
+                      className="text-xs"
+                    >
+                      <Calendar className="w-3 h-3 mr-1" />
+                      Consultas Hoje
+                    </Button>
+                  </>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -515,7 +590,7 @@ export default function FloatingChatbot() {
                   data-testid="button-clear-chat"
                 >
                   <X className="w-3 h-3 mr-1" />
-                  {t('chatbot.clear')}
+                  Limpar
                 </Button>
               </div>
             </div>

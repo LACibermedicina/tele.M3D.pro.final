@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Calendar, Send, Loader2, User, Check } from "lucide-react";
+import { Bot, Calendar, Send, Loader2, User, Check, HeartPulse, ClipboardList, Users, Brain, FileText, BarChart3, Stethoscope, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -236,21 +236,21 @@ Deseja confirmar este agendamento?`,
   };
 
   const quickActions = user?.role === 'patient' ? [
-    "Agendar consulta",
-    "Analisar sintomas",
-    "Ver minhas consultas"
+    { label: "Triagem de Sintomas", icon: HeartPulse, message: "Estou com alguns sintomas e gostaria de orientação" },
+    { label: "Agendar Consulta", icon: Calendar, message: "Gostaria de agendar uma consulta" },
+    { label: "Minhas Consultas", icon: ClipboardList, message: "Quais são minhas consultas agendadas?" },
   ] : user?.role === 'doctor' ? [
-    "Ver minhas consultas",
-    "Pacientes agendados hoje",
-    "Consultas em andamento"
+    { label: "Pacientes Hoje", icon: Users, message: "Quais pacientes tenho agendados para hoje?" },
+    { label: "Apoio Clínico", icon: Brain, message: "Preciso de uma segunda opinião sobre um caso clínico" },
+    { label: "Protocolos", icon: FileText, message: "Mostrar protocolos e guidelines médicos disponíveis" },
   ] : user?.role === 'admin' ? [
-    "Ver todas as consultas",
-    "Pacientes em espera",
-    "Estatísticas do sistema"
+    { label: "Estatísticas", icon: BarChart3, message: "Mostre as estatísticas gerais da plataforma" },
+    { label: "Fila de Espera", icon: Users, message: "Quantos pacientes estão em espera agora?" },
+    { label: "Consultas Hoje", icon: Calendar, message: "Ver todas as consultas agendadas de hoje" },
   ] : [
-    "Agendar consulta",
-    "Analisar sintomas",
-    "Informações sobre serviços"
+    { label: "Orientação Médica", icon: Stethoscope, message: "Gostaria de uma orientação sobre sintomas" },
+    { label: "Agendar Consulta", icon: Calendar, message: "Gostaria de agendar uma consulta" },
+    { label: "Sobre Serviços", icon: Settings, message: "Quais serviços a plataforma oferece?" },
   ];
 
   return (
@@ -331,18 +331,23 @@ Deseja confirmar este agendamento?`,
         <div className="px-6 py-4 border-t bg-gray-50">
           {messages.length <= 1 && (
             <div className="mb-3 flex flex-wrap gap-2">
-              {quickActions.map((action) => (
-                <Button
-                  key={action}
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleQuickAction(action)}
-                  disabled={isLoading}
-                  data-testid={`button-quick-${action.toLowerCase().replace(/ /g, '-')}`}
-                >
-                  {action}
-                </Button>
-              ))}
+              {quickActions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <Button
+                    key={action.label}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleQuickAction(action.message)}
+                    disabled={isLoading}
+                    className="gap-1.5"
+                    data-testid={`button-quick-${action.label.toLowerCase().replace(/ /g, '-')}`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {action.label}
+                  </Button>
+                );
+              })}
             </div>
           )}
           <div className="flex space-x-2">

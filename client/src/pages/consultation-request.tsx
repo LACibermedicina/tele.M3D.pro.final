@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Brain, 
@@ -18,7 +17,15 @@ import {
   Clock, 
   MessageSquare,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  Shield,
+  Activity,
+  UserCheck,
+  FileText,
+  AlertTriangle,
+  HeartPulse,
+  CalendarCheck,
+  ChevronRight
 } from "lucide-react";
 import { useLocation } from "wouter";
 import PageWrapper from "@/components/layout/page-wrapper";
@@ -29,15 +36,18 @@ interface Doctor {
   name: string;
   specialty: string;
   experience?: string;
+  availability?: string;
 }
 
 interface TriageAnalysis {
-  urgencyLevel: 'urgent' | 'moderate' | 'routine';
+  urgencyLevel: 'urgent' | 'moderate' | 'routine' | 'emergency';
   urgencyScore: number;
   clinicalPresentation: string;
   recommendedDoctors: Doctor[];
   suggestedTimeframe: string;
   additionalNotes?: string;
+  keyFindings?: string[];
+  recommendedSpecialties?: string[];
 }
 
 export default function ConsultationRequest() {
@@ -49,45 +59,49 @@ export default function ConsultationRequest() {
   const [triageResult, setTriageResult] = useState<TriageAnalysis | null>(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [step, setStep] = useState<'input' | 'analysis' | 'select' | 'confirmed'>('input');
 
-  // Fetch patient data
-  const { data: patientData } = useQuery<any>({
-    queryKey: ['/api/patients/me'],
-    enabled: !!user && user.role === 'patient',
-  });
-
-  // Request consultation mutation
   const requestMutation = useMutation({
     mutationFn: async (data: { symptoms: string; whatsappOptIn: boolean }) => {
       const res = await apiRequest('POST', '/api/consultation-requests', data);
       return await res.json();
     },
     onSuccess: (data: any) => {
-      // Store request ID and triage result
       setRequestId(data.consultationRequest?.id || null);
       
-      // Build triage analysis from response
+      const urgLevel = data.triage?.aiTriageLevel || data.consultationRequest?.urgencyLevel || 'routine';
+      
       const triage: TriageAnalysis = {
-        urgencyLevel: data.consultationRequest?.urgencyLevel || 'routine',
-        urgencyScore: data.triage?.urgencyScore || 5,
-        clinicalPresentation: data.consultationRequest?.clinicalPresentation || data.triage?.triageReasoning || '',
+        urgencyLevel: urgLevel === 'emergency' ? 'emergency' : urgLevel === 'urgent' ? 'urgent' : 'routine',
+        urgencyScore: data.triage?.urgencyScore || 4,
+        clinicalPresentation: data.consultationRequest?.clinicalPresentation || data.triage?.triageReasoning || 'Análise clínica dos sintomas reportados.',
         recommendedDoctors: data.availableDoctors || [],
-        suggestedTimeframe: data.consultationRequest?.urgencyLevel === 'urgent' ? 'Atendimento urgente (até 24h)' : 'Atendimento em até 7 dias',
-        additionalNotes: data.triage?.keyFindings?.join('. ') || ''
+        suggestedTimeframe: urgLevel === 'emergency' 
+          ? 'Atendimento imediato' 
+          : urgLevel === 'urgent' 
+            ? 'Atendimento em até 24 horas' 
+            : 'Atendimento em até 7 dias',
+        additionalNotes: Array.isArray(data.triage?.keyFindings) 
+          ? data.triage.keyFindings.join('. ') 
+          : '',
+        keyFindings: data.triage?.keyFindings || [],
+        recommendedSpecialties: data.triage?.recommendedSpecialties || ['Clínico Geral']
       };
       
       setTriageResult(triage);
       
-      if (!data.availableDoctors || data.availableDoctors.length === 0) {
+      const hasDoctors = data.availableDoctors && data.availableDoctors.length > 0;
+      setStep('analysis');
+      
+      if (!hasDoctors) {
         toast({ 
           title: "Solicitação criada!",
           description: "Aguarde a atribuição de um médico."
         });
-        setTimeout(() => navigate('/my-consultations'), 2000);
       } else {
         toast({ 
           title: "Análise concluída!",
-          description: "Selecione um médico disponível."
+          description: "Confira o resultado e escolha um médico."
         });
       }
     },
@@ -99,24 +113,25 @@ export default function ConsultationRequest() {
     },
   });
 
-  // Confirm doctor selection mutation
   const confirmMutation = useMutation({
     mutationFn: async () => {
       if (!selectedDoctorId || !requestId) throw new Error('No doctor or request selected');
-      return await apiRequest(`/api/consultation-requests/${requestId}/select-doctor`, 'PATCH', {
+      return await apiRequest('PATCH', `/api/consultation-requests/${requestId}/select-doctor`, {
         selectedDoctorId
       });
     },
     onSuccess: () => {
+      setStep('confirmed');
       toast({ 
-        title: "Consulta solicitada!",
+        title: "Consulta solicitada com sucesso!",
         description: "Você receberá uma notificação quando o médico responder."
       });
-      setTimeout(() => navigate('/my-consultations'), 2000);
+      setTimeout(() => navigate('/my-consultations'), 3000);
     },
     onError: () => {
       toast({ 
         title: "Erro ao confirmar consulta", 
+        description: "Tente novamente em alguns instantes.",
         variant: "destructive" 
       });
     },
@@ -124,35 +139,38 @@ export default function ConsultationRequest() {
 
   const handleAnalyze = () => {
     if (!symptoms.trim()) {
-      toast({ 
-        title: "Descreva seus sintomas", 
-        variant: "destructive" 
-      });
+      toast({ title: "Descreva seus sintomas", variant: "destructive" });
       return;
     }
-
     requestMutation.mutate({ symptoms, whatsappOptIn });
+  };
+
+  const handleSelectDoctor = (doctorId: string) => {
+    setSelectedDoctorId(doctorId);
   };
 
   const handleConfirmDoctor = () => {
     confirmMutation.mutate();
   };
 
-  const getUrgencyColor = (level: string) => {
+  const getUrgencyConfig = (level: string) => {
     switch (level) {
-      case 'urgent': return 'destructive';
-      case 'moderate': return 'default';
-      case 'routine': return 'secondary';
-      default: return 'secondary';
-    }
-  };
-
-  const getUrgencyIcon = (level: string) => {
-    switch (level) {
-      case 'urgent': return <AlertCircle className="w-4 h-4" />;
-      case 'moderate': return <Clock className="w-4 h-4" />;
-      case 'routine': return <CheckCircle className="w-4 h-4" />;
-      default: return <Clock className="w-4 h-4" />;
+      case 'emergency': return { 
+        color: 'bg-red-500', textColor: 'text-red-700', bgLight: 'bg-red-50 border-red-200',
+        badgeVariant: 'destructive' as const, label: 'Emergência', icon: AlertTriangle 
+      };
+      case 'urgent': return { 
+        color: 'bg-orange-500', textColor: 'text-orange-700', bgLight: 'bg-orange-50 border-orange-200',
+        badgeVariant: 'destructive' as const, label: 'Urgente', icon: AlertCircle 
+      };
+      case 'moderate': return { 
+        color: 'bg-yellow-500', textColor: 'text-yellow-700', bgLight: 'bg-yellow-50 border-yellow-200',
+        badgeVariant: 'default' as const, label: 'Moderado', icon: Clock 
+      };
+      default: return { 
+        color: 'bg-green-500', textColor: 'text-green-700', bgLight: 'bg-green-50 border-green-200',
+        badgeVariant: 'secondary' as const, label: 'Rotina', icon: CheckCircle 
+      };
     }
   };
 
@@ -161,8 +179,10 @@ export default function ConsultationRequest() {
       <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
         <div className="container mx-auto px-4 py-8">
           <Card>
-            <CardContent className="p-6">
-              <p>Apenas pacientes podem solicitar consultas.</p>
+            <CardContent className="p-6 text-center">
+              <Shield className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-lg font-medium">Apenas pacientes podem solicitar consultas.</p>
+              <p className="text-sm text-muted-foreground mt-2">Faça login com sua conta de paciente para continuar.</p>
             </CardContent>
           </Card>
         </div>
@@ -170,185 +190,336 @@ export default function ConsultationRequest() {
     );
   }
 
+  const currentStep = step === 'input' ? 1 : step === 'analysis' ? 2 : step === 'select' ? 3 : 4;
+
   return (
     <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
       <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-4xl">
-        <div className="mb-4 sm:mb-6 lg:mb-8">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2">Solicitar Consulta</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Descreva seus sintomas e nossa IA analisará a urgência e recomendará médicos disponíveis
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+            <HeartPulse className="w-7 h-7 text-primary" />
+            Solicitar Consulta
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Descreva seus sintomas para uma triagem inteligente com recomendação de especialistas
           </p>
         </div>
 
-        {!triageResult ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" />
+        {/* Step Indicators */}
+        <div className="flex items-center justify-between mb-8 px-2">
+          {[
+            { num: 1, label: 'Sintomas', icon: MessageSquare },
+            { num: 2, label: 'Triagem IA', icon: Brain },
+            { num: 3, label: 'Médico', icon: Stethoscope },
+            { num: 4, label: 'Confirmado', icon: CalendarCheck },
+          ].map((s, i) => {
+            const Icon = s.icon;
+            const isActive = currentStep === s.num;
+            const isCompleted = currentStep > s.num;
+            return (
+              <div key={s.num} className="flex items-center flex-1">
+                <div className="flex flex-col items-center">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    isCompleted ? 'bg-primary text-white' : isActive ? 'bg-primary/20 text-primary border-2 border-primary' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {isCompleted ? <CheckCircle className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                  </div>
+                  <span className={`text-xs mt-1 font-medium ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {s.label}
+                  </span>
+                </div>
+                {i < 3 && (
+                  <div className={`flex-1 h-0.5 mx-2 mt-[-12px] ${currentStep > s.num ? 'bg-primary' : 'bg-muted'}`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Step 1: Symptoms Input */}
+        {step === 'input' && (
+          <Card className="border-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <MessageSquare className="w-5 h-5 text-primary" />
                 Descreva seus sintomas
               </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Quanto mais detalhes, melhor será a análise da IA
+              </p>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <Textarea
-                  data-testid="input-symptoms"
-                  placeholder="Descreva em detalhes o que você está sentindo, quando começou, intensidade dos sintomas..."
-                  value={symptoms}
-                  onChange={(e) => setSymptoms(e.target.value)}
-                  rows={6}
-                  className="resize-none"
-                />
-              </div>
+            <CardContent className="space-y-5">
+              <Textarea
+                data-testid="input-symptoms"
+                placeholder="Ex: Estou com dor de cabeça intensa há 4 horas, não melhorou com paracetamol. Também sinto um pouco de tontura..."
+                value={symptoms}
+                onChange={(e) => setSymptoms(e.target.value)}
+                rows={5}
+                className="resize-none text-base"
+              />
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-green-600" />
+                  <Label htmlFor="whatsapp-opt-in" className="cursor-pointer text-sm">
+                    Receber notificações via WhatsApp
+                  </Label>
+                </div>
                 <Switch
                   data-testid="switch-whatsapp"
                   id="whatsapp-opt-in"
                   checked={whatsappOptIn}
                   onCheckedChange={setWhatsappOptIn}
                 />
-                <Label htmlFor="whatsapp-opt-in" className="cursor-pointer">
-                  Receber notificações via WhatsApp
-                </Label>
               </div>
 
               <Button
                 data-testid="button-analyze"
                 onClick={handleAnalyze}
                 disabled={requestMutation.isPending || !symptoms.trim()}
-                className="w-full"
+                className="w-full h-12 text-base"
                 size="lg"
               >
                 {requestMutation.isPending ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Analisando sintomas...
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Analisando com IA...
                   </>
                 ) : (
                   <>
-                    <Brain className="w-4 h-4 mr-2" />
-                    Analisar com IA
+                    <Brain className="w-5 h-5 mr-2" />
+                    Analisar Sintomas
+                    <ArrowRight className="w-4 h-4 ml-2" />
                   </>
                 )}
               </Button>
             </CardContent>
           </Card>
-        ) : (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Brain className="w-5 h-5" />
-                  Análise da IA
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label className="text-sm text-muted-foreground">Nível de Urgência</Label>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge 
-                      variant={getUrgencyColor(triageResult.urgencyLevel)}
-                      className="text-sm"
-                      data-testid={`badge-urgency-${triageResult.urgencyLevel}`}
-                    >
-                      {getUrgencyIcon(triageResult.urgencyLevel)}
-                      <span className="ml-2">
-                        {triageResult.urgencyLevel === 'urgent' && 'Urgente'}
-                        {triageResult.urgencyLevel === 'moderate' && 'Moderado'}
-                        {triageResult.urgencyLevel === 'routine' && 'Rotina'}
-                      </span>
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      Score: {triageResult.urgencyScore}/10
-                    </span>
-                  </div>
-                </div>
+        )}
 
-                <div>
-                  <Label className="text-sm text-muted-foreground">Apresentação Clínica</Label>
-                  <p className="mt-2 text-sm" data-testid="text-clinical-presentation">
-                    {triageResult.clinicalPresentation}
-                  </p>
-                </div>
+        {/* Step 2: AI Analysis Results */}
+        {step === 'analysis' && triageResult && (
+          <div className="space-y-4">
+            {/* Urgency Card */}
+            {(() => {
+              const config = getUrgencyConfig(triageResult.urgencyLevel);
+              const UrgencyIcon = config.icon;
+              return (
+                <Card className={`border-2 ${config.bgLight}`}>
+                  <CardContent className="p-5">
+                    <div className="flex items-start gap-4">
+                      <div className={`w-14 h-14 rounded-xl ${config.color} flex items-center justify-center flex-shrink-0`}>
+                        <UrgencyIcon className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-bold text-lg">Nível de Urgência</h3>
+                          <Badge variant={config.badgeVariant} className="text-sm px-3">
+                            {config.label}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <div className="flex-1 h-2.5 bg-white/60 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full ${config.color} transition-all duration-700`}
+                              style={{ width: `${triageResult.urgencyScore * 10}%` }}
+                            />
+                          </div>
+                          <span className={`text-sm font-bold ${config.textColor}`}>
+                            {triageResult.urgencyScore}/10
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <Clock className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">{triageResult.suggestedTimeframe}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
-                <div>
-                  <Label className="text-sm text-muted-foreground">Prazo Sugerido</Label>
-                  <p className="mt-2 text-sm font-medium" data-testid="text-suggested-timeframe">
-                    {triageResult.suggestedTimeframe}
-                  </p>
+            {/* Clinical Analysis */}
+            <Card className="border">
+              <CardContent className="p-5">
+                <div className="flex items-start gap-3 mb-3">
+                  <FileText className="w-5 h-5 text-primary mt-0.5" />
+                  <h3 className="font-semibold text-base">Análise Clínica</h3>
                 </div>
-
-                {triageResult.additionalNotes && (
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Observações</Label>
-                    <p className="mt-2 text-sm" data-testid="text-additional-notes">
-                      {triageResult.additionalNotes}
-                    </p>
-                  </div>
-                )}
+                <p className="text-sm leading-relaxed text-foreground/80 pl-8" data-testid="text-clinical-presentation">
+                  {triageResult.clinicalPresentation}
+                </p>
               </CardContent>
             </Card>
 
-            {triageResult.recommendedDoctors && triageResult.recommendedDoctors.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Stethoscope className="w-5 h-5" />
-                    Médicos Recomendados
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {triageResult.recommendedDoctors.map((doctor) => (
-                    <div
-                      key={doctor.id}
-                      data-testid={`card-doctor-${doctor.id}`}
-                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                        selectedDoctorId === doctor.id
-                          ? 'border-primary bg-primary/5'
-                          : 'hover:border-primary/50'
-                      }`}
-                      onClick={() => setSelectedDoctorId(doctor.id)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold">{doctor.name}</h3>
-                          <p className="text-sm text-muted-foreground">{doctor.specialty}</p>
-                          {doctor.experience && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {doctor.experience}
-                            </p>
-                          )}
-                        </div>
-                        {selectedDoctorId === doctor.id && (
-                          <CheckCircle className="w-5 h-5 text-primary" />
-                        )}
+            {/* Key Findings */}
+            {triageResult.keyFindings && triageResult.keyFindings.length > 0 && (
+              <Card className="border">
+                <CardContent className="p-5">
+                  <div className="flex items-start gap-3 mb-3">
+                    <Activity className="w-5 h-5 text-primary mt-0.5" />
+                    <h3 className="font-semibold text-base">Achados Importantes</h3>
+                  </div>
+                  <div className="space-y-2 pl-8">
+                    {triageResult.keyFindings.map((finding, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <ChevronRight className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">{finding}</span>
                       </div>
-                    </div>
-                  ))}
-
-                  <Button
-                    data-testid="button-confirm-doctor"
-                    onClick={handleConfirmDoctor}
-                    disabled={!selectedDoctorId || confirmMutation.isPending}
-                    className="w-full mt-4"
-                    size="lg"
-                  >
-                    {confirmMutation.isPending ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Confirmando...
-                      </>
-                    ) : (
-                      <>
-                        Confirmar Médico
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </>
-                    )}
-                  </Button>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             )}
+
+            {/* Recommended Specialties */}
+            {triageResult.recommendedSpecialties && triageResult.recommendedSpecialties.length > 0 && (
+              <Card className="border">
+                <CardContent className="p-5">
+                  <div className="flex items-start gap-3 mb-3">
+                    <Stethoscope className="w-5 h-5 text-primary mt-0.5" />
+                    <h3 className="font-semibold text-base">Especialidades Recomendadas</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pl-8">
+                    {triageResult.recommendedSpecialties.map((spec, i) => (
+                      <Badge key={i} variant="outline" className="text-sm px-3 py-1">
+                        {spec}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Action Button */}
+            <Button 
+              onClick={() => {
+                if (triageResult.recommendedDoctors.length > 0) {
+                  setStep('select');
+                } else {
+                  navigate('/my-consultations');
+                }
+              }}
+              className="w-full h-12 text-base"
+              size="lg"
+            >
+              {triageResult.recommendedDoctors.length > 0 ? (
+                <>
+                  <UserCheck className="w-5 h-5 mr-2" />
+                  Escolher Médico
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </>
+              ) : (
+                <>
+                  <CalendarCheck className="w-5 h-5 mr-2" />
+                  Ver Minhas Consultas
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </>
+              )}
+            </Button>
           </div>
+        )}
+
+        {/* Step 3: Select Doctor */}
+        {step === 'select' && triageResult && (
+          <div className="space-y-4">
+            <Card className="border-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <UserCheck className="w-5 h-5 text-primary" />
+                  Escolha seu Médico
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Selecione o profissional que deseja para sua consulta
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {triageResult.recommendedDoctors.map((doctor) => (
+                  <div
+                    key={doctor.id}
+                    data-testid={`card-doctor-${doctor.id}`}
+                    className={`p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                      selectedDoctorId === doctor.id
+                        ? 'border-primary bg-primary/5 shadow-md'
+                        : 'border-muted hover:border-primary/40 hover:shadow-sm'
+                    }`}
+                    onClick={() => handleSelectDoctor(doctor.id)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        selectedDoctorId === doctor.id ? 'bg-primary text-white' : 'bg-primary/10 text-primary'
+                      }`}>
+                        <Stethoscope className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-base">{doctor.name}</h3>
+                        <p className="text-sm text-muted-foreground">{doctor.specialty}</p>
+                        {doctor.availability && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                            <span className="text-xs text-green-600">Disponível</span>
+                          </div>
+                        )}
+                      </div>
+                      {selectedDoctorId === doctor.id && (
+                        <CheckCircle className="w-6 h-6 text-primary flex-shrink-0" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setStep('analysis')}
+                className="flex-1 h-12"
+              >
+                Voltar
+              </Button>
+              <Button
+                data-testid="button-confirm-doctor"
+                onClick={handleConfirmDoctor}
+                disabled={!selectedDoctorId || confirmMutation.isPending}
+                className="flex-[2] h-12 text-base"
+                size="lg"
+              >
+                {confirmMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Confirmando...
+                  </>
+                ) : (
+                  <>
+                    <CalendarCheck className="w-5 h-5 mr-2" />
+                    Confirmar Consulta
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Confirmed */}
+        {step === 'confirmed' && (
+          <Card className="border-2 border-green-200 bg-green-50">
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-green-800 mb-2">Consulta Solicitada!</h2>
+              <p className="text-sm text-green-700 mb-4">
+                Sua solicitação foi enviada com sucesso. Você receberá uma notificação quando o médico responder.
+              </p>
+              <div className="flex items-center justify-center gap-2 text-green-600">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Redirecionando para suas consultas...</span>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </PageWrapper>
