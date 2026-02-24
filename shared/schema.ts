@@ -728,7 +728,7 @@ export const consultationRequests = pgTable("consultation_requests", {
   symptoms: text("symptoms").notNull(), // Patient's description of symptoms
   aiAnalysis: jsonb("ai_analysis"), // AI analysis of symptoms + medical history
   clinicalPresentation: text("clinical_presentation"), // AI-generated summary for doctor
-  urgencyLevel: text("urgency_level").notNull().default("routine"), // immediate, urgent, emergency, routine
+  urgencyLevel: text("urgency_level").notNull().default("standard"), // emergency, very_urgent, urgent, standard, non_urgent
   recommendedDoctors: jsonb("recommended_doctors"), // Array of suggested doctor IDs with reasoning
   selectedDoctorId: uuid("selected_doctor_id").references(() => users.id),
   status: text("status").notNull().default("pending"), // pending, accepted, rejected, scheduled, cancelled
