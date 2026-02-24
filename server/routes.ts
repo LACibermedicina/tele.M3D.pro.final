@@ -2787,12 +2787,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Broadcast note to participants
-      const consultation = await storage.getVideoConsultation(req.params.id);
-      if (consultation) {
-        broadcastToDoctor(consultation.doctorId, {
+      const consultation2 = await storage.getVideoConsultation(req.params.id);
+      if (consultation2) {
+        broadcastToDoctor(consultation2.doctorId, {
           type: 'consultation_note_added',
           data: note
         });
+      }
+
+      // Generate AI response for ai_query notes
+      if (type === 'ai_query') {
+        (async () => {
+          try {
+            const consult = await storage.getVideoConsultation(req.params.id);
+            let patientContext = '';
+            if (consult?.patientId) {
+              const patient = await storage.getPatient(consult.patientId);
+              if (patient) {
+                patientContext = `\nPaciente: ${patient.name}, Sexo: ${patient.gender || 'não informado'}, Tipo sanguíneo: ${patient.bloodType || 'não informado'}, Alergias: ${patient.allergies || 'nenhuma conhecida'}, Status: ${patient.healthStatus}`;
+                const records = await storage.getMedicalRecordsByPatient(consult.patientId);
+                if (records.length > 0) {
+                  patientContext += `\nHistórico recente: ${records.slice(0, 3).map((r: any) => `${r.diagnosis || 'Consulta'} (${new Date(r.date).toLocaleDateString()})`).join(', ')}`;
+                }
+              }
+            }
+            const existingNotes = await storage.getConsultationNotes(req.params.id);
+            const recentNotes = existingNotes.filter((n: any) => n.type === 'doctor_note' || n.type === 'transcription').slice(-5);
+            const notesContext = recentNotes.length > 0 ? `\nAnotações da consulta: ${recentNotes.map((n: any) => n.content).join(' | ')}` : '';
+
+            const aiPrompt = `Você é um assistente médico IA auxiliando um médico durante uma consulta por vídeo. Responda de forma concisa e técnica em português.${patientContext}${notesContext}\n\nPergunta do médico: ${content}`;
+            const aiResponse = await geminiService.generateText(aiPrompt, 'Você é um assistente médico especializado. Responda de forma precisa, concisa e profissional em português brasileiro.');
+
+            const aiNote = await storage.createConsultationNote({
+              consultationId: req.params.id,
+              userId: req.user.id,
+              type: 'ai_response',
+              content: aiResponse,
+              metadata: { queryNoteId: note.id }
+            });
+
+            if (consult) {
+              broadcastToDoctor(consult.doctorId, {
+                type: 'consultation_note_added',
+                data: aiNote
+              });
+            }
+          } catch (aiError) {
+            console.error('AI response generation failed:', aiError);
+            const fallbackNote = await storage.createConsultationNote({
+              consultationId: req.params.id,
+              userId: req.user.id,
+              type: 'ai_response',
+              content: 'Desculpe, não foi possível gerar uma resposta no momento. Tente novamente.',
+              metadata: { queryNoteId: note.id, error: true }
+            });
+          }
+        })();
       }
 
       res.status(201).json(note);

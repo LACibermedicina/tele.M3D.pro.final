@@ -43,5 +43,13 @@ A full-stack medical practice management application built with Express.js backe
 - **Medical Records**: Nav item "Meu Prontuário" conditionally shown if patient has existing records (via `/api/medical-records/my` query in header). Route `/records` accessible to patients.
 - Navigation: Top header bar always visible for patient pages. Prescription and records nav items only appear for patients who have data.
 
+## Video Consultation Features (Doctor)
+- **Route**: `/consultation/video/:patientId`
+- **Chat**: Real-time chat with sender identity (doctor/patient), bubble-style messages
+- **AI Diagnostic**: Doctor sends questions, backend generates AI response using Gemini/OpenAI with patient context (history, allergies, records). Responses saved as `ai_response` notes.
+- **Audio Transcription**: Real-time speech-to-text using browser SpeechRecognition API (Chrome/Edge). Entries show timestamp, speaker (Doutor/Paciente), text. Doctor can toggle speaker identification manually. Export to .txt or save to consultation notes. Auto-saves on call end.
+- **Notes**: Doctor annotations, saved transcriptions displayed with border accents. All notes included in meetingNotes on call end.
+- **Consultation note types**: `chat`, `ai_query`, `ai_response`, `doctor_note`, `annotation`, `transcription`
+
 ## Running
 - `npm run dev` starts the development server (Express + Vite on port 5000)

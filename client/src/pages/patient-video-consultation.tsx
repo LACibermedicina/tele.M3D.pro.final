@@ -23,8 +23,10 @@ import {
   MessageSquare,
   Send,
   Stethoscope,
+  User,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 type ConsultationNote = {
   id: string;
@@ -40,6 +42,7 @@ export default function PatientVideoConsultation() {
   const [, params] = useRoute('/patient/video/:consultationId');
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const consultationId = params?.consultationId || '';
 
   const [client, setClient] = useState<IAgoraRTCClient | null>(null);
@@ -89,7 +92,7 @@ export default function PatientVideoConsultation() {
   });
 
   const createNoteMutation = useMutation({
-    mutationFn: async (data: { type: string; content: string }) => {
+    mutationFn: async (data: { type: string; content: string; metadata?: any }) => {
       return apiRequest(
         'POST',
         '/api/video-consultations/' + consultationId + '/notes',
@@ -204,6 +207,7 @@ export default function PatientVideoConsultation() {
     createNoteMutation.mutate({
       type: 'chat',
       content: chatMessage,
+      metadata: { senderName: user?.name || 'Paciente', senderRole: 'patient' },
     });
     setChatMessage('');
   };
@@ -320,14 +324,23 @@ export default function PatientVideoConsultation() {
                     Nenhuma mensagem ainda. Envie uma mensagem para o médico.
                   </p>
                 )}
-                {chatNotes.map((note) => (
-                  <Card key={note.id} className="p-3">
-                    <p className="text-sm">{note.content}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(note.timestamp).toLocaleTimeString()}
-                    </p>
-                  </Card>
-                ))}
+                {chatNotes.map((note) => {
+                  const isPatient = note.metadata?.senderRole === 'patient' || note.userId === user?.id;
+                  return (
+                    <div key={note.id} className={`flex ${isPatient ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] rounded-xl px-3 py-2 ${isPatient ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                        <div className="flex items-center gap-1 mb-0.5">
+                          {isPatient ? <User className="h-3 w-3" /> : <Stethoscope className="h-3 w-3" />}
+                          <span className="text-xs font-medium">{isPatient ? 'Você' : 'Dr.'}</span>
+                        </div>
+                        <p className="text-sm">{note.content}</p>
+                        <p className={`text-xs mt-1 ${isPatient ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                          {new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </ScrollArea>
             <div className="p-3 border-t flex gap-2">
