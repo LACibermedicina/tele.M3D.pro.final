@@ -9,7 +9,8 @@ import LanguageSelector from "@/components/ui/language-selector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { formatErrorForToast } from "@/lib/error-handler";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import NotificationCenter from "@/components/notifications/notification-center";
@@ -289,6 +290,24 @@ export default function Header() {
     }
   };
 
+  const { data: patientPrescriptions } = useQuery<any[]>({
+    queryKey: ['/api/prescriptions/recent'],
+    enabled: user?.role === 'patient',
+    select: (data) => data || [],
+  });
+
+  const { data: patientRecords } = useQuery<any[]>({
+    queryKey: ['/api/medical-records/my'],
+    enabled: user?.role === 'patient',
+    select: (data) => data || [],
+  });
+
+  const hasActivePrescriptions = patientPrescriptions?.some((p: any) => {
+    return p.status === 'active' && new Date(p.expiresAt) >= new Date();
+  }) || false;
+
+  const hasRecords = (patientRecords && patientRecords.length > 0);
+
   const allNavItems = [
     { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, faIcon: "fas fa-chart-line", roles: ["admin", "doctor", "patient"] },
     { path: "/patients", label: "Pacientes", icon: Users, faIcon: "fas fa-users", roles: ["admin", "doctor"] },
@@ -297,13 +316,21 @@ export default function Header() {
     { path: "/records", label: "Prontuários", icon: FileText, faIcon: "fas fa-file-medical", roles: ["admin", "doctor"] },
     { path: "/prescriptions", label: "Prescrições", icon: ClipboardList, faIcon: "fas fa-prescription-bottle-alt", roles: ["admin", "doctor"] },
     { path: "/consultation-request", label: "Solicitar Consulta", icon: Stethoscope, faIcon: "fas fa-stethoscope", roles: ["patient"] },
-    { path: "/immediate-consultation", label: "Sala de Espera", icon: Ambulance, faIcon: "fas fa-hospital", roles: ["patient"] },
+    { path: "/immediate-consultation", label: "Sala de Espera", icon: Video, faIcon: "fas fa-hospital", roles: ["patient"] },
     { path: "/my-consultations", label: "Minhas Consultas", icon: CalendarClock, faIcon: "fas fa-calendar-check", roles: ["patient"] },
     { path: "/assistant", label: "Assistente IA", icon: BrainCircuit, faIcon: "fas fa-robot", roles: ["admin", "doctor", "patient"] },
     { path: "/medical-references", label: "Referências Médicas", icon: BookOpenCheck, faIcon: "fas fa-file-pdf", roles: ["admin", "doctor"] },
     { path: "/analytics", label: "Analytics", icon: BarChart3, faIcon: "fas fa-chart-bar", roles: ["admin"] },
     { path: "/admin", label: t("navigation.admin"), icon: Shield, faIcon: "fas fa-shield-alt", roles: ["admin"] },
   ];
+
+  // For patients: conditionally add prescriptions and records nav items
+  if (user?.role === 'patient' && hasActivePrescriptions) {
+    allNavItems.push({ path: "/prescriptions", label: "Minhas Prescrições", icon: ClipboardList, faIcon: "fas fa-prescription-bottle-alt", roles: ["patient"] });
+  }
+  if (user?.role === 'patient' && hasRecords) {
+    allNavItems.push({ path: "/records", label: "Meu Prontuário", icon: FileText, faIcon: "fas fa-file-medical", roles: ["patient"] });
+  }
 
   // Filter navigation items based on user role
   const navItems = allNavItems.filter(item => 

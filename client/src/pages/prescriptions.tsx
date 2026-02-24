@@ -216,7 +216,7 @@ export default function PrescriptionsPage() {
                 {searchTerm || statusFilter !== 'all' 
                   ? 'Tente ajustar os filtros de busca'
                   : isPatient 
-                    ? 'Você não possui prescrições ativas no momento'
+                    ? 'Você não possui prescrições ativas no momento. Prescrições serão exibidas aqui quando forem emitidas pelo seu médico.'
                     : 'Crie sua primeira prescrição para começar'
                 }
               </p>
