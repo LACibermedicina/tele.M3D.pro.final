@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -13,9 +14,272 @@ import { ptBR } from "date-fns/locale";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
 
+function PatientDetailsPanel({ patient, onClose }: { patient: any; onClose: () => void }) {
+  const { data: consultationRequests, isLoading: loadingRequests } = useQuery<any[]>({
+    queryKey: [`/api/consultation-requests?patientId=${patient.id}`],
+  });
+
+  const { data: medicalRecords, isLoading: loadingRecords } = useQuery<any[]>({
+    queryKey: [`/api/medical-records/${patient.id}`],
+  });
+
+  const { data: prescriptions, isLoading: loadingRx } = useQuery<any[]>({
+    queryKey: [`/api/patients/${patient.id}/prescriptions`],
+  });
+
+  const { data: whatsappMessages } = useQuery<any[]>({
+    queryKey: ['/api/whatsapp/messages', patient.id],
+  });
+
+  const patientRequests = Array.isArray(consultationRequests) ? consultationRequests : [];
+  const records = Array.isArray(medicalRecords) ? medicalRecords : [];
+  const rxList = Array.isArray(prescriptions) ? prescriptions : [];
+  const msgList = Array.isArray(whatsappMessages) ? whatsappMessages : [];
+
+  const totalMessages = msgList.length;
+  const patientMessages = msgList.filter((m: any) => m.senderRole === 'patient' || m.direction === 'inbound').length;
+  const doctorMessages = msgList.filter((m: any) => m.senderRole === 'doctor' || m.direction === 'doctor_to_patient').length;
+  const aiMessages = msgList.filter((m: any) => m.isFromAI || m.senderRole === 'ai').length;
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <h3 className="font-semibold text-lg">Detalhes do Paciente</h3>
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          <i className="fas fa-times"></i>
+        </Button>
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className="p-4 space-y-5">
+          <div className="flex items-center space-x-3">
+            <div className="w-14 h-14 bg-primary/20 rounded-full flex items-center justify-center">
+              <i className="fas fa-user text-primary text-xl"></i>
+            </div>
+            <div>
+              <h4 className="font-semibold text-lg">{patient.name}</h4>
+              <p className="text-sm text-muted-foreground">{patient.whatsappNumber || patient.phone}</p>
+              {patient.email && <p className="text-xs text-muted-foreground">{patient.email}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {patient.bloodType && (
+              <div className="bg-red-50 dark:bg-red-950/30 rounded-lg p-2 text-center">
+                <i className="fas fa-tint text-red-500 text-sm"></i>
+                <p className="text-xs text-muted-foreground mt-1">Tipo Sanguíneo</p>
+                <p className="font-semibold text-sm">{patient.bloodType}</p>
+              </div>
+            )}
+            {patient.allergies && (
+              <div className="bg-yellow-50 dark:bg-yellow-950/30 rounded-lg p-2 text-center">
+                <i className="fas fa-exclamation-triangle text-yellow-500 text-sm"></i>
+                <p className="text-xs text-muted-foreground mt-1">Alergias</p>
+                <p className="font-semibold text-sm truncate" title={patient.allergies}>{patient.allergies}</p>
+              </div>
+            )}
+            {patient.healthStatus && (
+              <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-2 text-center">
+                <i className="fas fa-heartbeat text-green-500 text-sm"></i>
+                <p className="text-xs text-muted-foreground mt-1">Status</p>
+                <p className="font-semibold text-sm">{patient.healthStatus}</p>
+              </div>
+            )}
+            {patient.dateOfBirth && (
+              <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-2 text-center">
+                <i className="fas fa-calendar text-blue-500 text-sm"></i>
+                <p className="text-xs text-muted-foreground mt-1">Nascimento</p>
+                <p className="font-semibold text-sm">{format(new Date(patient.dateOfBirth), 'dd/MM/yyyy')}</p>
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          <div>
+            <div className="flex items-center space-x-2 mb-3">
+              <i className="fas fa-chart-bar text-primary text-sm"></i>
+              <h5 className="font-semibold text-sm">Resumo da Conversa</h5>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="bg-muted rounded-lg p-2">
+                <p className="text-lg font-bold">{totalMessages}</p>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+              <div className="bg-muted rounded-lg p-2">
+                <p className="text-lg font-bold text-gray-600">{patientMessages}</p>
+                <p className="text-xs text-muted-foreground">Paciente</p>
+              </div>
+              <div className="bg-muted rounded-lg p-2">
+                <p className="text-lg font-bold text-blue-600">{doctorMessages}</p>
+                <p className="text-xs text-muted-foreground">Doutor(a)</p>
+              </div>
+              <div className="bg-muted rounded-lg p-2">
+                <p className="text-lg font-bold text-purple-600">{aiMessages}</p>
+                <p className="text-xs text-muted-foreground">IA</p>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <i className="fas fa-clipboard-list text-orange-500 text-sm"></i>
+                <h5 className="font-semibold text-sm">Solicitações de Consulta</h5>
+              </div>
+              <Badge variant="outline" className="text-xs">{patientRequests.length}</Badge>
+            </div>
+            {loadingRequests ? (
+              <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                <div className="animate-spin rounded-full h-3 w-3 border-b border-primary"></div>
+                <span>Carregando...</span>
+              </div>
+            ) : patientRequests.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Nenhuma solicitação registrada</p>
+            ) : (
+              <div className="space-y-2">
+                {patientRequests.slice(0, 5).map((req: any) => (
+                  <div key={req.id} className="bg-muted/50 rounded-lg p-3 border border-border">
+                    <div className="flex items-center justify-between mb-1">
+                      <Badge variant={
+                        req.urgencyLevel === 'emergency' ? 'destructive' :
+                        req.urgencyLevel === 'urgent' ? 'default' : 'secondary'
+                      } className="text-xs">
+                        {req.urgencyLevel === 'emergency' ? 'Emergência' :
+                         req.urgencyLevel === 'urgent' ? 'Urgente' : 'Rotina'}
+                      </Badge>
+                      <Badge variant={
+                        req.status === 'accepted' ? 'default' :
+                        req.status === 'pending' ? 'secondary' : 'outline'
+                      } className="text-xs">
+                        {req.status === 'accepted' ? 'Aceita' :
+                         req.status === 'pending' ? 'Pendente' :
+                         req.status === 'declined' ? 'Recusada' : req.status}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{req.symptoms}</p>
+                    {req.clinicalPresentation && (
+                      <p className="text-xs text-muted-foreground mt-1 italic line-clamp-2">
+                        <i className="fas fa-robot text-purple-400 mr-1"></i>
+                        {req.clinicalPresentation}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {format(new Date(req.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <i className="fas fa-file-medical text-green-500 text-sm"></i>
+                <h5 className="font-semibold text-sm">Prontuários</h5>
+              </div>
+              <Badge variant="outline" className="text-xs">{records.length}</Badge>
+            </div>
+            {loadingRecords ? (
+              <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                <div className="animate-spin rounded-full h-3 w-3 border-b border-primary"></div>
+                <span>Carregando...</span>
+              </div>
+            ) : records.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Nenhum prontuário registrado</p>
+            ) : (
+              <div className="space-y-2">
+                {records.slice(0, 5).map((record: any) => (
+                  <div key={record.id} className="bg-muted/50 rounded-lg p-3 border border-border">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-xs">{record.diagnosis || 'Consulta'}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {record.createdAt ? format(new Date(record.createdAt), 'dd/MM/yyyy', { locale: ptBR }) : ''}
+                      </span>
+                    </div>
+                    {record.symptoms && (
+                      <p className="text-xs text-muted-foreground line-clamp-1">
+                        <strong>Queixa:</strong> {record.symptoms}
+                      </p>
+                    )}
+                    {record.treatment && (
+                      <p className="text-xs text-muted-foreground line-clamp-1">
+                        <strong>Tratamento:</strong> {record.treatment}
+                      </p>
+                    )}
+                    {record.prescription && (
+                      <p className="text-xs text-muted-foreground line-clamp-1">
+                        <strong>Prescrição:</strong> {record.prescription}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <i className="fas fa-pills text-blue-500 text-sm"></i>
+                <h5 className="font-semibold text-sm">Prescrições</h5>
+              </div>
+              <Badge variant="outline" className="text-xs">{rxList.length}</Badge>
+            </div>
+            {loadingRx ? (
+              <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                <div className="animate-spin rounded-full h-3 w-3 border-b border-primary"></div>
+                <span>Carregando...</span>
+              </div>
+            ) : rxList.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Nenhuma prescrição registrada</p>
+            ) : (
+              <div className="space-y-2">
+                {rxList.slice(0, 5).map((rx: any) => (
+                  <div key={rx.id} className="bg-muted/50 rounded-lg p-3 border border-border">
+                    <div className="flex items-center justify-between mb-1">
+                      <Badge variant={rx.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                        {rx.status === 'active' ? 'Ativa' : rx.status === 'expired' ? 'Expirada' : rx.status}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {rx.createdAt ? format(new Date(rx.createdAt), 'dd/MM/yyyy', { locale: ptBR }) : ''}
+                      </span>
+                    </div>
+                    {rx.prescriptionText && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{rx.prescriptionText}</p>
+                    )}
+                    {rx.items && rx.items.length > 0 && (
+                      <div className="mt-1">
+                        {rx.items.slice(0, 3).map((item: any, idx: number) => (
+                          <p key={idx} className="text-xs text-muted-foreground">
+                            <i className="fas fa-capsules text-blue-400 mr-1"></i>
+                            {item.medicationName || item.name} {item.dosage ? `- ${item.dosage}` : ''}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
 export default function WhatsApp() {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  const [showDetails, setShowDetails] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -34,7 +298,6 @@ export default function WhatsApp() {
     mutationFn: (data: { to: string; message: string }) => 
       apiRequest('POST', '/api/whatsapp/send', data),
     onSuccess: () => {
-      // Invalidate only the specific patient's messages
       if (selectedPatientId) {
         queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/messages', selectedPatientId] });
       }
@@ -61,11 +324,9 @@ export default function WhatsApp() {
     scrollToBottom();
   }, [messages]);
 
-  // Listen for real-time WhatsApp messages
   useEffect(() => {
     const whatsappMessages = wsMessages.filter(msg => msg.type === 'whatsapp_message');
     if (whatsappMessages.length > 0) {
-      // Invalidate only the specific patient's messages if it matches the selected patient
       whatsappMessages.forEach(wsMsg => {
         const patientId = wsMsg.data?.patientId;
         if (patientId) {
@@ -87,7 +348,14 @@ export default function WhatsApp() {
     });
   };
 
+  const handleSelectPatient = (patientId: string) => {
+    setSelectedPatientId(patientId);
+    setShowDetails(false);
+  };
+
   const patientsWithMessages = patientsList.filter((p: any) => p.whatsappNumber || p.phone);
+
+  const chatColSpan = showDetails ? 'lg:col-span-2' : 'lg:col-span-3';
 
   return (
     <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
@@ -109,7 +377,7 @@ export default function WhatsApp() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[700px]">
+      <div className={`grid grid-cols-1 ${showDetails ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-6 h-[700px]`}>
         {/* Patient List */}
         <div className="lg:col-span-1">
           <Card className="h-full">
@@ -138,7 +406,7 @@ export default function WhatsApp() {
                         className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors border-b border-border ${
                           selectedPatientId === patient.id ? 'bg-primary/10' : ''
                         }`}
-                        onClick={() => setSelectedPatientId(patient.id)}
+                        onClick={() => handleSelectPatient(patient.id)}
                         data-testid={`patient-conversation-${patient.id}`}
                       >
                         <div className="flex items-center space-x-3">
@@ -170,7 +438,7 @@ export default function WhatsApp() {
         </div>
 
         {/* Message Area */}
-        <div className="lg:col-span-3">
+        <div className={chatColSpan}>
           {!selectedPatient ? (
             <Card className="h-full flex items-center justify-center">
               <CardContent>
@@ -187,7 +455,7 @@ export default function WhatsApp() {
             </Card>
           ) : (
             <Card className="h-full flex flex-col">
-              <CardHeader className="border-b border-border">
+              <CardHeader className="border-b border-border py-3 px-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
@@ -210,14 +478,19 @@ export default function WhatsApp() {
                       </div>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" data-testid="button-patient-details">
-                    <i className="fas fa-info-circle mr-2"></i>
-                    Detalhes
+                  <Button
+                    variant={showDetails ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowDetails(!showDetails)}
+                    data-testid="button-patient-details"
+                  >
+                    <i className={`fas ${showDetails ? 'fa-times' : 'fa-info-circle'} mr-2`}></i>
+                    {showDetails ? 'Fechar' : 'Detalhes'}
                   </Button>
                 </div>
               </CardHeader>
 
-              <CardContent className="flex-1 p-0">
+              <CardContent className="flex-1 p-0 overflow-hidden">
                 <ScrollArea className="h-[450px]">
                   {messagesLoading ? (
                     <div className="flex items-center justify-center h-full">
@@ -345,6 +618,18 @@ export default function WhatsApp() {
             </Card>
           )}
         </div>
+
+        {/* Details Panel */}
+        {showDetails && selectedPatient && (
+          <div className="lg:col-span-2">
+            <Card className="h-full">
+              <PatientDetailsPanel
+                patient={selectedPatient}
+                onClose={() => setShowDetails(false)}
+              />
+            </Card>
+          </div>
+        )}
       </div>
       </div>
     </PageWrapper>

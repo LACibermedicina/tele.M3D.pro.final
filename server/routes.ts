@@ -6800,8 +6800,11 @@ Valores possíveis para aiTriageLevel: "routine", "urgent", "emergency"`;
   app.get('/api/consultation-requests', requireAuth, async (req, res) => {
     try {
       let requests;
+      const { patientId } = req.query;
       
-      if (req.user!.role === 'doctor' || req.user!.role === 'admin') {
+      if (patientId && typeof patientId === 'string' && (req.user!.role === 'doctor' || req.user!.role === 'admin')) {
+        requests = await storage.getConsultationRequestsByPatient(patientId);
+      } else if (req.user!.role === 'doctor' || req.user!.role === 'admin') {
         requests = await storage.getConsultationRequestsByDoctor(req.user!.id);
       } else {
         requests = await storage.getConsultationRequestsByPatient(req.user!.id);
