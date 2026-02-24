@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { TriageBadge } from "@/components/triage/triage-badge";
 import {
   FileText,
   Calendar,
@@ -356,15 +357,7 @@ function renderRequestsList(requests: any[], navigate: (path: string) => void) {
                  req.status === 'completed' ? 'Concluída' : req.status}
               </Badge>
               {req.urgencyLevel && (
-                <Badge variant={
-                  req.urgencyLevel === 'emergency' || req.urgencyLevel === 'urgent' ? 'destructive' :
-                  req.urgencyLevel === 'moderate' ? 'default' : 'secondary'
-                }>
-                  <AlertCircle className="w-3 h-3 mr-1" />
-                  {req.urgencyLevel === 'emergency' ? 'Emergência' :
-                   req.urgencyLevel === 'urgent' ? 'Urgente' :
-                   req.urgencyLevel === 'moderate' ? 'Moderado' : 'Rotina'}
-                </Badge>
+                <TriageBadge level={req.urgencyLevel} size="sm" />
               )}
             </div>
           </div>

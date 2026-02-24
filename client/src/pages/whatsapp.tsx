@@ -13,6 +13,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
+import { TriageBadge } from "@/components/triage/triage-badge";
+import { TriageHelpDialog } from "@/components/triage/triage-help-dialog";
 
 function PatientDetailsPanel({ patient, onClose }: { patient: any; onClose: () => void }) {
   const { data: consultationRequests, isLoading: loadingRequests } = useQuery<any[]>({
@@ -45,9 +47,16 @@ function PatientDetailsPanel({ patient, onClose }: { patient: any; onClose: () =
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-border">
         <h3 className="font-semibold text-lg">Detalhes do Paciente</h3>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <i className="fas fa-times"></i>
-        </Button>
+        <div className="flex items-center gap-1">
+          <TriageHelpDialog trigger={
+            <Button variant="ghost" size="sm" title="Guia de Triagem">
+              <i className="fas fa-question-circle text-muted-foreground"></i>
+            </Button>
+          } />
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <i className="fas fa-times"></i>
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="flex-1">
@@ -143,13 +152,7 @@ function PatientDetailsPanel({ patient, onClose }: { patient: any; onClose: () =
                 {patientRequests.slice(0, 5).map((req: any) => (
                   <div key={req.id} className="bg-muted/50 rounded-lg p-3 border border-border">
                     <div className="flex items-center justify-between mb-1">
-                      <Badge variant={
-                        req.urgencyLevel === 'emergency' ? 'destructive' :
-                        req.urgencyLevel === 'urgent' ? 'default' : 'secondary'
-                      } className="text-xs">
-                        {req.urgencyLevel === 'emergency' ? 'Emergência' :
-                         req.urgencyLevel === 'urgent' ? 'Urgente' : 'Rotina'}
-                      </Badge>
+                      <TriageBadge level={req.urgencyLevel || req.aiTriageLevel || 'standard'} size="sm" />
                       <Badge variant={
                         req.status === 'accepted' ? 'default' :
                         req.status === 'pending' ? 'secondary' : 'outline'

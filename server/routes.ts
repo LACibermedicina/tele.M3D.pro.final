@@ -6666,10 +6666,20 @@ INSTRUÇÕES DE ANÁLISE:
 5. Considere medicamentos em uso e possíveis interações
 6. Na ausência de parâmetros pré-definidos, aplique diretrizes da OMS
 
-IMPORTANTE: Responda APENAS com JSON válido, sem markdown, sem blocos de código, sem texto extra. O JSON deve ter exatamente este formato:
-{"aiTriageLevel": "routine", "triageReasoning": "texto explicativo em português detalhando a análise clínica, protocolos aplicados e recomendações, sem aspas internas", "recommendedSpecialties": ["Especialidade1"], "keyFindings": ["achado1", "achado2"], "protocolsApplied": ["nome do protocolo ou diretriz utilizada"]}
+CLASSIFICAÇÃO DE RISCO (Protocolo de Manchester / Ministério da Saúde Brasil):
+Use EXATAMENTE um dos 5 níveis abaixo:
+- "emergency" (VERMELHO) — Emergência: Risco iminente de vida. Atendimento imediato. Ex: PCR, obstrução de vias aéreas, choque, IAM, AVC.
+- "very_urgent" (LARANJA) — Muito Urgente: Condição grave, pode evoluir para risco de vida. Até 10 min. Ex: dor intensa ≥8/10, dispneia grave, hemorragia moderada, déficit neurológico agudo.
+- "urgent" (AMARELO) — Urgente: Necessita avaliação médica, potencial de agravamento. Até 60 min. Ex: dor moderada 4-7/10, febre 38-39°C, vômitos persistentes, crise hipertensiva.
+- "standard" (VERDE) — Pouco Urgente: Menor gravidade, sem risco significativo. Até 120 min. Ex: dor leve 1-3/10, IVAS, contusão simples, sintomas gripais.
+- "non_urgent" (AZUL) — Não Urgente: Queixa crônica ou ambulatorial. Até 240 min. Ex: renovação de receitas, exames de rotina, acompanhamento.
 
-Valores possíveis para aiTriageLevel: "routine", "urgent", "emergency"`;
+Na ausência de identificação do país do médico, utilize as diretrizes de triagem da OMS (Emergency Triage Assessment and Treatment).
+
+IMPORTANTE: Responda APENAS com JSON válido, sem markdown, sem blocos de código, sem texto extra. O JSON deve ter exatamente este formato:
+{"aiTriageLevel": "standard", "triageReasoning": "texto explicativo em português detalhando a análise clínica, protocolos aplicados e recomendações, sem aspas internas", "recommendedSpecialties": ["Especialidade1"], "keyFindings": ["achado1", "achado2"], "protocolsApplied": ["nome do protocolo ou diretriz utilizada"]}
+
+Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "standard", "non_urgent"`;
 
         const aiResponse = await geminiService.generateText(triagePrompt);
         

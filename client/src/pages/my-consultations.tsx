@@ -20,12 +20,13 @@ import PageWrapper from "@/components/layout/page-wrapper";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import origamiHeroImage from "@assets/image_1759773239051.png";
+import { TriageBadge } from "@/components/triage/triage-badge";
 
 interface ConsultationRequest {
   id: string;
   patientId: string;
   symptoms: string;
-  urgencyLevel: 'urgent' | 'moderate' | 'routine';
+  urgencyLevel: string;
   clinicalPresentation: string;
   status: 'pending' | 'accepted' | 'declined' | 'completed';
   selectedDoctorId?: string;
@@ -87,12 +88,7 @@ export default function MyConsultations() {
   };
 
   const getUrgencyColor = (level: string) => {
-    switch (level) {
-      case 'urgent': return 'destructive';
-      case 'moderate': return 'default';
-      case 'routine': return 'secondary';
-      default: return 'secondary';
-    }
+    return 'secondary';
   };
 
   const renderConsultationCard = (consultation: ConsultationRequest) => (
@@ -108,12 +104,7 @@ export default function MyConsultations() {
                 {getStatusIcon(consultation.status)}
                 <span className="ml-2">{getStatusLabel(consultation.status)}</span>
               </Badge>
-              <Badge variant={getUrgencyColor(consultation.urgencyLevel)} data-testid={`badge-urgency-${consultation.urgencyLevel}`}>
-                <AlertCircle className="w-3 h-3 mr-1" />
-                {consultation.urgencyLevel === 'urgent' && 'Urgente'}
-                {consultation.urgencyLevel === 'moderate' && 'Moderado'}
-                {consultation.urgencyLevel === 'routine' && 'Rotina'}
-              </Badge>
+              <TriageBadge level={consultation.urgencyLevel} size="sm" />
             </div>
           </div>
           {consultation.status === 'accepted' && consultation.session && (

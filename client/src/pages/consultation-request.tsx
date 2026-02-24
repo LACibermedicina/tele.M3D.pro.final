@@ -30,6 +30,9 @@ import {
 import { useLocation } from "wouter";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
+import { getTriageConfig } from "@/lib/triage";
+import { TriageBadge } from "@/components/triage/triage-badge";
+import { TriageHelpDialog } from "@/components/triage/triage-help-dialog";
 
 interface Doctor {
   id: string;
@@ -40,7 +43,7 @@ interface Doctor {
 }
 
 interface TriageAnalysis {
-  urgencyLevel: 'urgent' | 'moderate' | 'routine' | 'emergency';
+  urgencyLevel: string;
   urgencyScore: number;
   clinicalPresentation: string;
   recommendedDoctors: Doctor[];
@@ -70,18 +73,14 @@ export default function ConsultationRequest() {
     onSuccess: (data: any) => {
       setRequestId(data.consultationRequest?.id || null);
       
-      const urgLevel = data.triage?.aiTriageLevel || data.consultationRequest?.urgencyLevel || 'routine';
+      const urgLevel = data.triage?.aiTriageLevel || data.consultationRequest?.urgencyLevel || 'standard';
       
       const triage: TriageAnalysis = {
-        urgencyLevel: urgLevel === 'emergency' ? 'emergency' : urgLevel === 'urgent' ? 'urgent' : 'routine',
+        urgencyLevel: urgLevel,
         urgencyScore: data.triage?.urgencyScore || 4,
         clinicalPresentation: data.consultationRequest?.clinicalPresentation || data.triage?.triageReasoning || 'Análise clínica dos sintomas reportados.',
         recommendedDoctors: data.availableDoctors || [],
-        suggestedTimeframe: urgLevel === 'emergency' 
-          ? 'Atendimento imediato' 
-          : urgLevel === 'urgent' 
-            ? 'Atendimento em até 24 horas' 
-            : 'Atendimento em até 7 dias',
+        suggestedTimeframe: getTriageConfig(urgLevel).maxWaitTime,
         additionalNotes: Array.isArray(data.triage?.keyFindings) 
           ? data.triage.keyFindings.join('. ') 
           : '',
@@ -160,24 +159,23 @@ export default function ConsultationRequest() {
   };
 
   const getUrgencyConfig = (level: string) => {
-    switch (level) {
-      case 'emergency': return { 
-        color: 'bg-red-500', textColor: 'text-red-700', bgLight: 'bg-red-50 border-red-200',
-        badgeVariant: 'destructive' as const, label: 'Emergência', icon: AlertTriangle 
-      };
-      case 'urgent': return { 
-        color: 'bg-orange-500', textColor: 'text-orange-700', bgLight: 'bg-orange-50 border-orange-200',
-        badgeVariant: 'destructive' as const, label: 'Urgente', icon: AlertCircle 
-      };
-      case 'moderate': return { 
-        color: 'bg-yellow-500', textColor: 'text-yellow-700', bgLight: 'bg-yellow-50 border-yellow-200',
-        badgeVariant: 'default' as const, label: 'Moderado', icon: Clock 
-      };
-      default: return { 
-        color: 'bg-green-500', textColor: 'text-green-700', bgLight: 'bg-green-50 border-green-200',
-        badgeVariant: 'secondary' as const, label: 'Rotina', icon: CheckCircle 
-      };
-    }
+    const tc = getTriageConfig(level);
+    const iconMap: Record<string, any> = {
+      'emergency': AlertTriangle,
+      'very_urgent': AlertCircle,
+      'urgent': Clock,
+      'standard': CheckCircle,
+      'non_urgent': CheckCircle,
+    };
+    return {
+      color: tc.bgColor,
+      textColor: tc.textColor,
+      bgLight: `${tc.bgColorLight} ${tc.borderColor}`,
+      badgeVariant: (tc.priority <= 2 ? 'destructive' : tc.priority <= 3 ? 'default' : 'secondary') as any,
+      label: tc.label,
+      icon: iconMap[tc.level] || CheckCircle,
+      triageConfig: tc,
+    };
   };
 
   if (!user || user.role !== 'patient') {
@@ -315,21 +313,22 @@ export default function ConsultationRequest() {
                 <Card className={`border-2 ${config.bgLight}`}>
                   <CardContent className="p-5">
                     <div className="flex items-start gap-4">
-                      <div className={`w-14 h-14 rounded-xl ${config.color} flex items-center justify-center flex-shrink-0`}>
+                      <div
+                        className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: config.triageConfig.color }}
+                      >
                         <UrgencyIcon className="w-7 h-7 text-white" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-bold text-lg">Nível de Urgência</h3>
-                          <Badge variant={config.badgeVariant} className="text-sm px-3">
-                            {config.label}
-                          </Badge>
+                          <h3 className="font-bold text-lg">Classificação de Risco</h3>
+                          <TriageBadge level={triageResult.urgencyLevel} size="lg" />
                         </div>
                         <div className="flex items-center gap-2 mt-2">
                           <div className="flex-1 h-2.5 bg-white/60 rounded-full overflow-hidden">
                             <div 
-                              className={`h-full rounded-full ${config.color} transition-all duration-700`}
-                              style={{ width: `${triageResult.urgencyScore * 10}%` }}
+                              className="h-full rounded-full transition-all duration-700"
+                              style={{ width: `${triageResult.urgencyScore * 10}%`, backgroundColor: config.triageConfig.color }}
                             />
                           </div>
                           <span className={`text-sm font-bold ${config.textColor}`}>
@@ -340,6 +339,7 @@ export default function ConsultationRequest() {
                           <Clock className="w-4 h-4 text-muted-foreground" />
                           <span className="text-sm font-medium">{triageResult.suggestedTimeframe}</span>
                         </div>
+                        <p className="text-xs text-muted-foreground mt-1">{config.triageConfig.protocol}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -417,6 +417,15 @@ export default function ConsultationRequest() {
                 </CardContent>
               </Card>
             )}
+
+            <div className="flex justify-end">
+              <TriageHelpDialog trigger={
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
+                  <i className="fas fa-info-circle mr-1"></i>
+                  Entenda a classificação de risco
+                </Button>
+              } />
+            </div>
 
             {/* Action Button */}
             <Button 

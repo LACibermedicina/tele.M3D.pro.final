@@ -66,5 +66,14 @@ A full-stack medical practice management application built with Express.js backe
 - **AI Processing**: Incoming patient messages are analyzed by Gemini/OpenAI for scheduling requests and clinical questions; AI responses are auto-generated
 - **Files**: `client/src/pages/whatsapp.tsx`, `server/services/whatsapp.ts`, routes in `server/routes.ts`
 
+## Triage System (Classificação de Risco)
+- **Protocol**: Protocolo de Manchester (MTS) / Ministério da Saúde Brasil, with WHO ETAT fallback
+- **5 Levels**: emergency (red), very_urgent (orange), urgent (yellow), standard (green), non_urgent (blue)
+- **Components**: `client/src/lib/triage.ts` (constants, config, mapping), `client/src/components/triage/triage-badge.tsx` (TriageBadge, TriageColorBar, TriageDot), `client/src/components/triage/triage-help-dialog.tsx` (protocol guide dialog)
+- **AI Integration**: Triage prompt in `server/routes.ts` uses 5-level Manchester Protocol classification with criteria
+- **Applied to**: consultation-request.tsx, my-consultations.tsx, doctor-chat.tsx, patient-records.tsx, whatsapp.tsx (details panel)
+- **Legacy mapping**: `mapLegacyTriageLevel()` converts old values (routine, moderate, low, immediate) to new 5-level system
+- **Help dialog**: Accessible from WhatsApp details panel, doctor chat, and consultation request analysis page
+
 ## Running
 - `npm run dev` starts the development server (Express + Vite on port 5000)

@@ -13,6 +13,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
+import { TriageBadge } from "@/components/triage/triage-badge";
+import { TriageHelpDialog } from "@/components/triage/triage-help-dialog";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
 
@@ -163,12 +165,7 @@ export default function DoctorChat() {
   };
 
   const getUrgencyColor = (level: string) => {
-    switch (level) {
-      case 'immediate': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'urgent': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
-      case 'emergency': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      default: return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-    }
+    return '';
   };
 
   if (!user || user.role !== 'doctor') {
@@ -195,6 +192,9 @@ export default function DoctorChat() {
         <p className="text-sm sm:text-base text-muted-foreground mt-2">
           Converse com pacientes que solicitaram atendimento
         </p>
+      </div>
+      <div className="flex justify-end mb-2">
+        <TriageHelpDialog />
       </div>
 
       <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 sm:gap-6 min-h-[500px] lg:h-[calc(100vh-200px)]">
@@ -241,9 +241,7 @@ export default function DoctorChat() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <p className="font-medium truncate">{thread.patient.name}</p>
-                            <Badge className={getUrgencyColor(thread.consultationRequest.urgencyLevel)}>
-                              {thread.consultationRequest.urgencyLevel}
-                            </Badge>
+                            <TriageBadge level={thread.consultationRequest.urgencyLevel} size="sm" />
                           </div>
                           <p className="text-sm text-muted-foreground truncate">
                             {thread.messages.length > 0
@@ -400,9 +398,9 @@ export default function DoctorChat() {
                     <div className="bg-muted rounded-lg p-4">
                       <p className="text-sm font-semibold mb-2">Motivo da Consulta:</p>
                       <p className="text-sm">{selectedThread.consultationRequest.symptoms}</p>
-                      <Badge className={`mt-2 ${getUrgencyColor(selectedThread.consultationRequest.urgencyLevel)}`}>
-                        Urgência: {selectedThread.consultationRequest.urgencyLevel}
-                      </Badge>
+                      <div className="mt-2">
+                        <TriageBadge level={selectedThread.consultationRequest.urgencyLevel} size="md" />
+                      </div>
                     </div>
 
                     {/* Messages */}
