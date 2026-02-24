@@ -6544,31 +6544,128 @@ Format your response as valid JSON with this structure:
         return res.status(400).json({ message: 'Descreva seus sintomas para continuar.' });
       }
 
-      // Get patient medical history
+      // Get comprehensive patient data for AI analysis
       let medicalHistory: any[] = [];
       let recentExams: any[] = [];
+      let previousRequests: any[] = [];
+      let patientPrescriptions: any[] = [];
       try {
         medicalHistory = await storage.getMedicalRecordsByPatient(patientId);
         recentExams = await storage.getExamResultsByPatient(patientId);
+        previousRequests = await storage.getConsultationRequestsByPatient(patientId);
+        patientPrescriptions = await storage.getPrescriptionSharesByPatient(patientId);
       } catch (e) {
         // Non-critical: continue without history
       }
 
-      // AI Triage Analysis with fallback
+      // Detect patient region via IP for protocol selection
+      let regionContext = '';
+      try {
+        const clientIp = req.headers['x-forwarded-for']?.toString().split(',')[0]?.trim() 
+          || req.socket.remoteAddress || '';
+        const isLocalIp = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp.startsWith('10.') || clientIp.startsWith('192.168.');
+        
+        if (!isLocalIp && clientIp) {
+          try {
+            const geoResponse = await fetch(`http://ip-api.com/json/${clientIp}?fields=country,regionName,city&lang=pt-BR`);
+            if (geoResponse.ok) {
+              const geoData = await geoResponse.json();
+              if (geoData.country) {
+                regionContext = `Região do paciente: ${geoData.city || ''}, ${geoData.regionName || ''}, ${geoData.country}. `;
+                if (geoData.country === 'Brazil' || geoData.country === 'Brasil') {
+                  regionContext += 'Use protocolos do Ministério da Saúde do Brasil, SUS, ANVISA e diretrizes CFM. ';
+                  if (geoData.regionName) {
+                    regionContext += `Considere também protocolos regionais da Secretaria de Saúde de ${geoData.regionName}. `;
+                  }
+                }
+              }
+            }
+          } catch {
+            // Geolocation failed, will use default protocols
+          }
+        }
+      } catch {
+        // IP detection failed
+      }
+
+      if (!regionContext) {
+        regionContext = 'Região não identificada. Use diretrizes gerais da OMS (Organização Mundial da Saúde), protocolos internacionais de boas práticas clínicas e, quando aplicável, referências do Ministério da Saúde do Brasil. ';
+      }
+
+      // Build doctor-established protocol context
+      let doctorProtocolContext = '';
+      const previousDoctors = new Set<string>();
+      previousRequests.forEach((r: any) => {
+        if (r.selectedDoctorId) previousDoctors.add(r.selectedDoctorId);
+      });
+      
+      if (medicalHistory.length > 0) {
+        const recentTreatments = medicalHistory
+          .slice(0, 5)
+          .filter((r: any) => r.treatment || r.diagnosis)
+          .map((r: any) => `Diagnóstico: ${r.diagnosis || 'N/A'}, Tratamento: ${r.treatment || 'N/A'}, Prescrição: ${r.prescription || 'N/A'}`)
+          .join('\n  ');
+        if (recentTreatments) {
+          doctorProtocolContext = `\nCondutas médicas já estabelecidas pelo médico que atendeu o paciente anteriormente:\n  ${recentTreatments}\nIMPORTANTE: Priorize e mantenha coerência com as condutas já estabelecidas pelo médico responsável, ajustando apenas se os sintomas atuais indicarem necessidade clínica diferente.`;
+        }
+      }
+
+      if (patientPrescriptions.length > 0) {
+        const recentRx = patientPrescriptions
+          .filter((p: any) => p.status !== 'cancelled')
+          .slice(0, 5)
+          .map((p: any) => p.prescriptionText?.substring(0, 200) || 'Prescrição sem texto')
+          .join('; ');
+        if (recentRx) {
+          doctorProtocolContext += `\nPrescrições recentes: ${recentRx}. Considere interações medicamentosas ao sugerir novas condutas.`;
+        }
+      }
+
+      // Build previous complaints context
+      let previousComplaintsContext = '';
+      if (previousRequests.length > 0) {
+        const recentComplaints = previousRequests
+          .slice(0, 5)
+          .map((r: any) => `- "${r.symptoms}" (${new Date(r.createdAt).toLocaleDateString('pt-BR')}, urgência: ${r.urgencyLevel}, status: ${r.status})`)
+          .join('\n');
+        previousComplaintsContext = `\nSolicitações anteriores do paciente:\n${recentComplaints}`;
+      }
+
+      // AI Triage Analysis with comprehensive context
       let triageData;
       try {
-        const triagePrompt = `Como médico especialista, analise os seguintes dados e classifique a urgência.
+        const triagePrompt = `Como médico especialista, analise os seguintes dados clínicos e classifique a urgência do atendimento.
 
-Sintomas relatados: ${symptoms}
+PROTOCOLOS E DIRETRIZES A SEGUIR:
+${regionContext}
+Aplique critérios e indicações gerais oferecidas pelas fontes oficiais e protocolos legais estabelecidos na área médica da região identificada. Em caso de dúvida, utilize sempre os protocolos mais conservadores e seguros para o paciente.
+${doctorProtocolContext}
 
-Histórico médico do paciente:
-${medicalHistory.length > 0 ? medicalHistory.slice(0, 3).map((r: any) => `- ${r.diagnosis || 'Consulta'} (${new Date(r.date).toLocaleDateString()})`).join('\n') : 'Sem histórico relevante'}
+DADOS DO PACIENTE:
+Nome: ${patient.name}
+Alergias: ${(patient as any).allergies || 'Nenhuma registrada'}
+Tipo sanguíneo: ${(patient as any).bloodType || 'Não informado'}
 
-Exames recentes:
-${recentExams.length > 0 ? recentExams.slice(0, 3).map((e: any) => `- ${e.examType}: ${e.result}`).join('\n') : 'Sem exames recentes'}
+QUEIXA ATUAL:
+${symptoms}
+${previousComplaintsContext}
+
+HISTÓRICO MÉDICO:
+${medicalHistory.length > 0 ? medicalHistory.slice(0, 5).map((r: any) => `- ${r.diagnosis || 'Consulta'}: ${r.symptoms || ''} (${r.createdAt ? new Date(r.createdAt).toLocaleDateString('pt-BR') : 'data não registrada'})`).join('\n') : 'Sem histórico médico registrado no sistema'}
+
+EXAMES RECENTES:
+${recentExams.length > 0 ? recentExams.slice(0, 5).map((e: any) => `- ${e.examType}: ${e.result || JSON.stringify(e.results || {})}`).join('\n') : 'Sem exames recentes'}
+
+INSTRUÇÕES DE ANÁLISE:
+1. Correlacione os sintomas atuais com o histórico médico e solicitações anteriores
+2. Identifique padrões de recorrência e evolução clínica
+3. Baseie a classificação de urgência nos protocolos oficiais da região
+4. Se existirem condutas já estabelecidas por médico anterior, mantenha coerência com elas
+5. Considere medicamentos em uso e possíveis interações
+6. Na ausência de parâmetros pré-definidos, aplique diretrizes da OMS
 
 IMPORTANTE: Responda APENAS com JSON válido, sem markdown, sem blocos de código, sem texto extra. O JSON deve ter exatamente este formato:
-{"aiTriageLevel": "routine", "triageReasoning": "texto explicativo em português sem aspas internas", "recommendedSpecialties": ["Especialidade1"], "keyFindings": ["achado1", "achado2"]}
+{"aiTriageLevel": "routine", "triageReasoning": "texto explicativo em português detalhando a análise clínica, protocolos aplicados e recomendações, sem aspas internas", "recommendedSpecialties": ["Especialidade1"], "keyFindings": ["achado1", "achado2"], "protocolsApplied": ["nome do protocolo ou diretriz utilizada"]}
 
 Valores possíveis para aiTriageLevel: "routine", "urgent", "emergency"`;
 
@@ -6591,12 +6688,14 @@ Valores possíveis para aiTriageLevel: "routine", "urgent", "emergency"`;
               .replace(/aiTriageLevel.*?,/gi, '')
               .replace(/recommendedSpecialties.*?\]/gi, '')
               .replace(/keyFindings.*?\]/gi, '')
+              .replace(/protocolsApplied.*?\]/gi, '')
               .replace(/triageReasoning\s*:\s*/gi, '')
               .replace(/\s+/g, ' ')
               .trim()
               .substring(0, 300) || 'Análise clínica dos sintomas reportados pelo paciente.',
             recommendedSpecialties: ['Clínico Geral'],
-            keyFindings: ['Análise de sintomas necessária']
+            keyFindings: ['Análise de sintomas necessária'],
+            protocolsApplied: ['Diretrizes gerais']
           };
         }
       } catch (aiError) {
@@ -6605,7 +6704,8 @@ Valores possíveis para aiTriageLevel: "routine", "urgent", "emergency"`;
           aiTriageLevel: 'routine',
           triageReasoning: 'Análise clínica dos sintomas reportados pelo paciente. Recomenda-se avaliação médica presencial.',
           recommendedSpecialties: ['Clínico Geral'],
-          keyFindings: ['Avaliação médica necessária']
+          keyFindings: ['Avaliação médica necessária'],
+          protocolsApplied: ['Diretrizes gerais da OMS']
         };
       }
 
@@ -6654,6 +6754,7 @@ Valores possíveis para aiTriageLevel: "routine", "urgent", "emergency"`;
           ...triageData,
           triageReasoning: cleanReasoning,
           urgencyScore: triageData.aiTriageLevel === 'emergency' ? 9 : triageData.aiTriageLevel === 'urgent' ? 7 : 4,
+          protocolsApplied: triageData.protocolsApplied || ['Diretrizes gerais'],
         },
         availableDoctors
       });

@@ -329,8 +329,8 @@ export default function Header() {
   if (user?.role === 'patient' && hasActivePrescriptions) {
     allNavItems.push({ path: "/prescriptions", label: "Minhas Prescrições", icon: ClipboardList, faIcon: "fas fa-prescription-bottle-alt", roles: ["patient"] });
   }
-  if (user?.role === 'patient' && hasRecords) {
-    allNavItems.push({ path: "/records", label: "Meu Prontuário", icon: FileText, faIcon: "fas fa-file-medical", roles: ["patient"] });
+  if (user?.role === 'patient') {
+    allNavItems.push({ path: "/records", label: hasRecords ? "Meu Prontuário" : "Minhas Solicitações", icon: hasRecords ? FileText : ClipboardList, faIcon: hasRecords ? "fas fa-file-medical" : "fas fa-clipboard-list", roles: ["patient"] });
   }
 
   // Filter navigation items based on user role

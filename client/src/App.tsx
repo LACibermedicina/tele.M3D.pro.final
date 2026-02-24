@@ -14,6 +14,7 @@ import Profile from "@/pages/profile";
 import Schedule from "@/pages/schedule";
 import WhatsApp from "@/pages/whatsapp";
 import MedicalRecords from "@/pages/medical-records";
+import PatientRecords from "@/pages/patient-records";
 import Prescriptions from "@/pages/prescriptions";
 import Analytics from "@/pages/analytics";
 import AdminPage from "@/pages/admin";
@@ -55,6 +56,14 @@ import { ResponsiveDashboard } from "@/components/responsive-dashboard";
 
 // Global shortcuts hooks
 import { useGlobalShortcuts, useCommandEvents, useApplicationShortcuts } from "@/hooks/use-shortcuts";
+
+function RecordsRouter() {
+  const { user } = useAuth();
+  if (user?.role === 'patient') {
+    return <PatientRecords />;
+  }
+  return <MedicalRecords />;
+}
 
 function Router() {
   const { t } = useTranslation();
@@ -162,7 +171,7 @@ function Router() {
         <Route path="/records">
           <ProtectedRoute requiredRoles={['doctor', 'admin', 'patient']}>
             <Header />
-            <MedicalRecords />
+            <RecordsRouter />
           </ProtectedRoute>
         </Route>
         

@@ -48,6 +48,7 @@ interface TriageAnalysis {
   additionalNotes?: string;
   keyFindings?: string[];
   recommendedSpecialties?: string[];
+  protocolsApplied?: string[];
 }
 
 export default function ConsultationRequest() {
@@ -85,7 +86,8 @@ export default function ConsultationRequest() {
           ? data.triage.keyFindings.join('. ') 
           : '',
         keyFindings: data.triage?.keyFindings || [],
-        recommendedSpecialties: data.triage?.recommendedSpecialties || ['Clínico Geral']
+        recommendedSpecialties: data.triage?.recommendedSpecialties || ['Clínico Geral'],
+        protocolsApplied: data.triage?.protocolsApplied || []
       };
       
       setTriageResult(triage);
@@ -390,6 +392,25 @@ export default function ConsultationRequest() {
                     {triageResult.recommendedSpecialties.map((spec, i) => (
                       <Badge key={i} variant="outline" className="text-sm px-3 py-1">
                         {spec}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Applied Protocols */}
+            {triageResult.protocolsApplied && triageResult.protocolsApplied.length > 0 && (
+              <Card className="border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+                <CardContent className="p-5">
+                  <div className="flex items-start gap-3 mb-3">
+                    <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <h3 className="font-semibold text-base">Protocolos e Diretrizes Aplicadas</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pl-8">
+                    {triageResult.protocolsApplied.map((protocol, i) => (
+                      <Badge key={i} variant="outline" className="text-xs px-2 py-1 border-blue-300 text-blue-700 dark:text-blue-300">
+                        {protocol}
                       </Badge>
                     ))}
                   </div>
