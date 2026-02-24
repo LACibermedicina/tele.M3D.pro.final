@@ -36,12 +36,12 @@ A full-stack medical practice management application built with Express.js backe
 - See `package.json` for full list
 
 ## Patient Features
-- **Consultation Request**: `/consultation-request` - AI-powered symptom triage and doctor recommendations
-- **Waiting Room**: `/immediate-consultation` - View online doctors (accessible to visitors and logged-in users)
+- **Consultation Request**: `/consultation-request` - AI-powered 4-step symptom triage and doctor recommendations
+- **Waiting Room**: `/immediate-consultation` - View online doctors with urgency room section for on-duty doctors, stats cards, urgency level selector (normal/urgent/emergency). Accessible to visitors and logged-in users.
 - **My Consultations**: `/my-consultations` - Track consultation requests
-- **Prescriptions**: Only visible when patient has active prescriptions within validity dates
-- **Medical Records**: "Ver Prontuário" only shown if patient has existing records
-- Navigation: Top header bar always visible for patient pages
+- **Prescriptions**: Nav item conditionally shown for patients with active prescriptions within validity dates (via `/api/prescriptions/recent` query in header)
+- **Medical Records**: Nav item "Meu Prontuário" conditionally shown if patient has existing records (via `/api/medical-records/my` query in header). Route `/records` accessible to patients.
+- Navigation: Top header bar always visible for patient pages. Prescription and records nav items only appear for patients who have data.
 
 ## Running
 - `npm run dev` starts the development server (Express + Vite on port 5000)
