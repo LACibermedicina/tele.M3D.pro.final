@@ -14,7 +14,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNotNull } from "drizzle-orm";
@@ -431,6 +431,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     }
+  };
+
+  const broadcastToUser = (userId: string, data: any) => {
+    const clients = authenticatedClients.get(userId);
+    if (clients) {
+      clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            ...data,
+            timestamp: new Date().toISOString()
+          }));
+        }
+      });
+      return true;
+    }
+    return false;
   };
 
   // Broadcast to all admin users
@@ -4948,7 +4964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'immediate',
           status: 'scheduled',
           scheduledAt: new Date(),
-          reason: 'Consulta imediata via consultório aberto'
+          notes: 'Consulta imediata via consultório aberto'
         })
         .returning();
 
@@ -4959,11 +4975,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           patientId: patient[0].id,
           doctorId: req.params.doctorId,
           status: 'waiting',
-          channelName: `doctor-office-${req.params.doctorId}`
+          agoraChannelName: `doctor-office-${req.params.doctorId}`
         })
         .returning();
 
-      // Notify doctor
+      // Notify doctor via WebSocket
       broadcastToDoctor(req.params.doctorId, {
         type: 'patient_joined_office',
         patient: {
@@ -4971,6 +4987,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: patient[0].name
         },
         consultationId: consultation[0].id
+      });
+
+      // Also notify the patient's user account with the video link
+      broadcastToUser(req.user.id, {
+        type: 'consultation_ready',
+        data: {
+          consultationId: consultation[0].id,
+          doctorName: doctor[0].name,
+          message: `Sua consulta com ${doctor[0].name} está pronta. Entre na sala de vídeo.`,
+          actionUrl: `/patient/video/${consultation[0].id}`
+        }
       });
 
       res.json({
@@ -4982,6 +5009,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Join office error:', error);
       res.status(500).json({ message: 'Failed to join office' });
+    }
+  });
+
+  // ===== DOCTOR-TO-PATIENT NOTIFICATION ENDPOINTS =====
+
+  // Send notification/message to a patient
+  app.post('/api/notifications/send-to-patient', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Only doctors and admins can send notifications to patients' });
+      }
+
+      const { patientUserId, title, message, priority, actionUrl, type } = req.body;
+
+      if (!patientUserId || !message) {
+        return res.status(400).json({ message: 'patientUserId and message are required' });
+      }
+
+      const notificationType = type || 'doctor_message';
+      const notificationPriority = priority || 'high';
+
+      // Try to send via WebSocket (real-time)
+      const delivered = broadcastToUser(patientUserId, {
+        type: notificationType,
+        data: {
+          title: title || `Mensagem de ${req.user.name}`,
+          message,
+          priority: notificationPriority,
+          actionUrl: actionUrl || '/dashboard',
+          senderId: req.user.id,
+          senderName: req.user.name,
+          senderRole: req.user.role
+        }
+      });
+
+      // Store notification in database for offline users
+      try {
+        await db.insert(pendingNotifications).values({
+          userId: patientUserId,
+          type: notificationType,
+          title: title || `Mensagem de ${req.user.name}`,
+          message,
+          priority: notificationPriority,
+          actionUrl: actionUrl || '/dashboard',
+          senderId: req.user.id,
+          delivered,
+        });
+      } catch (dbErr) {
+        console.error('Failed to store notification:', dbErr);
+      }
+
+      res.json({ 
+        success: true, 
+        delivered,
+        message: delivered ? 'Notificação enviada em tempo real' : 'Notificação salva para quando o paciente ficar online'
+      });
+    } catch (error) {
+      console.error('Send notification error:', error);
+      res.status(500).json({ message: 'Failed to send notification' });
+    }
+  });
+
+  // Invite patient to video consultation
+  app.post('/api/notifications/invite-to-video', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Only doctors and admins can invite patients' });
+      }
+
+      const { patientUserId, consultationId } = req.body;
+
+      if (!patientUserId || !consultationId) {
+        return res.status(400).json({ message: 'patientUserId and consultationId are required' });
+      }
+
+      const delivered = broadcastToUser(patientUserId, {
+        type: 'consultation_invite',
+        data: {
+          title: 'Convite para Teleconsulta',
+          message: `Dr(a). ${req.user.name} está chamando você para uma consulta por vídeo.`,
+          priority: 'critical',
+          consultationId,
+          doctorName: req.user.name,
+          actionUrl: `/patient/video/${consultationId}`
+        }
+      });
+
+      // Store for offline
+      try {
+        await db.insert(pendingNotifications).values({
+          userId: patientUserId,
+          type: 'consultation_invite',
+          title: 'Convite para Teleconsulta',
+          message: `Dr(a). ${req.user.name} está chamando você para uma consulta por vídeo.`,
+          priority: 'critical',
+          actionUrl: `/patient/video/${consultationId}`,
+          senderId: req.user.id,
+          delivered,
+          metadata: { consultationId },
+        });
+      } catch (dbErr) {
+        console.error('Failed to store invite notification:', dbErr);
+      }
+
+      res.json({ 
+        success: true, 
+        delivered,
+        message: delivered ? 'Convite enviado em tempo real' : 'Convite salvo para quando o paciente ficar online'
+      });
+    } catch (error) {
+      console.error('Invite to video error:', error);
+      res.status(500).json({ message: 'Failed to send video invite' });
+    }
+  });
+
+  // Get pending notifications for current user
+  app.get('/api/notifications/pending', requireAuth, async (req: any, res) => {
+    try {
+      const notifications = await db.select()
+        .from(pendingNotifications)
+        .where(and(
+          eq(pendingNotifications.userId, req.user.id),
+          eq(pendingNotifications.read, false)
+        ))
+        .orderBy(desc(pendingNotifications.createdAt))
+        .limit(50);
+
+      res.json(notifications);
+    } catch (error) {
+      console.error('Get pending notifications error:', error);
+      res.json([]);
+    }
+  });
+
+  // Mark notifications as read
+  app.post('/api/notifications/mark-read', requireAuth, async (req: any, res) => {
+    try {
+      const { notificationIds } = req.body;
+      if (notificationIds && notificationIds.length > 0) {
+        for (const id of notificationIds) {
+          await db.update(pendingNotifications)
+            .set({ read: true })
+            .where(and(
+              eq(pendingNotifications.id, id),
+              eq(pendingNotifications.userId, req.user.id)
+            ));
+        }
+      } else {
+        await db.update(pendingNotifications)
+          .set({ read: true })
+          .where(eq(pendingNotifications.userId, req.user.id));
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Mark notifications read error:', error);
+      res.status(500).json({ message: 'Failed to mark notifications as read' });
     }
   });
 
@@ -6205,23 +6388,49 @@ Format your response as valid JSON with this structure:
       const userId = req.user!.id;
 
       // Get patient data for AI analysis
-      const patient = await storage.getPatientByUserId(userId);
+      let patient = await storage.getPatientByUserId(userId);
       if (!patient) {
-        return res.status(404).json({ message: 'Patient not found' });
+        // Auto-create patient record if missing
+        const userRecord = await storage.getUser(userId);
+        if (!userRecord || userRecord.role !== 'patient') {
+          return res.status(403).json({ message: 'Apenas pacientes podem solicitar consultas.' });
+        }
+        try {
+          patient = await storage.createPatient({
+            userId,
+            name: userRecord.name,
+            email: userRecord.email || undefined,
+            phone: userRecord.phone || 'não informado',
+            healthStatus: 'a_determinar',
+          });
+        } catch (createErr) {
+          console.error('Failed to auto-create patient record:', createErr);
+          return res.status(400).json({ 
+            message: 'Complete seu cadastro de paciente antes de solicitar uma consulta.' 
+          });
+        }
       }
 
       const patientId = patient.id;
       const { symptoms, whatsappOptIn } = req.body;
       if (!symptoms || typeof symptoms !== 'string' || symptoms.trim().length === 0) {
-        return res.status(400).json({ message: 'Symptoms description is required' });
+        return res.status(400).json({ message: 'Descreva seus sintomas para continuar.' });
       }
 
       // Get patient medical history
-      const medicalHistory = await storage.getMedicalRecordsByPatient(patientId);
-      const recentExams = await storage.getExamResultsByPatient(patientId);
+      let medicalHistory: any[] = [];
+      let recentExams: any[] = [];
+      try {
+        medicalHistory = await storage.getMedicalRecordsByPatient(patientId);
+        recentExams = await storage.getExamResultsByPatient(patientId);
+      } catch (e) {
+        // Non-critical: continue without history
+      }
 
-      // AI Triage Analysis
-      const triagePrompt = `Como médico especialista, analise os seguintes dados e classifique a urgência.
+      // AI Triage Analysis with fallback
+      let triageData;
+      try {
+        const triagePrompt = `Como médico especialista, analise os seguintes dados e classifique a urgência.
 
 Sintomas relatados: ${symptoms}
 
@@ -6236,32 +6445,40 @@ IMPORTANTE: Responda APENAS com JSON válido, sem markdown, sem blocos de códig
 
 Valores possíveis para aiTriageLevel: "routine", "urgent", "emergency"`;
 
-      const aiResponse = await geminiService.generateText(triagePrompt);
-      
-      let triageData;
-      try {
-        const cleanedResponse = aiResponse
-          .replace(/```json\s*/gi, '')
-          .replace(/```\s*/g, '')
-          .replace(/^\s*\n/gm, '')
-          .trim();
-        triageData = JSON.parse(cleanedResponse);
-      } catch {
-        triageData = {
-          aiTriageLevel: 'routine',
-          triageReasoning: aiResponse
+        const aiResponse = await geminiService.generateText(triagePrompt);
+        
+        try {
+          const cleanedResponse = aiResponse
             .replace(/```json\s*/gi, '')
             .replace(/```\s*/g, '')
-            .replace(/[{}"]/g, '')
-            .replace(/aiTriageLevel.*?,/gi, '')
-            .replace(/recommendedSpecialties.*?\]/gi, '')
-            .replace(/keyFindings.*?\]/gi, '')
-            .replace(/triageReasoning\s*:\s*/gi, '')
-            .replace(/\s+/g, ' ')
-            .trim()
-            .substring(0, 300) || 'Análise clínica dos sintomas reportados pelo paciente.',
+            .replace(/^\s*\n/gm, '')
+            .trim();
+          triageData = JSON.parse(cleanedResponse);
+        } catch {
+          triageData = {
+            aiTriageLevel: 'routine',
+            triageReasoning: aiResponse
+              .replace(/```json\s*/gi, '')
+              .replace(/```\s*/g, '')
+              .replace(/[{}"]/g, '')
+              .replace(/aiTriageLevel.*?,/gi, '')
+              .replace(/recommendedSpecialties.*?\]/gi, '')
+              .replace(/keyFindings.*?\]/gi, '')
+              .replace(/triageReasoning\s*:\s*/gi, '')
+              .replace(/\s+/g, ' ')
+              .trim()
+              .substring(0, 300) || 'Análise clínica dos sintomas reportados pelo paciente.',
+            recommendedSpecialties: ['Clínico Geral'],
+            keyFindings: ['Análise de sintomas necessária']
+          };
+        }
+      } catch (aiError) {
+        console.error('AI triage failed, using fallback:', aiError);
+        triageData = {
+          aiTriageLevel: 'routine',
+          triageReasoning: 'Análise clínica dos sintomas reportados pelo paciente. Recomenda-se avaliação médica presencial.',
           recommendedSpecialties: ['Clínico Geral'],
-          keyFindings: ['Análise de sintomas necessária']
+          keyFindings: ['Avaliação médica necessária']
         };
       }
 

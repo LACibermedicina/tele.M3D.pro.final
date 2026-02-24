@@ -42,6 +42,8 @@ import TeamRoom from "@/pages/team-room";
 import MedicalCafe from "@/pages/medical-cafe";
 import DoctorOffice from "@/pages/doctor-office";
 import CoffeeRoom from "@/pages/coffee-room";
+import PatientVideoConsultation from "@/pages/patient-video-consultation";
+import UrgentAlertOverlay from "@/components/notifications/urgent-alert-overlay";
 import Header from "@/components/layout/header";
 import FloatingChatbot from "@/components/ui/floating-chatbot";
 import CommandPalette from "@/components/command-palette";
@@ -64,6 +66,8 @@ function Router() {
 
   return (
     <div className="min-h-screen bg-background">
+      {user && <UrgentAlertOverlay />}
+      
       {/* Command Palette */}
       <CommandPalette 
         isOpen={isCommandPaletteOpen} 
@@ -185,6 +189,12 @@ function Router() {
         <Route path="/consultation/video/:patientId">
           <ProtectedRoute requiredRoles={['doctor', 'admin']}>
             <VideoConsultation />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/patient/video/:consultationId">
+          <ProtectedRoute requiredRoles={['patient']}>
+            <PatientVideoConsultation />
           </ProtectedRoute>
         </Route>
         

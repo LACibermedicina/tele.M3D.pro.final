@@ -1139,6 +1139,29 @@ export const insertCollaboratorSchema = createInsertSchema(collaborators).omit({
   updatedAt: true,
 });
 
+export const pendingNotifications = pgTable("pending_notifications", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  priority: text("priority").notNull().default("medium"),
+  actionUrl: text("action_url"),
+  senderId: uuid("sender_id").references(() => users.id),
+  delivered: boolean("delivered").default(false),
+  read: boolean("read").default(false),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPendingNotificationSchema = createInsertSchema(pendingNotifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type PendingNotification = typeof pendingNotifications.$inferSelect;
+export type InsertPendingNotification = z.infer<typeof insertPendingNotificationSchema>;
+
 export const insertPrescriptionShareSchema = createInsertSchema(prescriptionShares).omit({
   id: true,
   createdAt: true,

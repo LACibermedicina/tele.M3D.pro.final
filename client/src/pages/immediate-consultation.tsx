@@ -55,7 +55,7 @@ export default function ImmediateConsultation() {
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
       
       setTimeout(() => {
-        setLocation(`/consultation/video/${data.consultationId}`);
+        setLocation(`/patient/video/${data.consultationId}`);
       }, 1500);
     },
     onError: (error: any) => {

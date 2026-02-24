@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useNotifications, type Notification } from '@/hooks/use-notifications';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Bell, BellRing, Check, X, AlertTriangle, MessageCircle, Calendar, FileText, Activity } from 'lucide-react';
+import { Bell, BellRing, Check, X, AlertTriangle, MessageCircle, Calendar, FileText, Activity, Video, Stethoscope } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 interface NotificationCenterProps {
@@ -27,13 +27,20 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
       case 'whatsapp':
         return <MessageCircle className={`h-4 w-4 ${iconClass}`} />;
       case 'appointment':
+      case 'patient_joined_office':
         return <Calendar className={`h-4 w-4 ${iconClass}`} />;
       case 'exam_result':
         return <FileText className={`h-4 w-4 ${iconClass}`} />;
       case 'emergency':
+      case 'urgent_alert':
         return <AlertTriangle className={`h-4 w-4 ${iconClass}`} />;
       case 'system':
         return <Activity className={`h-4 w-4 ${iconClass}`} />;
+      case 'consultation_invite':
+      case 'consultation_ready':
+        return <Video className={`h-4 w-4 ${iconClass}`} />;
+      case 'doctor_message':
+        return <Stethoscope className={`h-4 w-4 ${iconClass}`} />;
       default:
         return <Bell className={`h-4 w-4 ${iconClass}`} />;
     }

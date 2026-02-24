@@ -105,9 +105,13 @@ export default function ConsultationRequest() {
         });
       }
     },
-    onError: () => {
+    onError: (error: any) => {
+      const message = error?.message?.includes(':') 
+        ? error.message.split(': ').slice(1).join(': ')
+        : 'Tente novamente em alguns instantes.';
       toast({ 
-        title: "Erro ao criar solicitação", 
+        title: "Erro ao enviar solicitação",
+        description: message,
         variant: "destructive" 
       });
     },

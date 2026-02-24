@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useWebSocket } from './use-websocket';
 import { useToast } from './use-toast';
-import { queryClient } from '@/lib/queryClient';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 
 export interface Notification {
   id: string;
-  type: 'appointment' | 'whatsapp' | 'exam_result' | 'emergency' | 'system';
+  type: 'appointment' | 'whatsapp' | 'exam_result' | 'emergency' | 'system' | 'consultation_invite' | 'doctor_message' | 'consultation_ready' | 'urgent_alert';
   title: string;
   message: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
@@ -19,6 +19,37 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const { messages: wsMessages, isConnected } = useWebSocket();
   const { toast } = useToast();
+  const pendingFetched = useRef(false);
+
+  // Fetch pending stored notifications on initial connection
+  useEffect(() => {
+    if (isConnected && !pendingFetched.current) {
+      pendingFetched.current = true;
+      fetch('/api/notifications/pending', { credentials: 'include' })
+        .then(res => res.ok ? res.json() : [])
+        .then((pending: any[]) => {
+          if (pending && pending.length > 0) {
+            const storedNotifications: Notification[] = pending.map((n: any) => ({
+              id: `stored-${n.id}`,
+              type: n.type as Notification['type'],
+              title: n.title,
+              message: n.message,
+              priority: n.priority as Notification['priority'],
+              timestamp: new Date(n.createdAt),
+              read: false,
+              actionUrl: n.actionUrl,
+              data: { ...n.metadata, senderId: n.senderId, dbId: n.id }
+            }));
+            setNotifications(prev => [...storedNotifications, ...prev]);
+
+            // Mark as read in DB
+            const ids = pending.map((n: any) => n.id);
+            apiRequest('POST', '/api/notifications/mark-read', { notificationIds: ids }).catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isConnected]);
 
   // Process incoming WebSocket messages into notifications
   useEffect(() => {
@@ -114,6 +145,71 @@ export function useNotifications() {
           timestamp,
           read: false,
           data: message.data
+        };
+
+      case 'consultation_invite':
+        return {
+          id: `invite-${Date.now()}`,
+          type: 'consultation_invite',
+          title: message.data?.title || 'Convite para Teleconsulta',
+          message: message.data?.message || 'Você foi convidado para uma consulta por vídeo',
+          priority: 'critical',
+          timestamp,
+          read: false,
+          actionUrl: message.data?.actionUrl,
+          data: message.data
+        };
+
+      case 'consultation_ready':
+        return {
+          id: `ready-${Date.now()}`,
+          type: 'consultation_ready',
+          title: 'Consulta Pronta',
+          message: message.data?.message || 'Sua consulta por vídeo está pronta',
+          priority: 'high',
+          timestamp,
+          read: false,
+          actionUrl: message.data?.actionUrl,
+          data: message.data
+        };
+
+      case 'doctor_message':
+        return {
+          id: `doc-msg-${Date.now()}`,
+          type: 'doctor_message',
+          title: message.data?.title || 'Mensagem do Médico',
+          message: message.data?.message || '',
+          priority: message.data?.priority || 'high',
+          timestamp,
+          read: false,
+          actionUrl: message.data?.actionUrl,
+          data: message.data
+        };
+
+      case 'urgent_alert':
+        return {
+          id: `urgent-${Date.now()}`,
+          type: 'urgent_alert',
+          title: message.data?.title || 'ALERTA URGENTE',
+          message: message.data?.message || 'Mensagem urgente recebida',
+          priority: 'critical',
+          timestamp,
+          read: false,
+          actionUrl: message.data?.actionUrl,
+          data: message.data
+        };
+
+      case 'patient_joined_office':
+        return {
+          id: `patient-join-${Date.now()}`,
+          type: 'appointment',
+          title: 'Paciente na Sala de Espera',
+          message: `${message.patient?.name || 'Um paciente'} entrou no seu consultório virtual`,
+          priority: 'critical',
+          timestamp,
+          read: false,
+          actionUrl: `/consultation/video/${message.consultationId}`,
+          data: message
         };
 
       default:
