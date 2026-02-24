@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Clock, User, Stethoscope, CheckCircle, AlertCircle } from "lucide-react";
+import { Clock, User, Stethoscope, CheckCircle, AlertCircle, Siren, ShieldAlert, Video, Activity, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -32,14 +32,13 @@ export default function ImmediateConsultation() {
   const [, setLocation] = useLocation();
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [reason, setReason] = useState("");
+  const [urgencyLevel, setUrgencyLevel] = useState<'normal' | 'urgent' | 'emergency'>('normal');
 
-  // Fetch online doctors
   const { data: onlineDoctors, isLoading } = useQuery<Doctor[]>({
     queryKey: ['/api/doctors/online'],
-    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchInterval: 10000,
   });
 
-  // Request immediate consultation mutation - joins doctor's open office
   const requestMutation = useMutation({
     mutationFn: async (data: { doctorId: string; reason: string }) => {
       if (!user) {
@@ -111,174 +110,366 @@ export default function ImmediateConsultation() {
     return doctor.onDutyUntil && new Date(doctor.onDutyUntil) > new Date();
   };
 
-  // Sort doctors: on-duty first, then by online time
+  const getDutyTimeRemaining = (doctor: Doctor) => {
+    if (!doctor.onDutyUntil) return '';
+    const remaining = new Date(doctor.onDutyUntil).getTime() - Date.now();
+    if (remaining <= 0) return '';
+    const hours = Math.floor(remaining / 3600000);
+    const mins = Math.floor((remaining % 3600000) / 60000);
+    if (hours > 0) return `${hours}h${mins > 0 ? `${mins}min` : ''} restantes`;
+    return `${mins}min restantes`;
+  };
+
   const sortedDoctors = onlineDoctors?.slice().sort((a, b) => {
     const aOnDuty = isOnDuty(a);
     const bOnDuty = isOnDuty(b);
-    
     if (aOnDuty && !bOnDuty) return -1;
     if (!aOnDuty && bOnDuty) return 1;
-    
-    // If both on-duty or both not, sort by online time
     const aTime = a.onlineSince ? new Date(a.onlineSince).getTime() : 0;
     const bTime = b.onlineSince ? new Date(b.onlineSince).getTime() : 0;
-    return aTime - bTime; // Earlier online time first
+    return aTime - bTime;
   });
 
+  const onDutyDoctors = sortedDoctors?.filter(d => isOnDuty(d)) || [];
+  const regularDoctors = sortedDoctors?.filter(d => !isOnDuty(d)) || [];
+  const totalOnline = sortedDoctors?.length || 0;
+
   const isLoggedIn = !!user;
-  const isPatient = user?.role === 'patient';
+
+  const urgencyConfig = {
+    normal: { color: 'bg-green-100 text-green-800 border-green-300', label: 'Normal', icon: Activity },
+    urgent: { color: 'bg-orange-100 text-orange-800 border-orange-300', label: 'Urgente', icon: ShieldAlert },
+    emergency: { color: 'bg-red-100 text-red-800 border-red-300', label: 'Emergência', icon: Siren },
+  };
 
   return (
     <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
       <div className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">
-          {isLoggedIn ? 'Sala de Espera & Atendimento Imediato' : 'Sala de Espera'}
-        </h1>
-        <p className="text-sm sm:text-base text-muted-foreground mt-2">
-          {isLoggedIn 
-            ? 'Veja médicos disponíveis agora e solicite atendimento imediato' 
-            : 'Veja os médicos disponíveis. Faça login para solicitar uma consulta.'}
-        </p>
-      </div>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-3">
+            <Video className="h-7 w-7 text-primary" />
+            {isLoggedIn ? 'Sala de Espera & Atendimento Imediato' : 'Sala de Espera'}
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-2">
+            {isLoggedIn 
+              ? 'Veja médicos disponíveis agora e solicite atendimento imediato' 
+              : 'Veja os médicos disponíveis. Faça login para solicitar uma consulta.'}
+          </p>
+        </div>
 
-      {/* Available Doctors */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Stethoscope className="h-5 w-5" />
-            Médicos Disponíveis Agora
-          </CardTitle>
-          <CardDescription>
-            Médicos online e disponíveis para atendimento imediato
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">
-              <Clock className="h-12 w-12 mx-auto mb-2 animate-spin opacity-50" />
-              <p className="text-muted-foreground">Procurando médicos disponíveis...</p>
-            </div>
-          ) : !sortedDoctors || sortedDoctors.length === 0 ? (
-            <div className="text-center py-8">
-              <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50 text-yellow-600" />
-              <p className="text-muted-foreground font-medium">Nenhum médico disponível no momento</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Tente novamente em alguns minutos ou agende uma consulta
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2 sm:space-y-3">
-              {sortedDoctors.map((doctor) => (
-                <div
-                  key={doctor.id}
-                  className={`border rounded-lg p-3 sm:p-4 cursor-pointer transition-all ${
-                    selectedDoctor?.id === doctor.id
-                      ? 'border-primary bg-primary/5'
-                      : 'hover:border-primary/50'
-                  }`}
-                  onClick={() => setSelectedDoctor(doctor)}
-                  data-testid={`doctor-card-${doctor.id}`}
-                >
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                    <Avatar className="h-12 w-12 sm:h-14 sm:w-14">
-                      <AvatarImage src={doctor.profilePicture || undefined} />
-                      <AvatarFallback>
-                        {doctor.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                <Activity className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-700 dark:text-green-400">{totalOnline}</p>
+                <p className="text-xs text-muted-foreground">Médicos Online</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                <ShieldAlert className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{onDutyDoctors.length}</p>
+                <p className="text-xs text-muted-foreground">Em Plantão</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-purple-200 bg-purple-50/50 dark:bg-purple-950/20">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                <Video className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">{regularDoctors.length}</p>
+                <p className="text-xs text-muted-foreground">Disponíveis</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-                    <div className="flex-1 w-full sm:w-auto">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-base sm:text-lg font-semibold">{doctor.name}</h3>
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
-                          <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
-                          Online {getOnlineTime(doctor.onlineSince)}
-                        </Badge>
-                        {isOnDuty(doctor) && (
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                            <Clock className="w-3 h-3 mr-1" />
-                            Plantão 24h
-                          </Badge>
-                        )}
+        {onDutyDoctors.length > 0 && (
+          <Card className="border-red-200 bg-gradient-to-r from-red-50/80 to-orange-50/80 dark:from-red-950/30 dark:to-orange-950/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                <Siren className="h-5 w-5 animate-pulse" />
+                Sala de Urgência
+              </CardTitle>
+              <CardDescription>
+                Médicos de plantão disponíveis para atendimento de urgência e emergência
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {onDutyDoctors.map((doctor) => (
+                  <div
+                    key={doctor.id}
+                    className={`border rounded-lg p-3 sm:p-4 cursor-pointer transition-all ${
+                      selectedDoctor?.id === doctor.id
+                        ? 'border-red-400 bg-red-50 dark:bg-red-950/40 ring-2 ring-red-300'
+                        : 'border-red-200 hover:border-red-300 bg-white dark:bg-card'
+                    }`}
+                    onClick={() => setSelectedDoctor(doctor)}
+                  >
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+                      <div className="relative">
+                        <Avatar className="h-12 w-12 sm:h-14 sm:w-14">
+                          <AvatarImage src={doctor.profilePicture || undefined} />
+                          <AvatarFallback className="bg-red-100 text-red-700">
+                            {doctor.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-white animate-pulse" />
                       </div>
-                      <p className="text-xs sm:text-sm text-muted-foreground mt-1">{doctor.specialization || 'Clínico Geral'}</p>
-                      <p className="text-xs text-muted-foreground">CRM: {doctor.medicalLicense}</p>
+                      <div className="flex-1 w-full sm:w-auto">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-base sm:text-lg font-semibold">{doctor.name}</h3>
+                          <Badge className="bg-red-100 text-red-700 border-red-300 text-xs">
+                            <Siren className="w-3 h-3 mr-1" />
+                            Plantão
+                          </Badge>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                            <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
+                            Online {getOnlineTime(doctor.onlineSince)}
+                          </Badge>
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1">{doctor.specialization || 'Clínico Geral'}</p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <p className="text-xs text-muted-foreground">CRM: {doctor.medicalLicense}</p>
+                          {getDutyTimeRemaining(doctor) && (
+                            <p className="text-xs text-orange-600">
+                              <Clock className="w-3 h-3 inline mr-1" />
+                              {getDutyTimeRemaining(doctor)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {selectedDoctor?.id === doctor.id && (
+                        <CheckCircle className="h-6 w-6 text-red-500" />
+                      )}
                     </div>
-
-                    {selectedDoctor?.id === doctor.id && (
-                      <CheckCircle className="h-6 w-6 text-primary" />
-                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Request Form */}
-      {selectedDoctor && (
         <Card>
           <CardHeader>
-            <CardTitle>Descreva o Motivo da Consulta</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Stethoscope className="h-5 w-5" />
+              {onDutyDoctors.length > 0 ? 'Consulta Regular' : 'Médicos Disponíveis Agora'}
+            </CardTitle>
             <CardDescription>
-              Explique brevemente o que você está sentindo
+              {onDutyDoctors.length > 0 
+                ? 'Médicos online disponíveis para consulta imediata'
+                : 'Médicos online e disponíveis para atendimento imediato'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 sm:space-y-4">
-            {!isLoggedIn ? (
-              <div className="text-center py-6 space-y-4">
-                <p className="text-muted-foreground">
-                  Para solicitar atendimento, é necessário estar logado.
+          <CardContent>
+            {isLoading ? (
+              <div className="text-center py-8">
+                <Clock className="h-12 w-12 mx-auto mb-2 animate-spin opacity-50" />
+                <p className="text-muted-foreground">Procurando médicos disponíveis...</p>
+              </div>
+            ) : regularDoctors.length === 0 && onDutyDoctors.length === 0 ? (
+              <div className="text-center py-8">
+                <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50 text-yellow-600" />
+                <p className="text-muted-foreground font-medium">Nenhum médico disponível no momento</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Tente novamente em alguns minutos ou agende uma consulta
                 </p>
-                <Button onClick={() => setLocation('/login')} size="lg">
-                  Fazer Login
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Não tem conta? <a href="/register/patient" className="text-primary underline">Cadastre-se</a>
+                {isLoggedIn && (
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => setLocation('/consultation-request')}
+                  >
+                    <Stethoscope className="h-4 w-4 mr-2" />
+                    Agendar Consulta
+                  </Button>
+                )}
+              </div>
+            ) : regularDoctors.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-sm text-muted-foreground">
+                  Apenas médicos de plantão disponíveis no momento. Selecione um acima.
                 </p>
               </div>
             ) : (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="reason" className="text-sm sm:text-base">Motivo da Consulta</Label>
-                  <Textarea
-                    id="reason"
-                    placeholder="Descreva seus sintomas, há quanto tempo está sentindo, etc..."
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    rows={5}
-                    data-testid="textarea-reason"
-                    className="text-sm"
-                  />
-                </div>
-
-                <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4">
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    <strong>Médico selecionado:</strong> {selectedDoctor.name}
-                  </p>
-                  <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
-                    Você será atendido imediatamente após a confirmação.
-                  </p>
-                </div>
-
-                <Button
-                  onClick={handleRequest}
-                  disabled={requestMutation.isPending || !reason.trim()}
-                  className="w-full"
-                  size="lg"
-                  data-testid="button-request-consultation"
-                >
-                  <Clock className="h-5 w-5 mr-2" />
-                  {requestMutation.isPending ? 'Agendando...' : 'Solicitar Atendimento Imediato'}
-                </Button>
-              </>
+              <div className="space-y-2 sm:space-y-3">
+                {regularDoctors.map((doctor) => (
+                  <div
+                    key={doctor.id}
+                    className={`border rounded-lg p-3 sm:p-4 cursor-pointer transition-all ${
+                      selectedDoctor?.id === doctor.id
+                        ? 'border-primary bg-primary/5 ring-2 ring-primary/30'
+                        : 'hover:border-primary/50'
+                    }`}
+                    onClick={() => setSelectedDoctor(doctor)}
+                  >
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+                      <div className="relative">
+                        <Avatar className="h-12 w-12 sm:h-14 sm:w-14">
+                          <AvatarImage src={doctor.profilePicture || undefined} />
+                          <AvatarFallback>
+                            {doctor.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-white animate-pulse" />
+                      </div>
+                      <div className="flex-1 w-full sm:w-auto">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-base sm:text-lg font-semibold">{doctor.name}</h3>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                            <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
+                            Online {getOnlineTime(doctor.onlineSince)}
+                          </Badge>
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1">{doctor.specialization || 'Clínico Geral'}</p>
+                        <p className="text-xs text-muted-foreground">CRM: {doctor.medicalLicense}</p>
+                      </div>
+                      {selectedDoctor?.id === doctor.id && (
+                        <CheckCircle className="h-6 w-6 text-primary" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
-      )}
-    </div>
+
+        {selectedDoctor && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Solicitar Atendimento</CardTitle>
+              <CardDescription>
+                Descreva o motivo e selecione o nível de urgência
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!isLoggedIn ? (
+                <div className="text-center py-6 space-y-4">
+                  <p className="text-muted-foreground">
+                    Para solicitar atendimento, é necessário estar logado.
+                  </p>
+                  <Button onClick={() => setLocation('/login')} size="lg">
+                    Fazer Login
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Não tem conta? <a href="/register/patient" className="text-primary underline">Cadastre-se</a>
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Nível de Urgência</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['normal', 'urgent', 'emergency'] as const).map((level) => {
+                        const config = urgencyConfig[level];
+                        const Icon = config.icon;
+                        return (
+                          <button
+                            key={level}
+                            onClick={() => setUrgencyLevel(level)}
+                            className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all ${
+                              urgencyLevel === level 
+                                ? `${config.color} border-current font-semibold`
+                                : 'border-muted hover:border-muted-foreground/30 text-muted-foreground'
+                            }`}
+                          >
+                            <Icon className="h-5 w-5" />
+                            <span className="text-xs">{config.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {urgencyLevel === 'emergency' && (
+                      <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-3 mt-2">
+                        <p className="text-sm text-red-700 dark:text-red-300 flex items-center gap-2">
+                          <Phone className="h-4 w-4" />
+                          <strong>Em caso de risco de vida, ligue para o SAMU: 192</strong>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="reason" className="text-sm sm:text-base">Motivo da Consulta</Label>
+                    <Textarea
+                      id="reason"
+                      placeholder="Descreva seus sintomas, há quanto tempo está sentindo, etc..."
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      rows={4}
+                      data-testid="textarea-reason"
+                      className="text-sm"
+                    />
+                  </div>
+
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={selectedDoctor.profilePicture || undefined} />
+                        <AvatarFallback>
+                          {selectedDoctor.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                          {selectedDoctor.name}
+                        </p>
+                        <p className="text-xs text-blue-600 dark:text-blue-300">
+                          {selectedDoctor.specialization || 'Clínico Geral'} · CRM: {selectedDoctor.medicalLicense}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                      Você será atendido imediatamente após a confirmação via teleconsulta.
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={handleRequest}
+                    disabled={requestMutation.isPending || !reason.trim()}
+                    className={`w-full ${urgencyLevel === 'emergency' ? 'bg-red-600 hover:bg-red-700' : urgencyLevel === 'urgent' ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
+                    size="lg"
+                    data-testid="button-request-consultation"
+                  >
+                    <Video className="h-5 w-5 mr-2" />
+                    {requestMutation.isPending ? 'Conectando...' : 'Entrar no Consultório Virtual'}
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {!isLoggedIn && !selectedDoctor && totalOnline > 0 && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-4 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Para ser atendido por um dos médicos disponíveis, faça login ou cadastre-se.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Button onClick={() => setLocation('/login')} variant="default">
+                  Fazer Login
+                </Button>
+                <Button onClick={() => setLocation('/register/patient')} variant="outline">
+                  Criar Conta
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </PageWrapper>
   );
 }

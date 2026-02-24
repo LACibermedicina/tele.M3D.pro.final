@@ -11769,6 +11769,7 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         isOnline: users.isOnline,
         availableForImmediate: users.availableForImmediate,
         onlineSince: users.onlineSince,
+        onDutyUntil: users.onDutyUntil,
       })
         .from(users)
         .where(and(
