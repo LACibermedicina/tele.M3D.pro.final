@@ -58,5 +58,13 @@ A full-stack medical practice management application built with Express.js backe
 - **Notes**: Doctor annotations, saved transcriptions displayed with border accents. All notes included in meetingNotes on call end.
 - **Consultation note types**: `chat`, `ai_query`, `ai_response`, `doctor_note`, `annotation`, `transcription`
 
+## WhatsApp IA (Doctor Messaging)
+- **Route**: `/whatsapp` - Central de mensagens inteligente
+- **Backend**: `/api/whatsapp/send` saves doctor messages to DB regardless of WhatsApp Business API status (works internally without API credentials)
+- **Message fields**: `direction` (inbound/outbound/doctor_to_patient), `senderRole` (patient/doctor/ai/system), `doctorId`
+- **Frontend**: Messages display with role labels (Doutor(a), Paciente, IA MedPro) and color-coded bubbles (blue for doctor, gray for patient, AI indicator style for AI)
+- **AI Processing**: Incoming patient messages are analyzed by Gemini/OpenAI for scheduling requests and clinical questions; AI responses are auto-generated
+- **Files**: `client/src/pages/whatsapp.tsx`, `server/services/whatsapp.ts`, routes in `server/routes.ts`
+
 ## Running
 - `npm run dev` starts the development server (Express + Vite on port 5000)
