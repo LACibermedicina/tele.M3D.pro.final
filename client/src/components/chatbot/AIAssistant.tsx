@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Bot, Calendar, Send, Loader2, User, Check, HeartPulse, ClipboardList, Users, Brain, FileText, BarChart3, Stethoscope, Settings, AlertTriangle, LogIn, MessageCircle } from "lucide-react";
+import { FormattedText } from "@/components/ui/formatted-text";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
@@ -412,7 +413,11 @@ Deseja confirmar este agendamento?`,
                         ? 'bg-blue-500 text-white'
                         : getBubbleColor()
                     }`}>
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      {message.role === 'assistant' ? (
+                        <FormattedText content={message.content} className="text-sm" />
+                      ) : (
+                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      )}
                     </div>
                     {message.type === 'appointment' && message.metadata && message.role === 'assistant' && user && (
                       <Button

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FormattedText } from '@/components/ui/formatted-text';
 import {
   Loader2,
   Activity,
@@ -202,7 +203,7 @@ export default function EpidemiologicalReports() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{report.summary}</p>
+                        <FormattedText content={report.summary} className="text-sm leading-relaxed" />
                       </CardContent>
                     </Card>
                   )}

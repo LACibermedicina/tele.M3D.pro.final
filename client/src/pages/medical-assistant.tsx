@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FormattedText } from '@/components/ui/formatted-text';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -453,9 +454,7 @@ export default function MedicalAssistant() {
                                 : 'bg-white/80 dark:bg-gray-700/80 border border-white/40 dark:border-gray-600/40 shadow-md'
                             }`}
                           >
-                            <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                              {message.content}
-                            </div>
+                            <FormattedText content={message.content} className="text-sm leading-relaxed" />
                             
                             {message.referencesUsed && message.referencesUsed.length > 0 && (
                               <div className="mt-4 pt-4 border-t border-white/20 dark:border-gray-600/20">

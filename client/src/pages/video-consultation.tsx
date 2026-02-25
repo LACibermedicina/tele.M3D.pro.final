@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FormattedText } from '@/components/ui/formatted-text';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -815,7 +816,7 @@ export default function VideoConsultation() {
                 {note.type === 'ai_query' ? <Stethoscope className="h-3 w-3 text-blue-600" /> : <Brain className="h-3 w-3 text-green-600" />}
                 <span className="text-[10px] font-semibold">{note.type === 'ai_query' ? 'Pergunta' : 'IA'}</span>
               </div>
-              <p className="text-xs whitespace-pre-wrap">{note.content}</p>
+              <FormattedText content={note.content} className="text-xs" />
             </Card>
           ))}
           {aiLoading && <Card className="p-2 bg-green-50 dark:bg-green-950"><div className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin text-green-600" /><span className="text-xs">Analisando...</span></div></Card>}
@@ -898,7 +899,7 @@ export default function VideoConsultation() {
                 <span className="text-[10px] font-semibold">Nota</span>
                 <span className="text-[10px] text-muted-foreground ml-auto">{new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
-              <p className="text-xs whitespace-pre-wrap">{note.content}</p>
+              <FormattedText content={note.content} className="text-xs" />
             </Card>
           ))}
           {transcriptionNotes.map((note) => (
@@ -1053,7 +1054,7 @@ export default function VideoConsultation() {
                     <span className="text-xs font-semibold">{note.type === 'ai_query' ? 'Sua pergunta' : 'Resposta da IA'}</span>
                     <span className="text-xs text-muted-foreground ml-auto">{new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
-                  <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                  <FormattedText content={note.content} className="text-sm" />
                 </Card>
               ))}
               {aiLoading && <Card className="p-3 bg-green-50 dark:bg-green-950"><div className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin text-green-600" /><span className="text-sm text-muted-foreground">IA analisando...</span></div></Card>}
@@ -1097,7 +1098,7 @@ export default function VideoConsultation() {
             <ScrollArea className="flex-1 p-3"><div className="space-y-2">
               {doctorNotes.length === 0 && transcriptionNotes.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhuma anotação. Registre observações clínicas importantes.</p>}
               {doctorNotes.map((note) => (
-                <Card key={note.id} className="p-3 border-l-4 border-l-primary"><div className="flex items-center gap-1.5 mb-1"><FileText className="h-3.5 w-3.5 text-primary" /><span className="text-xs font-semibold">Anotação Médica</span><span className="text-xs text-muted-foreground ml-auto">{new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div><p className="text-sm whitespace-pre-wrap">{note.content}</p></Card>
+                <Card key={note.id} className="p-3 border-l-4 border-l-primary"><div className="flex items-center gap-1.5 mb-1"><FileText className="h-3.5 w-3.5 text-primary" /><span className="text-xs font-semibold">Anotação Médica</span><span className="text-xs text-muted-foreground ml-auto">{new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div><FormattedText content={note.content} className="text-sm" /></Card>
               ))}
               {transcriptionNotes.map((note) => (
                 <Card key={note.id} className="p-3 border-l-4 border-l-blue-500"><div className="flex items-center gap-1.5 mb-1"><AudioLines className="h-3.5 w-3.5 text-blue-500" /><span className="text-xs font-semibold">Transcrição Salva</span></div><pre className="text-xs whitespace-pre-wrap font-mono bg-muted/50 p-2 rounded mt-1 max-h-32 overflow-y-auto">{note.content}</pre></Card>

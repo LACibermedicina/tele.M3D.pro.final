@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { FormattedText } from "@/components/ui/formatted-text";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -477,8 +478,8 @@ export default function IncompleteConsultations() {
                               <FileText className="h-4 w-4 text-blue-500" />
                               Notas da Consulta
                             </h4>
-                            <div className="bg-muted/50 p-3 rounded-lg text-sm whitespace-pre-wrap">
-                              {selectedConsultation.meetingNotes}
+                            <div className="bg-muted/50 p-3 rounded-lg text-sm">
+                              <FormattedText content={selectedConsultation.meetingNotes} />
                             </div>
                           </div>
                         )}
@@ -528,7 +529,7 @@ export default function IncompleteConsultations() {
                                   <span className="text-xs font-medium text-muted-foreground">
                                     {note.type === "ai_query" ? "Pergunta:" : "Resposta IA:"}
                                   </span>
-                                  <p className="mt-1 whitespace-pre-wrap">{note.content}</p>
+                                  <FormattedText content={note.content} className="mt-1" />
                                 </div>
                               ))}
                             </div>
@@ -653,7 +654,7 @@ export default function IncompleteConsultations() {
                                 {record.notes && (
                                   <div>
                                     <span className="text-xs font-semibold text-muted-foreground">Notas:</span>
-                                    <p className="text-sm whitespace-pre-wrap line-clamp-4">{record.notes}</p>
+                                    <FormattedText content={record.notes} className="text-sm line-clamp-4" />
                                   </div>
                                 )}
                               </div>
@@ -782,7 +783,7 @@ export default function IncompleteConsultations() {
                                       {format(new Date(note.timestamp), "dd/MM HH:mm", { locale: ptBR })}
                                     </span>
                                   </div>
-                                  <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                                  <FormattedText content={note.content} className="text-sm" />
                                 </div>
                               ))}
                             </div>

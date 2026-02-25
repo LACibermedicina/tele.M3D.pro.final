@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { FormattedText } from "@/components/ui/formatted-text";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -410,7 +411,7 @@ export default function TeamRoom() {
                                   {new Date(note.createdAt).toLocaleString('pt-BR')}
                                 </span>
                               </div>
-                              <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                              <FormattedText content={note.content} className="text-sm" />
                             </div>
                           ))}
                         </div>
@@ -504,7 +505,7 @@ export default function TeamRoom() {
                                       {new Date(note.createdAt).toLocaleString('pt-BR')}
                                     </span>
                                   </div>
-                                  <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                                  <FormattedText content={note.content} className="text-sm" />
                                 </div>
                               ))}
                           </div>
