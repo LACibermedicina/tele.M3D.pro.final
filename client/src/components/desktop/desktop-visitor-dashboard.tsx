@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { UserPlus, Calendar, FileText, Shield, Phone, MessageCircle, Users, Clock, MapPin, Star, Globe, Video, Bot, HeartPulse, Key } from "lucide-react"
+import { UserPlus, Calendar, FileText, Shield, Phone, MessageCircle, Users, Clock, MapPin, Globe, Video, Bot, HeartPulse, Key } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Link } from "wouter"
 import { useState } from "react"
@@ -15,17 +15,6 @@ import { useQuery } from "@tanstack/react-query"
 import medicalBg1 from "@assets/stock_images/abstract_autumn_heal_864db12d.jpg"
 import medicalBg2 from "@assets/stock_images/abstract_autumn_heal_33901da9.jpg"
 import medicalBg3 from "@assets/stock_images/abstract_autumn_heal_b72e41eb.jpg"
-
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  price: string;
-  duration: string;
-  available: boolean;
-  specialty: string;
-  rating: number;
-}
 
 interface Feature {
   icon: any;
@@ -79,60 +68,6 @@ export function DesktopVisitorDashboard() {
     setShowChatBot(true);
   };
   
-  // Expanded services for desktop view
-  const publicServices: Service[] = [
-    {
-      id: "1",
-      name: "Consulta Geral",
-      description: "Consulta médica geral online com profissionais qualificados",
-      price: "150 TMC",
-      duration: "30 min",
-      available: true,
-      specialty: "Clínica Geral",
-      rating: 4.9
-    },
-    {
-      id: "2", 
-      name: "Orientação Médica",
-      description: "Esclarecimento de dúvidas médicas e orientações preventivas",
-      price: "80 TMC",
-      duration: "15 min",
-      available: true,
-      specialty: "Orientação",
-      rating: 4.8
-    },
-    {
-      id: "3",
-      name: "Avaliação de Exames",
-      description: "Análise e interpretação de exames laboratoriais e de imagem",
-      price: "100 TMC",
-      duration: "20 min",
-      available: false,
-      specialty: "Diagnóstico",
-      rating: 4.7
-    },
-    {
-      id: "4",
-      name: "Consulta Cardiologista",
-      description: "Consulta especializada em cardiologia",
-      price: "200 TMC",
-      duration: "45 min",
-      available: true,
-      specialty: "Cardiologia",
-      rating: 4.9
-    },
-    {
-      id: "5",
-      name: "Consulta Dermatologista",
-      description: "Consulta especializada em dermatologia",
-      price: "180 TMC",
-      duration: "40 min",
-      available: true,
-      specialty: "Dermatologia",
-      rating: 4.8
-    }
-  ];
-
   const platformFeatures: Feature[] = [
     {
       icon: Video,
@@ -317,70 +252,6 @@ export function DesktopVisitorDashboard() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Available Services */}
-        <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-md">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold flex items-center">
-                <Calendar className="w-6 h-6 mr-2 text-blue-600" />
-                Serviços Disponíveis
-              </h2>
-              <Badge variant="secondary" className="text-base px-4 py-2 backdrop-blur-sm">
-                {publicServices.filter(s => s.available).length} serviços ativos
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {publicServices.map((service) => (
-                <Card key={service.id} className={`border-0 shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] ${
-                  service.available ? 'bg-gradient-to-br from-blue-50/80 to-indigo-50/80' : 'bg-gray-50/50 opacity-60'
-                } backdrop-blur-sm`}>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-semibold text-lg" data-testid={`text-service-name-${service.id}`}>
-                          {service.name}
-                        </h3>
-                        <Badge variant="outline" className="mt-1 backdrop-blur-sm">{service.specialty}</Badge>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                        <span className="font-medium">{service.rating}</span>
-                      </div>
-                    </div>
-                    <p className="text-muted-foreground mb-4">{service.description}</p>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-1">
-                          <Clock className="w-4 h-4 text-blue-600" />
-                          <span className="font-medium">{service.duration}</span>
-                        </div>
-                        <div className="text-lg font-bold text-green-600">{service.price}</div>
-                      </div>
-                      <Badge 
-                        variant={service.available ? "default" : "secondary"}
-                        className="text-sm backdrop-blur-sm"
-                      >
-                        {service.available ? "Disponível" : "Indisponível"}
-                      </Badge>
-                    </div>
-                    <Link href="/login">
-                      <Button 
-                        className="w-full hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg" 
-                        disabled={!service.available}
-                        data-testid={`button-book-${service.id}`}
-                      >
-                        {service.available ? "Faça Login para Agendar" : "Indisponível"}
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Platform Features */}
         <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-md">

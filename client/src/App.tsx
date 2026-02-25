@@ -152,8 +152,10 @@ function Router() {
           <FAQ />
         </Route>
         <Route path="/installation">
-          <Header />
-          <Installation />
+          <ProtectedRoute requiredRoles={['admin']}>
+            <Header />
+            <Installation />
+          </ProtectedRoute>
         </Route>
         
         {/* Public homepage - accessible to all including visitors */}

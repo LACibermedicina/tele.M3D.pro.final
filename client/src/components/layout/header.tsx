@@ -627,8 +627,8 @@ export default function Header() {
           </TooltipProvider>
 
           <div className="flex items-center space-x-3">
-            {/* Quick Actions Menu */}
-            <DropdownMenu>
+            {/* Quick Actions Menu - only for logged-in users */}
+            {user && <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
@@ -715,16 +715,18 @@ export default function Header() {
                     <p className="text-xs text-muted-foreground">Perguntas frequentes</p>
                   </div>
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => navigate('/installation')}
-                  className="cursor-pointer hover:bg-primary/10 py-3"
-                >
-                  <Terminal className="mr-3 h-5 w-5 text-green-500" />
-                  <div>
-                    <p className="font-semibold">Instalação</p>
-                    <p className="text-xs text-muted-foreground">Script de instalação</p>
-                  </div>
-                </DropdownMenuItem>
+                {user?.role === 'admin' && (
+                  <DropdownMenuItem 
+                    onClick={() => navigate('/installation')}
+                    className="cursor-pointer hover:bg-primary/10 py-3"
+                  >
+                    <Terminal className="mr-3 h-5 w-5 text-green-500" />
+                    <div>
+                      <p className="font-semibold">Instalação</p>
+                      <p className="text-xs text-muted-foreground">Script de instalação</p>
+                    </div>
+                  </DropdownMenuItem>
+                )}
                 
                 {user?.role === 'doctor' && (
                   <>
@@ -768,7 +770,7 @@ export default function Header() {
                   </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu>}
 
             {!user && (
               <form onSubmit={handleQuickLogin} className="hidden md:flex items-center space-x-2 bg-background/30 backdrop-blur-sm rounded-full px-3 py-1.5 border border-primary/10 animate-fade-in">
