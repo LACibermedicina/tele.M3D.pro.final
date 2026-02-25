@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, startOfDay, endOfDay, isToday, addMinutes, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2, Video, Plus, MoreHorizontal, Download, Upload, History, PhoneCall, Wifi } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2, Video, Plus, MoreHorizontal, Download, Upload, History, PhoneCall, Wifi, XCircle, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import VideoConsultation from "@/components/video-consultation/VideoConsultation";
@@ -42,6 +42,8 @@ export default function Schedule() {
   const [scheduleTab, setScheduleTab] = useState<'today' | 'history'>('today');
   const [isInstantConsultOpen, setIsInstantConsultOpen] = useState(false);
   const [instantPatientId, setInstantPatientId] = useState<string>("");
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+  const [cancelConfirmName, setCancelConfirmName] = useState<string>("");
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -196,6 +198,33 @@ export default function Schedule() {
       });
     },
   });
+
+  const cancelAppointmentMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiRequest('PATCH', `/api/appointments/${id}`, { status: 'cancelled' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
+      toast({
+        title: "Consulta cancelada",
+        description: "A consulta foi cancelada com sucesso.",
+      });
+      setCancelConfirmId(null);
+      setCancelConfirmName("");
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({
+        title: errorInfo.title,
+        description: errorInfo.description,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCancelAppointment = (appointment: any) => {
+    setCancelConfirmId(appointment.id);
+    setCancelConfirmName(appointment.patientName || 'Paciente não identificado');
+  };
 
   const handleStartConsultation = async (appointment: any) => {
     if (!appointment) return;
@@ -552,11 +581,11 @@ export default function Schedule() {
             </div>
             
             <Button 
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => setIsInstantConsultOpen(true)}
               data-testid="button-new-appointment"
               className="btn-medical-primary"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Video className="h-4 w-4 mr-2" />
               Nova Consulta
             </Button>
           </div>
@@ -817,6 +846,18 @@ export default function Schedule() {
                               >
                                 <i className="fas fa-edit mr-1"></i>
                                 Editar
+                              </Button>
+                              
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-800"
+                                data-testid={`button-cancel-appointment-${appointment.id}`}
+                                onClick={() => handleCancelAppointment(appointment)}
+                                disabled={cancelAppointmentMutation.isPending}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Cancelar
                               </Button>
                             </div>
                           </div>
@@ -1331,6 +1372,35 @@ export default function Schedule() {
                 <><PhoneCall className="h-4 w-4 mr-2" />Iniciar Chamada</>
               )}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={!!cancelConfirmId} onOpenChange={(open) => { if (!open) { setCancelConfirmId(null); setCancelConfirmName(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <XCircle className="h-5 w-5" />
+              Cancelar Consulta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Tem certeza que deseja cancelar a consulta com <strong>{cancelConfirmName}</strong>? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => { setCancelConfirmId(null); setCancelConfirmName(""); }}>
+                Voltar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => cancelConfirmId && cancelAppointmentMutation.mutate(cancelConfirmId)}
+                disabled={cancelAppointmentMutation.isPending}
+              >
+                {cancelAppointmentMutation.isPending ? 'Cancelando...' : 'Confirmar Cancelamento'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

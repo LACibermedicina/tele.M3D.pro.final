@@ -9,7 +9,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Bell, BellRing, Check, X, AlertTriangle, MessageCircle, Calendar, FileText, Activity, Video, Stethoscope, Send, Reply } from 'lucide-react';
+import { Bell, BellRing, Check, X, AlertTriangle, MessageCircle, Calendar, FileText, Activity, Video, Stethoscope, Send, Reply, Trash2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 interface NotificationCenterProps {
@@ -17,7 +17,7 @@ interface NotificationCenterProps {
 }
 
 export default function NotificationCenter({ isScrolled = false }: NotificationCenterProps) {
-  const { notifications, unreadCount, isConnected, markAsRead, markAllAsRead, clearNotification } = useNotifications();
+  const { notifications, unreadCount, isConnected, markAsRead, markAllAsRead, clearNotification, clearAllNotifications } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -266,15 +266,19 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
         </ScrollArea>
         
         {notifications.length > 0 && (
-          <div className="border-t p-3">
+          <div className="border-t p-3 flex gap-2">
             <Button 
               variant="ghost" 
               size="sm" 
-              className="w-full"
-              onClick={() => setIsOpen(false)}
-              data-testid="button-view-all-notifications"
+              className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={() => {
+                clearAllNotifications();
+                toast({ title: "Notificações limpas", description: "Todas as notificações foram removidas." });
+              }}
+              data-testid="button-clear-all-notifications"
             >
-              Ver Todas as Notificações
+              <Trash2 className="h-4 w-4 mr-1" />
+              Limpar Todas
             </Button>
           </div>
         )}
