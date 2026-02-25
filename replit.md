@@ -47,7 +47,7 @@ All AI prompts (chatbot, triage, video consultation, medical records, SOAP repor
 ## Patient Features
 - **Consultation Request**: `/consultation-request` - AI-powered 4-step symptom triage and doctor recommendations
 - **Waiting Room**: `/immediate-consultation` - View online doctors with urgency room section for on-duty doctors, stats cards, urgency level selector (normal/urgent/emergency). Accessible to visitors and logged-in users.
-- **My Consultations**: `/my-consultations` - Track consultation requests with 3 tabs: Próximas (pending/accepted), Solicitações (completed/declined), Histórico (video consultation history with doctor info, duration, notes)
+- **My Consultations**: `/my-consultations` - Track consultation requests with 3 tabs: Próximas (pending/accepted + active video consultations with join button), Solicitações (completed/declined), Histórico (video consultation history with doctor info, duration, notes). Features: cancel individual consultation, cancel all open consultations, archive all to history. Active video cards show "Entrar na Consulta" button.
 - **Prescriptions**: Nav item conditionally shown for patients with active prescriptions within validity dates (via `/api/prescriptions/recent` query in header)
 - **Medical Records**: Nav item "Meu Prontuário" conditionally shown if patient has existing records (via `/api/medical-records/my` query in header). Route `/records` accessible to patients.
 - Navigation: Top header bar always visible for patient pages. Prescription and records nav items only appear for patients who have data.

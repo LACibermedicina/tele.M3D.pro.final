@@ -27,7 +27,7 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
 
   const handleSendReply = async (notification: Notification) => {
     if (!replyText.trim() || sendingReply) return;
-    const doctorId = notification.data?.doctorId;
+    const doctorId = notification.data?.doctorId || notification.data?.senderId || notification.senderId;
     if (!doctorId) return;
     
     setSendingReply(true);
@@ -217,25 +217,57 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
                     {notification.message}
                   </p>
                   
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
                     <p className="text-xs text-muted-foreground">
                       {format(notification.timestamp, 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                     </p>
-                    {notification.type === 'doctor_message' && (notification.data?.allowReply !== false) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setReplyingTo(replyingTo === notification.id ? null : notification.id);
-                          setReplyText("");
-                        }}
-                      >
-                        <Reply className="h-3 w-3 mr-1" />
-                        Responder
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {(notification.type === 'consultation_invite' || notification.type === 'consultation_ready') && (notification.data?.actionUrl || notification.actionUrl) && (
+                        <Button
+                          size="sm"
+                          className="h-6 px-2 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markAsRead(notification.id);
+                            setLocation(notification.data?.actionUrl || notification.actionUrl || '/my-consultations');
+                            setIsOpen(false);
+                          }}
+                        >
+                          <Video className="h-3 w-3 mr-1" />
+                          Entrar
+                        </Button>
+                      )}
+                      {notification.type === 'appointment' && notification.data?.requestId && (
+                        <Button
+                          size="sm"
+                          className="h-6 px-2 text-xs bg-green-600 hover:bg-green-700 text-white"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markAsRead(notification.id);
+                            setLocation('/doctor-chat');
+                            setIsOpen(false);
+                          }}
+                        >
+                          <MessageCircle className="h-3 w-3 mr-1" />
+                          Atender
+                        </Button>
+                      )}
+                      {(notification.type === 'consultation_invite' || notification.type === 'doctor_message') && (notification.data?.allowReply !== false) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReplyingTo(replyingTo === notification.id ? null : notification.id);
+                            setReplyText("");
+                          }}
+                        >
+                          <Reply className="h-3 w-3 mr-1" />
+                          Responder
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   
                   {replyingTo === notification.id && (

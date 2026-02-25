@@ -212,6 +212,19 @@ export function useNotifications() {
           data: message
         };
 
+      case 'consultation_request':
+        return {
+          id: `req-${Date.now()}`,
+          type: 'appointment',
+          title: message.data?.title || 'Nova Solicitação de Consulta',
+          message: message.data?.message || 'Um paciente solicitou uma consulta',
+          priority: message.data?.priority || 'high',
+          timestamp,
+          read: false,
+          actionUrl: message.data?.actionUrl || '/doctor-chat',
+          data: message.data
+        };
+
       default:
         return null;
     }
@@ -225,6 +238,12 @@ export function useNotifications() {
       case 'appointment':
         queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
         queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/chat/doctor/threads'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/my-consultations'] });
+        break;
+      case 'consultation_invite':
+      case 'consultation_ready':
+        queryClient.invalidateQueries({ queryKey: ['/api/my-consultations'] });
         break;
       case 'exam_result':
         queryClient.invalidateQueries({ queryKey: ['/api/exam-results/recent'] });

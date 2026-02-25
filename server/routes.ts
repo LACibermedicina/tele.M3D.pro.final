@@ -7096,7 +7096,6 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         .replace(/\s+/g, ' ')
         .trim() || 'Análise clínica dos sintomas reportados pelo paciente.';
 
-      // Create consultation request
       const consultationRequest = await storage.createConsultationRequest({
         patientId,
         symptoms,
@@ -7108,6 +7107,45 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         status: 'pending',
         whatsappNotificationSent: whatsappOptIn || false
       });
+
+      const selectedDocId = availableDoctors[0]?.id;
+      if (selectedDocId) {
+        const patientRecord = await storage.getPatient(patientId);
+        const patientName = patientRecord?.name || 'Paciente';
+        const urgencyLabel = triageData.aiTriageLevel === 'emergency' ? 'EMERGÊNCIA' : 
+          triageData.aiTriageLevel === 'very_urgent' ? 'MUITO URGENTE' : 
+          triageData.aiTriageLevel === 'urgent' ? 'URGENTE' : 'Normal';
+
+        broadcastToUser(selectedDocId, {
+          type: 'consultation_request',
+          data: {
+            title: `Nova Solicitação de Consulta - ${urgencyLabel}`,
+            message: `${patientName}: ${symptoms.substring(0, 150)}`,
+            priority: triageData.aiTriageLevel === 'emergency' ? 'critical' : triageData.aiTriageLevel === 'very_urgent' ? 'critical' : triageData.aiTriageLevel === 'urgent' ? 'high' : 'medium',
+            requestId: consultationRequest.id,
+            patientId,
+            patientName,
+            actionUrl: '/doctor-chat'
+          }
+        });
+
+        try {
+          await db.insert(pendingNotifications).values({
+            userId: selectedDocId,
+            type: 'appointment',
+            title: `Nova Solicitação - ${urgencyLabel}`,
+            message: `${patientName}: ${symptoms.substring(0, 200)}`,
+            priority: triageData.aiTriageLevel === 'emergency' ? 'critical' : triageData.aiTriageLevel === 'urgent' ? 'high' : 'medium',
+            actionUrl: '/doctor-chat',
+            senderId: patientId,
+            delivered: false,
+            read: false,
+            metadata: { requestId: consultationRequest.id, patientId }
+          });
+        } catch (notifErr) {
+          console.error('Failed to store consultation request notification:', notifErr);
+        }
+      }
 
       res.json({
         success: true,
@@ -7442,7 +7480,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         return res.status(404).json({ message: 'Consultation request not found' });
       }
 
-      if (request.selectedDoctorId !== req.user!.id) {
+      if (request.selectedDoctorId && request.selectedDoctorId !== req.user!.id) {
         return res.status(403).json({ message: 'Not authorized' });
       }
 
@@ -7450,35 +7488,204 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         return res.status(400).json({ message: 'Request is not available for consultation' });
       }
 
-      // Update request status
       await storage.updateConsultationRequest(req.params.requestId, {
         status: 'accepted',
-        acceptedAt: new Date()
+        acceptedAt: new Date(),
+        selectedDoctorId: req.user!.id
       });
 
-      // Create or get consultation session
-      let session = await storage.getConsultationSessionByRequestId(req.params.requestId);
-      
-      if (!session) {
-        session = await storage.createConsultationSession({
-          consultationId: req.params.requestId,
-          roomMetadata: {
-            createdAt: new Date().toISOString(),
-            createdBy: req.user!.id
-          },
-          invitedSpecialists: [],
-          status: 'active'
+      const patientId = request.patientId;
+      const doctorId = req.user!.id;
+
+      const existingConsultations = await db.select().from(videoConsultations)
+        .where(and(
+          eq(videoConsultations.patientId, patientId),
+          eq(videoConsultations.doctorId, doctorId),
+          or(
+            eq(videoConsultations.status, 'waiting'),
+            eq(videoConsultations.status, 'active')
+          )
+        ))
+        .orderBy(desc(videoConsultations.createdAt))
+        .limit(1);
+
+      let consultation;
+      if (existingConsultations.length > 0) {
+        consultation = existingConsultations[0];
+      } else {
+        consultation = await storage.createVideoConsultation({
+          patientId,
+          doctorId,
+          status: 'waiting',
         });
+      }
+
+      const patient = await storage.getPatient(patientId);
+      if (patient?.userId) {
+        broadcastToUser(patient.userId, {
+          type: 'consultation_invite',
+          data: {
+            title: 'Consulta Aceita - Teleconsulta',
+            message: `Dr(a). ${req.user!.name} aceitou sua solicitação e está aguardando na sala de vídeo.`,
+            priority: 'critical',
+            consultationId: consultation.id,
+            doctorName: req.user!.name,
+            actionUrl: `/patient/video/${consultation.id}`
+          }
+        });
+
+        try {
+          await db.insert(pendingNotifications).values({
+            userId: patient.userId,
+            type: 'consultation_invite',
+            title: 'Consulta Aceita - Teleconsulta',
+            message: `Dr(a). ${req.user!.name} aceitou sua solicitação e está aguardando na sala de vídeo.`,
+            priority: 'critical',
+            actionUrl: `/patient/video/${consultation.id}`,
+            senderId: doctorId,
+            delivered: false,
+            read: false,
+            metadata: { consultationId: consultation.id, requestId: req.params.requestId }
+          });
+        } catch (notifErr) {
+          console.error('Failed to store consultation invite notification:', notifErr);
+        }
       }
 
       res.json({ 
         success: true, 
-        session,
-        redirectUrl: `/consultation-session/${session.id}`
+        consultation,
+        redirectUrl: `/consultation/video/${patientId}`
       });
     } catch (error) {
       console.error('Start consultation error:', error);
       res.status(500).json({ message: 'Failed to start consultation' });
+    }
+  });
+
+  app.patch('/api/consultation-requests/:id/cancel', requireAuth, async (req, res) => {
+    try {
+      const request = await storage.getConsultationRequest(req.params.id);
+      if (!request) {
+        return res.status(404).json({ message: 'Consultation request not found' });
+      }
+
+      const patient = await storage.getPatientByUserId(req.user!.id);
+      const isPatient = patient && request.patientId === patient.id;
+      const isDoctor = req.user!.role === 'doctor';
+
+      if (!isPatient && !isDoctor) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      if (request.status === 'completed' || request.status === 'declined') {
+        return res.status(400).json({ message: 'Cannot cancel a completed or declined consultation' });
+      }
+
+      await storage.updateConsultationRequest(req.params.id, {
+        status: 'declined'
+      });
+
+      if (isPatient && request.selectedDoctorId) {
+        broadcastToUser(request.selectedDoctorId, {
+          type: 'system',
+          data: {
+            title: 'Consulta Cancelada',
+            message: `O paciente cancelou a solicitação de consulta.`,
+            priority: 'medium',
+            actionUrl: '/doctor-chat'
+          }
+        });
+      }
+
+      if (isDoctor && patient?.userId) {
+        broadcastToUser(patient.userId, {
+          type: 'system',
+          data: {
+            title: 'Consulta Cancelada',
+            message: `Dr(a). ${req.user!.name} cancelou a consulta.`,
+            priority: 'medium',
+            actionUrl: '/my-consultations'
+          }
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Cancel consultation error:', error);
+      res.status(500).json({ message: 'Failed to cancel consultation' });
+    }
+  });
+
+  app.post('/api/consultation-requests/cancel-all', requireAuth, async (req, res) => {
+    try {
+      const patient = await storage.getPatientByUserId(req.user!.id);
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient profile not found' });
+      }
+
+      const requests = await storage.getConsultationRequestsByPatient(patient.id);
+      const openRequests = requests.filter((r: any) => r.status === 'pending' || r.status === 'accepted');
+      
+      let cancelled = 0;
+      for (const request of openRequests) {
+        await storage.updateConsultationRequest(request.id, { status: 'declined' });
+        cancelled++;
+      }
+
+      const activeVCs = await db.select().from(videoConsultations)
+        .where(and(
+          eq(videoConsultations.patientId, patient.id),
+          or(
+            eq(videoConsultations.status, 'waiting'),
+            eq(videoConsultations.status, 'active')
+          )
+        ));
+
+      for (const vc of activeVCs) {
+        await storage.updateVideoConsultation(vc.id, { status: 'ended', endedAt: new Date() });
+      }
+
+      res.json({ success: true, cancelled });
+    } catch (error) {
+      console.error('Cancel all consultations error:', error);
+      res.status(500).json({ message: 'Failed to cancel consultations' });
+    }
+  });
+
+  app.post('/api/consultation-requests/archive-all', requireAuth, async (req, res) => {
+    try {
+      const patient = await storage.getPatientByUserId(req.user!.id);
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient profile not found' });
+      }
+
+      const requests = await storage.getConsultationRequestsByPatient(patient.id);
+      const openRequests = requests.filter((r: any) => r.status === 'pending' || r.status === 'accepted');
+      
+      let archived = 0;
+      for (const request of openRequests) {
+        await storage.updateConsultationRequest(request.id, { status: 'completed' });
+        archived++;
+      }
+
+      const activeVCs = await db.select().from(videoConsultations)
+        .where(and(
+          eq(videoConsultations.patientId, patient.id),
+          or(
+            eq(videoConsultations.status, 'waiting'),
+            eq(videoConsultations.status, 'active')
+          )
+        ));
+
+      for (const vc of activeVCs) {
+        await storage.updateVideoConsultation(vc.id, { status: 'ended', endedAt: new Date() });
+      }
+
+      res.json({ success: true, archived });
+    } catch (error) {
+      console.error('Archive all consultations error:', error);
+      res.status(500).json({ message: 'Failed to archive consultations' });
     }
   });
 
@@ -7976,10 +8183,18 @@ Retorne apenas o JSON válido.`;
           doctor: doctorMap[v.doctorId] || { name: 'Médico', specialty: '' },
         }));
 
+      const activeVideoConsultations = patientVideoConsultations
+        .filter(v => v.status === 'waiting' || v.status === 'active')
+        .map(v => ({
+          ...v,
+          doctor: doctorMap[v.doctorId] || { name: 'Médico', specialty: '' },
+        }));
+
       res.json({
         upcoming,
         past,
         videoHistory,
+        activeVideoConsultations,
         total: consultationsWithSessions.length
       });
     } catch (error) {
