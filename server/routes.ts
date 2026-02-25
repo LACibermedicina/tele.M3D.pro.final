@@ -6722,6 +6722,43 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
     }
   });
 
+  app.post('/api/temporary-access/generate', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
+      }
+
+      const crypto = await import('crypto');
+      const code = crypto.randomBytes(16).toString('hex');
+      const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const accessLink = `${baseUrl}/immediate-consultation?access=${code}`;
+
+      res.json({
+        code,
+        accessLink,
+        expiresAt: expiresAt.toISOString(),
+        generatedBy: req.user.name,
+      });
+    } catch (error) {
+      console.error('Error generating temporary access:', error);
+      res.status(500).json({ message: 'Erro ao gerar link de acesso temporário' });
+    }
+  });
+
+  app.get('/api/temporary-access/validate/:code', async (req, res) => {
+    try {
+      const { code } = req.params;
+      if (!code || code.length < 10) {
+        return res.status(400).json({ valid: false, message: 'Código inválido' });
+      }
+      res.json({ valid: true });
+    } catch (error) {
+      res.status(500).json({ valid: false, message: 'Erro ao validar acesso' });
+    }
+  });
+
   app.post('/api/consultation-access/validate', async (req, res) => {
     try {
       const { code } = req.body;
@@ -14719,7 +14756,23 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
           eq(users.availableForImmediate, true)
         ));
 
-      res.json(onlineDoctors);
+      const doctorsWithStatus = await Promise.all(
+        onlineDoctors.map(async (doctor) => {
+          const activeConsultations = await db.select({ id: videoConsultations.id })
+            .from(videoConsultations)
+            .where(and(
+              eq(videoConsultations.doctorId, doctor.id),
+              eq(videoConsultations.status, 'active')
+            ))
+            .limit(1);
+          return {
+            ...doctor,
+            inConsultation: activeConsultations.length > 0,
+          };
+        })
+      );
+
+      res.json(doctorsWithStatus);
     } catch (error) {
       console.error('Get online doctors error:', error);
       res.status(500).json({ message: 'Erro ao listar médicos disponíveis' });

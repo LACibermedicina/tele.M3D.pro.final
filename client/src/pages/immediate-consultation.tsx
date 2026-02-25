@@ -1,16 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Clock, User, Stethoscope, CheckCircle, AlertCircle, Siren, ShieldAlert, Video, Activity, Phone } from "lucide-react";
+import { Clock, User, Stethoscope, CheckCircle, AlertCircle, Siren, ShieldAlert, Video, Activity, Phone, ShieldOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
 
@@ -24,19 +24,47 @@ interface Doctor {
   availableForImmediate: boolean;
   onlineSince: string | null;
   onDutyUntil: string | null;
+  inConsultation?: boolean;
 }
 
 export default function ImmediateConsultation() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [reason, setReason] = useState("");
   const [urgencyLevel, setUrgencyLevel] = useState<'normal' | 'urgent' | 'emergency'>('normal');
+  const [hasTemporaryAccess, setHasTemporaryAccess] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const accessCode = params.get('access');
+    if (accessCode && accessCode.length >= 10) {
+      setHasTemporaryAccess(true);
+      sessionStorage.setItem('temp_access_code', accessCode);
+      sessionStorage.setItem('temp_access_time', Date.now().toString());
+    } else {
+      const stored = sessionStorage.getItem('temp_access_code');
+      const storedTime = sessionStorage.getItem('temp_access_time');
+      if (stored && storedTime) {
+        const elapsed = Date.now() - parseInt(storedTime);
+        if (elapsed < 2 * 60 * 60 * 1000) {
+          setHasTemporaryAccess(true);
+        } else {
+          sessionStorage.removeItem('temp_access_code');
+          sessionStorage.removeItem('temp_access_time');
+        }
+      }
+    }
+  }, [searchString]);
+
+  const canAccess = !!user || hasTemporaryAccess;
 
   const { data: onlineDoctors, isLoading } = useQuery<Doctor[]>({
     queryKey: ['/api/doctors/online'],
     refetchInterval: 10000,
+    enabled: canAccess,
   });
 
   const requestMutation = useMutation({
@@ -135,12 +163,41 @@ export default function ImmediateConsultation() {
   const totalOnline = sortedDoctors?.length || 0;
 
   const isLoggedIn = !!user;
+  const inConsultationDoctors = sortedDoctors?.filter(d => d.inConsultation) || [];
+  const availableDoctors = sortedDoctors?.filter(d => !d.inConsultation) || [];
 
   const urgencyConfig = {
     normal: { color: 'bg-green-100 text-green-800 border-green-300', label: 'Normal', icon: Activity },
     urgent: { color: 'bg-orange-100 text-orange-800 border-orange-300', label: 'Urgente', icon: ShieldAlert },
     emergency: { color: 'bg-red-100 text-red-800 border-red-300', label: 'Emergência', icon: Siren },
   };
+
+  if (!canAccess) {
+    return (
+      <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
+        <div className="p-6 sm:p-8 lg:p-12 max-w-lg mx-auto text-center space-y-6">
+          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <ShieldOff className="h-10 w-10 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold">Acesso Restrito</h1>
+          <p className="text-muted-foreground">
+            A Sala de Espera é acessível apenas para pacientes cadastrados ou visitantes com link de acesso temporário fornecido pelo médico ou administrador.
+          </p>
+          <div className="flex flex-col gap-3">
+            <Button onClick={() => setLocation('/login')} size="lg" className="w-full">
+              Fazer Login
+            </Button>
+            <Button onClick={() => setLocation('/register/patient')} variant="outline" size="lg" className="w-full">
+              Criar Conta de Paciente
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Já recebeu um link de acesso? Cole-o diretamente no navegador.
+          </p>
+        </div>
+      </PageWrapper>
+    );
+  }
 
   return (
     <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
@@ -155,6 +212,11 @@ export default function ImmediateConsultation() {
               ? 'Veja médicos disponíveis agora e solicite atendimento imediato' 
               : 'Veja os médicos disponíveis. Faça login para solicitar uma consulta.'}
           </p>
+          {hasTemporaryAccess && !isLoggedIn && (
+            <Badge variant="outline" className="mt-2 bg-amber-50 text-amber-700 border-amber-300">
+              Acesso temporário (expira em 2 horas)
+            </Badge>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -233,10 +295,17 @@ export default function ImmediateConsultation() {
                             <Siren className="w-3 h-3 mr-1" />
                             Plantão
                           </Badge>
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
-                            <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
-                            Online {getOnlineTime(doctor.onlineSince)}
-                          </Badge>
+                          {doctor.inConsultation ? (
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 text-xs">
+                              <Video className="w-3 h-3 mr-1" />
+                              Em Atendimento
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                              <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
+                              Online {getOnlineTime(doctor.onlineSince)}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-xs sm:text-sm text-muted-foreground mt-1">{doctor.specialization || 'Clínico Geral'}</p>
                         <div className="flex items-center gap-3 mt-1">
@@ -322,18 +391,28 @@ export default function ImmediateConsultation() {
                             {doctor.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-white animate-pulse" />
+                        <div className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white ${doctor.inConsultation ? 'bg-yellow-500' : 'bg-green-500 animate-pulse'}`} />
                       </div>
                       <div className="flex-1 w-full sm:w-auto">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-base sm:text-lg font-semibold">{doctor.name}</h3>
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
-                            <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
-                            Online {getOnlineTime(doctor.onlineSince)}
-                          </Badge>
+                          {doctor.inConsultation ? (
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 text-xs">
+                              <Video className="w-3 h-3 mr-1" />
+                              Em Atendimento
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                              <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
+                              Online {getOnlineTime(doctor.onlineSince)}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-xs sm:text-sm text-muted-foreground mt-1">{doctor.specialization || 'Clínico Geral'}</p>
                         <p className="text-xs text-muted-foreground">CRM: {doctor.medicalLicense}</p>
+                        {doctor.inConsultation && (
+                          <p className="text-xs text-yellow-600 mt-1">Médico em videochamada — aguarde ou escolha outro</p>
+                        )}
                       </div>
                       {selectedDoctor?.id === doctor.id && (
                         <CheckCircle className="h-6 w-6 text-primary" />

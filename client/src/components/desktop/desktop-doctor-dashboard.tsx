@@ -1,19 +1,53 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Users, FileText } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Calendar, Users, FileText, Link2, Copy, CheckCircle, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import TodaySchedule from "@/components/dashboard/today-schedule";
 import { type DashboardStats } from "@shared/schema";
 
 export function DesktopDoctorDashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [tempAccessOpen, setTempAccessOpen] = useState(false);
+  const [generatedAccess, setGeneratedAccess] = useState<any>(null);
+  const [copied, setCopied] = useState(false);
 
   const { data: stats } = useQuery<DashboardStats>({
     queryKey: user?.id ? ['/api/dashboard/stats', user.id] : [],
     enabled: !!user?.id,
   });
+
+  const generateTempAccessMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/temporary-access/generate', {});
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      setGeneratedAccess(data);
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  async function copyAccessLink() {
+    if (!generatedAccess) return;
+    try {
+      await navigator.clipboard.writeText(generatedAccess.accessLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({ title: 'Link copiado!' });
+    } catch {
+      toast({ title: 'Erro ao copiar', variant: 'destructive' });
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -129,12 +163,77 @@ export function DesktopDoctorDashboard() {
                 <span className="font-medium">WhatsApp</span>
               </Button>
             </Link>
+
+            <Button
+              className="w-full h-24 flex flex-col items-center justify-center gap-2 border-dashed border-2 border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-700"
+              variant="outline"
+              onClick={() => { setTempAccessOpen(true); setGeneratedAccess(null); setCopied(false); }}
+              data-testid="button-temp-access"
+            >
+              <Link2 className="w-6 h-6" />
+              <span className="font-medium text-xs text-center leading-tight">Gerar Link de Acesso Temporário</span>
+            </Button>
           </div>
         </div>
 
         {/* Today's Schedule */}
         <TodaySchedule />
       </div>
+
+      <Dialog open={tempAccessOpen} onOpenChange={setTempAccessOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="h-5 w-5 text-indigo-600" />
+              Link de Acesso Temporário
+            </DialogTitle>
+            <DialogDescription>
+              Gere um link para que visitantes acessem a Sala de Espera sem login. O link expira em 2 horas.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!generatedAccess ? (
+            <div className="space-y-4 pt-2">
+              <div className="bg-indigo-50 dark:bg-indigo-950 rounded-lg p-4 text-sm space-y-2">
+                <p className="font-medium text-indigo-700 dark:text-indigo-300">Sobre o link temporário:</p>
+                <ul className="text-indigo-600 dark:text-indigo-400 space-y-1 text-xs">
+                  <li>• O visitante poderá ver os médicos disponíveis na Sala de Espera</li>
+                  <li>• Para solicitar atendimento, precisará fazer login ou criar conta</li>
+                  <li>• O link expira automaticamente em 2 horas após a geração</li>
+                  <li>• É um acesso de visualização — não permite consulta sem autenticação</li>
+                </ul>
+              </div>
+              <Button
+                onClick={() => generateTempAccessMutation.mutate()}
+                disabled={generateTempAccessMutation.isPending}
+                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+              >
+                {generateTempAccessMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Link2 className="h-4 w-4 mr-2" />
+                )}
+                Gerar Link
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Link de acesso</label>
+                <div className="flex gap-2">
+                  <Input value={generatedAccess.accessLink} readOnly className="text-xs" />
+                  <Button variant="outline" size="icon" onClick={copyAccessLink}>
+                    {copied ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-center text-muted-foreground">
+                Válido até {new Date(generatedAccess.expiresAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · Gerado por {generatedAccess.generatedBy}
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
