@@ -37,11 +37,12 @@ export default function Schedule() {
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [upcomingNotifications, setUpcomingNotifications] = useState<any[]>([]);
   const [quickBookMode, setQuickBookMode] = useState(false);
-  const [scheduleTab, setScheduleTab] = useState<'today' | 'history'>('today');
+  const [scheduleTab, setScheduleTab] = useState<'today' | 'future' | 'history'>('today');
   const [isInstantConsultOpen, setIsInstantConsultOpen] = useState(false);
   const [instantPatientId, setInstantPatientId] = useState<string>("");
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const [cancelConfirmName, setCancelConfirmName] = useState<string>("");
+  const [cancelAllScope, setCancelAllScope] = useState<'today' | 'future' | null>(null);
   
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -49,6 +50,11 @@ export default function Schedule() {
 
   const { data: appointments, isLoading } = useQuery<any[]>({
     queryKey: ['/api/appointments/doctor', DEFAULT_DOCTOR_ID, selectedDate.toISOString()],
+  });
+
+  const { data: futureAppointments, isLoading: futureLoading } = useQuery<any[]>({
+    queryKey: ['/api/appointments/doctor', DEFAULT_DOCTOR_ID, 'future'],
+    enabled: scheduleTab === 'future',
   });
 
   const { data: historyData, isLoading: historyLoading } = useQuery<any>({
@@ -221,6 +227,24 @@ export default function Schedule() {
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
       toast({ title: errorInfo.title, description: errorInfo.description, variant: "destructive" });
+    },
+  });
+
+  const cancelAllMutation = useMutation({
+    mutationFn: (scope: 'today' | 'future') =>
+      apiRequest('POST', '/api/appointments/cancel-all', { doctorId: DEFAULT_DOCTOR_ID, scope }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
+      toast({
+        title: "Consultas canceladas",
+        description: `${data.cancelled} consulta(s) cancelada(s) com sucesso.`,
+      });
+      setCancelAllScope(null);
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: "destructive" });
+      setCancelAllScope(null);
     },
   });
 
@@ -672,12 +696,21 @@ export default function Schedule() {
 
           {/* Appointments Area with Tabs */}
           <div className="lg:col-span-3">
-            <Tabs value={scheduleTab} onValueChange={(v) => setScheduleTab(v as 'today' | 'history')}>
+            <Tabs value={scheduleTab} onValueChange={(v) => setScheduleTab(v as 'today' | 'future' | 'history')}>
               <div className="flex items-center justify-between mb-4">
-                <TabsList className="grid grid-cols-2 w-80">
+                <TabsList className="grid grid-cols-3 w-[480px]">
                   <TabsTrigger value="today" className="flex items-center gap-2">
                     <CalendarIcon className="h-4 w-4" />
-                    Agenda do Dia
+                    Hoje
+                    {(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').length > 0 && (
+                      <Badge variant="secondary" className="h-5 px-1.5 text-xs ml-1">
+                        {(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').length}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="future" className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Futuras
                   </TabsTrigger>
                   <TabsTrigger value="history" className="flex items-center gap-2">
                     <History className="h-4 w-4" />
@@ -702,7 +735,7 @@ export default function Schedule() {
                         <div className="p-2 rounded-lg bg-gradient-to-r from-green-500 to-blue-500 text-white">
                           <Users className="h-4 w-4" />
                         </div>
-                        <span>Consultas do Dia</span>
+                        <span>Consultas de Hoje</span>
                       </div>
                       <div className="flex items-center space-x-3">
                         {upcomingNotifications.length > 0 && (
@@ -719,6 +752,17 @@ export default function Schedule() {
                             {(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').length} consultas pendentes
                           </span>
                         </div>
+                        {(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').length > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-800"
+                            onClick={() => setCancelAllScope('today')}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Cancelar Todas
+                          </Button>
+                        )}
                       </div>
                     </CardTitle>
                   </CardHeader>
@@ -853,6 +897,115 @@ export default function Schedule() {
                           </div>
                         ))}
                       </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="future">
+                <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20 dark:border-white/10 shadow-xl">
+                  <CardHeader className="border-b border-white/10 dark:border-white/5">
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+                          <Clock className="h-4 w-4" />
+                        </div>
+                        <span>Consultas Futuras</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                          <CalendarIcon className="h-4 w-4 text-primary" />
+                          <span>{(futureAppointments || []).length} agendamento(s)</span>
+                        </div>
+                        {(futureAppointments || []).length > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-800"
+                            onClick={() => setCancelAllScope('future')}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Cancelar Todas
+                          </Button>
+                        )}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {futureLoading ? (
+                      <div className="text-center py-12">
+                        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary/20 border-t-primary mx-auto mb-4"></div>
+                        <p className="text-muted-foreground">Carregando consultas futuras...</p>
+                      </div>
+                    ) : !(futureAppointments || []).length ? (
+                      <div className="text-center py-12">
+                        <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                        <h3 className="text-lg font-semibold text-muted-foreground mb-2">Nenhuma consulta futura</h3>
+                        <p className="text-muted-foreground mb-4">Não há consultas agendadas para os próximos dias.</p>
+                        <Button variant="outline" onClick={() => setIsCreateModalOpen(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Agendar Nova Consulta
+                        </Button>
+                      </div>
+                    ) : (
+                      <ScrollArea className="max-h-[600px]">
+                        <div className="space-y-4">
+                          {(futureAppointments || []).map((appointment: any) => {
+                            const aptDate = new Date(appointment.scheduledAt);
+                            return (
+                              <div
+                                key={appointment.id}
+                                className="flex items-center space-x-4 p-6 rounded-2xl transition-all duration-300 hover:shadow-lg backdrop-blur-sm border-l-4 border-indigo-400 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20"
+                              >
+                                <div className="flex-shrink-0 text-center">
+                                  <div className="text-xs text-muted-foreground font-medium">{format(aptDate, "dd/MM", { locale: ptBR })}</div>
+                                  <div className="text-primary font-bold text-lg">{format(aptDate, "HH:mm")}</div>
+                                  <div className="text-[10px] text-muted-foreground">{format(aptDate, "EEEE", { locale: ptBR })}</div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <h3 className="font-semibold text-foreground truncate">
+                                      {appointment.patientName || "Paciente não identificado"}
+                                    </h3>
+                                    {appointment.aiScheduled && (
+                                      <Badge variant="secondary" className="bg-purple-100 text-purple-800">IA</Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                                    <span>
+                                      {appointment.type === 'consultation' ? 'Consulta' :
+                                       appointment.type === 'followup' ? 'Retorno' :
+                                       appointment.type === 'emergency' ? 'Emergência' : appointment.type}
+                                    </span>
+                                    {appointment.notes && <><span>•</span><span>{appointment.notes}</span></>}
+                                  </div>
+                                </div>
+                                <Badge className={getStatusColor(appointment.status)}>
+                                  {appointment.status === 'scheduled' ? 'Agendado' : appointment.status === 'in-progress' ? 'Em andamento' : appointment.status}
+                                </Badge>
+                                <div className="flex items-center space-x-2">
+                                  <Button variant="outline" size="sm" onClick={() => handleGenerateJoinLink(appointment)}>
+                                    <i className="fas fa-link mr-1"></i>Gerar Link
+                                  </Button>
+                                  <Button variant="outline" size="sm" onClick={() => handleEditAppointment(appointment)}>
+                                    <i className="fas fa-edit mr-1"></i>Editar
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-800"
+                                    onClick={() => handleCancelAppointment(appointment)}
+                                    disabled={cancelAppointmentMutation.isPending}
+                                  >
+                                    <XCircle className="h-4 w-4 mr-1" />
+                                    Cancelar
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </ScrollArea>
                     )}
                   </CardContent>
                 </Card>
@@ -1029,11 +1182,11 @@ export default function Schedule() {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setScheduleTab('future')}>
                 <CardContent className="p-6 text-center">
-                  <i className="fas fa-robot text-3xl text-purple-600 mb-3"></i>
-                  <h3 className="font-semibold mb-2">Agendamentos IA</h3>
-                  <p className="text-sm text-muted-foreground">Configurações do agendamento automático</p>
+                  <Clock className="h-8 w-8 text-indigo-600 mx-auto mb-3" />
+                  <h3 className="font-semibold mb-2">Consultas Futuras</h3>
+                  <p className="text-sm text-muted-foreground">Visualize agendamentos dos próximos dias</p>
                 </CardContent>
               </Card>
 
@@ -1041,7 +1194,7 @@ export default function Schedule() {
                 <CardContent className="p-6 text-center">
                   <History className="h-8 w-8 text-indigo-600 mx-auto mb-3" />
                   <h3 className="font-semibold mb-2">Histórico</h3>
-                  <p className="text-sm text-muted-foreground">Visualize consultas e atendimentos anteriores</p>
+                  <p className="text-sm text-muted-foreground">Consultas realizadas, canceladas e expiradas</p>
                 </CardContent>
               </Card>
             </div>
@@ -1428,49 +1581,42 @@ export default function Schedule() {
         </DialogContent>
       </Dialog>
 
-      {/* Quick Actions Cards - Only show on main page */}
-      {!isCreateModalOpen && (
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6" data-testid="quick-actions-grid">
-          <Card 
-            className="hover:shadow-lg transition-all duration-300 backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20 dark:border-white/10 cursor-pointer group" 
-            data-testid="quick-action-schedule"
-          >
-            <CardContent className="p-6 text-center">
-              <div className="mx-auto w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Clock className="h-6 w-6 text-white" />
-              </div>
-              <h3 className="font-semibold mb-2">Horários Disponíveis</h3>
-              <p className="text-sm text-muted-foreground">Configure seus horários de atendimento</p>
-            </CardContent>
-          </Card>
+      {/* Cancel All Confirmation Dialog */}
+      <Dialog open={!!cancelAllScope} onOpenChange={(open) => { if (!open) setCancelAllScope(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Cancelar Todas as Consultas
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+              <p className="text-sm text-red-800 dark:text-red-200">
+                {cancelAllScope === 'today'
+                  ? `Você está prestes a cancelar todas as ${(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').length} consulta(s) pendente(s) de hoje.`
+                  : `Você está prestes a cancelar todas as ${(futureAppointments || []).length} consulta(s) futura(s) agendada(s).`}
+              </p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Todas as consultas serão marcadas como canceladas e movidas para o histórico. Os pacientes serão notificados. Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setCancelAllScope(null)}>
+                Voltar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => cancelAllScope && cancelAllMutation.mutate(cancelAllScope)}
+                disabled={cancelAllMutation.isPending}
+              >
+                {cancelAllMutation.isPending ? 'Cancelando...' : 'Confirmar Cancelamento'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-          <Card 
-            className="hover:shadow-lg transition-all duration-300 backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20 dark:border-white/10 cursor-pointer group" 
-            data-testid="quick-action-ai"
-          >
-            <CardContent className="p-6 text-center">
-              <div className="mx-auto w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <i className="fas fa-robot text-white"></i>
-              </div>
-              <h3 className="font-semibold mb-2">Agendamentos IA</h3>
-              <p className="text-sm text-muted-foreground">Configurações do agendamento automático</p>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="hover:shadow-lg transition-all duration-300 backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20 dark:border-white/10 cursor-pointer group" 
-            data-testid="quick-action-reports"
-          >
-            <CardContent className="p-6 text-center">
-              <div className="mx-auto w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <i className="fas fa-chart-bar text-white"></i>
-              </div>
-              <h3 className="font-semibold mb-2">Relatórios</h3>
-              <p className="text-sm text-muted-foreground">Visualize estatísticas de atendimento</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
       </div>
     </PageWrapper>
   );

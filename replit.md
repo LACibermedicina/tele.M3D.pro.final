@@ -29,7 +29,8 @@ The application features an Express.js backend and a React frontend, with shared
 - **Financial Management:** Manages TMC credits with package purchases via PayPal and a detailed transaction history.
 - **Epidemiological Reports:** AI-powered analysis of clinical data to generate epidemiological insights, including symptom frequency, triage level distribution, and age group breakdowns using MeSH and ICD codes.
 - **Medical Teams & Inter-Consultations:** Facilitates team collaboration with discussion rooms, inter-consultation features, and structured note-taking.
-- **Doctor Schedule:** Comprehensive daily schedule and history views, with an option for instant consultations with online patients.
+- **Doctor Schedule:** Three-tab structure: "Hoje" (today's open/active consultations), "Futuras" (upcoming scheduled appointments after today), and "Histórico" (completed, cancelled, expired). Both "Hoje" and "Futuras" tabs include a "Cancelar Todas" button with confirmation dialog that bulk-cancels all pending appointments, notifies patients via WebSocket + persistent notifications, and moves them to history. Backend: `POST /api/appointments/cancel-all` (scope: today|future|all), `GET /api/appointments/doctor/:id/future`. Instant consultation with online patients available.
+- **IAM3D Interconsulta:** Real-time AI diagnostic analysis during video consultations. Auto-triggers when doctor saves notes (minimum 2 doctor_notes or 1 transcription). Displays in AI panel with purple-themed cards, latest analysis prominent, older analyses collapsible. Note type: `iam3d_diagnostic`.
 
 ## External Dependencies
 - **Database:** PostgreSQL (hosted on Neon)

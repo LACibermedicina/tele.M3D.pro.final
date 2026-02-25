@@ -17,7 +17,7 @@ import medicalTeamsRouter from "./routes/medical-teams";
 import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
-import { eq, desc, sql, and, or, isNotNull, inArray } from "drizzle-orm";
+import { eq, desc, sql, and, or, isNotNull, inArray, gte, lte } from "drizzle-orm";
 import { generateAgoraToken, getAgoraAppId } from "./agora";
 
 // TMC Credit System Validation Schemas
@@ -1595,6 +1595,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(appointment);
     } catch (error) {
       res.status(500).json({ message: 'Failed to update appointment' });
+    }
+  });
+
+  app.post('/api/appointments/cancel-all', async (req, res) => {
+    try {
+      const { doctorId, scope } = req.body;
+      if (!doctorId || !scope) {
+        return res.status(400).json({ message: 'doctorId and scope (today|future|all) are required' });
+      }
+
+      const now = new Date();
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date(now);
+      todayEnd.setHours(23, 59, 59, 999);
+
+      let conditions: any[];
+      if (scope === 'today') {
+        conditions = [
+          eq(appointments.doctorId, doctorId),
+          or(eq(appointments.status, 'scheduled'), eq(appointments.status, 'in-progress')),
+          gte(appointments.scheduledAt, todayStart),
+          lte(appointments.scheduledAt, todayEnd),
+        ];
+      } else if (scope === 'future') {
+        const tomorrowStart = new Date(todayEnd.getTime() + 1);
+        conditions = [
+          eq(appointments.doctorId, doctorId),
+          or(eq(appointments.status, 'scheduled'), eq(appointments.status, 'in-progress')),
+          gte(appointments.scheduledAt, tomorrowStart),
+        ];
+      } else {
+        conditions = [
+          eq(appointments.doctorId, doctorId),
+          or(eq(appointments.status, 'scheduled'), eq(appointments.status, 'in-progress')),
+        ];
+      }
+
+      const cancelled = await db.update(appointments)
+        .set({ status: 'cancelled', updatedAt: new Date() })
+        .where(and(...conditions))
+        .returning();
+
+      broadcastToDoctor(doctorId, { type: 'appointments_bulk_cancelled', data: { count: cancelled.length } });
+
+      for (const apt of cancelled) {
+        if (apt.patientId) {
+          try {
+            const patient = await storage.getPatient(apt.patientId);
+            if (patient?.userId) {
+              broadcastToUser(patient.userId, {
+                type: 'appointment_cancelled',
+                data: { appointmentId: apt.id, scheduledAt: apt.scheduledAt },
+              });
+              await storage.createNotification({
+                userId: patient.userId,
+                type: 'appointment',
+                title: 'Consulta cancelada',
+                message: `Sua consulta agendada para ${new Date(apt.scheduledAt).toLocaleString('pt-BR')} foi cancelada pelo médico.`,
+                data: { appointmentId: apt.id },
+              });
+            }
+          } catch {}
+        }
+      }
+
+      res.json({ cancelled: cancelled.length, appointments: cancelled });
+    } catch (error) {
+      console.error('Batch cancel error:', error);
+      res.status(500).json({ message: 'Failed to cancel appointments' });
+    }
+  });
+
+  app.get('/api/appointments/doctor/:doctorId/future', async (req, res) => {
+    try {
+      const { doctorId } = req.params;
+      const now = new Date();
+      const todayEnd = new Date(now);
+      todayEnd.setHours(23, 59, 59, 999);
+      const tomorrowStart = new Date(todayEnd.getTime() + 1);
+
+      const futureAppts = await db.select()
+        .from(appointments)
+        .where(and(
+          eq(appointments.doctorId, doctorId),
+          or(eq(appointments.status, 'scheduled'), eq(appointments.status, 'in-progress')),
+          gte(appointments.scheduledAt, tomorrowStart)
+        ))
+        .orderBy(appointments.scheduledAt);
+
+      const patientIds = [...new Set(futureAppts.map(a => a.patientId).filter(Boolean))];
+      const patientMap: Record<string, any> = {};
+      for (const pid of patientIds) {
+        if (pid) {
+          try {
+            const p = await storage.getPatient(pid);
+            if (p) patientMap[pid] = p;
+          } catch {}
+        }
+      }
+
+      res.json(futureAppts.map(a => ({
+        ...a,
+        patientName: a.patientId && patientMap[a.patientId] ? patientMap[a.patientId].name : 'Paciente não identificado',
+      })));
+    } catch (error) {
+      console.error('Future appointments error:', error);
+      res.status(500).json({ message: 'Failed to get future appointments' });
     }
   });
 
