@@ -20,7 +20,7 @@ import {
   MessageSquare, RefreshCw, CheckCircle, PlusCircle, Users, Send,
   Bell, Phone, Activity, ClipboardList, BookOpen, ChevronRight,
   Brain, BarChart3, Loader2, Search, UserPlus, Wifi, WifiOff,
-  ArrowRight, History, NotebookPen, Siren
+  ArrowRight, History, NotebookPen, Siren, PhoneOff, XCircle
 } from "lucide-react";
 
 type IncompleteConsultation = {
@@ -96,9 +96,51 @@ export default function IncompleteConsultations() {
   const [selectedSpecialistId, setSelectedSpecialistId] = useState<string | null>(null);
   const [offlineMessage, setOfflineMessage] = useState("");
 
+  const [showCloseAllDialog, setShowCloseAllDialog] = useState(false);
+
   const { data: incompleteConsultations = [], isLoading } = useQuery<IncompleteConsultation[]>({
     queryKey: ["/api/video-consultations/incomplete"],
     enabled: !!user,
+  });
+
+  const { data: activeConsultations = [], isLoading: isLoadingActive } = useQuery<any[]>({
+    queryKey: ["/api/video-consultations/active", user?.id],
+    enabled: !!user?.id,
+    refetchInterval: 15000,
+  });
+
+  const closeAllMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/video-consultations/close-all-active");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/video-consultations/active"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/video-consultations/incomplete"] });
+      setShowCloseAllDialog(false);
+      toast({ title: "Videochamadas encerradas", description: data.message });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível encerrar as videochamadas.", variant: "destructive" });
+    },
+  });
+
+  const closeOneMutation = useMutation({
+    mutationFn: async (consultationId: string) => {
+      const res = await apiRequest("POST", `/api/video-consultations/${consultationId}/end`, {
+        completionStatus: "ended",
+        endReason: "doctor_manual_close",
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/video-consultations/active"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/video-consultations/incomplete"] });
+      toast({ title: "Videochamada encerrada" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível encerrar a videochamada.", variant: "destructive" });
+    },
   });
 
   const { data: consultationNotes = [] } = useQuery<ConsultationNote[]>({
@@ -257,6 +299,59 @@ export default function IncompleteConsultations() {
           Ir para Agenda
         </Button>
       </div>
+
+      {activeConsultations.length > 0 && (
+        <Card className="mb-6 border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Video className="h-5 w-5 text-red-500 animate-pulse" />
+                Videochamadas Ativas ({activeConsultations.length})
+              </CardTitle>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowCloseAllDialog(true)}
+                disabled={closeAllMutation.isPending}
+              >
+                {closeAllMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <PhoneOff className="h-4 w-4 mr-1" />
+                )}
+                Encerrar Todas
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {activeConsultations.map((vc: any) => (
+                <div key={vc.id} className="flex items-center justify-between p-3 rounded-lg border border-red-200 dark:border-red-800 bg-white dark:bg-gray-900">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{vc.patientName || 'Paciente'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {vc.status === 'waiting' ? 'Aguardando' : 'Em andamento'}
+                        {vc.startedAt && ` • ${format(new Date(vc.startedAt), "HH:mm", { locale: ptBR })}`}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30 flex-shrink-0 h-8 w-8 p-0"
+                    onClick={() => closeOneMutation.mutate(vc.id)}
+                    disabled={closeOneMutation.isPending}
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: List of incomplete consultations */}
@@ -1044,6 +1139,38 @@ export default function IncompleteConsultations() {
             >
               {offlineNotifyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
               Enviar Notificações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCloseAllDialog} onOpenChange={setShowCloseAllDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PhoneOff className="h-5 w-5 text-red-500" />
+              Encerrar Todas as Videochamadas
+            </DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja encerrar todas as {activeConsultations.length} videochamada{activeConsultations.length !== 1 ? 's' : ''} ativa{activeConsultations.length !== 1 ? 's' : ''}? 
+              Os pacientes serão desconectados e notificados.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCloseAllDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => closeAllMutation.mutate()}
+              disabled={closeAllMutation.isPending}
+            >
+              {closeAllMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <PhoneOff className="h-4 w-4 mr-1" />
+              )}
+              Confirmar Encerramento
             </Button>
           </DialogFooter>
         </DialogContent>

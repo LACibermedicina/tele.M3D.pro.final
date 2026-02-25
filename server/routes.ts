@@ -2797,10 +2797,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/video-consultations/active/:doctorId', async (req, res) => {
     try {
       const consultations = await storage.getActiveVideoConsultations(req.params.doctorId);
-      res.json(consultations);
+
+      const patientIds = [...new Set(consultations.map((vc: any) => vc.patientId).filter(Boolean))];
+      const patientMap: Record<string, any> = {};
+      for (const pid of patientIds) {
+        if (pid) {
+          try {
+            const p = await storage.getPatient(pid);
+            if (p) patientMap[pid] = p;
+          } catch {}
+        }
+      }
+
+      const enriched = consultations.map((vc: any) => ({
+        ...vc,
+        patientName: vc.patientId && patientMap[vc.patientId] ? patientMap[vc.patientId].name : 'Paciente não identificado',
+      }));
+
+      res.json(enriched);
     } catch (error) {
       console.error('Get active consultations error:', error);
       res.status(500).json({ message: 'Failed to get active consultations' });
+    }
+  });
+
+  app.post('/api/video-consultations/close-all-active', async (req: any, res) => {
+    try {
+      const doctorId = req.user?.id || actualDoctorId || DEFAULT_DOCTOR_ID;
+      const activeConsultations = await storage.getActiveVideoConsultations(doctorId);
+      
+      if (activeConsultations.length === 0) {
+        return res.json({ message: 'Nenhuma videochamada ativa encontrada.', closed: 0 });
+      }
+
+      let closedCount = 0;
+      for (const consultation of activeConsultations) {
+        try {
+          await storage.updateVideoConsultation(consultation.id, {
+            status: 'ended',
+            endedAt: new Date(),
+            connectionLogs: { endReason: 'bulk_close_by_doctor', completionStatus: 'ended' }
+          });
+          closedCount++;
+
+          if (wss) {
+            wss.clients.forEach((client: any) => {
+              if (client.readyState === 1) {
+                client.send(JSON.stringify({
+                  type: 'consultation_ended',
+                  consultationId: consultation.id,
+                  reason: 'doctor_closed_all'
+                }));
+              }
+            });
+          }
+        } catch (err) {
+          console.error(`Failed to close consultation ${consultation.id}:`, err);
+        }
+      }
+
+      res.json({ 
+        message: `${closedCount} videochamada${closedCount !== 1 ? 's' : ''} encerrada${closedCount !== 1 ? 's' : ''}.`,
+        closed: closedCount 
+      });
+    } catch (error) {
+      console.error('Close all active consultations error:', error);
+      res.status(500).json({ message: 'Erro ao encerrar videochamadas.' });
     }
   });
 
