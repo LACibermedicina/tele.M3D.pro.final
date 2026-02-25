@@ -59,10 +59,22 @@ export default function PatientVideoConsultation() {
   const localVideoRef = useRef<HTMLDivElement>(null);
   const remoteVideoRef = useRef<HTMLDivElement>(null);
 
-  const { data: consultation } = useQuery({
+  const { data: consultation } = useQuery<any>({
     queryKey: ['/api/video-consultations', consultationId],
     enabled: !!consultationId,
+    refetchInterval: 5000,
   });
+
+  useEffect(() => {
+    if (consultation?.status === 'ended') {
+      leaveChannel();
+      toast({
+        title: 'Consulta encerrada',
+        description: 'O médico encerrou a consulta.',
+      });
+      setLocation('/my-consultations');
+    }
+  }, [consultation?.status]);
 
   const { data: notes = [] } = useQuery<ConsultationNote[]>({
     queryKey: ['/api/video-consultations', consultationId, 'notes'],
@@ -213,12 +225,17 @@ export default function PatientVideoConsultation() {
   };
 
   const endCall = async () => {
+    try {
+      await apiRequest('POST', `/api/video-consultations/${consultationId}/leave`, {});
+    } catch (e) {
+      console.error('Error notifying leave:', e);
+    }
     await leaveChannel();
     toast({
-      title: 'Consulta encerrada',
-      description: 'Você saiu da vídeo consulta.',
+      title: 'Você saiu da consulta',
+      description: 'Você saiu da vídeo consulta. O médico será notificado.',
     });
-    setLocation('/dashboard');
+    setLocation('/my-consultations');
   };
 
   const chatNotes = notes.filter((n) => n.type === 'chat');

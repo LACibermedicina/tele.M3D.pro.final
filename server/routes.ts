@@ -17,7 +17,7 @@ import medicalTeamsRouter from "./routes/medical-teams";
 import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
-import { eq, desc, sql, and, or, isNotNull } from "drizzle-orm";
+import { eq, desc, sql, and, or, isNotNull, inArray } from "drizzle-orm";
 import { generateAgoraToken, getAgoraAppId } from "./agora";
 
 // TMC Credit System Validation Schemas
@@ -2658,8 +2658,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // End video consultation
-  app.post('/api/video-consultations/:id/end', async (req, res) => {
+  // End video consultation (doctor ends the consultation)
+  app.post('/api/video-consultations/:id/end', async (req: any, res) => {
     try {
       const { duration, meetingNotes } = req.body;
       
@@ -2671,26 +2671,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       if (!consultation) {
-        return res.status(404).json({ message: 'Video consultation not found' });
+        return res.status(404).json({ message: 'Consulta não encontrada' });
       }
 
       // Calculate and charge credits for consultation duration
       if (duration && duration > 0 && consultation.patientId) {
         try {
           const config = await tmcCreditsService.getCreditConfig();
-          const durationMinutes = Math.ceil(duration / 60); // Convert seconds to minutes, round up
+          const durationMinutes = Math.ceil(duration / 60);
           const totalCredits = durationMinutes * config.CREDIT_PER_MINUTE;
           
-          // Get patient's user ID
           const patient = await storage.getPatient(consultation.patientId);
           
           if (patient?.userId) {
-            const user = await db.select().from(users).where(eq(users.id, patient.userId)).limit(1);
+            const userArr = await db.select().from(users).where(eq(users.id, patient.userId)).limit(1);
             
-            // Charge credits if user is not admin
-            if (user[0] && user[0].role !== 'admin') {
+            if (userArr[0] && userArr[0].role !== 'admin') {
               try {
-                // Debit from patient
                 await tmcCreditsService.debitCredits(
                   patient.userId,
                   totalCredits,
@@ -2703,7 +2700,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                 );
                 
-                // Apply commission to doctor
                 if (consultation.doctorId) {
                   const commissionAmount = Math.floor((totalCredits * config.DOCTOR_COMMISSION_PERCENT) / 100);
                   if (commissionAmount > 0) {
@@ -2724,7 +2720,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log(`✅ Charged ${totalCredits} credits for ${durationMinutes} minutes consultation`);
               } catch (creditError: any) {
                 console.error('Credit charging error:', creditError);
-                // Don't fail the consultation end if credits fail
                 if (creditError.message === 'Insufficient credits') {
                   console.warn('Patient has insufficient credits, consultation ended without charge');
                 }
@@ -2733,16 +2728,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } catch (error) {
           console.error('Error processing consultation credits:', error);
-          // Don't fail consultation end if credit processing fails
         }
       }
 
-      broadcastToDoctor(consultation.doctorId || actualDoctorId || DEFAULT_DOCTOR_ID, { type: 'consultation_ended', data: consultation });
+      // Notify doctor
+      broadcastToDoctor(consultation.doctorId || DEFAULT_DOCTOR_ID, { type: 'consultation_ended', data: consultation });
+
+      // Notify patient that consultation was ended
+      if (consultation.patientId) {
+        try {
+          const patient = await storage.getPatient(consultation.patientId);
+          if (patient?.userId) {
+            broadcastToUser(patient.userId, {
+              type: 'consultation_ended',
+              data: {
+                consultationId: consultation.id,
+                message: 'A consulta foi encerrada pelo médico.',
+                actionUrl: '/my-consultations'
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Failed to notify patient about end:', e);
+        }
+      }
       
       res.json(consultation);
     } catch (error) {
       console.error('End consultation error:', error);
-      res.status(500).json({ message: 'Failed to end consultation' });
+      res.status(500).json({ message: 'Falha ao encerrar consulta' });
+    }
+  });
+
+  // Patient leaves consultation (doesn't end it, just leaves the video)
+  app.post('/api/video-consultations/:id/leave', async (req: any, res) => {
+    try {
+      const consultationId = req.params.id;
+      const consultation = await db.select().from(videoConsultations).where(eq(videoConsultations.id, consultationId)).limit(1);
+      
+      if (!consultation.length) {
+        return res.status(404).json({ message: 'Consulta não encontrada' });
+      }
+
+      // Notify doctor that patient left
+      if (consultation[0].doctorId) {
+        let patientName = 'Paciente';
+        try {
+          if (consultation[0].patientId) {
+            const patient = await storage.getPatient(consultation[0].patientId);
+            if (patient) patientName = patient.name;
+          }
+        } catch {}
+        broadcastToDoctor(consultation[0].doctorId, {
+          type: 'patient_left_consultation',
+          data: {
+            consultationId,
+            patientName,
+            message: `${patientName} saiu da consulta.`
+          }
+        });
+      }
+
+      res.json({ message: 'Saiu da consulta com sucesso' });
+    } catch (error) {
+      console.error('Leave consultation error:', error);
+      res.status(500).json({ message: 'Falha ao sair da consulta' });
     }
   });
 
@@ -5120,18 +5170,20 @@ DIRETRIZES DE REFERÊNCIA: Baseie suas respostas nas diretrizes da OMS, Protocol
   // Patient joins doctor's office
   app.post('/api/doctor-office/join/:doctorId', requireAuth, async (req: any, res) => {
     try {
+      const doctorId = req.params.doctorId;
+
       // Verify doctor's office is open
       const doctor = await db.select()
         .from(users)
-        .where(eq(users.id, req.params.doctorId))
+        .where(eq(users.id, doctorId))
         .limit(1);
 
       if (!doctor.length || doctor[0].role !== 'doctor') {
-        return res.status(404).json({ message: 'Doctor not found' });
+        return res.status(404).json({ message: 'Médico não encontrado' });
       }
 
       if (!doctor[0].availableForImmediate || !doctor[0].isOnline) {
-        return res.status(400).json({ message: 'Doctor office is not open' });
+        return res.status(400).json({ message: 'O consultório do médico não está aberto no momento' });
       }
 
       // Get or create patient
@@ -5141,23 +5193,45 @@ DIRETRIZES DE REFERÊNCIA: Baseie suas respostas nas diretrizes da OMS, Protocol
         .limit(1);
 
       if (!patient.length) {
-        // Create patient profile if doesn't exist
         const newPatient = await db.insert(patients)
           .values({
             userId: req.user.id,
-            name: req.user.name,
+            name: req.user.name || 'Paciente',
             email: req.user.email || '',
-            phone: ''
+            phone: req.user.phone || 'não informado'
           })
           .returning();
         patient = newPatient;
       }
 
+      const patientId = patient[0].id;
+
+      // Check for existing active/waiting consultation with this doctor
+      const existingConsultation = await db.select()
+        .from(videoConsultations)
+        .where(
+          and(
+            eq(videoConsultations.patientId, patientId),
+            eq(videoConsultations.doctorId, doctorId),
+            inArray(videoConsultations.status, ['waiting', 'active'])
+          )
+        )
+        .limit(1);
+
+      if (existingConsultation.length > 0) {
+        return res.json({
+          message: 'Joined office successfully',
+          consultationId: existingConsultation[0].id,
+          appointmentId: existingConsultation[0].appointmentId,
+          channelName: existingConsultation[0].agoraChannelName || `doctor-office-${doctorId}`
+        });
+      }
+
       // Create appointment for this consultation
       const appointment = await db.insert(appointments)
         .values({
-          doctorId: req.params.doctorId,
-          patientId: patient[0].id,
+          doctorId,
+          patientId,
           type: 'immediate',
           status: 'scheduled',
           scheduledAt: new Date(),
@@ -5169,18 +5243,18 @@ DIRETRIZES DE REFERÊNCIA: Baseie suas respostas nas diretrizes da OMS, Protocol
       const consultation = await db.insert(videoConsultations)
         .values({
           appointmentId: appointment[0].id,
-          patientId: patient[0].id,
-          doctorId: req.params.doctorId,
+          patientId,
+          doctorId,
           status: 'waiting',
-          agoraChannelName: `doctor-office-${req.params.doctorId}`
+          agoraChannelName: `doctor-office-${doctorId}`
         })
         .returning();
 
       // Notify doctor via WebSocket
-      broadcastToDoctor(req.params.doctorId, {
+      broadcastToDoctor(doctorId, {
         type: 'patient_joined_office',
         patient: {
-          id: patient[0].id,
+          id: patientId,
           name: patient[0].name
         },
         consultationId: consultation[0].id
@@ -5201,11 +5275,11 @@ DIRETRIZES DE REFERÊNCIA: Baseie suas respostas nas diretrizes da OMS, Protocol
         message: 'Joined office successfully',
         consultationId: consultation[0].id,
         appointmentId: appointment[0].id,
-        channelName: `doctor-office-${req.params.doctorId}`
+        channelName: `doctor-office-${doctorId}`
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Join office error:', error);
-      res.status(500).json({ message: 'Failed to join office' });
+      res.status(500).json({ message: error.message || 'Falha ao entrar no consultório' });
     }
   });
 

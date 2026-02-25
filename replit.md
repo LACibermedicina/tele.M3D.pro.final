@@ -66,6 +66,14 @@ All AI prompts (chatbot, triage, video consultation, medical records, SOAP repor
 - **Audio Transcription**: Real-time speech-to-text using browser SpeechRecognition API (Chrome/Edge). Entries show timestamp, speaker (Doutor/Paciente), text. Doctor can toggle speaker identification manually. Export to .txt or save to consultation notes. Auto-saves on call end.
 - **Notes**: Doctor annotations, saved transcriptions displayed with border accents. All notes included in meetingNotes on call end.
 - **Consultation note types**: `chat`, `ai_query`, `ai_response`, `doctor_note`, `annotation`, `transcription`
+- **End Call**: Doctor's "end call" button saves transcriptions, calculates duration, charges credits, and notifies patient via WebSocket
+
+## Video Consultation Features (Patient)
+- **Route**: `/patient/video/:consultationId`
+- **Join**: Patient joins via `/api/doctor-office/join/:doctorId` (idempotent, reuses existing active consultation)
+- **Leave**: Patient can leave call via "Sair" button → calls `/api/video-consultations/:id/leave` → notifies doctor
+- **Auto-redirect**: If doctor ends consultation, patient is auto-redirected to `/my-consultations` via polling consultation status
+- **Chat**: Real-time chat with doctor during video call
 
 ## WhatsApp IA (Doctor Messaging)
 - **Route**: `/whatsapp` - Central de mensagens inteligente
