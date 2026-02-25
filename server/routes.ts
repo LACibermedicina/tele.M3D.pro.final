@@ -10428,8 +10428,12 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         // Doctors see only their own prescriptions
         query = query.where(eq(prescriptions.doctorId, req.user.id));
       } else if (req.user?.role === 'patient') {
-        // Patients see only their own prescriptions
-        query = query.where(eq(prescriptions.patientId, req.user.id));
+        const patient = await storage.getPatientByUserId(req.user.id);
+        if (patient) {
+          query = query.where(eq(prescriptions.patientId, patient.id));
+        } else {
+          return res.json([]);
+        }
       }
       // Admins see all prescriptions (no filter)
       
