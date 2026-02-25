@@ -3095,13 +3095,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Broadcast note to participants
+      // Broadcast note to ALL participants (doctor and patient)
       const consultation2 = await storage.getVideoConsultation(req.params.id);
       if (consultation2) {
         broadcastToDoctor(consultation2.doctorId, {
           type: 'consultation_note_added',
           data: note
         });
+        if (consultation2.patientId) {
+          const notePatient = await storage.getPatient(consultation2.patientId);
+          if (notePatient?.userId) {
+            broadcastToUser(notePatient.userId, {
+              type: 'consultation_note_added',
+              data: note
+            });
+          }
+        }
       }
 
       // Generate AI response for ai_query notes

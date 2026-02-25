@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWebSocket } from '@/hooks/use-websocket';
 
 type ConsultationNote = {
   id: string;
@@ -43,6 +44,7 @@ export default function PatientVideoConsultation() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { messages: wsMessages } = useWebSocket();
   const consultationId = params?.consultationId || '';
 
   const [client, setClient] = useState<IAgoraRTCClient | null>(null);
@@ -120,22 +122,42 @@ export default function PatientVideoConsultation() {
     const agoraClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
     setClient(agoraClient);
 
-    agoraClient.on('user-published', async (user, mediaType) => {
-      await agoraClient.subscribe(user, mediaType);
-      if (mediaType === 'video') {
-        setRemoteUsers((prev) => {
-          const exists = prev.find((u) => u.uid === user.uid);
-          if (exists) return prev;
-          return [...prev, user];
-        });
-      }
-      if (mediaType === 'audio') {
-        user.audioTrack?.play();
+    agoraClient.on('user-published', async (remoteUser, mediaType) => {
+      try {
+        await agoraClient.subscribe(remoteUser, mediaType);
+        if (mediaType === 'video') {
+          setRemoteUsers((prev) => {
+            if (prev.find((u) => u.uid === remoteUser.uid)) return prev;
+            return [...prev, remoteUser];
+          });
+          if (remoteVideoRef.current) {
+            remoteUser.videoTrack?.play(remoteVideoRef.current);
+          }
+        }
+        if (mediaType === 'audio') {
+          remoteUser.audioTrack?.play();
+        }
+      } catch (err) {
+        console.error('Error subscribing to user:', err);
       }
     });
 
-    agoraClient.on('user-unpublished', (user) => {
-      setRemoteUsers((prev) => prev.filter((u) => u.uid !== user.uid));
+    agoraClient.on('user-unpublished', (remoteUser, mediaType) => {
+      if (mediaType === 'video' && remoteVideoRef.current) {
+        remoteUser.videoTrack?.stop();
+      }
+    });
+
+    agoraClient.on('user-left', (remoteUser) => {
+      setRemoteUsers((prev) => prev.filter((u) => u.uid !== remoteUser.uid));
+    });
+
+    agoraClient.on('user-joined', (remoteUser) => {
+      console.log('Remote user joined:', remoteUser.uid);
+      setRemoteUsers((prev) => {
+        if (prev.find((u) => u.uid === remoteUser.uid)) return prev;
+        return [...prev, remoteUser];
+      });
     });
 
     return () => {
@@ -153,9 +175,21 @@ export default function PatientVideoConsultation() {
   useEffect(() => {
     if (remoteUsers.length > 0 && remoteVideoRef.current) {
       const remoteUser = remoteUsers[0];
-      remoteUser.videoTrack?.play(remoteVideoRef.current);
+      if (remoteUser.videoTrack) {
+        remoteUser.videoTrack.play(remoteVideoRef.current);
+      }
     }
   }, [remoteUsers]);
+
+  useEffect(() => {
+    const latestMsg = wsMessages[wsMessages.length - 1];
+    if (latestMsg?.type === 'consultation_note_added' && consultationId) {
+      const noteData = latestMsg.data;
+      if (!noteData?.consultationId || noteData.consultationId === consultationId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/video-consultations', consultationId, 'notes'] });
+      }
+    }
+  }, [wsMessages, consultationId]);
 
   const joinChannel = async () => {
     if (!client || !agoraConfig || joined) return;
@@ -166,14 +200,33 @@ export default function PatientVideoConsultation() {
         agoraConfig.token,
         agoraConfig.uid
       );
-      const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-      const videoTrack = await AgoraRTC.createCameraVideoTrack();
-      setLocalAudioTrack(audioTrack);
-      setLocalVideoTrack(videoTrack);
-      if (localVideoRef.current) {
-        videoTrack.play(localVideoRef.current);
+
+      const tracksToPublish: (ICameraVideoTrack | IMicrophoneAudioTrack)[] = [];
+
+      try {
+        const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        setLocalAudioTrack(audioTrack);
+        tracksToPublish.push(audioTrack);
+      } catch (audioErr) {
+        console.warn('Could not create audio track:', audioErr);
       }
-      await client.publish([audioTrack, videoTrack]);
+
+      try {
+        const videoTrack = await AgoraRTC.createCameraVideoTrack();
+        setLocalVideoTrack(videoTrack);
+        if (localVideoRef.current) {
+          videoTrack.play(localVideoRef.current);
+        }
+        tracksToPublish.push(videoTrack);
+      } catch (videoErr) {
+        console.warn('Could not create video track:', videoErr);
+        setIsVideoOn(false);
+      }
+
+      if (tracksToPublish.length > 0) {
+        await client.publish(tracksToPublish);
+      }
+
       setJoined(true);
       toast({
         title: 'Conectado',

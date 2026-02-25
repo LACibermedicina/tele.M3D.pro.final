@@ -43,6 +43,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useWebSocket } from '@/hooks/use-websocket';
 
 type ConsultationNote = {
   id: string;
@@ -71,6 +72,7 @@ export default function VideoConsultation() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { messages: wsMessages } = useWebSocket();
   const patientId = params?.patientId || '';
   const [consultationId, setConsultationId] = useState<string>('');
 
@@ -208,20 +210,41 @@ export default function VideoConsultation() {
     setClient(agoraClient);
 
     agoraClient.on('user-published', async (u, mediaType) => {
-      await agoraClient.subscribe(u, mediaType);
-      if (mediaType === 'video') {
-        setRemoteUsers((prev) => {
-          if (prev.find((x) => x.uid === u.uid)) return prev;
-          return [...prev, u];
-        });
-      }
-      if (mediaType === 'audio') {
-        u.audioTrack?.play();
+      try {
+        await agoraClient.subscribe(u, mediaType);
+        if (mediaType === 'video') {
+          setRemoteUsers((prev) => {
+            if (prev.find((x) => x.uid === u.uid)) return prev;
+            return [...prev, u];
+          });
+          if (remoteVideoRef.current) {
+            u.videoTrack?.play(remoteVideoRef.current);
+          }
+        }
+        if (mediaType === 'audio') {
+          u.audioTrack?.play();
+        }
+      } catch (err) {
+        console.error('Error subscribing to user:', err);
       }
     });
 
-    agoraClient.on('user-unpublished', (u) => {
+    agoraClient.on('user-unpublished', (u, mediaType) => {
+      if (mediaType === 'video' && remoteVideoRef.current) {
+        u.videoTrack?.stop();
+      }
+    });
+
+    agoraClient.on('user-left', (u) => {
       setRemoteUsers((prev) => prev.filter((x) => x.uid !== u.uid));
+    });
+
+    agoraClient.on('user-joined', (u) => {
+      console.log('Remote user joined:', u.uid);
+      setRemoteUsers((prev) => {
+        if (prev.find((x) => x.uid === u.uid)) return prev;
+        return [...prev, u];
+      });
     });
 
     return () => {
@@ -238,26 +261,58 @@ export default function VideoConsultation() {
 
   useEffect(() => {
     if (remoteUsers.length > 0 && remoteVideoRef.current) {
-      remoteUsers[0].videoTrack?.play(remoteVideoRef.current);
+      const remoteUser = remoteUsers[0];
+      if (remoteUser.videoTrack) {
+        remoteUser.videoTrack.play(remoteVideoRef.current);
+      }
     }
   }, [remoteUsers]);
+
+  useEffect(() => {
+    const latestMsg = wsMessages[wsMessages.length - 1];
+    if (latestMsg?.type === 'consultation_note_added' && consultationId) {
+      const noteData = latestMsg.data;
+      if (!noteData?.consultationId || noteData.consultationId === consultationId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/video-consultations', consultationId, 'notes'] });
+      }
+    }
+  }, [wsMessages, consultationId]);
 
   const joinChannel = async () => {
     if (!client || !agoraConfig || joined) return;
     try {
       await client.join(agoraConfig.appId, agoraConfig.channelName, agoraConfig.token, agoraConfig.uid);
-      const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-      const videoTrack = await AgoraRTC.createCameraVideoTrack();
-      setLocalAudioTrack(audioTrack);
-      setLocalVideoTrack(videoTrack);
-      if (localVideoRef.current) videoTrack.play(localVideoRef.current);
-      await client.publish([audioTrack, videoTrack]);
+
+      const tracksToPublish: (ICameraVideoTrack | IMicrophoneAudioTrack)[] = [];
+
+      try {
+        const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        setLocalAudioTrack(audioTrack);
+        tracksToPublish.push(audioTrack);
+      } catch (audioErr) {
+        console.warn('Could not create audio track:', audioErr);
+      }
+
+      try {
+        const videoTrack = await AgoraRTC.createCameraVideoTrack();
+        setLocalVideoTrack(videoTrack);
+        if (localVideoRef.current) videoTrack.play(localVideoRef.current);
+        tracksToPublish.push(videoTrack);
+      } catch (videoErr) {
+        console.warn('Could not create video track:', videoErr);
+        setIsVideoOn(false);
+      }
+
+      if (tracksToPublish.length > 0) {
+        await client.publish(tracksToPublish);
+      }
+
       setJoined(true);
       startConsultationMutation.mutate();
       toast({ title: 'Conectado', description: 'Você entrou na vídeo consulta com sucesso.' });
     } catch (error) {
       console.error('Error joining channel:', error);
-      toast({ title: 'Erro ao conectar', description: 'Não foi possível entrar na vídeo consulta.', variant: 'destructive' });
+      toast({ title: 'Erro ao conectar', description: 'Não foi possível entrar na vídeo consulta. Verifique permissões de câmera/microfone.', variant: 'destructive' });
     }
   };
 
