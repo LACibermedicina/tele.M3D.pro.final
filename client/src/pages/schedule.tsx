@@ -5,12 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, startOfDay, endOfDay, isToday, addMinutes, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2, Video, Plus, MoreHorizontal, Download, Upload } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2, Video, Plus, MoreHorizontal, Download, Upload, History, PhoneCall, Wifi } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import VideoConsultation from "@/components/video-consultation/VideoConsultation";
@@ -37,12 +39,49 @@ export default function Schedule() {
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [upcomingNotifications, setUpcomingNotifications] = useState<any[]>([]);
   const [quickBookMode, setQuickBookMode] = useState(false);
+  const [scheduleTab, setScheduleTab] = useState<'today' | 'history'>('today');
+  const [isInstantConsultOpen, setIsInstantConsultOpen] = useState(false);
+  const [instantPatientId, setInstantPatientId] = useState<string>("");
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: appointments, isLoading } = useQuery<any[]>({
     queryKey: ['/api/appointments/doctor', DEFAULT_DOCTOR_ID, selectedDate.toISOString()],
+  });
+
+  const { data: historyData, isLoading: historyLoading } = useQuery<any>({
+    queryKey: ['/api/appointments/doctor', DEFAULT_DOCTOR_ID, 'history'],
+    enabled: scheduleTab === 'history',
+  });
+
+  const { data: onlinePatients } = useQuery<any[]>({
+    queryKey: ['/api/patients/online-status'],
+    refetchInterval: 10000,
+    enabled: isInstantConsultOpen,
+  });
+
+  const { data: allPatientsForInstant } = useQuery<any[]>({
+    queryKey: ['/api/patients'],
+    enabled: isInstantConsultOpen,
+  });
+
+  const startInstantConsultMutation = useMutation({
+    mutationFn: (patientId: string) => apiRequest('POST', `/api/video-consultations/start-with-patient/${patientId}`, {}),
+    onSuccess: (consultation: any) => {
+      toast({
+        title: "Consulta iniciada",
+        description: "O paciente foi notificado. Aguarde a entrada na sala.",
+      });
+      setIsInstantConsultOpen(false);
+      setInstantPatientId("");
+      setActiveConsultationId(consultation.id);
+      setIsVideoConsultationOpen(true);
+    },
+    onError: (error) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: "destructive" });
+    },
   });
 
   // Real-time notification system with interval updates
@@ -612,176 +651,315 @@ export default function Schedule() {
             </Card>
           </div>
 
-          {/* Enhanced Appointments List */}
+          {/* Appointments Area with Tabs */}
           <div className="lg:col-span-3">
-            <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20 dark:border-white/10 shadow-xl">
-              <CardHeader className="border-b border-white/10 dark:border-white/5">
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-gradient-to-r from-green-500 to-blue-500 text-white">
-                      <Users className="h-4 w-4" />
-                    </div>
-                    <span>Consultas do Dia</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    {upcomingNotifications.length > 0 && (
-                      <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-800 dark:text-orange-200">
-                        <AlertCircle className="h-4 w-4" />
-                        <span className="text-sm font-medium">
-                          {upcomingNotifications.length} próxima{upcomingNotifications.length > 1 ? 's' : ''}
-                        </span>
+            <Tabs value={scheduleTab} onValueChange={(v) => setScheduleTab(v as 'today' | 'history')}>
+              <div className="flex items-center justify-between mb-4">
+                <TabsList className="grid grid-cols-2 w-80">
+                  <TabsTrigger value="today" className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    Agenda do Dia
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="flex items-center gap-2">
+                    <History className="h-4 w-4" />
+                    Histórico
+                  </TabsTrigger>
+                </TabsList>
+                <Button 
+                  onClick={() => setIsInstantConsultOpen(true)}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                  size="sm"
+                >
+                  <PhoneCall className="h-4 w-4 mr-2" />
+                  Consulta Instantânea
+                </Button>
+              </div>
+
+              <TabsContent value="today">
+                <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20 dark:border-white/10 shadow-xl">
+                  <CardHeader className="border-b border-white/10 dark:border-white/5">
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-r from-green-500 to-blue-500 text-white">
+                          <Users className="h-4 w-4" />
+                        </div>
+                        <span>Consultas do Dia</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        {upcomingNotifications.length > 0 && (
+                          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-800 dark:text-orange-200">
+                            <AlertCircle className="h-4 w-4" />
+                            <span className="text-sm font-medium">
+                              {upcomingNotifications.length} próxima{upcomingNotifications.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                          <CalendarIcon className="h-4 w-4 text-primary" />
+                          <span data-testid="text-appointment-count">
+                            {(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').length} consultas pendentes
+                          </span>
+                        </div>
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {!(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').length ? (
+                      <div className="text-center py-12">
+                        <i className="fas fa-calendar-day text-6xl text-muted-foreground mb-4"></i>
+                        <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+                          Nenhuma consulta pendente
+                        </h3>
+                        <p className="text-muted-foreground mb-4">
+                          Não há consultas ativas ou agendadas para este dia.
+                        </p>
+                        <div className="flex items-center justify-center gap-3">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setIsCreateModalOpen(true)}
+                            data-testid="button-add-first-appointment"
+                          >
+                            <i className="fas fa-plus mr-2"></i>
+                            Agendar consulta
+                          </Button>
+                          <Button 
+                            onClick={() => setIsInstantConsultOpen(true)}
+                            className="bg-gradient-to-r from-green-600 to-emerald-600 text-white"
+                          >
+                            <PhoneCall className="h-4 w-4 mr-2" />
+                            Consulta Instantânea
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').map((appointment: any) => (
+                          <div
+                            key={appointment.id}
+                            className={`flex items-center space-x-4 p-6 rounded-2xl transition-all duration-300 hover:shadow-lg backdrop-blur-sm ${getTimeBasedStyling(appointment.scheduledAt)}`}
+                            data-testid={`card-appointment-${appointment.id}`}
+                          >
+                            <div className="flex-shrink-0">
+                              <div className="text-primary font-bold text-lg">
+                                {format(new Date(appointment.scheduledAt), "HH:mm")}
+                              </div>
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <h3 className="font-semibold text-foreground truncate" data-testid={`text-appointment-patient-${appointment.id}`}>
+                                  {appointment.patientName || "Paciente não identificado"}
+                                </h3>
+                                {appointment.aiScheduled && (
+                                  <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                                    <i className="fas fa-robot mr-1"></i>
+                                    IA
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                                <i className={getTypeIcon(appointment.type, appointment.aiScheduled)}></i>
+                                <span data-testid={`text-appointment-type-${appointment.id}`}>
+                                  {appointment.type === 'consultation' ? 'Consulta' :
+                                   appointment.type === 'followup' ? 'Retorno' :
+                                   appointment.type === 'emergency' ? 'Emergência' : appointment.type}
+                                </span>
+                                {appointment.notes && (
+                                  <>
+                                    <span>•</span>
+                                    <span data-testid={`text-appointment-notes-${appointment.id}`}>
+                                      {appointment.notes}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              <Badge 
+                                className={getStatusColor(appointment.status)}
+                                data-testid={`badge-appointment-status-${appointment.id}`}
+                              >
+                                {appointment.status === 'scheduled' ? 'Agendado' :
+                                 appointment.status === 'in-progress' ? 'Em andamento' :
+                                 appointment.status === 'completed' ? 'Concluído' :
+                                 appointment.status === 'cancelled' ? 'Cancelado' : appointment.status}
+                              </Badge>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleStartConsultation(appointment)}
+                                disabled={createVideoConsultationMutation.isPending}
+                                data-testid={`button-start-consultation-${appointment.id}`}
+                              >
+                                <i className="fas fa-video mr-1"></i>
+                                {createVideoConsultationMutation.isPending ? 'Iniciando...' : 'Iniciar'}
+                              </Button>
+                              
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleGenerateJoinLink(appointment)}
+                                data-testid={`button-generate-link-${appointment.id}`}
+                              >
+                                <i className="fas fa-link mr-1"></i>
+                                Gerar Link
+                              </Button>
+                              
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                data-testid={`button-edit-appointment-${appointment.id}`}
+                                onClick={() => handleEditAppointment(appointment)}
+                              >
+                                <i className="fas fa-edit mr-1"></i>
+                                Editar
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <CalendarIcon className="h-4 w-4 text-primary" />
-                      <span data-testid="text-appointment-count">
-                        {(appointments || []).length} consultas agendadas
-                      </span>
-                    </div>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-            <CardContent>
-              {!(appointments || []).length ? (
-                <div className="text-center py-12">
-                  <i className="fas fa-calendar-day text-6xl text-muted-foreground mb-4"></i>
-                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                    Nenhuma consulta agendada
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    Não há consultas marcadas para este dia.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsCreateModalOpen(true)}
-                    data-testid="button-add-first-appointment"
-                  >
-                    <i className="fas fa-plus mr-2"></i>
-                    Agendar primeira consulta
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {(appointments || []).map((appointment: any) => (
-                    <div
-                      key={appointment.id}
-                      className={`flex items-center space-x-4 p-6 rounded-2xl transition-all duration-300 hover:shadow-lg backdrop-blur-sm ${getTimeBasedStyling(appointment.scheduledAt)}`}
-                      data-testid={`card-appointment-${appointment.id}`}
-                    >
-                      <div className="flex-shrink-0">
-                        <div className="text-primary font-bold text-lg">
-                          {format(new Date(appointment.scheduledAt), "HH:mm")}
-                        </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="history">
+                <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20 dark:border-white/10 shadow-xl">
+                  <CardHeader className="border-b border-white/10 dark:border-white/5">
+                    <CardTitle className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
+                        <History className="h-4 w-4" />
                       </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="font-semibold text-foreground truncate" data-testid={`text-appointment-patient-${appointment.id}`}>
-                            {appointment.patientName || "Paciente não identificado"}
-                          </h3>
-                          {appointment.aiScheduled && (
-                            <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                              <i className="fas fa-robot mr-1"></i>
-                              IA
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                          <i className={getTypeIcon(appointment.type, appointment.aiScheduled)}></i>
-                          <span data-testid={`text-appointment-type-${appointment.id}`}>
-                            {appointment.type === 'consultation' ? 'Consulta' :
-                             appointment.type === 'followup' ? 'Retorno' :
-                             appointment.type === 'emergency' ? 'Emergência' : appointment.type}
-                          </span>
-                          {appointment.notes && (
-                            <>
-                              <span>•</span>
-                              <span data-testid={`text-appointment-notes-${appointment.id}`}>
-                                {appointment.notes}
-                              </span>
-                            </>
-                          )}
-                        </div>
+                      <span>Histórico de Consultas</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {historyLoading ? (
+                      <div className="text-center py-12">
+                        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary/20 border-t-primary mx-auto mb-4"></div>
+                        <p className="text-muted-foreground">Carregando histórico...</p>
                       </div>
+                    ) : (
+                      <ScrollArea className="max-h-[600px]">
+                        {historyData?.videoConsultations?.length > 0 && (
+                          <div className="mb-6">
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                              <Video className="h-4 w-4" />
+                              Teleconsultas Realizadas ({historyData.videoConsultations.length})
+                            </h3>
+                            <div className="space-y-3">
+                              {historyData.videoConsultations.map((vc: any) => (
+                                <div key={vc.id} className="flex items-center space-x-4 p-4 rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors">
+                                  <div className="flex-shrink-0">
+                                    <div className="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                                      <Video className="h-4 w-4" />
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-medium text-sm">{vc.patientName}</h4>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                      <Clock className="h-3 w-3" />
+                                      {vc.startedAt ? format(new Date(vc.startedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : format(new Date(vc.createdAt), "dd/MM/yyyy", { locale: ptBR })}
+                                      {vc.duration && <span>• {Math.round(vc.duration / 60)} min</span>}
+                                    </div>
+                                    {vc.meetingNotes && (
+                                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{vc.meetingNotes}</p>
+                                    )}
+                                  </div>
+                                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                                    Concluída
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
-                      <div className="flex items-center space-x-2">
-                        <Badge 
-                          className={getStatusColor(appointment.status)}
-                          data-testid={`badge-appointment-status-${appointment.id}`}
-                        >
-                          {appointment.status === 'scheduled' ? 'Agendado' :
-                           appointment.status === 'completed' ? 'Concluído' :
-                           appointment.status === 'cancelled' ? 'Cancelado' : appointment.status}
-                        </Badge>
-                      </div>
+                        {historyData?.appointments?.length > 0 && (
+                          <div>
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                              <CalendarIcon className="h-4 w-4" />
+                              Agendamentos Anteriores ({historyData.appointments.length})
+                            </h3>
+                            <div className="space-y-3">
+                              {historyData.appointments.map((apt: any) => (
+                                <div key={apt.id} className="flex items-center space-x-4 p-4 rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors">
+                                  <div className="flex-shrink-0">
+                                    <div className="text-muted-foreground font-bold text-sm">
+                                      {format(new Date(apt.scheduledAt), "dd/MM")}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {format(new Date(apt.scheduledAt), "HH:mm")}
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-medium text-sm">{apt.patientName || 'Paciente'}</h4>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                      <i className={getTypeIcon(apt.type, apt.aiScheduled)}></i>
+                                      <span>
+                                        {apt.type === 'consultation' ? 'Consulta' :
+                                         apt.type === 'followup' ? 'Retorno' :
+                                         apt.type === 'emergency' ? 'Emergência' : apt.type}
+                                      </span>
+                                      {apt.notes && <span>• {apt.notes}</span>}
+                                    </div>
+                                  </div>
+                                  <Badge className={getStatusColor(apt.status)}>
+                                    {apt.status === 'completed' ? 'Concluído' : 'Cancelado'}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleStartConsultation(appointment)}
-                          disabled={createVideoConsultationMutation.isPending}
-                          data-testid={`button-start-consultation-${appointment.id}`}
-                        >
-                          <i className="fas fa-video mr-1"></i>
-                          {createVideoConsultationMutation.isPending ? 'Iniciando...' : 'Iniciar'}
-                        </Button>
-                        
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleGenerateJoinLink(appointment)}
-                          data-testid={`button-generate-link-${appointment.id}`}
-                        >
-                          <i className="fas fa-link mr-1"></i>
-                          Gerar Link
-                        </Button>
-                        
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          data-testid={`button-edit-appointment-${appointment.id}`}
-                          onClick={() => handleEditAppointment(appointment)}
-                        >
-                          <i className="fas fa-edit mr-1"></i>
-                          Editar
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                        {(!historyData?.appointments?.length && !historyData?.videoConsultations?.length) && (
+                          <div className="text-center py-12">
+                            <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-muted-foreground mb-2">Nenhum histórico</h3>
+                            <p className="text-muted-foreground">Você ainda não possui consultas anteriores.</p>
+                          </div>
+                        )}
+                      </ScrollArea>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
 
-          {/* Quick Actions */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-6 text-center">
-                <i className="fas fa-clock text-3xl text-primary mb-3"></i>
-                <h3 className="font-semibold mb-2">Horários Disponíveis</h3>
-                <p className="text-sm text-muted-foreground">Configure seus horários de atendimento</p>
-              </CardContent>
-            </Card>
+            {/* Quick Actions */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setIsInstantConsultOpen(true)}>
+                <CardContent className="p-6 text-center">
+                  <PhoneCall className="h-8 w-8 text-green-600 mx-auto mb-3" />
+                  <h3 className="font-semibold mb-2">Consulta Instantânea</h3>
+                  <p className="text-sm text-muted-foreground">Iniciar videochamada com paciente online</p>
+                </CardContent>
+              </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-6 text-center">
-                <i className="fas fa-robot text-3xl text-purple-600 mb-3"></i>
-                <h3 className="font-semibold mb-2">Agendamentos IA</h3>
-                <p className="text-sm text-muted-foreground">Configurações do agendamento automático</p>
-              </CardContent>
-            </Card>
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-6 text-center">
+                  <i className="fas fa-robot text-3xl text-purple-600 mb-3"></i>
+                  <h3 className="font-semibold mb-2">Agendamentos IA</h3>
+                  <p className="text-sm text-muted-foreground">Configurações do agendamento automático</p>
+                </CardContent>
+              </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-6 text-center">
-                <i className="fas fa-chart-bar text-3xl text-green-600 mb-3"></i>
-                <h3 className="font-semibold mb-2">Relatórios</h3>
-                <p className="text-sm text-muted-foreground">Visualize estatísticas de atendimento</p>
-              </CardContent>
-            </Card>
+              <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setScheduleTab('history')}>
+                <CardContent className="p-6 text-center">
+                  <History className="h-8 w-8 text-indigo-600 mx-auto mb-3" />
+                  <h3 className="font-semibold mb-2">Histórico</h3>
+                  <p className="text-sm text-muted-foreground">Visualize consultas e atendimentos anteriores</p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* Appointment Creation Modal */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
@@ -1070,6 +1248,89 @@ export default function Schedule() {
                 Fechar
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Instant Consultation Dialog */}
+      <Dialog open={isInstantConsultOpen} onOpenChange={setIsInstantConsultOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PhoneCall className="h-5 w-5 text-green-600" />
+              Consulta Instantânea
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mb-4">
+            Selecione um paciente para iniciar uma videoconsulta. O paciente receberá uma notificação em tempo real.
+          </p>
+          <div className="space-y-3">
+            <Select value={instantPatientId} onValueChange={setInstantPatientId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um paciente" />
+              </SelectTrigger>
+              <SelectContent>
+                {(allPatientsForInstant || []).map((patient: any) => {
+                  const isOnline = onlinePatients?.find((s: any) => s.patientId === patient.id)?.isOnline;
+                  return (
+                    <SelectItem key={patient.id} value={patient.id}>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
+                        {patient.name}
+                        {isOnline && <span className="text-xs text-green-600 ml-1">Online</span>}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+
+            {onlinePatients && (
+              <div className="rounded-lg bg-green-50 dark:bg-green-900/20 p-3">
+                <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-300 mb-2">
+                  <Wifi className="h-4 w-4" />
+                  <span className="font-medium">Pacientes Online</span>
+                </div>
+                {onlinePatients.filter((p: any) => p.isOnline).length > 0 ? (
+                  <div className="space-y-1">
+                    {onlinePatients.filter((p: any) => p.isOnline).map((p: any) => (
+                      <button
+                        key={p.patientId}
+                        onClick={() => setInstantPatientId(p.patientId)}
+                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                          instantPatientId === p.patientId 
+                            ? 'bg-green-200 dark:bg-green-800 font-medium' 
+                            : 'hover:bg-green-100 dark:hover:bg-green-800/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                          {p.name}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Nenhum paciente online no momento</p>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => { setIsInstantConsultOpen(false); setInstantPatientId(""); }}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => instantPatientId && startInstantConsultMutation.mutate(instantPatientId)}
+              disabled={!instantPatientId || startInstantConsultMutation.isPending}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 text-white"
+            >
+              {startInstantConsultMutation.isPending ? (
+                <><i className="fas fa-spinner fa-spin mr-2"></i>Chamando...</>
+              ) : (
+                <><PhoneCall className="h-4 w-4 mr-2" />Iniciar Chamada</>
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

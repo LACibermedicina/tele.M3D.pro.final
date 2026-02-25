@@ -42,9 +42,25 @@ interface ConsultationRequest {
   };
 }
 
+interface VideoHistoryItem {
+  id: string;
+  doctorId: string;
+  status: string;
+  startedAt: string;
+  endedAt: string;
+  duration: number;
+  meetingNotes: string;
+  createdAt: string;
+  doctor: {
+    name: string;
+    specialty?: string;
+  };
+}
+
 interface MyConsultations {
   upcoming: ConsultationRequest[];
   past: ConsultationRequest[];
+  videoHistory?: VideoHistoryItem[];
   total: number;
 }
 
@@ -219,12 +235,16 @@ export default function MyConsultations() {
           </Card>
         ) : (
           <Tabs defaultValue="upcoming" className="space-y-4">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsList className="grid w-full max-w-lg grid-cols-3">
               <TabsTrigger value="upcoming" data-testid="tab-upcoming">
                 Próximas ({consultations.upcoming.length})
               </TabsTrigger>
               <TabsTrigger value="past" data-testid="tab-past">
-                Anteriores ({consultations.past.length})
+                Solicitações ({consultations.past.length})
+              </TabsTrigger>
+              <TabsTrigger value="videoHistory" data-testid="tab-video-history">
+                <Video className="w-3.5 h-3.5 mr-1.5" />
+                Histórico ({consultations.videoHistory?.length || 0})
               </TabsTrigger>
             </TabsList>
 
@@ -249,6 +269,79 @@ export default function MyConsultations() {
                 </Card>
               ) : (
                 consultations.past.map(renderConsultationCard)
+              )}
+            </TabsContent>
+
+            <TabsContent value="videoHistory" className="space-y-4">
+              {!consultations.videoHistory?.length ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Video className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">Nenhuma teleconsulta realizada</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                consultations.videoHistory.map((vc) => (
+                  <Card key={vc.id} className="mb-4">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Video className="w-5 h-5 text-blue-600" />
+                            Teleconsulta - {vc.startedAt 
+                              ? format(new Date(vc.startedAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                              : format(new Date(vc.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                          </CardTitle>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Concluída
+                            </Badge>
+                            {vc.duration && (
+                              <Badge variant="secondary">
+                                <Clock className="w-3 h-3 mr-1" />
+                                {Math.round(vc.duration / 60)} min
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <h4 className="text-sm font-medium flex items-center gap-2 mb-1">
+                          <User className="w-4 h-4" />
+                          Médico
+                        </h4>
+                        <p className="text-sm font-medium">{vc.doctor.name}</p>
+                        {vc.doctor.specialty && (
+                          <p className="text-sm text-muted-foreground">{vc.doctor.specialty}</p>
+                        )}
+                      </div>
+
+                      {vc.meetingNotes && (
+                        <div>
+                          <h4 className="text-sm font-medium flex items-center gap-2 mb-1">
+                            <FileText className="w-4 h-4" />
+                            Notas da Consulta
+                          </h4>
+                          <p className="text-sm text-muted-foreground">{vc.meetingNotes}</p>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Calendar className="w-3 h-3" />
+                        {vc.startedAt 
+                          ? `Realizada em ${format(new Date(vc.startedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+                          : `Criada em ${format(new Date(vc.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+                        }
+                        {vc.endedAt && vc.startedAt && (
+                          <span>• Duração: {Math.round((new Date(vc.endedAt).getTime() - new Date(vc.startedAt).getTime()) / 60000)} min</span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
               )}
             </TabsContent>
           </Tabs>

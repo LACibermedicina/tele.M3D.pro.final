@@ -47,7 +47,7 @@ All AI prompts (chatbot, triage, video consultation, medical records, SOAP repor
 ## Patient Features
 - **Consultation Request**: `/consultation-request` - AI-powered 4-step symptom triage and doctor recommendations
 - **Waiting Room**: `/immediate-consultation` - View online doctors with urgency room section for on-duty doctors, stats cards, urgency level selector (normal/urgent/emergency). Accessible to visitors and logged-in users.
-- **My Consultations**: `/my-consultations` - Track consultation requests
+- **My Consultations**: `/my-consultations` - Track consultation requests with 3 tabs: Próximas (pending/accepted), Solicitações (completed/declined), Histórico (video consultation history with doctor info, duration, notes)
 - **Prescriptions**: Nav item conditionally shown for patients with active prescriptions within validity dates (via `/api/prescriptions/recent` query in header)
 - **Medical Records**: Nav item "Meu Prontuário" conditionally shown if patient has existing records (via `/api/medical-records/my` query in header). Route `/records` accessible to patients.
 - Navigation: Top header bar always visible for patient pages. Prescription and records nav items only appear for patients who have data.
@@ -118,6 +118,11 @@ All AI prompts (chatbot, triage, video consultation, medical records, SOAP repor
 - **Team Room**: `/team-room/:id` - 3 tabs: Discussion, Inter-Consultation, Files
 - **Notes**: `team_notes` table with types: discussion, interconsultation, case_summary, clinical_question
 - **Features**: Urgency flags, note threading (parentNoteId), doctor invitation dialog, online status
+
+## Doctor Schedule (`/schedule`)
+- **Tabs**: "Agenda do Dia" (active/scheduled appointments only) and "Histórico" (completed/cancelled appointments + ended video consultations)
+- **Instant Consultation**: "Consulta Instantânea" button opens dialog showing online patients (from `/api/patients/online-status`); starts video call via `POST /api/video-consultations/start-with-patient/:patientId` and sends notification to patient
+- **History API**: `GET /api/appointments/doctor/:doctorId/history` returns past appointments and video consultations with patient names
 
 ## Running
 - `npm run dev` starts the development server (Express + Vite on port 5000)

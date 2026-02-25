@@ -1497,6 +1497,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Export appointments to iCal format
+  app.get('/api/appointments/doctor/:doctorId/history', async (req, res) => {
+    try {
+      const { doctorId } = req.params;
+      const { limit: queryLimit = '50' } = req.query;
+
+      const pastAppointments = await db.select()
+        .from(appointments)
+        .where(and(
+          eq(appointments.doctorId, doctorId),
+          or(
+            eq(appointments.status, 'completed'),
+            eq(appointments.status, 'cancelled')
+          )
+        ))
+        .orderBy(desc(appointments.scheduledAt))
+        .limit(parseInt(queryLimit.toString()));
+
+      const pastVideoConsultations = await db.select({
+        id: videoConsultations.id,
+        patientId: videoConsultations.patientId,
+        status: videoConsultations.status,
+        startedAt: videoConsultations.startedAt,
+        endedAt: videoConsultations.endedAt,
+        duration: videoConsultations.duration,
+        meetingNotes: videoConsultations.meetingNotes,
+        createdAt: videoConsultations.createdAt,
+      })
+        .from(videoConsultations)
+        .where(and(
+          eq(videoConsultations.doctorId, doctorId),
+          eq(videoConsultations.status, 'ended')
+        ))
+        .orderBy(desc(videoConsultations.createdAt))
+        .limit(parseInt(queryLimit.toString()));
+
+      const patientIds = [...new Set([
+        ...pastAppointments.map(a => a.patientId).filter(Boolean),
+        ...pastVideoConsultations.map(v => v.patientId).filter(Boolean),
+      ])];
+
+      const patientNames: Record<string, string> = {};
+      for (const pid of patientIds) {
+        if (pid) {
+          try {
+            const p = await storage.getPatient(pid);
+            if (p) patientNames[pid] = p.name;
+          } catch {}
+        }
+      }
+
+      res.json({
+        appointments: pastAppointments.map(a => ({
+          ...a,
+          patientName: a.patientId ? patientNames[a.patientId] || 'Paciente' : 'Paciente',
+        })),
+        videoConsultations: pastVideoConsultations.map(v => ({
+          ...v,
+          patientName: v.patientId ? patientNames[v.patientId] || 'Paciente' : 'Paciente',
+        })),
+      });
+    } catch (error) {
+      console.error('Doctor history error:', error);
+      res.status(500).json({ message: 'Failed to get history' });
+    }
+  });
+
   app.get('/api/appointments/export/:doctorId', async (req, res) => {
     try {
       const { doctorId } = req.params;
@@ -7861,7 +7927,6 @@ Retorne apenas o JSON válido.`;
         })
       );
 
-      // Categorize consultations
       const upcoming = consultationsWithSessions.filter((c: any) => 
         c.status === 'accepted' || c.status === 'pending'
       );
@@ -7869,9 +7934,41 @@ Retorne apenas o JSON válido.`;
         c.status === 'completed' || c.status === 'declined'
       );
 
+      const patientVideoConsultations = await db.select({
+        id: videoConsultations.id,
+        doctorId: videoConsultations.doctorId,
+        status: videoConsultations.status,
+        startedAt: videoConsultations.startedAt,
+        endedAt: videoConsultations.endedAt,
+        duration: videoConsultations.duration,
+        meetingNotes: videoConsultations.meetingNotes,
+        createdAt: videoConsultations.createdAt,
+      })
+        .from(videoConsultations)
+        .where(eq(videoConsultations.patientId, patient.id))
+        .orderBy(desc(videoConsultations.createdAt))
+        .limit(50);
+
+      const doctorIds = [...new Set(patientVideoConsultations.map(v => v.doctorId).filter(Boolean))];
+      const doctorMap: Record<string, { name: string; specialty?: string }> = {};
+      for (const did of doctorIds) {
+        try {
+          const doc = await storage.getUser(did);
+          if (doc) doctorMap[did] = { name: doc.name || 'Médico', specialty: doc.specialty || '' };
+        } catch {}
+      }
+
+      const videoHistory = patientVideoConsultations
+        .filter(v => v.status === 'ended')
+        .map(v => ({
+          ...v,
+          doctor: doctorMap[v.doctorId] || { name: 'Médico', specialty: '' },
+        }));
+
       res.json({
         upcoming,
         past,
+        videoHistory,
         total: consultationsWithSessions.length
       });
     } catch (error) {
