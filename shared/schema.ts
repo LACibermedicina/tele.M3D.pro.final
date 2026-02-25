@@ -1603,6 +1603,29 @@ export const insertDiagnosticInferenceSchema = createInsertSchema(diagnosticInfe
 export type InsertDiagnosticInference = z.infer<typeof insertDiagnosticInferenceSchema>;
 export type DiagnosticInference = typeof diagnosticInferences.$inferSelect;
 
+// Consultation Access Tokens - unique codes for direct consultation access without login
+export const consultationAccessTokens = pgTable('consultation_access_tokens', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  token: varchar('token', { length: 12 }).notNull().unique(),
+  shortCode: varchar('short_code', { length: 8 }).notNull().unique(),
+  consultationId: varchar('consultation_id'),
+  appointmentId: varchar('appointment_id'),
+  patientId: varchar('patient_id').notNull(),
+  doctorId: varchar('doctor_id').notNull(),
+  patientName: varchar('patient_name', { length: 255 }),
+  scheduledAt: timestamp('scheduled_at'),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  status: varchar('status', { length: 20 }).default('active').notNull(), // active, used, expired, revoked
+  accessMethod: varchar('access_method', { length: 20 }), // qrcode, link, whatsapp
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const insertConsultationAccessTokenSchema = createInsertSchema(consultationAccessTokens).omit({ id: true, createdAt: true });
+export type InsertConsultationAccessToken = z.infer<typeof insertConsultationAccessTokenSchema>;
+export type ConsultationAccessToken = typeof consultationAccessTokens.$inferSelect;
+
 // TMC system types
 export interface TmcBalance {
   userId: string;

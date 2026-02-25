@@ -29,11 +29,8 @@ export default function CreditsPage() {
 
   const createOrderMutation = useMutation({
     mutationFn: async (packageId: string) => {
-      return await apiRequest('/api/credits/purchase/create-order', {
-        method: 'POST',
-        body: JSON.stringify({ packageId }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const res = await apiRequest('POST', '/api/credits/purchase/create-order', { packageId });
+      return await res.json();
     },
     onSuccess: (data) => {
       setPaypalOrderId(data.orderId);
@@ -50,11 +47,8 @@ export default function CreditsPage() {
 
   const captureOrderMutation = useMutation({
     mutationFn: async (orderID: string) => {
-      return await apiRequest('/api/credits/purchase/capture', {
-        method: 'POST',
-        body: JSON.stringify({ orderID }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const res = await apiRequest('POST', '/api/credits/purchase/capture', { orderID });
+      return await res.json();
     },
     onSuccess: () => {
       toast({

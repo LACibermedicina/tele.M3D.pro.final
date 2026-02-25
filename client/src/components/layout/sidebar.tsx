@@ -23,68 +23,104 @@ function SidebarContent() {
   const { t } = useTranslation();
   const { user } = useAuth();
 
-  const navItems = [
+  const isPatient = user?.role === 'patient';
+  const isDoctor = user?.role === 'doctor';
+
+  const allNavItems = [
     {
       path: "/dashboard",
       label: t("navigation.dashboard"),
       icon: LayoutDashboard,
-      description: t("dashboard.title")
+      description: t("dashboard.title"),
+      roles: ['doctor', 'admin', 'patient', 'researcher'],
     },
     {
       path: "/patients",
       label: t("navigation.patients"),
       icon: Users,
-      description: t("patients.title")
+      description: t("patients.title"),
+      roles: ['doctor', 'admin'],
     },
     {
-      path: user?.role === 'doctor' ? "/doctor-availability" : "/schedule",
-      label: user?.role === 'doctor' ? "Disponibilidade" : t("navigation.schedule"),
-      icon: user?.role === 'doctor' ? Clock3 : CalendarClock,
-      description: user?.role === 'doctor' ? "Gerencie seus horários e plantões" : t("appointments.title")
+      path: isDoctor ? "/doctor-availability" : "/schedule",
+      label: isDoctor ? "Disponibilidade" : t("navigation.schedule"),
+      icon: isDoctor ? Clock3 : CalendarClock,
+      description: isDoctor ? "Gerencie seus horários e plantões" : t("appointments.title"),
+      roles: ['doctor', 'admin', 'patient'],
+    },
+    {
+      path: "/my-consultations",
+      label: "Minhas Consultas",
+      icon: FileText,
+      description: "Histórico e consultas agendadas",
+      roles: ['patient'],
+    },
+    {
+      path: "/immediate-consultation",
+      label: "Sala de Espera",
+      icon: Headphones,
+      description: "Consulta imediata com médico online",
+      roles: ['patient'],
+    },
+    {
+      path: "/consultation-request",
+      label: "Solicitar Consulta",
+      icon: Ambulance,
+      description: "Triagem e solicitação de consulta",
+      roles: ['patient'],
     },
     {
       path: "/whatsapp",
       label: t("navigation.whatsapp"),
       icon: MessageCircle,
-      description: t("telemedicine.secure_messaging")
+      description: t("telemedicine.secure_messaging"),
+      roles: ['doctor', 'admin'],
     },
     {
       path: "/records",
-      label: t("navigation.records"),
+      label: isPatient ? "Meus Registros" : t("navigation.records"),
       icon: FileText,
-      description: t("medical.medical_record")
+      description: t("medical.medical_record"),
+      roles: ['doctor', 'admin', 'patient'],
     },
     {
       path: "/prescriptions",
-      label: t("navigation.prescriptions"),
+      label: isPatient ? "Minhas Prescrições" : t("navigation.prescriptions"),
       icon: ClipboardList,
-      description: t("medical.prescriptions")
+      description: t("medical.prescriptions"),
+      roles: ['doctor', 'admin', 'patient'],
     },
     {
       path: "/ai-assistant",
       label: t("navigation.ai_assistant"),
       icon: BrainCircuit,
-      description: t("medical.ai_assistant_desc")
+      description: t("medical.ai_assistant_desc"),
+      roles: ['doctor', 'admin', 'researcher'],
     },
     {
       path: "/medical-references",
       label: t("navigation.medical_references"),
       icon: BookOpenCheck,
-      description: t("medical.knowledge_base")
+      description: t("medical.knowledge_base"),
+      roles: ['doctor', 'admin', 'researcher'],
     },
     {
       path: "/medical-teams",
       label: "Equipes Médicas",
       icon: Users,
-      description: "Salas de reunião e colaboração médica"
+      description: "Salas de reunião e colaboração médica",
+      roles: ['doctor', 'admin'],
     },
     {
       path: "/medical-cafe",
       label: "Cafeteria Médica",
       icon: Coffee,
-      description: "Canal público para médicos - suporte e socialização"
+      description: "Canal público para médicos - suporte e socialização",
+      roles: ['doctor', 'admin'],
     },
   ];
+
+  const navItems = allNavItems.filter(item => !user?.role || item.roles.includes(user.role));
 
   const quickActions = [
     {

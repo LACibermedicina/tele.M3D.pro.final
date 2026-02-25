@@ -23,7 +23,8 @@ import {
   type PatientChatThread, type InsertPatientChatThread,
   type DoctorNote, type InsertDoctorNote,
   postConsultationItems, type PostConsultationItem, type InsertPostConsultationItem,
-  diagnosticInferences, type DiagnosticInference, type InsertDiagnosticInference
+  diagnosticInferences, type DiagnosticInference, type InsertDiagnosticInference,
+  consultationAccessTokens, type ConsultationAccessToken, type InsertConsultationAccessToken
 } from "@shared/schema";
 
 export type ErrorLog = typeof errorLogs.$inferSelect;
@@ -2016,6 +2017,37 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(diagnosticInferences)
       .set(data)
       .where(eq(diagnosticInferences.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async createConsultationAccessToken(data: InsertConsultationAccessToken): Promise<ConsultationAccessToken> {
+    const [token] = await db.insert(consultationAccessTokens).values(data).returning();
+    return token;
+  }
+
+  async getConsultationAccessTokenByToken(token: string): Promise<ConsultationAccessToken | undefined> {
+    const [result] = await db.select().from(consultationAccessTokens)
+      .where(eq(consultationAccessTokens.token, token));
+    return result || undefined;
+  }
+
+  async getConsultationAccessTokenByShortCode(shortCode: string): Promise<ConsultationAccessToken | undefined> {
+    const [result] = await db.select().from(consultationAccessTokens)
+      .where(eq(consultationAccessTokens.shortCode, shortCode));
+    return result || undefined;
+  }
+
+  async getConsultationAccessTokensByPatient(patientId: string): Promise<ConsultationAccessToken[]> {
+    return await db.select().from(consultationAccessTokens)
+      .where(eq(consultationAccessTokens.patientId, patientId))
+      .orderBy(desc(consultationAccessTokens.createdAt));
+  }
+
+  async updateConsultationAccessToken(id: string, data: Partial<InsertConsultationAccessToken>): Promise<ConsultationAccessToken | undefined> {
+    const [updated] = await db.update(consultationAccessTokens)
+      .set(data)
+      .where(eq(consultationAccessTokens.id, id))
       .returning();
     return updated || undefined;
   }

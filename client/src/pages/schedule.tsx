@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, startOfDay, endOfDay, isToday, addMinutes, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2, Video, Plus, MoreHorizontal, Download, Upload, History, PhoneCall, Wifi, XCircle, Trash2, RotateCcw, FileCheck, MessageSquare } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2, Video, Plus, MoreHorizontal, Download, Upload, History, PhoneCall, Wifi, XCircle, Trash2, RotateCcw, FileCheck, MessageSquare, QrCode } from "lucide-react";
+import ConsultationAccessGenerator from "@/components/consultation-access-generator";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -872,6 +873,19 @@ export default function Schedule() {
                                 Gerar Link
                               </Button>
                               
+                              <ConsultationAccessGenerator
+                                patientId={appointment.patientId}
+                                patientName={appointment.patientName || "Paciente"}
+                                appointmentId={appointment.id}
+                                scheduledAt={appointment.scheduledAt}
+                                trigger={
+                                  <Button variant="outline" size="sm" className="gap-1">
+                                    <QrCode className="h-3.5 w-3.5" />
+                                    QR/WhatsApp
+                                  </Button>
+                                }
+                              />
+                              
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -987,6 +1001,18 @@ export default function Schedule() {
                                   <Button variant="outline" size="sm" onClick={() => handleGenerateJoinLink(appointment)}>
                                     <i className="fas fa-link mr-1"></i>Gerar Link
                                   </Button>
+                                  <ConsultationAccessGenerator
+                                    patientId={appointment.patientId}
+                                    patientName={appointment.patientName || "Paciente"}
+                                    appointmentId={appointment.id}
+                                    scheduledAt={appointment.scheduledAt}
+                                    trigger={
+                                      <Button variant="outline" size="sm" className="gap-1">
+                                        <QrCode className="h-3.5 w-3.5" />
+                                        QR/WhatsApp
+                                      </Button>
+                                    }
+                                  />
                                   <Button variant="outline" size="sm" onClick={() => handleEditAppointment(appointment)}>
                                     <i className="fas fa-edit mr-1"></i>Editar
                                   </Button>

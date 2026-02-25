@@ -93,11 +93,8 @@ export default function WalletPage() {
 
   const createOrderMutation = useMutation({
     mutationFn: async (packageId: string) => {
-      return await apiRequest("/api/credits/purchase/create-order", {
-        method: "POST",
-        body: JSON.stringify({ packageId }),
-        headers: { "Content-Type": "application/json" },
-      });
+      const res = await apiRequest("POST", "/api/credits/purchase/create-order", { packageId });
+      return await res.json();
     },
     onSuccess: (data) => {
       setPaypalOrderId(data.orderId);

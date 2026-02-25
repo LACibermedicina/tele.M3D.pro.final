@@ -50,6 +50,7 @@ import IncompleteConsultations from "@/pages/incomplete-consultations";
 import PostConsultationReview from "@/pages/post-consultation-review";
 import DiagnosticReview from "@/pages/diagnostic-review";
 import WalletPage from "@/pages/wallet";
+import ConsultationAccess from "@/pages/consultation-access";
 import Manual from "@/pages/manual";
 import FAQ from "@/pages/faq";
 import Installation from "@/pages/installation";
@@ -101,6 +102,12 @@ function Router() {
         <Route path="/login">
           <Header />
           <Login />
+        </Route>
+        <Route path="/acesso/:code">
+          <ConsultationAccess />
+        </Route>
+        <Route path="/acesso">
+          <ConsultationAccess />
         </Route>
         <Route path="/join/:token">
           <Header />

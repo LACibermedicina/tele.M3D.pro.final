@@ -14,7 +14,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNotNull, inArray, gte, lte } from "drizzle-orm";
@@ -60,6 +60,7 @@ const tmcValidateCreditsSchema = z.object({
   functionName: z.string().min(1, "Nome da função é obrigatório")
 });
 import crypto from "crypto";
+import QRCode from "qrcode";
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import path from 'path';
@@ -6573,6 +6574,273 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
     }
   });
 
+  // ===== CONSULTATION ACCESS TOKEN ROUTES (QR Code / Link / WhatsApp) =====
+
+  function generateAccessToken(): string {
+    return crypto.randomBytes(6).toString('hex').toUpperCase();
+  }
+
+  function generateShortCode(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+  }
+
+  app.post('/api/consultation-access/generate', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos' });
+      }
+
+      const { patientId, consultationId, appointmentId, scheduledAt } = req.body;
+      if (!patientId) {
+        return res.status(400).json({ message: 'ID do paciente é obrigatório' });
+      }
+
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: 'Paciente não encontrado' });
+      }
+
+      const token = generateAccessToken();
+      const shortCode = generateShortCode();
+      const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
+
+      const accessToken = await storage.createConsultationAccessToken({
+        token,
+        shortCode,
+        consultationId: consultationId || null,
+        appointmentId: appointmentId || null,
+        patientId,
+        doctorId: req.user.id,
+        patientName: patient.name,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        expiresAt,
+        usedAt: null,
+        status: 'active',
+        accessMethod: null,
+        metadata: {
+          doctorName: req.user.name,
+          createdBy: req.user.id,
+        },
+      });
+
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const accessLink = `${baseUrl}/acesso/${shortCode}`;
+
+      let qrCodeDataUrl = '';
+      try {
+        qrCodeDataUrl = await QRCode.toDataURL(accessLink, {
+          width: 300,
+          margin: 2,
+          color: { dark: '#1a1a2e', light: '#ffffff' },
+          errorCorrectionLevel: 'H',
+        });
+      } catch (qrErr) {
+        console.error('QR code generation error:', qrErr);
+      }
+
+      await db.insert(pendingNotifications).values({
+        userId: patient.userId || patientId,
+        type: 'consultation_access',
+        title: 'Link de acesso à consulta',
+        message: `Dr(a). ${req.user.name} enviou um link de acesso direto para sua consulta. Use o código ${shortCode} para entrar.`,
+        priority: 'high',
+        actionUrl: `/acesso/${shortCode}`,
+        delivered: false,
+        read: false,
+        metadata: {
+          tokenId: accessToken.id,
+          shortCode,
+          accessLink,
+          scheduledAt: scheduledAt || null,
+        }
+      });
+
+      console.log(`✅ Access token generated for patient ${patient.name}: ${shortCode}`);
+
+      res.json({
+        accessToken: accessToken,
+        shortCode,
+        token,
+        accessLink,
+        qrCodeDataUrl,
+        expiresAt,
+        patientName: patient.name,
+        whatsappMessage: `🏥 *Tele<M3D> Pro — Convite para Consulta*\n\nOlá ${patient.name}!\n\nDr(a). ${req.user.name} preparou sua consulta médica.\n\n🔗 *Acesse diretamente:*\n${accessLink}\n\n🔑 *Código de acesso:* ${shortCode}\n\n⏰ ${scheduledAt ? `Agendada para: ${new Date(scheduledAt).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })}` : 'Acesso imediato disponível'}\n\n_Válido por 48 horas. Não compartilhe este código._`,
+      });
+    } catch (error) {
+      console.error('Error generating access token:', error);
+      res.status(500).json({ message: 'Erro ao gerar token de acesso' });
+    }
+  });
+
+  app.post('/api/consultation-access/send-whatsapp', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos' });
+      }
+
+      const { patientId, shortCode, accessLink, message } = req.body;
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: 'Paciente não encontrado' });
+      }
+
+      const whatsappNumber = patient.whatsappNumber || patient.phone;
+      if (!whatsappNumber) {
+        return res.status(400).json({ message: 'Paciente não possui número de WhatsApp cadastrado' });
+      }
+
+      const tokenRecord = await storage.getConsultationAccessTokenByShortCode(shortCode);
+      if (tokenRecord) {
+        await storage.updateConsultationAccessToken(tokenRecord.id, { accessMethod: 'whatsapp' });
+      }
+
+      const success = await whatsAppService.sendMessage(whatsappNumber, message);
+
+      if (success) {
+        await storage.createWhatsappMessage({
+          patientId: patient.id,
+          fromNumber: process.env.WHATSAPP_PHONE_NUMBER_ID || 'system',
+          toNumber: whatsappNumber,
+          message,
+          messageType: 'text',
+          isFromAI: false,
+          processed: true
+        });
+        console.log(`📤 Access link sent to ${patient.name} via WhatsApp`);
+      }
+
+      res.json({ sent: success, whatsappNumber });
+    } catch (error) {
+      console.error('Error sending WhatsApp:', error);
+      res.status(500).json({ message: 'Erro ao enviar WhatsApp' });
+    }
+  });
+
+  app.post('/api/consultation-access/validate', async (req, res) => {
+    try {
+      const { code } = req.body;
+      if (!code) {
+        return res.status(400).json({ message: 'Código de acesso é obrigatório' });
+      }
+
+      const cleanCode = code.trim().toUpperCase();
+
+      let tokenRecord = await storage.getConsultationAccessTokenByShortCode(cleanCode);
+      if (!tokenRecord) {
+        tokenRecord = await storage.getConsultationAccessTokenByToken(cleanCode);
+      }
+      if (!tokenRecord) {
+        return res.status(404).json({ message: 'Código inválido ou expirado' });
+      }
+
+      if (tokenRecord.status === 'revoked') {
+        return res.status(403).json({ message: 'Este código foi revogado' });
+      }
+      if (tokenRecord.status === 'expired' || new Date(tokenRecord.expiresAt) < new Date()) {
+        if (tokenRecord.status !== 'expired') {
+          await storage.updateConsultationAccessToken(tokenRecord.id, { status: 'expired' });
+        }
+        return res.status(410).json({ message: 'Código expirado. Solicite um novo ao seu médico.' });
+      }
+
+      const patient = await storage.getPatient(tokenRecord.patientId);
+      const metadata = tokenRecord.metadata as any || {};
+
+      const jwtSecret = process.env.SESSION_SECRET;
+      if (!jwtSecret) {
+        return res.status(500).json({ message: 'Server configuration error' });
+      }
+
+      const authToken = jwt.sign(
+        {
+          userId: patient?.userId || tokenRecord.patientId,
+          patientId: tokenRecord.patientId,
+          consultationId: tokenRecord.consultationId,
+          tokenId: tokenRecord.id,
+          type: 'consultation_access',
+          role: 'patient',
+        },
+        jwtSecret,
+        { expiresIn: '6h', issuer: 'healthcare-system', algorithm: 'HS256' }
+      );
+
+      await storage.updateConsultationAccessToken(tokenRecord.id, {
+        usedAt: new Date(),
+        status: 'used',
+        accessMethod: tokenRecord.accessMethod || 'link',
+      });
+
+      await db.insert(pendingNotifications).values({
+        userId: tokenRecord.doctorId,
+        type: 'patient_access',
+        title: `Paciente ${tokenRecord.patientName || 'Paciente'} acessou via link`,
+        message: `O paciente entrou na consulta usando o código de acesso ${tokenRecord.shortCode}.`,
+        priority: 'medium',
+        actionUrl: tokenRecord.consultationId ? `/video-consultation/${tokenRecord.consultationId}` : '/schedule',
+        delivered: false,
+        read: false,
+        metadata: {
+          tokenId: tokenRecord.id,
+          patientId: tokenRecord.patientId,
+          accessMethod: tokenRecord.accessMethod || 'link',
+        }
+      });
+
+      broadcastToDoctor(tokenRecord.doctorId, {
+        type: 'patient_accessed_via_token',
+        data: {
+          patientId: tokenRecord.patientId,
+          patientName: tokenRecord.patientName,
+          shortCode: tokenRecord.shortCode,
+          consultationId: tokenRecord.consultationId,
+        }
+      });
+
+      console.log(`✅ Patient ${tokenRecord.patientName} validated access with code ${tokenRecord.shortCode}`);
+
+      res.json({
+        valid: true,
+        authToken,
+        patientId: tokenRecord.patientId,
+        patientName: tokenRecord.patientName || patient?.name || 'Paciente',
+        consultationId: tokenRecord.consultationId,
+        appointmentId: tokenRecord.appointmentId,
+        doctorName: metadata.doctorName || 'Médico',
+        scheduledAt: tokenRecord.scheduledAt,
+      });
+    } catch (error) {
+      console.error('Error validating access token:', error);
+      res.status(500).json({ message: 'Erro ao validar código' });
+    }
+  });
+
+  app.get('/api/consultation-access/patient/:patientId', requireAuth, async (req: any, res) => {
+    try {
+      const tokens = await storage.getConsultationAccessTokensByPatient(req.params.patientId);
+      res.json(tokens);
+    } catch (error) {
+      res.status(500).json({ message: 'Erro ao buscar tokens' });
+    }
+  });
+
+  app.post('/api/consultation-access/:id/revoke', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito' });
+      }
+      const updated = await storage.updateConsultationAccessToken(req.params.id, { status: 'revoked' });
+      res.json(updated || { message: 'Token não encontrado' });
+    } catch (error) {
+      res.status(500).json({ message: 'Erro ao revogar token' });
+    }
+  });
+
   // ===== DOCTOR OFFICE (CONSULTÓRIO) API ROUTES =====
   
   // Open doctor's office (creates a persistent video room)
@@ -8821,10 +9089,19 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         return res.status(404).json({ message: 'Consultation request not found' });
       }
 
-      // Check authorization
-      if (request.patientId !== req.user!.id && 
-          request.selectedDoctorId !== req.user!.id && 
-          req.user!.role !== 'admin') {
+      // Check authorization - resolve patient userId properly
+      let isAuthorized = false;
+      if (req.user!.role === 'admin') {
+        isAuthorized = true;
+      } else if (req.user!.role === 'doctor' && request.selectedDoctorId === req.user!.id) {
+        isAuthorized = true;
+      } else {
+        const patient = await storage.getPatientByUserId(req.user!.id);
+        if (patient && request.patientId === patient.id) {
+          isAuthorized = true;
+        }
+      }
+      if (!isAuthorized) {
         return res.status(403).json({ message: 'Not authorized' });
       }
 
