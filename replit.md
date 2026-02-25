@@ -82,8 +82,10 @@ All AI prompts (chatbot, triage, video consultation, medical records, SOAP repor
 - **Backend**: `/api/whatsapp/send` saves doctor messages to DB regardless of WhatsApp Business API status (works internally without API credentials)
 - **Message fields**: `direction` (inbound/outbound/doctor_to_patient), `senderRole` (patient/doctor/ai/system), `doctorId`
 - **Frontend**: Messages display with role labels (Doutor(a), Paciente, IA MedPro) and color-coded bubbles (blue for doctor, gray for patient, AI indicator style for AI)
+- **Patient Online Status**: Real-time via WebSocket tracking (`GET /api/patients/online-status`, polled every 10s). Both doctors and patients tracked in `authenticatedClients` map. Shows green/gray dot + Online/Offline text.
+- **Allow Reply Toggle**: Doctor can toggle "Resposta habilitada" / "Sem resposta" per message. When enabled, patient sees "Responder" button in notification center. Patient replies via `POST /api/notifications/patient-reply` → saved as WhatsApp message + WebSocket notification to doctor.
 - **AI Processing**: Incoming patient messages are analyzed by Gemini/OpenAI for scheduling requests and clinical questions; AI responses are auto-generated
-- **Files**: `client/src/pages/whatsapp.tsx`, `server/services/whatsapp.ts`, routes in `server/routes.ts`
+- **Files**: `client/src/pages/whatsapp.tsx`, `server/services/whatsapp.ts`, routes in `server/routes.ts`, `client/src/components/notifications/notification-center.tsx`
 
 ## Triage System (Classificação de Risco)
 - **Protocol**: Protocolo de Manchester (MTS) / Ministério da Saúde Brasil, with WHO ETAT fallback

@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useNotifications, type Notification } from '@/hooks/use-notifications';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Bell, BellRing, Check, X, AlertTriangle, MessageCircle, Calendar, FileText, Activity, Video, Stethoscope } from 'lucide-react';
+import { Bell, BellRing, Check, X, AlertTriangle, MessageCircle, Calendar, FileText, Activity, Video, Stethoscope, Send, Reply } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 interface NotificationCenterProps {
@@ -16,7 +19,34 @@ interface NotificationCenterProps {
 export default function NotificationCenter({ isScrolled = false }: NotificationCenterProps) {
   const { notifications, unreadCount, isConnected, markAsRead, markAllAsRead, clearNotification } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  const handleSendReply = async (notification: Notification) => {
+    if (!replyText.trim() || sendingReply) return;
+    const doctorId = notification.data?.doctorId;
+    if (!doctorId) return;
+    
+    setSendingReply(true);
+    try {
+      await apiRequest('POST', '/api/notifications/patient-reply', {
+        doctorId,
+        message: replyText.trim(),
+        notificationId: notification.id,
+      });
+      toast({ title: "Resposta enviada", description: `Sua resposta foi enviada para ${notification.data?.doctorName || 'o médico'}.` });
+      setReplyText("");
+      setReplyingTo(null);
+      markAsRead(notification.id);
+    } catch {
+      toast({ title: "Erro", description: "Não foi possível enviar a resposta.", variant: "destructive" });
+    } finally {
+      setSendingReply(false);
+    }
+  };
 
   const getNotificationIcon = (type: string, priority: string) => {
     const iconClass = priority === 'critical' ? 'text-destructive' : 
@@ -187,9 +217,48 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
                     {notification.message}
                   </p>
                   
-                  <p className="text-xs text-muted-foreground">
-                    {format(notification.timestamp, 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      {format(notification.timestamp, 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                    </p>
+                    {notification.type === 'doctor_message' && (notification.data?.allowReply !== false) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReplyingTo(replyingTo === notification.id ? null : notification.id);
+                          setReplyText("");
+                        }}
+                      >
+                        <Reply className="h-3 w-3 mr-1" />
+                        Responder
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {replyingTo === notification.id && (
+                    <div className="mt-2 flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
+                      <Input
+                        placeholder="Digite sua resposta..."
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSendReply(notification)}
+                        className="h-7 text-xs flex-1"
+                        disabled={sendingReply}
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => handleSendReply(notification)}
+                        disabled={!replyText.trim() || sendingReply}
+                      >
+                        <Send className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

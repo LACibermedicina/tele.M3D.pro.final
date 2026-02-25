@@ -283,6 +283,7 @@ export default function WhatsApp() {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [showDetails, setShowDetails] = useState(false);
+  const [allowReply, setAllowReply] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -290,6 +291,11 @@ export default function WhatsApp() {
 
   const { data: patients } = useQuery({
     queryKey: ['/api/patients'],
+  });
+
+  const { data: onlineStatus } = useQuery<any[]>({
+    queryKey: ['/api/patients/online-status'],
+    refetchInterval: 10000,
   });
 
   const { data: messages, isLoading: messagesLoading } = useQuery({
@@ -342,13 +348,21 @@ export default function WhatsApp() {
   const patientsList = Array.isArray(patients) ? patients : [];
   const selectedPatient = patientsList.find((p: any) => p.id === selectedPatientId);
 
+  const onlineStatusMap = new Map<string, boolean>();
+  if (onlineStatus) {
+    onlineStatus.forEach((s: any) => onlineStatusMap.set(s.patientId, s.isOnline));
+  }
+
+  const isPatientOnline = (patientId: string) => onlineStatusMap.get(patientId) || false;
+
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedPatient) return;
 
     sendMessageMutation.mutate({
       to: selectedPatient.whatsappNumber || selectedPatient.phone,
       message: newMessage.trim(),
-    });
+      allowReply,
+    } as any);
   };
 
   const handleSelectPatient = (patientId: string) => {
@@ -427,8 +441,9 @@ export default function WhatsApp() {
                               </span>
                             </div>
                           </div>
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <div className="flex items-center gap-1">
+                            <div className={`w-2 h-2 rounded-full ${isPatientOnline(patient.id) ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                            <span className="text-xs text-muted-foreground">{isPatientOnline(patient.id) ? 'Online' : 'Offline'}</span>
                           </div>
                         </div>
                       </div>
@@ -475,8 +490,8 @@ export default function WhatsApp() {
                         </span>
                         <span>•</span>
                         <span className="flex items-center space-x-1">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span>Online</span>
+                          <div className={`w-2 h-2 rounded-full ${selectedPatient && isPatientOnline(selectedPatient.id) ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                          <span>{selectedPatient && isPatientOnline(selectedPatient.id) ? 'Online' : 'Offline'}</span>
                         </span>
                       </div>
                     </div>
@@ -612,6 +627,18 @@ export default function WhatsApp() {
                     <i className="fas fa-user-md text-blue-500"></i>
                     <span>Enviando como Doutor(a)</span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setAllowReply(!allowReply)}
+                    className={`flex items-center space-x-1.5 text-xs px-2 py-1 rounded-full transition-colors ${
+                      allowReply 
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
+                  >
+                    <i className={`fas ${allowReply ? 'fa-reply' : 'fa-lock'} text-[10px]`}></i>
+                    <span>{allowReply ? 'Resposta habilitada' : 'Sem resposta'}</span>
+                  </button>
                   <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                     <i className="fas fa-info-circle"></i>
                     <span>Mensagens do paciente são processadas pela IA automaticamente</span>

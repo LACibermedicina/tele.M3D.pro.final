@@ -301,16 +301,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return;
     }
     
-    // Store authenticated connection by user type
-    if (userType === 'doctor') {
-      if (!authenticatedClients.has(userId)) {
-        authenticatedClients.set(userId, []);
-      }
-      authenticatedClients.get(userId)?.push(ws);
-      console.log(`Doctor ${userId} connected to WebSocket`);
+    if (!authenticatedClients.has(userId)) {
+      authenticatedClients.set(userId, []);
     }
+    authenticatedClients.get(userId)?.push(ws);
+    console.log(`${userType} ${userId} connected to WebSocket`);
     
-    // Store in consultation room if patient with consultationId
     if (userType === 'patient' && consultationId) {
       if (!consultationRooms.has(consultationId)) {
         consultationRooms.set(consultationId, { doctor: [], patient: [] });
@@ -322,36 +318,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('close', () => {
       console.log(`${userType} ${userId} disconnected from WebSocket`);
       
-      // Remove from authenticated clients (doctors)
-      if (userType === 'doctor') {
-        const clients = authenticatedClients.get(userId);
-        if (clients) {
-          const index = clients.indexOf(ws);
-          if (index > -1) {
-            clients.splice(index, 1);
-          }
-          if (clients.length === 0) {
-            authenticatedClients.delete(userId);
-          }
+      const clients = authenticatedClients.get(userId);
+      if (clients) {
+        const index = clients.indexOf(ws);
+        if (index > -1) {
+          clients.splice(index, 1);
         }
-        
-        // Remove doctor from all consultation rooms
+        if (clients.length === 0) {
+          authenticatedClients.delete(userId);
+        }
+      }
+      
+      if (userType === 'doctor') {
         consultationRooms.forEach((room, roomConsultationId) => {
           const doctorIndex = room.doctor.indexOf(ws);
           if (doctorIndex > -1) {
             room.doctor.splice(doctorIndex, 1);
-            console.log(`Removed doctor ${userId} from consultation room ${roomConsultationId}`);
-            
-            // Clean up empty rooms
             if (room.doctor.length === 0 && room.patient.length === 0) {
               consultationRooms.delete(roomConsultationId);
-              console.log(`Deleted empty consultation room ${roomConsultationId}`);
             }
           }
         });
       }
       
-      // Remove from consultation room (patients)
       if (userType === 'patient' && consultationId) {
         const room = consultationRooms.get(consultationId);
         if (room) {
@@ -359,7 +348,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (index > -1) {
             room.patient.splice(index, 1);
           }
-          // Clean up empty rooms
           if (room.doctor.length === 0 && room.patient.length === 0) {
             consultationRooms.delete(consultationId);
           }
@@ -1664,7 +1652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/whatsapp/send', async (req, res) => {
     try {
-      const { to, message } = req.body;
+      const { to, message, allowReply } = req.body;
       
       if (!req.user) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -1727,6 +1715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               doctorName: doctorName,
               patientId: patient.id,
               messageId: savedMessage.id,
+              allowReply: (req.body.allowReply !== false),
               actionUrl: '/my-consultations'
             }
           });
@@ -1742,7 +1731,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               senderId: doctorId,
               delivered: false,
               read: false,
-              metadata: { messageId: savedMessage.id, patientId: patient.id }
+              metadata: { messageId: savedMessage.id, patientId: patient.id, allowReply: (req.body.allowReply !== false), doctorId: doctorId }
             });
           } catch (notifErr) {
             console.error('Failed to store patient notification:', notifErr);
@@ -5339,6 +5328,82 @@ DIRETRIZES DE REFERÊNCIA: Baseie suas respostas nas diretrizes da OMS, Protocol
     } catch (error: any) {
       console.error('Join office error:', error);
       res.status(500).json({ message: error.message || 'Falha ao entrar no consultório' });
+    }
+  });
+
+  app.get('/api/patients/online-status', requireAuth, async (req: any, res) => {
+    try {
+      const allPatients = await db.select({
+        id: patients.id,
+        userId: patients.userId,
+        name: patients.name,
+      }).from(patients);
+
+      const result = allPatients.map(p => ({
+        patientId: p.id,
+        userId: p.userId,
+        name: p.name,
+        isOnline: p.userId ? authenticatedClients.has(p.userId) : false,
+      }));
+
+      res.json(result);
+    } catch (error) {
+      console.error('Patient online status error:', error);
+      res.status(500).json({ message: 'Failed to fetch patient online status' });
+    }
+  });
+
+  app.post('/api/notifications/patient-reply', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'patient') {
+        return res.status(403).json({ message: 'Apenas pacientes podem responder' });
+      }
+
+      const { doctorId, message, notificationId } = req.body;
+      if (!doctorId || !message) {
+        return res.status(400).json({ message: 'doctorId e message são obrigatórios' });
+      }
+
+      const patient = await db.select().from(patients).where(eq(patients.userId, user.id)).limit(1);
+      if (!patient.length) {
+        return res.status(404).json({ message: 'Perfil de paciente não encontrado' });
+      }
+
+      const savedMessage = await storage.createWhatsappMessage({
+        patientId: patient[0].id,
+        fromNumber: patient[0].phone || 'patient',
+        toNumber: 'doctor',
+        message: message.trim(),
+        messageType: 'text',
+        direction: 'inbound',
+        senderRole: 'patient',
+        isFromAI: false,
+        processed: false,
+      });
+
+      broadcastToDoctor(doctorId, {
+        type: 'whatsapp_message',
+        data: {
+          message: savedMessage,
+          patientId: patient[0].id,
+          patientName: patient[0].name,
+          fromPatientReply: true,
+        }
+      });
+
+      if (notificationId) {
+        try {
+          await db.update(pendingNotifications)
+            .set({ read: true })
+            .where(eq(pendingNotifications.id, notificationId));
+        } catch {}
+      }
+
+      res.json({ success: true, messageId: savedMessage.id });
+    } catch (error) {
+      console.error('Patient reply error:', error);
+      res.status(500).json({ message: 'Falha ao enviar resposta' });
     }
   });
 
