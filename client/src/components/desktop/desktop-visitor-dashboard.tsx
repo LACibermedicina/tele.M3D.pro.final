@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { UserPlus, Calendar, FileText, Shield, Phone, MessageCircle, Users, Clock, MapPin, Star, Globe, Video, Bot } from "lucide-react"
+import { UserPlus, Calendar, FileText, Shield, Phone, MessageCircle, Users, Clock, MapPin, Star, Globe, Video, Bot, HeartPulse } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Link } from "wouter"
 import { useState } from "react"
@@ -38,6 +38,7 @@ export function DesktopVisitorDashboard() {
   const { toast } = useToast();
   const [showSupportDialog, setShowSupportDialog] = useState(false);
   const [showChatBot, setShowChatBot] = useState(false);
+  const [chatMode, setChatMode] = useState<'symptoms' | 'questions' | 'general'>('general');
   const [supportForm, setSupportForm] = useState({
     name: '',
     email: '',
@@ -73,7 +74,8 @@ export function DesktopVisitorDashboard() {
     setSupportForm({ name: '', email: '', phone: '', message: '' });
   };
 
-  const handleChatBot = () => {
+  const handleChatBot = (m: 'symptoms' | 'questions' | 'general' = 'general') => {
+    setChatMode(m);
     setShowChatBot(true);
   };
   
@@ -493,16 +495,16 @@ export function DesktopVisitorDashboard() {
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Button 
-                className="bg-purple-600 text-white hover:bg-purple-700 hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg"
-                onClick={handleChatBot}
+                className="bg-red-600 text-white hover:bg-red-700 hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg"
+                onClick={() => handleChatBot('symptoms')}
                 data-testid="button-ai-symptom-analysis"
               >
-                <Bot className="w-4 h-4 mr-2" />
+                <HeartPulse className="w-4 h-4 mr-2" />
                 Análise de Sintomas
               </Button>
               <Button 
-                className="bg-purple-600 text-white hover:bg-purple-700 hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg"
-                onClick={handleChatBot}
+                className="bg-blue-600 text-white hover:bg-blue-700 hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg"
+                onClick={() => handleChatBot('questions')}
                 data-testid="button-ai-questions"
               >
                 <MessageCircle className="w-4 h-4 mr-2" />
@@ -577,7 +579,7 @@ export function DesktopVisitorDashboard() {
       </Dialog>
 
       {/* AI Assistant */}
-      <AIAssistant open={showChatBot} onOpenChange={setShowChatBot} />
+      <AIAssistant open={showChatBot} onOpenChange={setShowChatBot} mode={chatMode} />
     </div>
   );
 }

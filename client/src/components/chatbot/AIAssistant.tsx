@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Calendar, Send, Loader2, User, Check, HeartPulse, ClipboardList, Users, Brain, FileText, BarChart3, Stethoscope, Settings } from "lucide-react";
+import { Bot, Calendar, Send, Loader2, User, Check, HeartPulse, ClipboardList, Users, Brain, FileText, BarChart3, Stethoscope, Settings, AlertTriangle, LogIn, MessageCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { Link } from "wouter";
 
 interface Message {
   id: string;
@@ -22,14 +22,18 @@ interface AIAssistantProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialContext?: string;
+  mode?: 'symptoms' | 'questions' | 'general';
 }
 
-export function AIAssistant({ open, onOpenChange, initialContext }: AIAssistantProps) {
+const MAX_VISITOR_QUESTIONS = 10;
+
+export function AIAssistant({ open, onOpenChange, initialContext, mode = 'general' }: AIAssistantProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [visitorQuestionCount, setVisitorQuestionCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,6 +46,14 @@ export function AIAssistant({ open, onOpenChange, initialContext }: AIAssistantP
         timestamp: new Date(),
         type: 'text'
       }]);
+      setVisitorQuestionCount(0);
+    }
+  }, [open, mode]);
+
+  useEffect(() => {
+    if (!open) {
+      setMessages([]);
+      setVisitorQuestionCount(0);
     }
   }, [open]);
 
@@ -53,8 +65,33 @@ export function AIAssistant({ open, onOpenChange, initialContext }: AIAssistantP
 
   const getGreeting = () => {
     if (!user) {
+      if (mode === 'symptoms') {
+        return `🩺 Análise de Sintomas - Tele<M3D>
+
+Descreva seus sintomas e farei uma avaliação inicial baseada nos protocolos:
+• Protocolo de Manchester (Classificação de Risco)
+• Diretrizes OMS/WHO
+• Protocolos do Ministério da Saúde do Brasil
+
+⚠️ Esta avaliação é informativa e NÃO substitui consulta médica.
+📊 Você pode fazer até ${MAX_VISITOR_QUESTIONS} perguntas como visitante.
+
+Descreva o que está sentindo:`;
+      }
+      if (mode === 'questions') {
+        return `💬 Tire suas Dúvidas - Tele<M3D>
+
+Posso ajudar com perguntas sobre:
+• Saúde e prevenção
+• Serviços da plataforma
+• Orientações médicas gerais
+• Exames e procedimentos
+
+📊 Até ${MAX_VISITOR_QUESTIONS} perguntas como visitante.
+
+Qual sua dúvida?`;
+      }
       return `👋 Olá! Sou o assistente virtual da Tele<M3D>. Posso ajudar com:
-• Agendamento de consultas
 • Análise inicial de sintomas
 • Orientações médicas gerais
 • Informações sobre nossos serviços
@@ -85,6 +122,17 @@ O que você gostaria de ver?`;
     }
 
     if (user.role === 'patient') {
+      if (mode === 'symptoms') {
+        return `🩺 Análise de Sintomas - Olá, ${name}!
+
+Vou realizar uma triagem clínica completa baseada nos protocolos:
+• Protocolo de Manchester (MTS)
+• Diretrizes OMS/WHO
+• Protocolos do Ministério da Saúde do Brasil
+• DSM-5/DSM-5-TR (para questões de saúde mental)
+
+Descreva seus sintomas com o máximo de detalhes possível:`;
+      }
       return `👋 Olá, ${name}! Posso ajudar com:
 • Agendar nova consulta
 • Ver suas consultas agendadas
@@ -100,6 +148,15 @@ Como posso ajudar hoje?`;
   const handleSend = async () => {
     if (!input.trim()) return;
 
+    if (!user && visitorQuestionCount >= MAX_VISITOR_QUESTIONS) {
+      toast({
+        title: "Limite atingido",
+        description: "Você atingiu o limite de perguntas como visitante. Registre-se para continuar.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -112,12 +169,21 @@ Como posso ajudar hoje?`;
     setInput("");
     setIsLoading(true);
 
+    if (!user) {
+      setVisitorQuestionCount(prev => prev + 1);
+    }
+
     try {
-      const res = await fetch('/api/chatbot/message', {
+      const endpoint = user ? '/api/chatbot/message' : '/api/chatbot/visitor-message';
+      
+      const body: any = { message: input };
+      if (!user && mode === 'symptoms') {
+        body.mode = 'symptoms';
+      }
+
+      const res = await fetch(endpoint, {
         method: 'POST',
-        body: JSON.stringify({
-          message: input
-        }),
+        body: JSON.stringify(body),
         headers: {
           'Content-Type': 'application/json'
         },
@@ -133,7 +199,7 @@ Como posso ajudar hoje?`;
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response,
+        content: data.response || data.message?.content || 'Como posso ajudá-lo?',
         timestamp: new Date(),
         type: data.type || 'text',
         metadata: data.metadata
@@ -141,7 +207,6 @@ Como posso ajudar hoje?`;
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // If there's an appointment suggestion, show it
       if (data.metadata?.suggestedAppointment) {
         handleAppointmentSuggestion(data.metadata.suggestedAppointment);
       }
@@ -235,6 +300,18 @@ Deseja confirmar este agendamento?`,
     }
   };
 
+  const visitorSymptomsActions = [
+    { label: "Dor de cabeça", icon: HeartPulse, message: "Estou com dor de cabeça frequente" },
+    { label: "Febre", icon: HeartPulse, message: "Estou com febre" },
+    { label: "Dor no peito", icon: AlertTriangle, message: "Estou sentindo dor no peito" },
+  ];
+
+  const visitorQuestionsActions = [
+    { label: "Como funciona?", icon: Settings, message: "Como funciona a plataforma de telemedicina?" },
+    { label: "Tipos de consulta", icon: Stethoscope, message: "Quais tipos de consulta estão disponíveis?" },
+    { label: "Prevenção", icon: HeartPulse, message: "Dicas de prevenção e saúde" },
+  ];
+
   const quickActions = user?.role === 'patient' ? [
     { label: "Triagem de Sintomas", icon: HeartPulse, message: "Estou com alguns sintomas e gostaria de orientação" },
     { label: "Agendar Consulta", icon: Calendar, message: "Gostaria de agendar uma consulta" },
@@ -247,26 +324,66 @@ Deseja confirmar este agendamento?`,
     { label: "Estatísticas", icon: BarChart3, message: "Mostre as estatísticas gerais da plataforma" },
     { label: "Fila de Espera", icon: Users, message: "Quantos pacientes estão em espera agora?" },
     { label: "Consultas Hoje", icon: Calendar, message: "Ver todas as consultas agendadas de hoje" },
-  ] : [
+  ] : mode === 'symptoms' ? visitorSymptomsActions : mode === 'questions' ? visitorQuestionsActions : [
     { label: "Orientação Médica", icon: Stethoscope, message: "Gostaria de uma orientação sobre sintomas" },
-    { label: "Agendar Consulta", icon: Calendar, message: "Gostaria de agendar uma consulta" },
     { label: "Sobre Serviços", icon: Settings, message: "Quais serviços a plataforma oferece?" },
+    { label: "Prevenção", icon: HeartPulse, message: "Dicas de prevenção e autocuidado" },
   ];
+
+  const getDialogTitle = () => {
+    if (mode === 'symptoms') return 'Análise de Sintomas';
+    if (mode === 'questions') return 'Tirar Dúvidas';
+    return 'Assistente Virtual IA';
+  };
+
+  const getHeaderGradient = () => {
+    if (mode === 'symptoms') return 'from-red-50 to-orange-50';
+    if (mode === 'questions') return 'from-blue-50 to-cyan-50';
+    return 'from-purple-50 to-indigo-50';
+  };
+
+  const getIconColor = () => {
+    if (mode === 'symptoms') return 'text-red-600';
+    if (mode === 'questions') return 'text-blue-600';
+    return 'text-purple-600';
+  };
+
+  const getBubbleColor = () => {
+    if (mode === 'symptoms') return 'bg-red-50 text-red-900';
+    if (mode === 'questions') return 'bg-blue-50 text-blue-900';
+    return 'bg-gray-100 text-gray-800';
+  };
+
+  const visitorLimitReached = !user && visitorQuestionCount >= MAX_VISITOR_QUESTIONS;
+  const remainingQuestions = !user ? MAX_VISITOR_QUESTIONS - visitorQuestionCount : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl h-[600px] flex flex-col p-0">
-        <DialogHeader className="px-6 py-4 border-b bg-gradient-to-r from-purple-50 to-indigo-50">
+        <DialogHeader className={`px-6 py-4 border-b bg-gradient-to-r ${getHeaderGradient()}`}>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center">
-              <Bot className="w-5 h-5 mr-2 text-purple-600" />
-              <span>Assistente Virtual IA - Tele{"<"}M3D{">"}</span>
+              {mode === 'symptoms' ? (
+                <HeartPulse className={`w-5 h-5 mr-2 ${getIconColor()}`} />
+              ) : mode === 'questions' ? (
+                <MessageCircle className={`w-5 h-5 mr-2 ${getIconColor()}`} />
+              ) : (
+                <Bot className={`w-5 h-5 mr-2 ${getIconColor()}`} />
+              )}
+              <span>{getDialogTitle()} - Tele{"<"}M3D{">"}</span>
             </div>
-            {user && (
-              <Badge variant="outline" className="ml-2">
-                {user.role === 'admin' ? 'Admin' : user.role === 'doctor' ? 'Médico' : user.role === 'patient' ? 'Paciente' : user.role}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {user && (
+                <Badge variant="outline" className="ml-2">
+                  {user.role === 'admin' ? 'Admin' : user.role === 'doctor' ? 'Médico' : user.role === 'patient' ? 'Paciente' : user.role}
+                </Badge>
+              )}
+              {!user && remainingQuestions !== null && (
+                <Badge variant={remainingQuestions <= 3 ? "destructive" : "secondary"} className="text-xs">
+                  {remainingQuestions} restantes
+                </Badge>
+              )}
+            </div>
           </DialogTitle>
         </DialogHeader>
 
@@ -283,24 +400,25 @@ Deseja confirmar este agendamento?`,
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                     message.role === 'user' 
                       ? 'bg-blue-500 text-white' 
+                      : mode === 'symptoms' ? 'bg-red-100 text-red-600' 
+                      : mode === 'questions' ? 'bg-blue-100 text-blue-600'
                       : 'bg-purple-100 text-purple-600'
                   }`}>
-                    {message.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                    {message.role === 'user' ? <User className="w-4 h-4" /> : mode === 'symptoms' ? <HeartPulse className="w-4 h-4" /> : mode === 'questions' ? <MessageCircle className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                   </div>
                   <div className="flex flex-col">
                     <div className={`rounded-lg p-3 ${
                       message.role === 'user'
                         ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-800'
+                        : getBubbleColor()
                     }`}>
                       <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     </div>
-                    {message.type === 'appointment' && message.metadata && message.role === 'assistant' && (
+                    {message.type === 'appointment' && message.metadata && message.role === 'assistant' && user && (
                       <Button
                         size="sm"
                         className="mt-2 w-fit"
                         onClick={() => handleConfirmAppointment(message.metadata)}
-                        data-testid="button-confirm-appointment"
                       >
                         <Check className="w-4 h-4 mr-2" />
                         Confirmar Agendamento
@@ -316,11 +434,13 @@ Deseja confirmar este agendamento?`,
             {isLoading && (
               <div className="flex justify-start">
                 <div className="flex items-start space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center">
-                    <Bot className="w-4 h-4" />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    mode === 'symptoms' ? 'bg-red-100 text-red-600' : mode === 'questions' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
+                  }`}>
+                    {mode === 'symptoms' ? <HeartPulse className="w-4 h-4" /> : mode === 'questions' ? <MessageCircle className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                   </div>
-                  <div className="bg-gray-100 rounded-lg p-3">
-                    <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+                  <div className={`rounded-lg p-3 ${getBubbleColor()}`}>
+                    <Loader2 className={`w-4 h-4 animate-spin ${getIconColor()}`} />
                   </div>
                 </div>
               </div>
@@ -329,52 +449,76 @@ Deseja confirmar este agendamento?`,
         </ScrollArea>
 
         <div className="px-6 py-4 border-t bg-gray-50">
-          {messages.length <= 1 && (
-            <div className="mb-3 flex flex-wrap gap-2">
-              {quickActions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <Button
-                    key={action.label}
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleQuickAction(action.message)}
-                    disabled={isLoading}
-                    className="gap-1.5"
-                    data-testid={`button-quick-${action.label.toLowerCase().replace(/ /g, '-')}`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {action.label}
+          {visitorLimitReached ? (
+            <div className="text-center space-y-3">
+              <div className="flex items-center justify-center gap-2 text-orange-600">
+                <AlertTriangle className="w-5 h-5" />
+                <span className="font-medium">Limite de perguntas atingido</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Registre-se gratuitamente para continuar usando o assistente sem limites.
+              </p>
+              <div className="flex gap-2 justify-center">
+                <Link href="/register">
+                  <Button size="sm" className="gap-1.5">
+                    <LogIn className="w-3.5 h-3.5" />
+                    Criar Conta Grátis
                   </Button>
-                );
-              })}
+                </Link>
+                <Link href="/login">
+                  <Button size="sm" variant="outline" className="gap-1.5">
+                    Fazer Login
+                  </Button>
+                </Link>
+              </div>
             </div>
-          )}
-          <div className="flex space-x-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()}
-              placeholder="Digite sua pergunta ou descreva seus sintomas..."
-              disabled={isLoading}
-              data-testid="input-chatbot-message"
-            />
-            <Button 
-              onClick={handleSend} 
-              disabled={isLoading || !input.trim()}
-              data-testid="button-chatbot-send"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
+          ) : (
+            <>
+              {messages.length <= 1 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {quickActions.map((action) => {
+                    const Icon = action.icon;
+                    return (
+                      <Button
+                        key={action.label}
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleQuickAction(action.message)}
+                        disabled={isLoading}
+                        className="gap-1.5"
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        {action.label}
+                      </Button>
+                    );
+                  })}
+                </div>
               )}
-            </Button>
-          </div>
-          {!user && (
-            <p className="text-xs text-muted-foreground mt-2">
-              💡 Para funcionalidades completas, faça login ou registre-se.
-            </p>
+              <div className="flex space-x-2">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()}
+                  placeholder={mode === 'symptoms' ? "Descreva seus sintomas..." : mode === 'questions' ? "Qual sua dúvida?" : "Digite sua pergunta..."}
+                  disabled={isLoading}
+                />
+                <Button 
+                  onClick={handleSend} 
+                  disabled={isLoading || !input.trim()}
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+              {!user && (
+                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                  💡 Para funcionalidades completas, <Link href="/register"><span className="text-blue-600 underline cursor-pointer">registre-se</span></Link> ou <Link href="/login"><span className="text-blue-600 underline cursor-pointer">faça login</span></Link>.
+                </p>
+              )}
+            </>
           )}
         </div>
       </DialogContent>

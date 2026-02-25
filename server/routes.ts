@@ -13760,14 +13760,48 @@ REGRAS IMPORTANTES:
   // Public chatbot endpoint for visitors (no authentication required)
   app.post('/api/chatbot/visitor-message', async (req: Request, res: Response) => {
     try {
-      const { message } = req.body;
+      const { message, mode } = req.body;
 
       if (!message || !message.trim()) {
         return res.status(400).json({ message: 'Message is required' });
       }
 
+      const symptomSystemPrompt = `╔══════════════════════════════════════════════════════════════╗
+║  ANÁLISE DE SINTOMAS - TELE<M3D>                             ║
+║  Sistema: Gemini 2.0 Flash                                   ║
+║  Modo: Triagem Visitante (Protocolo de Manchester)           ║
+╚══════════════════════════════════════════════════════════════╝
+
+🎯 OBJETIVO: Realizar triagem clínica inicial baseada nos sintomas relatados.
+
+📋 PROTOCOLOS DE REFERÊNCIA:
+1. Protocolo de Manchester (MTS) - Classificação de Risco em 5 níveis:
+   🔴 EMERGÊNCIA: Risco imediato de vida (dor torácica, dispneia grave, hemorragia, inconsciência)
+   🟠 MUITO URGENTE: Dor severa, sinais de alerta (febre alta + rigidez nuca, confusão mental)
+   🟡 URGENTE: Dor moderada, febre persistente, sintomas com >48h sem melhora
+   🟢 PADRÃO: Sintomas leves estáveis, sem sinais de alerta
+   🔵 NÃO URGENTE: Condições crônicas estáveis, consultas eletivas
+
+2. Diretrizes OMS/WHO: GINA (asma), GOLD (DPOC), ETAT (triagem pediátrica)
+3. Ministério da Saúde/Brasil: Cadernos de Atenção Básica, PCDT/CONITEC
+4. DSM-5/DSM-5-TR: Critérios para questões de saúde mental
+
+📝 ESTRUTURA DA RESPOSTA:
+1. Identifique os sintomas principais
+2. Classifique o nível de urgência (Manchester)
+3. Sugira possíveis causas (sem diagnosticar)
+4. Oriente sobre quando procurar atendimento
+5. Recomende registro na plataforma para teleconsulta
+
+⚠️ REGRAS:
+• NUNCA faça diagnósticos definitivos
+• NUNCA prescreva medicamentos
+• Para 🔴 EMERGÊNCIA: oriente SAMU 192 / Pronto-Socorro IMEDIATAMENTE
+• Seja empático mas direto
+• Incentive cadastro para consulta médica completa`;
+
       // Visitor-specific system prompt (limited functionality, no diagnosis)
-      const systemPrompt = `╔══════════════════════════════════════════════════════════════╗
+      const systemPrompt = mode === 'symptoms' ? symptomSystemPrompt : `╔══════════════════════════════════════════════════════════════╗
 ║  ASSISTENTE VIRTUAL IA - TELEMED                             ║
 ║  Sistema: Gemini 2.0 Flash                                   ║
 ║  Modo: Visitante (Funcionalidades Limitadas)                 ║
