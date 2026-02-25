@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, FileText, MessageCircle, Stethoscope, ClipboardList, Video, CalendarCheck } from "lucide-react";
+import { Calendar, FileText, MessageCircle, Stethoscope, ClipboardList, Video, CalendarCheck, Pill } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -153,7 +153,7 @@ export function DesktopPatientDashboard() {
                   variant="outline"
                   data-testid="button-prescriptions"
                 >
-                  <ClipboardList className="w-6 h-6" />
+                  <Pill className="w-6 h-6" />
                   <span className="font-medium">Minhas Prescrições</span>
                 </Button>
               </Link>

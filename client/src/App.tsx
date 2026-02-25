@@ -112,11 +112,13 @@ function Router() {
         
         {/* Features page - public */}
         <Route path="/features">
+          <Header />
           <Features />
         </Route>
         
         {/* Documentation page - public */}
         <Route path="/documentation">
+          <Header />
           <Documentation />
         </Route>
         

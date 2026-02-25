@@ -1714,6 +1714,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
 
+        if (patient.userId) {
+          const doctorUser = await storage.getUser(doctorId);
+          const doctorName = doctorUser?.name || 'Seu médico';
+          
+          broadcastToUser(patient.userId, {
+            type: 'doctor_message',
+            data: {
+              title: `Mensagem de ${doctorName}`,
+              message: message.trim().substring(0, 200),
+              doctorId: doctorId,
+              doctorName: doctorName,
+              patientId: patient.id,
+              messageId: savedMessage.id,
+              actionUrl: '/my-consultations'
+            }
+          });
+
+          try {
+            await db.insert(pendingNotifications).values({
+              userId: patient.userId,
+              type: 'doctor_message',
+              title: `Mensagem de ${doctorName}`,
+              message: message.trim().substring(0, 200),
+              priority: 'high',
+              actionUrl: '/my-consultations',
+              senderId: doctorId,
+              delivered: false,
+              read: false,
+              metadata: { messageId: savedMessage.id, patientId: patient.id }
+            });
+          } catch (notifErr) {
+            console.error('Failed to store patient notification:', notifErr);
+          }
+        }
+
         res.json({ success: true, messageId: savedMessage.id, whatsappSent });
       } else {
         res.json({ success: true, whatsappSent, note: 'Paciente não encontrado no sistema, mensagem não salva.' });
@@ -2410,6 +2445,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         doctorId,
         status: 'waiting',
       });
+
+      if (patient.userId) {
+        broadcastToUser(patient.userId, {
+          type: 'consultation_invite',
+          data: {
+            title: 'Convite para Teleconsulta',
+            message: `Dr(a). ${req.user.name} está chamando você para uma consulta por vídeo.`,
+            priority: 'critical',
+            consultationId: consultation.id,
+            doctorName: req.user.name,
+            actionUrl: `/patient/video/${consultation.id}`
+          }
+        });
+
+        try {
+          await db.insert(pendingNotifications).values({
+            userId: patient.userId,
+            type: 'consultation_invite',
+            title: 'Convite para Teleconsulta',
+            message: `Dr(a). ${req.user.name} está chamando você para uma consulta por vídeo.`,
+            priority: 'critical',
+            actionUrl: `/patient/video/${consultation.id}`,
+            senderId: doctorId,
+            delivered: false,
+            read: false,
+            metadata: { consultationId: consultation.id }
+          });
+        } catch (notifErr) {
+          console.error('Failed to store video invite notification:', notifErr);
+        }
+      }
       
       res.status(201).json(consultation);
     } catch (error) {
