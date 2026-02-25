@@ -2592,8 +2592,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Channel name is required' });
       }
 
-      // Use provided UID or generate from user ID
-      const numericUid = uid || Math.abs(req.user.id.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0));
+      const rawUidHash = Math.abs(req.user.id.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0));
+      const numericUid = uid || ((rawUidHash % 9999) + 1);
 
       const token = generateAgoraToken({
         channelName,
@@ -2628,8 +2628,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Channel name and role are required' });
       }
 
-      // Use user ID as UID for Agora (convert to number using hash)
-      const uid = Math.abs(req.user.id.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0));
+      const rawHash = Math.abs(req.user.id.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0));
+      const uid = (rawHash % 9999) + 1;
 
       const token = generateAgoraToken({
         channelName,

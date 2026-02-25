@@ -194,11 +194,15 @@ export default function PatientVideoConsultation() {
   const joinChannel = async () => {
     if (!client || !agoraConfig || joined) return;
     try {
+      const safeUid = typeof agoraConfig.uid === 'number' && agoraConfig.uid > 0 && agoraConfig.uid <= 9999
+        ? agoraConfig.uid
+        : Math.floor(Math.random() * 9998) + 1;
+
       await client.join(
         agoraConfig.appId,
         agoraConfig.channelName,
         agoraConfig.token,
-        agoraConfig.uid
+        safeUid
       );
 
       setJoined(true);
