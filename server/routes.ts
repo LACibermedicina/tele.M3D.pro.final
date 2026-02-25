@@ -14839,16 +14839,30 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
 
       const doctorsWithStatus = await Promise.all(
         onlineDoctors.map(async (doctor) => {
-          const activeConsultations = await db.select({ id: videoConsultations.id })
+          const activeConsultations = await db.select({ 
+            id: videoConsultations.id,
+            patientId: videoConsultations.patientId 
+          })
             .from(videoConsultations)
             .where(and(
               eq(videoConsultations.doctorId, doctor.id),
-              eq(videoConsultations.status, 'active')
-            ))
-            .limit(1);
+              inArray(videoConsultations.status, ['active', 'waiting'])
+            ));
+
+          const activePatientIds = activeConsultations.map(c => c.patientId).filter(Boolean);
+          const activeUserIds: string[] = [];
+          for (const pid of activePatientIds) {
+            try {
+              const pat = await storage.getPatient(pid);
+              if (pat?.userId) activeUserIds.push(pat.userId);
+            } catch {}
+          }
+
           return {
             ...doctor,
             inConsultation: activeConsultations.length > 0,
+            activePatientIds,
+            activeUserIds,
           };
         })
       );

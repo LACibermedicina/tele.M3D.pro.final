@@ -25,6 +25,8 @@ interface Doctor {
   onlineSince: string | null;
   onDutyUntil: string | null;
   inConsultation?: boolean;
+  activePatientIds?: string[];
+  activeUserIds?: string[];
 }
 
 export default function ImmediateConsultation() {
@@ -166,6 +168,11 @@ export default function ImmediateConsultation() {
   const inConsultationDoctors = sortedDoctors?.filter(d => d.inConsultation) || [];
   const availableDoctors = sortedDoctors?.filter(d => !d.inConsultation) || [];
 
+  const isAttendingCurrentUser = (doctor: OnlineDoctor) => {
+    if (!user?.id || !doctor.activeUserIds) return false;
+    return doctor.activeUserIds.includes(user.id);
+  };
+
   const urgencyConfig = {
     normal: { color: 'bg-green-100 text-green-800 border-green-300', label: 'Normal', icon: Activity },
     urgent: { color: 'bg-orange-100 text-orange-800 border-orange-300', label: 'Urgente', icon: ShieldAlert },
@@ -296,10 +303,17 @@ export default function ImmediateConsultation() {
                             Plantão
                           </Badge>
                           {doctor.inConsultation ? (
-                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 text-xs">
-                              <Video className="w-3 h-3 mr-1" />
-                              Em Atendimento
-                            </Badge>
+                            isAttendingCurrentUser(doctor) ? (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 text-xs">
+                                <Video className="w-3 h-3 mr-1" />
+                                Em atendimento com você
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 text-xs">
+                                <Video className="w-3 h-3 mr-1" />
+                                Em Atendimento
+                              </Badge>
+                            )
                           ) : (
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
                               <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
@@ -391,16 +405,23 @@ export default function ImmediateConsultation() {
                             {doctor.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <div className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white ${doctor.inConsultation ? 'bg-yellow-500' : 'bg-green-500 animate-pulse'}`} />
+                        <div className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white ${doctor.inConsultation ? (isAttendingCurrentUser(doctor) ? 'bg-blue-500' : 'bg-yellow-500') : 'bg-green-500 animate-pulse'}`} />
                       </div>
                       <div className="flex-1 w-full sm:w-auto">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-base sm:text-lg font-semibold">{doctor.name}</h3>
                           {doctor.inConsultation ? (
-                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 text-xs">
-                              <Video className="w-3 h-3 mr-1" />
-                              Em Atendimento
-                            </Badge>
+                            isAttendingCurrentUser(doctor) ? (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 text-xs">
+                                <Video className="w-3 h-3 mr-1" />
+                                Em atendimento com você
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 text-xs">
+                                <Video className="w-3 h-3 mr-1" />
+                                Em Atendimento
+                              </Badge>
+                            )
                           ) : (
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
                               <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
@@ -410,8 +431,11 @@ export default function ImmediateConsultation() {
                         </div>
                         <p className="text-xs sm:text-sm text-muted-foreground mt-1">{doctor.specialization || 'Clínico Geral'}</p>
                         <p className="text-xs text-muted-foreground">CRM: {doctor.medicalLicense}</p>
-                        {doctor.inConsultation && (
+                        {doctor.inConsultation && !isAttendingCurrentUser(doctor) && (
                           <p className="text-xs text-yellow-600 mt-1">Médico em videochamada — aguarde ou escolha outro</p>
+                        )}
+                        {isAttendingCurrentUser(doctor) && (
+                          <p className="text-xs text-blue-600 mt-1">Este médico está atendendo você agora</p>
                         )}
                       </div>
                       {selectedDoctor?.id === doctor.id && (
