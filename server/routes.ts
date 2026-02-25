@@ -2540,13 +2540,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create a new video consultation session
-  app.post('/api/video-consultations', async (req, res) => {
+  app.post('/api/video-consultations', async (req: any, res) => {
     try {
-      const validatedData = insertVideoConsultationSchema.parse(req.body);
+      const doctorId = req.user?.id || req.body.doctorId || actualDoctorId || DEFAULT_DOCTOR_ID;
+      const data = { ...req.body, doctorId };
+      const validatedData = insertVideoConsultationSchema.parse(data);
       const consultation = await storage.createVideoConsultation(validatedData);
       
       // Broadcast to authenticated doctor only
-      broadcastToDoctor(consultation.doctorId || actualDoctorId || DEFAULT_DOCTOR_ID, { type: 'consultation_created', data: consultation });
+      broadcastToDoctor(consultation.doctorId || doctorId, { type: 'consultation_created', data: consultation });
       
       res.status(201).json(consultation);
     } catch (error) {

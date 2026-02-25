@@ -283,6 +283,8 @@ export default function VideoConsultation() {
     try {
       await client.join(agoraConfig.appId, agoraConfig.channelName, agoraConfig.token, agoraConfig.uid);
 
+      setJoined(true);
+
       const tracksToPublish: (ICameraVideoTrack | IMicrophoneAudioTrack)[] = [];
 
       try {
@@ -304,23 +306,31 @@ export default function VideoConsultation() {
       }
 
       if (tracksToPublish.length > 0) {
-        await client.publish(tracksToPublish);
+        try {
+          await client.publish(tracksToPublish);
+        } catch (pubErr) {
+          console.warn('Could not publish tracks:', pubErr);
+        }
       }
 
-      setJoined(true);
       startConsultationMutation.mutate();
       toast({ title: 'Conectado', description: 'Você entrou na vídeo consulta com sucesso.' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error joining channel:', error);
-      toast({ title: 'Erro ao conectar', description: 'Não foi possível entrar na vídeo consulta. Verifique permissões de câmera/microfone.', variant: 'destructive' });
+      const errorMsg = error?.message || error?.code || String(error);
+      toast({ title: 'Erro ao conectar', description: `Falha na conexão: ${errorMsg}`, variant: 'destructive' });
     }
   };
 
   const leaveChannel = async () => {
     if (!client) return;
-    localAudioTrack?.close();
-    localVideoTrack?.close();
-    await client.leave();
+    try {
+      localAudioTrack?.close();
+      localVideoTrack?.close();
+      await client.leave();
+    } catch (err) {
+      console.warn('Error leaving channel:', err);
+    }
     setJoined(false);
     setLocalAudioTrack(null);
     setLocalVideoTrack(null);

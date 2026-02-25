@@ -15,6 +15,7 @@ import { ptBR } from "date-fns/locale";
 import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2, Video, Plus, MoreHorizontal, Download, Upload, History, PhoneCall, Wifi, XCircle, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import VideoConsultation from "@/components/video-consultation/VideoConsultation";
 import { formatErrorForToast } from "@/lib/error-handler";
 import PageWrapper from "@/components/layout/page-wrapper";
@@ -46,6 +47,7 @@ export default function Schedule() {
   const [cancelConfirmName, setCancelConfirmName] = useState<string>("");
   
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
   const { data: appointments, isLoading } = useQuery<any[]>({
@@ -70,15 +72,14 @@ export default function Schedule() {
 
   const startInstantConsultMutation = useMutation({
     mutationFn: (patientId: string) => apiRequest('POST', `/api/video-consultations/start-with-patient/${patientId}`, {}),
-    onSuccess: (consultation: any) => {
+    onSuccess: (_response: any, patientId: string) => {
       toast({
         title: "Consulta iniciada",
-        description: "O paciente foi notificado. Aguarde a entrada na sala.",
+        description: "O paciente foi notificado. Redirecionando para a sala...",
       });
       setIsInstantConsultOpen(false);
       setInstantPatientId("");
-      setActiveConsultationId(consultation.id);
-      setIsVideoConsultationOpen(true);
+      setLocation(`/consultation/video/${patientId}`);
     },
     onError: (error) => {
       const errorInfo = formatErrorForToast(error);
@@ -228,20 +229,7 @@ export default function Schedule() {
 
   const handleStartConsultation = async (appointment: any) => {
     if (!appointment) return;
-
-    try {
-      // Create a video consultation session linked to the appointment
-      const consultationData = {
-        patientId: appointment.patientId,
-        doctorId: DEFAULT_DOCTOR_ID,
-        appointmentId: appointment.id,
-      };
-
-      setSelectedAppointment(appointment);
-      createVideoConsultationMutation.mutate(consultationData);
-    } catch (error) {
-      console.error('Error starting consultation:', error);
-    }
+    setLocation(`/consultation/video/${appointment.patientId}`);
   };
 
   const handleGenerateJoinLink = async (appointment: any) => {

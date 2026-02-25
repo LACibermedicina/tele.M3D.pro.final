@@ -201,6 +201,8 @@ export default function PatientVideoConsultation() {
         agoraConfig.uid
       );
 
+      setJoined(true);
+
       const tracksToPublish: (ICameraVideoTrack | IMicrophoneAudioTrack)[] = [];
 
       try {
@@ -224,19 +226,23 @@ export default function PatientVideoConsultation() {
       }
 
       if (tracksToPublish.length > 0) {
-        await client.publish(tracksToPublish);
+        try {
+          await client.publish(tracksToPublish);
+        } catch (pubErr) {
+          console.warn('Could not publish tracks:', pubErr);
+        }
       }
 
-      setJoined(true);
       toast({
         title: 'Conectado',
         description: 'Você entrou na consulta por vídeo.',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error joining channel:', error);
+      const errorMsg = error?.message || error?.code || String(error);
       toast({
         title: 'Erro ao conectar',
-        description: 'Não foi possível entrar na vídeo consulta. Verifique suas permissões de câmera e microfone.',
+        description: `Falha na conexão: ${errorMsg}`,
         variant: 'destructive',
       });
     }
@@ -244,9 +250,13 @@ export default function PatientVideoConsultation() {
 
   const leaveChannel = async () => {
     if (!client) return;
-    localAudioTrack?.close();
-    localVideoTrack?.close();
-    await client.leave();
+    try {
+      localAudioTrack?.close();
+      localVideoTrack?.close();
+      await client.leave();
+    } catch (err) {
+      console.warn('Error leaving channel:', err);
+    }
     setJoined(false);
     setLocalAudioTrack(null);
     setLocalVideoTrack(null);
