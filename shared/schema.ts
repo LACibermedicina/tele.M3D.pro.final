@@ -1582,6 +1582,27 @@ export const insertPostConsultationItemSchema = createInsertSchema(postConsultat
 export type InsertPostConsultationItem = z.infer<typeof insertPostConsultationItemSchema>;
 export type PostConsultationItem = typeof postConsultationItems.$inferSelect;
 
+// Diagnostic Inferences - AI-generated syndromic classifications per consultation
+export const diagnosticInferences = pgTable('diagnostic_inferences', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  consultationId: varchar('consultation_id').notNull(),
+  patientId: varchar('patient_id').notNull(),
+  doctorId: varchar('doctor_id').notNull(),
+  hypotheses: jsonb('hypotheses').notNull(), // Array of { code, system (CID-10|ICD-11|DSM-5), description, confidence, category, differentials }
+  overallConfidence: integer('overall_confidence').notNull(), // 0-100 percentage
+  needsReview: boolean('needs_review').default(true).notNull(), // true if confidence < 96%
+  reviewStatus: varchar('review_status', { length: 50 }).default('pending').notNull(), // pending, approved, rejected
+  clinicalHistoryAuthorized: boolean('clinical_history_authorized').default(false).notNull(),
+  epidemiologicalAuthorized: boolean('epidemiological_authorized').default(false).notNull(),
+  reviewNotes: text('review_notes'),
+  compiledAt: timestamp('compiled_at'), // when clinical history was compiled
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const insertDiagnosticInferenceSchema = createInsertSchema(diagnosticInferences).omit({ id: true, createdAt: true });
+export type InsertDiagnosticInference = z.infer<typeof insertDiagnosticInferenceSchema>;
+export type DiagnosticInference = typeof diagnosticInferences.$inferSelect;
+
 // TMC system types
 export interface TmcBalance {
   userId: string;

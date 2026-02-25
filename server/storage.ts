@@ -22,7 +22,8 @@ import {
   type ClinicalAsset, type InsertClinicalAsset,
   type PatientChatThread, type InsertPatientChatThread,
   type DoctorNote, type InsertDoctorNote,
-  postConsultationItems, type PostConsultationItem, type InsertPostConsultationItem
+  postConsultationItems, type PostConsultationItem, type InsertPostConsultationItem,
+  diagnosticInferences, type DiagnosticInference, type InsertDiagnosticInference
 } from "@shared/schema";
 
 export type ErrorLog = typeof errorLogs.$inferSelect;
@@ -1980,6 +1981,41 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(postConsultationItems)
       .set(data)
       .where(eq(postConsultationItems.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async createDiagnosticInference(data: InsertDiagnosticInference): Promise<DiagnosticInference> {
+    const [inference] = await db.insert(diagnosticInferences).values(data).returning();
+    return inference;
+  }
+
+  async getDiagnosticInferencesByConsultation(consultationId: string): Promise<DiagnosticInference[]> {
+    return await db.select().from(diagnosticInferences)
+      .where(eq(diagnosticInferences.consultationId, consultationId))
+      .orderBy(desc(diagnosticInferences.createdAt));
+  }
+
+  async getDiagnosticInferencesByPatient(patientId: string): Promise<DiagnosticInference[]> {
+    return await db.select().from(diagnosticInferences)
+      .where(eq(diagnosticInferences.patientId, patientId))
+      .orderBy(desc(diagnosticInferences.createdAt));
+  }
+
+  async getPendingDiagnosticInferences(doctorId: string): Promise<DiagnosticInference[]> {
+    return await db.select().from(diagnosticInferences)
+      .where(and(
+        eq(diagnosticInferences.doctorId, doctorId),
+        eq(diagnosticInferences.reviewStatus, 'pending'),
+        eq(diagnosticInferences.needsReview, true)
+      ))
+      .orderBy(desc(diagnosticInferences.createdAt));
+  }
+
+  async updateDiagnosticInference(id: string, data: Partial<InsertDiagnosticInference>): Promise<DiagnosticInference | undefined> {
+    const [updated] = await db.update(diagnosticInferences)
+      .set(data)
+      .where(eq(diagnosticInferences.id, id))
       .returning();
     return updated || undefined;
   }

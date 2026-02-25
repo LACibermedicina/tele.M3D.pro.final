@@ -14,7 +14,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNotNull, inArray, gte, lte } from "drizzle-orm";
@@ -3172,6 +3172,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  async function generateDiagnosticInference(
+    consultationId: string,
+    patientId: string,
+    doctorId: string,
+    clinicalSummary: string,
+    patientName: string
+  ) {
+    try {
+      const diagnosticPrompt = `Analise os dados clínicos abaixo e extraia TODAS as hipóteses diagnósticas sindrômicas possíveis, classificadas segundo CID-10/CID-11 e DSM-5/DSM-5-TR quando aplicável.
+
+Para cada hipótese, forneça:
+- code: código CID-10 ou DSM-5 (ex: "J06.9", "F32.1", "K21.0")
+- system: sistema de classificação ("CID-10", "CID-11", "DSM-5", "DSM-5-TR")
+- description: nome completo do diagnóstico em português
+- confidence: percentual de certeza (0-100) baseado nos dados clínicos disponíveis
+- category: categoria sindrômica (ex: "Infeccioso", "Neuropsiquiátrico", "Cardiovascular", "Endócrino", "Gastrointestinal", "Respiratório", "Musculoesquelético", "Dermatológico", etc.)
+- differentials: array com diagnósticos diferenciais a considerar
+- redFlags: sinais de alerta que exigem atenção imediata (se houver)
+- suggestedExams: exames complementares sugeridos para confirmar/descartar
+
+Ordene por probabilidade (confidence) decrescente.
+Retorne APENAS um JSON válido no formato: { "hypotheses": [...], "overallConfidence": <média ponderada> }
+
+Baseie suas análises nas diretrizes da OMS (WHO), Protocolos de Atenção Primária do Ministério da Saúde do Brasil (CAB, PCDT, CONITEC), DSM-5/DSM-5-TR (APA) e evidências científicas atuais.
+
+Dados da consulta:
+Paciente: ${patientName}
+${clinicalSummary}`;
+
+      const result = await geminiService.generateText(
+        diagnosticPrompt,
+        'Você é um sistema de classificação diagnóstica médica especializado em CID-10/CID-11 e DSM-5. Retorne APENAS JSON válido, sem markdown nem explicações adicionais.'
+      );
+
+      const cleanJson = result.replace(/```json?\s*/g, '').replace(/```\s*/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+
+      if (!parsed.hypotheses || !Array.isArray(parsed.hypotheses)) {
+        console.warn('Invalid diagnostic inference format');
+        return;
+      }
+
+      const overallConfidence = parsed.overallConfidence || Math.round(
+        parsed.hypotheses.reduce((sum: number, h: any) => sum + (h.confidence || 0), 0) / Math.max(parsed.hypotheses.length, 1)
+      );
+      const needsReview = overallConfidence < 96;
+
+      const inference = await storage.createDiagnosticInference({
+        consultationId,
+        patientId,
+        doctorId,
+        hypotheses: parsed.hypotheses,
+        overallConfidence,
+        needsReview,
+        reviewStatus: needsReview ? 'pending' : 'pending',
+        clinicalHistoryAuthorized: false,
+        epidemiologicalAuthorized: false,
+        reviewNotes: null,
+        compiledAt: null,
+      });
+
+      console.log(`✅ Diagnostic inference generated: ${parsed.hypotheses.length} hypotheses, confidence: ${overallConfidence}%, needs review: ${needsReview}`);
+
+      if (needsReview) {
+        await db.insert(pendingNotifications).values({
+          userId: doctorId,
+          type: 'diagnostic_review',
+          title: `Inferência diagnóstica requer revisão — ${patientName}`,
+          message: `${parsed.hypotheses.length} hipótese(s) diagnóstica(s) com certeza de ${overallConfidence}% (abaixo de 96%). Revisão necessária antes de compilar história clínica. Autorize a compilação da história clínica e do quadro de inferência diagnóstico-epidemiológica.`,
+          priority: 'high',
+          actionUrl: '/diagnostic-review',
+          delivered: false,
+          read: false,
+          metadata: {
+            inferenceId: inference.id,
+            consultationId,
+            patientId,
+            patientName,
+            overallConfidence,
+            hypothesesCount: parsed.hypotheses.length,
+            requiresAuthorization: true,
+          }
+        });
+        broadcastToDoctor(doctorId, {
+          type: 'diagnostic_review_required',
+          data: {
+            inferenceId: inference.id,
+            consultationId,
+            patientName,
+            overallConfidence,
+            hypothesesCount: parsed.hypotheses.length,
+            message: `Inferência diagnóstica (${overallConfidence}%) requer revisão e autorização.`
+          }
+        });
+      } else {
+        await db.insert(pendingNotifications).values({
+          userId: doctorId,
+          type: 'diagnostic_ready',
+          title: `Diagnóstico sindrômico concluído — ${patientName}`,
+          message: `${parsed.hypotheses.length} hipótese(s) com certeza de ${overallConfidence}%. Autorize a compilação da história clínica e do quadro de inferência diagnóstico-epidemiológica no sistema.`,
+          priority: 'medium',
+          actionUrl: '/diagnostic-review',
+          delivered: false,
+          read: false,
+          metadata: {
+            inferenceId: inference.id,
+            consultationId,
+            patientId,
+            patientName,
+            overallConfidence,
+            hypothesesCount: parsed.hypotheses.length,
+            requiresAuthorization: true,
+          }
+        });
+        broadcastToDoctor(doctorId, {
+          type: 'diagnostic_ready',
+          data: {
+            inferenceId: inference.id,
+            consultationId,
+            patientName,
+            overallConfidence,
+            hypothesesCount: parsed.hypotheses.length,
+            message: `Diagnóstico sindrômico concluído (${overallConfidence}%). Aguardando autorização para compilar.`
+          }
+        });
+      }
+    } catch (diagErr) {
+      console.error('Failed to generate diagnostic inference:', diagErr);
+    }
+  }
+
   // End video consultation (doctor ends the consultation)
   app.post('/api/video-consultations/:id/end', async (req: any, res) => {
     try {
@@ -3286,6 +3417,15 @@ ${clinicalSummary}`;
           } catch (itemsErr) {
             console.error('Failed to auto-generate post-consultation items:', itemsErr);
           }
+
+          // Auto-generate diagnostic syndromic inference with CID/DSM classification
+          await generateDiagnosticInference(
+            consultation.id,
+            consultation.patientId!,
+            consultation.doctorId || req.user?.id || DEFAULT_DOCTOR_ID,
+            clinicalSummary,
+            patient?.name || 'Paciente'
+          );
         } catch (recordErr) {
           console.error('Failed to auto-generate medical record:', recordErr);
         }
@@ -3507,6 +3647,16 @@ ${clinicalData}`;
           } catch (itemsErr) {
             console.error('Failed to auto-generate post-consultation items on completion:', itemsErr);
           }
+
+          // Auto-generate diagnostic syndromic inference with CID/DSM classification
+          const clinicalData = `${updatedNotes}\n${allNotes}`;
+          await generateDiagnosticInference(
+            consultation.id,
+            consultation.patientId!,
+            consultation.doctorId || req.user.id,
+            clinicalData,
+            patient?.name || 'Paciente'
+          );
         } catch (recordErr) {
           console.error('Failed to auto-generate medical record on completion:', recordErr);
         }
@@ -6269,6 +6419,157 @@ Retorne JSON com:
     } catch (error) {
       console.error('Error bulk reviewing:', error);
       res.status(500).json({ message: 'Erro na revisão em lote' });
+    }
+  });
+
+  // ===== DIAGNOSTIC INFERENCE ROUTES =====
+
+  app.get('/api/diagnostic-inferences/pending', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos' });
+      }
+      const inferences = await storage.getPendingDiagnosticInferences(req.user.id);
+      res.json(inferences);
+    } catch (error) {
+      console.error('Error fetching pending inferences:', error);
+      res.status(500).json({ message: 'Erro ao buscar inferências' });
+    }
+  });
+
+  app.get('/api/diagnostic-inferences/consultation/:consultationId', requireAuth, async (req: any, res) => {
+    try {
+      const inferences = await storage.getDiagnosticInferencesByConsultation(req.params.consultationId);
+      res.json(inferences);
+    } catch (error) {
+      console.error('Error fetching consultation inferences:', error);
+      res.status(500).json({ message: 'Erro ao buscar inferências da consulta' });
+    }
+  });
+
+  app.get('/api/diagnostic-inferences/patient/:patientId', requireAuth, async (req: any, res) => {
+    try {
+      const inferences = await storage.getDiagnosticInferencesByPatient(req.params.patientId);
+      res.json(inferences);
+    } catch (error) {
+      console.error('Error fetching patient inferences:', error);
+      res.status(500).json({ message: 'Erro ao buscar inferências do paciente' });
+    }
+  });
+
+  app.post('/api/diagnostic-inferences/:id/review', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos' });
+      }
+      const { action, reviewNotes, authorizeClinicHistory, authorizeEpidemiological } = req.body;
+      if (!['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ message: 'Ação inválida' });
+      }
+
+      const updateData: any = {
+        reviewStatus: action === 'approve' ? 'approved' : 'rejected',
+        reviewNotes: reviewNotes || null,
+      };
+
+      if (authorizeClinicHistory) {
+        updateData.clinicalHistoryAuthorized = true;
+      }
+      if (authorizeEpidemiological) {
+        updateData.epidemiologicalAuthorized = true;
+      }
+
+      const updated = await storage.updateDiagnosticInference(req.params.id, updateData);
+      if (!updated) {
+        return res.status(404).json({ message: 'Inferência não encontrada' });
+      }
+
+      if (action === 'approve' && (authorizeClinicHistory || authorizeEpidemiological)) {
+        try {
+          const patient = await storage.getPatient(updated.patientId);
+          const hypotheses = updated.hypotheses as any[];
+          const consultationNotesList = await storage.getConsultationNotes(updated.consultationId);
+          const clinicalNotes = consultationNotesList
+            .filter((n: any) => n.type !== 'iam3d_diagnostic')
+            .map((n: any) => n.content)
+            .join('\n');
+
+          let compilationPrompt = '';
+          if (authorizeClinicHistory) {
+            compilationPrompt += `\n## COMPILAÇÃO DA HISTÓRIA CLÍNICA
+Baseado nos dados clínicos e hipóteses diagnósticas abaixo, compile uma história clínica completa estruturada (anamnese, exame físico, hipóteses diagnósticas com CID/DSM, plano terapêutico).
+
+Hipóteses: ${JSON.stringify(hypotheses)}
+Notas clínicas: ${clinicalNotes}
+Paciente: ${patient?.name || 'Não identificado'}
+`;
+          }
+          if (authorizeEpidemiological) {
+            compilationPrompt += `\n## QUADRO DE INFERÊNCIA DIAGNÓSTICO-EPIDEMIOLÓGICA
+Gere um quadro de inferência epidemiológica relacionando as hipóteses diagnósticas com dados epidemiológicos (prevalência, incidência, fatores de risco populacionais, distribuição por faixa etária, sazonalidade). Use códigos MeSH e CID-10. Referencie dados do DataSUS, OMS e Protocolos do Ministério da Saúde do Brasil.
+
+Hipóteses: ${JSON.stringify(hypotheses)}
+Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.dateOfBirth}` : ''}
+`;
+          }
+
+          if (compilationPrompt) {
+            const compilationResult = await geminiService.generateText(
+              compilationPrompt,
+              'Você é um médico epidemiologista e clínico. Compile dados de forma rigorosa e estruturada. Referência: OMS, Ministério da Saúde do Brasil, DSM-5, CID-10.'
+            );
+
+            await storage.updateDiagnosticInference(updated.id, {
+              compiledAt: new Date(),
+            });
+
+            const existingRecords = await storage.getMedicalRecords(updated.patientId);
+            const consultationRecord = existingRecords.find((r: any) => {
+              const dh = r.diagnosticHypotheses as any;
+              return dh?.consultationId === updated.consultationId;
+            });
+
+            if (consultationRecord) {
+              await storage.updateMedicalRecord(consultationRecord.id, {
+                diagnosticHypotheses: {
+                  ...(consultationRecord.diagnosticHypotheses as any || {}),
+                  consultationId: updated.consultationId,
+                  hypotheses,
+                  overallConfidence: updated.overallConfidence,
+                  compilation: compilationResult,
+                  compiledAt: new Date().toISOString(),
+                  authorizedBy: req.user.id,
+                }
+              });
+            } else {
+              await storage.createMedicalRecord({
+                patientId: updated.patientId,
+                doctorId: req.user.id,
+                type: 'diagnostic_inference',
+                diagnosis: hypotheses.map((h: any) => `${h.code} - ${h.description}`).join('; '),
+                notes: compilationResult,
+                diagnosticHypotheses: {
+                  consultationId: updated.consultationId,
+                  hypotheses,
+                  overallConfidence: updated.overallConfidence,
+                  compilation: compilationResult,
+                  compiledAt: new Date().toISOString(),
+                  authorizedBy: req.user.id,
+                }
+              });
+            }
+
+            console.log(`✅ Clinical history compiled for inference ${updated.id}`);
+          }
+        } catch (compileErr) {
+          console.error('Failed to compile clinical history:', compileErr);
+        }
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error('Error reviewing inference:', error);
+      res.status(500).json({ message: 'Erro ao revisar inferência' });
     }
   });
 

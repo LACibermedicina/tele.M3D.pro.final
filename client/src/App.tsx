@@ -48,6 +48,7 @@ import PatientVideoConsultation from "@/pages/patient-video-consultation";
 import EpidemiologicalReports from "@/pages/epidemiological-reports";
 import IncompleteConsultations from "@/pages/incomplete-consultations";
 import PostConsultationReview from "@/pages/post-consultation-review";
+import DiagnosticReview from "@/pages/diagnostic-review";
 import Manual from "@/pages/manual";
 import FAQ from "@/pages/faq";
 import Installation from "@/pages/installation";
@@ -267,6 +268,13 @@ function Router() {
           <ProtectedRoute requiredRoles={['doctor']}>
             <Header />
             <PostConsultationReview />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/diagnostic-review">
+          <ProtectedRoute requiredRoles={['doctor']}>
+            <Header />
+            <DiagnosticReview />
           </ProtectedRoute>
         </Route>
         
