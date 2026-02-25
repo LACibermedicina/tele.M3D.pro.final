@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useNotifications, type Notification } from '@/hooks/use-notifications';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Bell, BellRing, Check, X, AlertTriangle, MessageCircle, Calendar, FileText, Activity, Video, Stethoscope, Send, Reply, Trash2 } from 'lucide-react';
@@ -24,20 +25,32 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
   const [sendingReply, setSendingReply] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleSendReply = async (notification: Notification) => {
     if (!replyText.trim() || sendingReply) return;
-    const doctorId = notification.data?.doctorId || notification.data?.senderId || notification.senderId;
-    if (!doctorId) return;
-    
     setSendingReply(true);
     try {
-      await apiRequest('POST', '/api/notifications/patient-reply', {
-        doctorId,
-        message: replyText.trim(),
-        notificationId: notification.id,
-      });
-      toast({ title: "Resposta enviada", description: `Sua resposta foi enviada para ${notification.data?.doctorName || 'o médico'}.` });
+      if (notification.type === 'consultation_message' && (user?.role === 'doctor' || user?.role === 'admin')) {
+        const consultationId = notification.data?.consultationId || notification.metadata?.consultationId;
+        if (consultationId) {
+          await apiRequest('POST', `/api/video-consultations/${consultationId}/notes`, {
+            type: 'chat',
+            content: replyText.trim(),
+            metadata: { senderName: user?.name || 'Médico(a)', senderRole: 'doctor' }
+          });
+          toast({ title: "Resposta enviada", description: `Sua resposta foi enviada para ${notification.data?.patientName || 'o paciente'}.` });
+        }
+      } else {
+        const doctorId = notification.data?.doctorId || notification.data?.senderId || notification.senderId;
+        if (!doctorId) return;
+        await apiRequest('POST', '/api/notifications/patient-reply', {
+          doctorId,
+          message: replyText.trim(),
+          notificationId: notification.id,
+        });
+        toast({ title: "Resposta enviada", description: `Sua resposta foi enviada para ${notification.data?.doctorName || 'o médico'}.` });
+      }
       setReplyText("");
       setReplyingTo(null);
       markAsRead(notification.id);
@@ -69,6 +82,8 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
       case 'consultation_invite':
       case 'consultation_ready':
         return <Video className={`h-4 w-4 ${iconClass}`} />;
+      case 'consultation_message':
+        return <MessageCircle className={`h-4 w-4 ${iconClass}`} />;
       case 'doctor_message':
         return <Stethoscope className={`h-4 w-4 ${iconClass}`} />;
       default:
@@ -222,7 +237,7 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
                       {format(notification.timestamp, 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                     </p>
                     <div className="flex items-center gap-1">
-                      {(notification.type === 'consultation_invite' || notification.type === 'consultation_ready') && (notification.data?.actionUrl || notification.actionUrl) && (
+                      {(notification.type === 'consultation_invite' || notification.type === 'consultation_ready' || notification.type === 'consultation_message') && (notification.data?.actionUrl || notification.actionUrl) && (
                         <Button
                           size="sm"
                           className="h-6 px-2 text-xs bg-blue-600 hover:bg-blue-700 text-white"
@@ -252,7 +267,7 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
                           Atender
                         </Button>
                       )}
-                      {(notification.type === 'consultation_invite' || notification.type === 'doctor_message') && (notification.data?.allowReply !== false) && (
+                      {(notification.type === 'consultation_invite' || notification.type === 'doctor_message' || notification.type === 'consultation_message') && (notification.data?.allowReply !== false) && (
                         <Button
                           variant="ghost"
                           size="sm"

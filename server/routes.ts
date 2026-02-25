@@ -3097,7 +3097,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Broadcast note to ALL participants (doctor and patient)
       const consultation2 = await storage.getVideoConsultation(req.params.id);
       if (consultation2) {
         broadcastToDoctor(consultation2.doctorId, {
@@ -3111,6 +3110,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
               type: 'consultation_note_added',
               data: note
             });
+          }
+        }
+
+        if (type === 'chat' && req.user.role === 'patient' && consultation2.status === 'waiting') {
+          try {
+            const chatPatient = await storage.getPatient(consultation2.patientId!);
+            const patientName = chatPatient?.name || 'Paciente';
+            const doctor = await db.select().from(users).where(eq(users.id, consultation2.doctorId)).limit(1);
+            if (doctor.length > 0) {
+              await db.insert(pendingNotifications).values({
+                userId: consultation2.doctorId,
+                type: 'consultation_message',
+                title: `Mensagem de ${patientName}`,
+                message: content.length > 100 ? content.substring(0, 100) + '...' : content,
+                priority: 'high',
+                actionUrl: `/consultation/video/${consultation2.patientId}`,
+                senderId: req.user.id,
+                delivered: false,
+                read: false,
+                metadata: { 
+                  consultationId: consultation2.id,
+                  patientId: consultation2.patientId,
+                  patientName,
+                  allowReply: true,
+                  noteId: note.id
+                }
+              });
+              broadcastToDoctor(consultation2.doctorId, {
+                type: 'consultation_message',
+                data: {
+                  title: `Mensagem de ${patientName}`,
+                  message: content,
+                  consultationId: consultation2.id,
+                  patientId: consultation2.patientId,
+                  patientName,
+                  actionUrl: `/consultation/video/${consultation2.patientId}`,
+                  allowReply: true
+                }
+              });
+            }
+          } catch (notifErr) {
+            console.error('Failed to forward patient chat as notification:', notifErr);
           }
         }
       }
@@ -5348,7 +5389,7 @@ DIRETRIZES DE REFERÊNCIA: Baseie suas respostas nas diretrizes da OMS, Protocol
           message: 'Joined office successfully',
           consultationId: existingConsultation[0].id,
           appointmentId: existingConsultation[0].appointmentId,
-          channelName: existingConsultation[0].agoraChannelName || `doctor-office-${doctorId}`
+          channelName: existingConsultation[0].id
         });
       }
 
@@ -5364,16 +5405,18 @@ DIRETRIZES DE REFERÊNCIA: Baseie suas respostas nas diretrizes da OMS, Protocol
         })
         .returning();
 
-      // Create video consultation session
-      const consultation = await db.insert(videoConsultations)
+      const consultationInsert = await db.insert(videoConsultations)
         .values({
           appointmentId: appointment[0].id,
           patientId,
           doctorId,
           status: 'waiting',
-          agoraChannelName: `doctor-office-${doctorId}`
         })
         .returning();
+      const consultation = consultationInsert;
+      await db.update(videoConsultations)
+        .set({ agoraChannelName: consultationInsert[0].id })
+        .where(eq(videoConsultations.id, consultationInsert[0].id));
 
       // Notify doctor via WebSocket
       broadcastToDoctor(doctorId, {

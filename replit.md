@@ -61,6 +61,8 @@ All AI prompts (chatbot, triage, video consultation, medical records, SOAP repor
 
 ## Video Consultation Features (Doctor)
 - **Route**: `/consultation/video/:patientId`
+- **Channel**: Both doctor and patient use `consultationId` (UUID) as Agora channel name — ensures same room
+- **Entry Points**: Patient profile "Videochamada" button, schedule "Iniciar" button, instant consultation — all navigate to `/consultation/video/:patientId` (Agora-based page, not WebRTC dialog)
 - **Chat**: Real-time chat with sender identity (doctor/patient), bubble-style messages
 - **AI Diagnostic**: Doctor sends questions, backend generates AI response using Gemini/OpenAI with patient context (history, allergies, records). Responses saved as `ai_response` notes.
 - **Audio Transcription**: Real-time speech-to-text using browser SpeechRecognition API (Chrome/Edge). Entries show timestamp, speaker (Doutor/Paciente), text. Doctor can toggle speaker identification manually. Export to .txt or save to consultation notes. Auto-saves on call end.
@@ -72,10 +74,12 @@ All AI prompts (chatbot, triage, video consultation, medical records, SOAP repor
 
 ## Video Consultation Features (Patient)
 - **Route**: `/patient/video/:consultationId`
+- **Channel**: Uses same `consultationId` as channel name (matches doctor's channel)
 - **Join**: Patient joins via `/api/doctor-office/join/:doctorId` (idempotent, reuses existing active consultation)
 - **Leave**: Patient can leave call via "Sair" button → calls `/api/video-consultations/:id/leave` → notifies doctor
 - **Auto-redirect**: If doctor ends consultation, patient is auto-redirected to `/my-consultations` via polling consultation status
 - **Chat**: Real-time chat with doctor during video call
+- **Pre-call Messages**: Patient chat messages sent while consultation status is 'waiting' are forwarded as `consultation_message` notifications to the doctor. Doctor can reply from notification center (creates consultation note). Doctor can also click "Entrar" to join the video room.
 
 ## WhatsApp IA (Doctor Messaging)
 - **Route**: `/whatsapp` - Central de mensagens inteligente

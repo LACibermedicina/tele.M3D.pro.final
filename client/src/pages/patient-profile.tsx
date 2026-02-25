@@ -1,26 +1,22 @@
 import { useState } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Calendar, Phone, Mail, User, Droplets, AlertTriangle, Video } from "lucide-react";
+import { ArrowLeft, Calendar, Phone, Mail, User, Droplets, AlertTriangle, Video, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { DEFAULT_DOCTOR_ID } from "@shared/schema";
-import type { Patient, Appointment, MedicalRecord, VideoConsultation as VideoConsultationType } from "@shared/schema";
-import VideoConsultation from "@/components/video-consultation/VideoConsultation";
+import type { Patient, Appointment, MedicalRecord } from "@shared/schema";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
 
 export default function PatientProfile() {
   const { id } = useParams();
-  const [isVideoConsultationOpen, setIsVideoConsultationOpen] = useState(false);
-  const [activeConsultationId, setActiveConsultationId] = useState<string | null>(null);
+  const [, navigate] = useLocation();
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -37,44 +33,20 @@ export default function PatientProfile() {
     queryKey: ['/api/medical-records', id],
   });
 
-  // Create video consultation mutation
-  const createVideoConsultationMutation = useMutation({
-    mutationFn: async (consultationData: any) => {
-      const response = await apiRequest('POST', '/api/video-consultations', consultationData);
-      return response.json();
-    },
-    onSuccess: (consultation: VideoConsultationType) => {
-      toast({
-        title: "Videochamada iniciada",
-        description: "A videochamada foi iniciada com sucesso.",
-      });
-      setActiveConsultationId(consultation.id);
-      setIsVideoConsultationOpen(true);
-      queryClient.invalidateQueries({ queryKey: ['/api/video-consultations'] });
-    },
-    onError: () => {
+  const [isStartingCall, setIsStartingCall] = useState(false);
+
+  const handleStartVideoCall = async () => {
+    if (!patient) return;
+    setIsStartingCall(true);
+    try {
+      navigate(`/consultation/video/${patient.id}`);
+    } catch (error) {
       toast({
         title: "Erro",
         description: "Não foi possível iniciar a videochamada.",
         variant: "destructive",
       });
-    },
-  });
-
-  const handleStartVideoCall = async () => {
-    if (!patient) return;
-
-    try {
-      // Create a video consultation session
-      const consultationData = {
-        patientId: patient.id,
-        doctorId: DEFAULT_DOCTOR_ID,
-        appointmentId: null, // Not linked to a specific appointment - now nullable in schema
-      };
-
-      createVideoConsultationMutation.mutate(consultationData);
-    } catch (error) {
-      console.error('Error starting video call:', error);
+      setIsStartingCall(false);
     }
   };
 
@@ -146,11 +118,11 @@ export default function PatientProfile() {
           <Button 
             variant="default" 
             onClick={handleStartVideoCall}
-            disabled={createVideoConsultationMutation.isPending}
+            disabled={isStartingCall}
             data-testid="button-start-video-call"
           >
-            <Video className="h-4 w-4 mr-2" />
-            {createVideoConsultationMutation.isPending ? 'Iniciando...' : 'Videochamada'}
+            {isStartingCall ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Video className="h-4 w-4 mr-2" />}
+            {isStartingCall ? 'Iniciando...' : 'Videochamada'}
           </Button>
         </div>
       </div>
@@ -342,26 +314,6 @@ export default function PatientProfile() {
         </div>
       </div>
 
-      {/* Video Consultation Dialog */}
-      <Dialog open={isVideoConsultationOpen} onOpenChange={setIsVideoConsultationOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden" data-testid="dialog-video-consultation">
-          <DialogHeader>
-            <DialogTitle>Videochamada com {patient?.name}</DialogTitle>
-          </DialogHeader>
-          {activeConsultationId && (
-            <VideoConsultation
-              appointmentId={activeConsultationId}
-              patientId={patient.id}
-              doctorId={DEFAULT_DOCTOR_ID}
-              patientName={patient?.name || 'Paciente'}
-              onCallEnd={() => {
-                setIsVideoConsultationOpen(false);
-                setActiveConsultationId(null);
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
     </PageWrapper>
   );

@@ -16,7 +16,6 @@ import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import VideoConsultation from "@/components/video-consultation/VideoConsultation";
 import { formatErrorForToast } from "@/lib/error-handler";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
@@ -31,8 +30,6 @@ export default function Schedule() {
   const [appointmentType, setAppointmentType] = useState<string>("consultation");
   const [editAppointmentType, setEditAppointmentType] = useState<string>("consultation");
   const [editNotes, setEditNotes] = useState<string>("");
-  const [isVideoConsultationOpen, setIsVideoConsultationOpen] = useState(false);
-  const [activeConsultationId, setActiveConsultationId] = useState<string | null>(null);
   const [isJoinLinkModalOpen, setIsJoinLinkModalOpen] = useState(false);
   const [generatedJoinLink, setGeneratedJoinLink] = useState<string | null>(null);
   const [selectedAppointmentForLink, setSelectedAppointmentForLink] = useState<any>(null);
@@ -155,27 +152,6 @@ export default function Schedule() {
     },
   });
 
-  // Create video consultation mutation
-  const createVideoConsultationMutation = useMutation({
-    mutationFn: (consultationData: any) => apiRequest('POST', '/api/video-consultations', consultationData),
-    onSuccess: (consultation: any) => {
-      toast({
-        title: "Videochamada iniciada",
-        description: "A videochamada foi iniciada com sucesso.",
-      });
-      setActiveConsultationId(consultation.id);
-      setIsVideoConsultationOpen(true);
-      queryClient.invalidateQueries({ queryKey: ['/api/video-consultations'] });
-    },
-    onError: (error) => {
-      const errorInfo = formatErrorForToast(error);
-      toast({
-        title: errorInfo.title,
-        description: errorInfo.description,
-        variant: "destructive",
-      });
-    },
-  });
 
   // Update appointment mutation
   const updateAppointmentMutation = useMutation({
@@ -809,11 +785,11 @@ export default function Schedule() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleStartConsultation(appointment)}
-                                disabled={createVideoConsultationMutation.isPending}
+                                disabled={false}
                                 data-testid={`button-start-consultation-${appointment.id}`}
                               >
                                 <i className="fas fa-video mr-1"></i>
-                                {createVideoConsultationMutation.isPending ? 'Iniciando...' : 'Iniciar'}
+                                Iniciar
                               </Button>
                               
                               <Button
@@ -1172,29 +1148,6 @@ export default function Schedule() {
         </DialogContent>
       </Dialog>
 
-      {/* Video Consultation Dialog */}
-      <Dialog open={isVideoConsultationOpen} onOpenChange={setIsVideoConsultationOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden" data-testid="dialog-video-consultation">
-          <DialogHeader>
-            <DialogTitle>
-              Videochamada - {selectedAppointment?.patientName || 'Consulta'}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedAppointment && (
-            <VideoConsultation
-              appointmentId={selectedAppointment.id}
-              patientId={selectedAppointment.patientId}
-              doctorId={DEFAULT_DOCTOR_ID}
-              patientName={selectedAppointment.patientName || 'Paciente'}
-              onCallEnd={() => {
-                setIsVideoConsultationOpen(false);
-                setActiveConsultationId(null);
-                setSelectedAppointment(null);
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Join Link Modal */}
       <Dialog open={isJoinLinkModalOpen} onOpenChange={setIsJoinLinkModalOpen}>
@@ -1394,7 +1347,7 @@ export default function Schedule() {
       </Dialog>
 
       {/* Quick Actions Cards - Only show on main page */}
-      {!isCreateModalOpen && !isVideoConsultationOpen && (
+      {!isCreateModalOpen && (
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6" data-testid="quick-actions-grid">
           <Card 
             className="hover:shadow-lg transition-all duration-300 backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20 dark:border-white/10 cursor-pointer group" 

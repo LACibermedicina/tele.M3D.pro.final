@@ -5,7 +5,7 @@ import { queryClient, apiRequest } from '@/lib/queryClient';
 
 export interface Notification {
   id: string;
-  type: 'appointment' | 'whatsapp' | 'exam_result' | 'emergency' | 'system' | 'consultation_invite' | 'doctor_message' | 'consultation_ready' | 'urgent_alert';
+  type: 'appointment' | 'whatsapp' | 'exam_result' | 'emergency' | 'system' | 'consultation_invite' | 'doctor_message' | 'consultation_ready' | 'urgent_alert' | 'consultation_message';
   title: string;
   message: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
@@ -166,6 +166,19 @@ export function useNotifications() {
           type: 'consultation_ready',
           title: 'Consulta Pronta',
           message: message.data?.message || 'Sua consulta por vídeo está pronta',
+          priority: 'high',
+          timestamp,
+          read: false,
+          actionUrl: message.data?.actionUrl,
+          data: message.data
+        };
+
+      case 'consultation_message':
+        return {
+          id: `consult-msg-${Date.now()}`,
+          type: 'consultation_message',
+          title: message.data?.title || 'Mensagem da Consulta',
+          message: message.data?.message || '',
           priority: 'high',
           timestamp,
           read: false,
