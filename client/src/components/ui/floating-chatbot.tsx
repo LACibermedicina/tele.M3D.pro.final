@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { MessageCircle, X, Send, Brain, Calendar, Stethoscope, Minimize2, Maximize2, ClipboardList, Users, Activity, FileText, HeartPulse, BarChart3 } from 'lucide-react';
+import { MessageCircle, X, Send, Brain, Calendar, Stethoscope, Minimize2, Maximize2, ClipboardList, Users, Activity, FileText, HeartPulse, BarChart3, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 
 interface SuggestedAppointment {
   dateIso: string;
@@ -70,6 +70,111 @@ export default function FloatingChatbot() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [currentMessage, setCurrentMessage] = useState('');
   const [activeInterviewId, setActiveInterviewId] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(true);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+
+  useEffect(() => {
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognitionAPI) {
+      setVoiceSupported(true);
+      const recognition = new SpeechRecognitionAPI();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'pt-BR';
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event: any) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        if (finalTranscript) {
+          setCurrentMessage(finalTranscript);
+        } else if (interimTranscript) {
+          setCurrentMessage(interimTranscript);
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          toast({
+            title: 'Microfone bloqueado',
+            description: 'Permita o acesso ao microfone nas configurações do navegador.',
+            variant: 'destructive',
+          });
+        }
+      };
+
+      recognitionRef.current = recognition;
+    }
+
+    if (window.speechSynthesis) {
+      synthRef.current = window.speechSynthesis;
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
+      }
+      if (synthRef.current) {
+        synthRef.current.cancel();
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      setCurrentMessage('');
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
+
+  const speakText = (text: string) => {
+    if (!synthRef.current || !ttsEnabled) return;
+    synthRef.current.cancel();
+    const cleanText = text
+      .replace(/[📅🔑👋⚠️✅🩺📊📋🎯💡🚨⚡🔴🟠🟡🟢🔵]/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/•/g, '')
+      .replace(/\n+/g, '. ')
+      .trim();
+    if (!cleanText) return;
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'pt-BR';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+
+    const voices = synthRef.current.getVoices();
+    const ptVoice = voices.find(v => v.lang.startsWith('pt-BR')) || voices.find(v => v.lang.startsWith('pt'));
+    if (ptVoice) {
+      utterance.voice = ptVoice;
+    }
+
+    synthRef.current.speak(utterance);
+  };
+
   const getWelcomeMessage = () => {
     if (!user) {
       return '👋 Olá! Sou o assistente virtual da Tele<M3D>. Posso ajudá-lo com:\n\n📅 Agendar uma consulta médica\n🔑 Solicitar acesso temporário para conhecer a plataforma\n\nPara acesso completo, faça login ou registre-se!';
@@ -195,6 +300,7 @@ export default function FloatingChatbot() {
       }
       
       setMessages(prev => [...prev, aiMessage]);
+      speakText(data.response);
     },
     onError: () => {
       const errorMessage: ChatMessage = {
@@ -324,6 +430,19 @@ export default function FloatingChatbot() {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={() => {
+                  setTtsEnabled(!ttsEnabled);
+                  if (ttsEnabled && synthRef.current) synthRef.current.cancel();
+                }}
+                className="text-white hover:bg-white/20 w-8 h-8 p-0"
+                title={ttsEnabled ? 'Desativar voz' : 'Ativar voz'}
+                data-testid="button-toggle-tts"
+              >
+                {ttsEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setIsMinimized(!isMinimized)}
                 className="text-white hover:bg-white/20 w-8 h-8 p-0"
                 data-testid="button-minimize-chatbot"
@@ -333,7 +452,10 @@ export default function FloatingChatbot() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsOpen(false)}
+                onClick={() => {
+                  setIsOpen(false);
+                  if (synthRef.current) synthRef.current.cancel();
+                }}
                 className="text-white hover:bg-white/20 w-8 h-8 p-0"
                 data-testid="button-close-chatbot"
               >
@@ -445,14 +567,26 @@ export default function FloatingChatbot() {
 
             {/* Input Area */}
             <div className="border-t p-3">
-              <div className="flex space-x-2">
+              <div className="flex space-x-1.5">
+                {voiceSupported && (
+                  <Button
+                    onClick={toggleListening}
+                    size="sm"
+                    variant={isListening ? "default" : "outline"}
+                    className={`shrink-0 ${isListening ? 'bg-red-500 hover:bg-red-600 animate-pulse' : ''}`}
+                    data-testid="button-voice-input"
+                    title={isListening ? 'Parar gravação' : 'Falar com o assistente'}
+                  >
+                    {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  </Button>
+                )}
                 <Input
                   value={currentMessage}
                   onChange={(e) => setCurrentMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder={t('chatbot.input_placeholder')}
+                  placeholder={isListening ? 'Ouvindo...' : t('chatbot.input_placeholder')}
                   disabled={chatMutation.isPending}
-                  className="flex-1"
+                  className={`flex-1 ${isListening ? 'border-red-300 bg-red-50/50' : ''}`}
                   data-testid="input-chatbot-message"
                 />
                 <Button
@@ -464,6 +598,18 @@ export default function FloatingChatbot() {
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
+              {isListening && (
+                <div className="flex items-center gap-2 mt-1.5 px-1">
+                  <div className="flex gap-0.5">
+                    <span className="w-1 h-3 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1 h-4 bg-red-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                    <span className="w-1 h-5 bg-red-400 rounded-full animate-pulse" style={{ animationDelay: '100ms' }} />
+                    <span className="w-1 h-3 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '250ms' }} />
+                  </div>
+                  <span className="text-xs text-red-600 font-medium">Ouvindo... fale agora</span>
+                </div>
+              )}
               
               {/* Quick Actions */}
               {/* Clinical Interview Progress */}

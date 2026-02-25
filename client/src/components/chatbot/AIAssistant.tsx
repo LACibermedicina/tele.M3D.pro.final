@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Calendar, Send, Loader2, User, Check, HeartPulse, ClipboardList, Users, Brain, FileText, BarChart3, Stethoscope, Settings, AlertTriangle, LogIn, MessageCircle } from "lucide-react";
+import { Bot, Calendar, Send, Loader2, User, Check, HeartPulse, ClipboardList, Users, Brain, FileText, BarChart3, Stethoscope, Settings, AlertTriangle, LogIn, MessageCircle, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { FormattedText } from "@/components/ui/formatted-text";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +36,84 @@ export function AIAssistant({ open, onOpenChange, initialContext, mode = 'genera
   const [isLoading, setIsLoading] = useState(false);
   const [visitorQuestionCount, setVisitorQuestionCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(true);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+
+  useEffect(() => {
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognitionAPI) {
+      setVoiceSupported(true);
+      const recognition = new SpeechRecognitionAPI();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'pt-BR';
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event: any) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        if (finalTranscript) {
+          setInput(finalTranscript);
+        } else if (interimTranscript) {
+          setInput(interimTranscript);
+        }
+      };
+
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = (event: any) => {
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          toast({ title: 'Microfone bloqueado', description: 'Permita o acesso ao microfone.', variant: 'destructive' });
+        }
+      };
+
+      recognitionRef.current = recognition;
+    }
+    if (window.speechSynthesis) synthRef.current = window.speechSynthesis;
+
+    return () => {
+      if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
+      if (synthRef.current) synthRef.current.cancel();
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      setInput('');
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
+
+  const speakText = (text: string) => {
+    if (!synthRef.current || !ttsEnabled) return;
+    synthRef.current.cancel();
+    const cleanText = text.replace(/[📅🔑👋⚠️✅🩺📊📋🎯💡🚨⚡🔴🟠🟡🟢🔵]/g, '').replace(/\*\*/g, '').replace(/•/g, '').replace(/\n+/g, '. ').trim();
+    if (!cleanText) return;
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'pt-BR';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    const voices = synthRef.current.getVoices();
+    const ptVoice = voices.find(v => v.lang.startsWith('pt-BR')) || voices.find(v => v.lang.startsWith('pt'));
+    if (ptVoice) utterance.voice = ptVoice;
+    synthRef.current.speak(utterance);
+  };
 
   useEffect(() => {
     if (open && messages.length === 0) {
