@@ -78,7 +78,7 @@ export default function ConsultationSession() {
   // Update clinical notes mutation
   const updateNotesMutation = useMutation({
     mutationFn: async (notes: string) => {
-      return await apiRequest(`/api/consultation-sessions/${sessionId}/clinical-notes`, 'POST', {
+      return await apiRequest('POST', `/api/consultation-sessions/${sessionId}/clinical-notes`, {
         notes
       });
     },
@@ -91,7 +91,7 @@ export default function ConsultationSession() {
   // Invite specialists mutation
   const inviteSpecialistsMutation = useMutation({
     mutationFn: async (specialistIds: string[]) => {
-      return await apiRequest(`/api/consultation-sessions/${sessionId}/invite`, 'POST', {
+      return await apiRequest('POST', `/api/consultation-sessions/${sessionId}/invite`, {
         specialistIds
       });
     },
@@ -106,7 +106,7 @@ export default function ConsultationSession() {
   // Generate AI summary mutation
   const generateSummaryMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/consultation-sessions/${sessionId}/summary`, 'POST');
+      return await apiRequest('POST', `/api/consultation-sessions/${sessionId}/summary`);
     },
     onSuccess: (data: any) => {
       toast({ 
@@ -125,7 +125,7 @@ export default function ConsultationSession() {
   }>({
     queryKey: ['agora-token', sessionId],
     queryFn: async () => {
-      return await apiRequest('/api/video-consultations/agora-token', 'POST', {
+      return await apiRequest('POST', '/api/video-consultations/agora-token', {
         channelName: sessionId,
         role: 'publisher',
       }) as any;

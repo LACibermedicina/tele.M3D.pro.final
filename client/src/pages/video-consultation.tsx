@@ -41,6 +41,9 @@ import {
   Monitor,
   MonitorOff,
   UserPlus,
+  LayoutDashboard,
+  Columns,
+  Tv,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWebSocket } from '@/hooks/use-websocket';
@@ -85,6 +88,7 @@ export default function VideoConsultation() {
   const [isAudioOn, setIsAudioOn] = useState(true);
 
   const [isFullscreen, setIsFullscreen] = useState(true);
+  const [viewMode, setViewMode] = useState<'dashboard' | 'video' | 'compact'>('dashboard');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingStartTime, setRecordingStartTime] = useState<Date | null>(null);
   const [chatMessage, setChatMessage] = useState('');
@@ -693,71 +697,299 @@ export default function VideoConsultation() {
     );
   }
 
-  return (
-    <div className={`${isFullscreen ? 'fixed inset-0 z-50' : 'container mx-auto p-4'} bg-black flex flex-col`} data-testid="video-consultation-page">
-      <div className="flex-1 relative" style={{ minHeight: '60vh' }}>
-        <div ref={remoteVideoRef} className="absolute inset-0 bg-gray-900" data-testid="video-remote">
-          {remoteUsers.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center text-white">
-              <div className="text-center">
-                <Video className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                <p className="text-lg">Aguardando paciente...</p>
+  const videoArea = (className?: string, compact?: boolean) => (
+    <div className={`relative bg-gray-900 rounded-lg overflow-hidden ${className || ''}`}>
+      <div ref={remoteVideoRef} className="absolute inset-0" data-testid="video-remote">
+        {remoteUsers.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center text-white">
+            <div className="text-center">
+              <Video className={`${compact ? 'h-8 w-8' : 'h-16 w-16'} mx-auto mb-2 opacity-50`} />
+              <p className={compact ? 'text-sm' : 'text-lg'}>Aguardando paciente...</p>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className={`absolute ${compact ? 'bottom-2 right-2 w-28 h-20' : 'bottom-16 right-4 w-56 h-40'} bg-gray-800 rounded-lg overflow-hidden border-2 border-white shadow-lg z-10`}>
+        <div ref={localVideoRef} className="w-full h-full" data-testid="video-local" />
+        {!isVideoOn && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+            <VideoOff className={`${compact ? 'h-6 w-6' : 'h-10 w-10'} text-white opacity-50`} />
+          </div>
+        )}
+        <div className="absolute bottom-1 left-2 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">Você</div>
+      </div>
+      {isRecording && (
+        <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-red-600 text-white px-3 py-1.5 rounded-full z-10" data-testid="status-recording">
+          <CircleDot className="h-3 w-3 animate-pulse" /><span className="font-semibold text-xs">REC</span>
+        </div>
+      )}
+      {isTranscribing && (
+        <div className={`absolute top-2 ${isRecording ? 'left-24' : 'left-2'} flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 rounded-full z-10`}>
+          <AudioLines className="h-3 w-3 animate-pulse" /><span className="font-semibold text-xs">Transcrição</span>
+        </div>
+      )}
+    </div>
+  );
+
+  const controlBar = (compact?: boolean) => (
+    <div className={`flex items-center justify-center gap-2 ${compact ? 'py-2 px-3' : 'py-3 px-6'} bg-gray-900/95 rounded-full`}>
+      <Button variant={isVideoOn ? 'default' : 'destructive'} size="icon" onClick={toggleVideo} className={`rounded-full ${compact ? 'h-8 w-8' : ''}`} data-testid="button-toggle-video">
+        {isVideoOn ? <Video className={compact ? 'h-4 w-4' : 'h-5 w-5'} /> : <VideoOff className={compact ? 'h-4 w-4' : 'h-5 w-5'} />}
+      </Button>
+      <Button variant={isAudioOn ? 'default' : 'destructive'} size="icon" onClick={toggleAudio} className={`rounded-full ${compact ? 'h-8 w-8' : ''}`} data-testid="button-toggle-audio">
+        {isAudioOn ? <Mic className={compact ? 'h-4 w-4' : 'h-5 w-5'} /> : <MicOff className={compact ? 'h-4 w-4' : 'h-5 w-5'} />}
+      </Button>
+      <Button variant={isRecording ? 'destructive' : 'secondary'} size="icon" onClick={toggleRecording} className={`rounded-full ${compact ? 'h-8 w-8' : ''}`} data-testid="button-toggle-recording" title="Gravar">
+        {isRecording ? <Pause className={compact ? 'h-4 w-4' : 'h-5 w-5'} /> : <Play className={compact ? 'h-4 w-4' : 'h-5 w-5'} />}
+      </Button>
+      <Button variant={isTranscribing ? 'destructive' : 'secondary'} size="icon" onClick={toggleTranscription} className={`rounded-full ${compact ? 'h-8 w-8' : ''}`} title="Transcrição">
+        <AudioLines className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
+      </Button>
+      <Button variant={isScreenSharing ? 'destructive' : 'secondary'} size="icon" onClick={toggleScreenShare} className={`rounded-full ${compact ? 'h-8 w-8' : ''}`} title={isScreenSharing ? 'Parar compartilhamento' : 'Compartilhar tela'}>
+        {isScreenSharing ? <MonitorOff className={compact ? 'h-4 w-4' : 'h-5 w-5'} /> : <Monitor className={compact ? 'h-4 w-4' : 'h-5 w-5'} />}
+      </Button>
+      <Button variant="secondary" size="icon" onClick={() => setShowSpecialistDialog(true)} className={`rounded-full ${compact ? 'h-8 w-8' : ''}`} title="Convidar Especialista">
+        <UserPlus className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
+      </Button>
+      <Button variant="destructive" size="icon" onClick={endCall} className={`rounded-full ml-1 ${compact ? 'h-8 w-8' : ''}`} data-testid="button-end-call">
+        <PhoneOff className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
+      </Button>
+    </div>
+  );
+
+  const chatPanel = (heightClass?: string) => (
+    <Card className={`flex flex-col overflow-hidden ${heightClass || 'h-full'}`}>
+      <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30">
+        <MessageSquare className="h-4 w-4 text-primary" />
+        <span className="text-xs font-semibold">Chat</span>
+        {chatNotes.length > 0 && <Badge variant="secondary" className="h-5 px-1.5 text-xs ml-auto">{chatNotes.length}</Badge>}
+      </div>
+      <ScrollArea className="flex-1 p-2" data-testid="scroll-chat">
+        <div className="space-y-1.5" ref={chatScrollRef}>
+          {chatNotes.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">Sem mensagens</p>}
+          {chatNotes.map((note) => {
+            const isDoctor = note.metadata?.senderRole === 'doctor' || note.userId === user?.id;
+            return (
+              <div key={note.id} className={`flex ${isDoctor ? 'justify-end' : 'justify-start'}`} data-testid={`message-chat-${note.id}`}>
+                <div className={`max-w-[85%] rounded-lg px-2.5 py-1.5 ${isDoctor ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                  <div className="flex items-center gap-1">
+                    {isDoctor ? <Stethoscope className="h-2.5 w-2.5" /> : <User className="h-2.5 w-2.5" />}
+                    <span className="text-[10px] font-medium">{isDoctor ? 'Dr.' : 'Pac.'}</span>
+                    <span className={`text-[10px] ml-auto ${isDoctor ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
+                      {new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <p className="text-xs mt-0.5">{note.content}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </ScrollArea>
+      <div className="p-2 border-t flex gap-1.5">
+        <Input placeholder="Mensagem..." value={chatMessage} onChange={(e) => setChatMessage(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()} className="text-xs h-8" data-testid="input-chat-message" />
+        <Button onClick={sendChatMessage} size="icon" disabled={createNoteMutation.isPending} className="h-8 w-8 shrink-0" data-testid="button-send-chat"><Send className="h-3.5 w-3.5" /></Button>
+      </div>
+    </Card>
+  );
+
+  const aiPanel = (heightClass?: string) => (
+    <Card className={`flex flex-col overflow-hidden ${heightClass || 'h-full'}`}>
+      <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30">
+        <Brain className="h-4 w-4 text-green-600" />
+        <span className="text-xs font-semibold">Assistente IA</span>
+        {aiLoading && <Loader2 className="h-3 w-3 animate-spin ml-auto text-green-600" />}
+      </div>
+      <ScrollArea className="flex-1 p-2" data-testid="scroll-ai">
+        <div className="space-y-1.5" ref={aiScrollRef}>
+          {aiNotes.length === 0 && (
+            <div className="text-center py-4">
+              <Brain className="h-6 w-6 mx-auto mb-1 text-muted-foreground opacity-50" />
+              <p className="text-xs text-muted-foreground">Pergunte à IA</p>
+            </div>
+          )}
+          {aiNotes.map((note) => (
+            <Card key={note.id} className={`p-2 ${note.type === 'ai_query' ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800' : 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800'}`} data-testid={`message-ai-${note.id}`}>
+              <div className="flex items-center gap-1 mb-0.5">
+                {note.type === 'ai_query' ? <Stethoscope className="h-3 w-3 text-blue-600" /> : <Brain className="h-3 w-3 text-green-600" />}
+                <span className="text-[10px] font-semibold">{note.type === 'ai_query' ? 'Pergunta' : 'IA'}</span>
+              </div>
+              <p className="text-xs whitespace-pre-wrap">{note.content}</p>
+            </Card>
+          ))}
+          {aiLoading && <Card className="p-2 bg-green-50 dark:bg-green-950"><div className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin text-green-600" /><span className="text-xs">Analisando...</span></div></Card>}
+        </div>
+      </ScrollArea>
+      <div className="p-2 border-t flex gap-1.5">
+        <Textarea placeholder="Pergunta diagnóstica..." value={aiQuery} onChange={(e) => setAiQuery(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAiQuery(); } }}
+          rows={1} className="resize-none min-h-[32px] text-xs" data-testid="input-ai-query" />
+        <Button onClick={sendAiQuery} size="icon" disabled={aiLoading || createNoteMutation.isPending} className="h-8 w-8 shrink-0" data-testid="button-send-ai"><Send className="h-3.5 w-3.5" /></Button>
+      </div>
+    </Card>
+  );
+
+  const transcriptionPanel = (heightClass?: string) => (
+    <Card className={`flex flex-col overflow-hidden ${heightClass || 'h-full'}`}>
+      <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30">
+        <AudioLines className="h-4 w-4 text-purple-600" />
+        <span className="text-xs font-semibold">Transcrição</span>
+        {transcriptEntries.length > 0 && <Badge variant="secondary" className="h-5 px-1.5 text-xs ml-auto">{transcriptEntries.length}</Badge>}
+      </div>
+      <ScrollArea className="flex-1 p-2">
+        <div className="space-y-1" ref={transcriptScrollRef}>
+          {transcriptEntries.length === 0 && !isTranscribing && (
+            <div className="text-center py-4">
+              <AudioLines className="h-6 w-6 mx-auto mb-1 text-muted-foreground opacity-50" />
+              <p className="text-xs text-muted-foreground">Inicie a transcrição</p>
+            </div>
+          )}
+          {transcriptEntries.map((entry) => (
+            <div key={entry.id} className={`flex items-start gap-1.5 p-1.5 rounded ${entry.speaker === 'doctor' ? 'bg-blue-50 dark:bg-blue-950/50' : 'bg-orange-50 dark:bg-orange-950/50'}`}>
+              {entry.speaker === 'doctor' ? <Stethoscope className="h-3 w-3 text-blue-600 mt-0.5 shrink-0" /> : <User className="h-3 w-3 text-orange-600 mt-0.5 shrink-0" />}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1">
+                  <span className={`text-[10px] font-semibold ${entry.speaker === 'doctor' ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>
+                    {entry.speaker === 'doctor' ? 'Dr.' : 'Pac.'}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{new Date(entry.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <button onClick={() => markAsSpeaker(entry.id, entry.speaker === 'doctor' ? 'patient' : 'doctor')} className="text-[10px] text-muted-foreground hover:text-foreground ml-auto underline">↔</button>
+                </div>
+                <p className="text-xs">{entry.text}</p>
               </div>
             </div>
-          )}
-        </div>
-
-        <div className="absolute bottom-20 right-4 w-56 h-40 bg-gray-800 rounded-lg overflow-hidden border-2 border-white shadow-lg z-10">
-          <div ref={localVideoRef} className="w-full h-full" data-testid="video-local" />
-          {!isVideoOn && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-              <VideoOff className="h-10 w-10 text-white opacity-50" />
+          ))}
+          {interimText && (
+            <div className="flex items-start gap-1.5 p-1.5 rounded bg-gray-50 dark:bg-gray-900 opacity-60">
+              <Stethoscope className="h-3 w-3 text-blue-600 mt-0.5 shrink-0" />
+              <p className="text-xs italic">{interimText}...</p>
             </div>
           )}
-          <div className="absolute bottom-1 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
-            Você
+        </div>
+      </ScrollArea>
+      <div className="p-2 border-t flex items-center gap-1.5 flex-wrap">
+        <Button variant={isTranscribing ? 'destructive' : 'default'} size="sm" onClick={toggleTranscription} className="gap-1 h-7 text-xs">
+          {isTranscribing ? <><Pause className="h-3 w-3" /> Parar</> : <><AudioLines className="h-3 w-3" /> Iniciar</>}
+        </Button>
+        {transcriptEntries.length > 0 && (
+          <>
+            <Button variant="outline" size="sm" onClick={saveTranscriptionToNotes} className="gap-1 h-7 text-xs"><FileText className="h-3 w-3" /> Salvar</Button>
+            <Button variant="outline" size="sm" onClick={exportTranscription} className="gap-1 h-7 text-xs"><Download className="h-3 w-3" /> .txt</Button>
+          </>
+        )}
+      </div>
+    </Card>
+  );
+
+  const notesPanel = (heightClass?: string) => (
+    <Card className={`flex flex-col overflow-hidden ${heightClass || 'h-full'}`}>
+      <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30">
+        <FileText className="h-4 w-4 text-primary" />
+        <span className="text-xs font-semibold">Notas Clínicas</span>
+      </div>
+      <ScrollArea className="flex-1 p-2" data-testid="scroll-notes">
+        <div className="space-y-1.5">
+          {doctorNotes.length === 0 && transcriptionNotes.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">Sem anotações</p>}
+          {doctorNotes.map((note) => (
+            <Card key={note.id} className="p-2 border-l-3 border-l-primary" data-testid={`note-doctor-${note.id}`}>
+              <div className="flex items-center gap-1 mb-0.5">
+                <FileText className="h-3 w-3 text-primary" />
+                <span className="text-[10px] font-semibold">Nota</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">{new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <p className="text-xs whitespace-pre-wrap">{note.content}</p>
+            </Card>
+          ))}
+          {transcriptionNotes.map((note) => (
+            <Card key={note.id} className="p-2 border-l-3 border-l-blue-500">
+              <div className="flex items-center gap-1 mb-0.5">
+                <AudioLines className="h-3 w-3 text-blue-500" /><span className="text-[10px] font-semibold">Transcrição</span>
+              </div>
+              <pre className="text-[10px] whitespace-pre-wrap font-mono bg-muted/50 p-1.5 rounded max-h-20 overflow-y-auto">{note.content}</pre>
+            </Card>
+          ))}
+        </div>
+      </ScrollArea>
+      <div className="p-2 border-t flex gap-1.5">
+        <Textarea placeholder="Observações clínicas..." value={doctorNote} onChange={(e) => setDoctorNote(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveDoctorNote(); }}
+          rows={1} className="resize-none min-h-[32px] text-xs" data-testid="input-doctor-note" />
+        <Button onClick={saveDoctorNote} size="icon" disabled={createNoteMutation.isPending} className="h-8 w-8 shrink-0" data-testid="button-save-note" title="Ctrl+Enter"><Send className="h-3.5 w-3.5" /></Button>
+      </div>
+    </Card>
+  );
+
+  const viewModeSelector = () => (
+    <div className="flex items-center gap-1 bg-gray-800 rounded-full px-1 py-0.5">
+      <button onClick={() => setViewMode('dashboard')} className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition-all ${viewMode === 'dashboard' ? 'bg-primary text-primary-foreground' : 'text-gray-300 hover:text-white'}`} title="Dashboard">
+        <LayoutDashboard className="h-3.5 w-3.5" /><span className="hidden sm:inline">Dashboard</span>
+      </button>
+      <button onClick={() => setViewMode('video')} className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition-all ${viewMode === 'video' ? 'bg-primary text-primary-foreground' : 'text-gray-300 hover:text-white'}`} title="Vídeo">
+        <Tv className="h-3.5 w-3.5" /><span className="hidden sm:inline">Vídeo</span>
+      </button>
+      <button onClick={() => setViewMode('compact')} className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition-all ${viewMode === 'compact' ? 'bg-primary text-primary-foreground' : 'text-gray-300 hover:text-white'}`} title="Compacto">
+        <Columns className="h-3.5 w-3.5" /><span className="hidden sm:inline">Compacto</span>
+      </button>
+    </div>
+  );
+
+  const renderDashboardLayout = () => (
+    <div className="fixed inset-0 z-50 bg-background flex flex-col" data-testid="video-consultation-page">
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-700">
+        <div className="flex items-center gap-3">
+          {viewModeSelector()}
+          <div className="text-white text-xs flex items-center gap-2">
+            <Stethoscope className="h-4 w-4" />
+            <span className="font-medium">Teleconsulta</span>
+            {isRecording && <Badge className="bg-red-600 text-white text-[10px] h-5 animate-pulse">REC</Badge>}
+            {isTranscribing && <Badge className="bg-blue-600 text-white text-[10px] h-5">Transcrevendo</Badge>}
           </div>
         </div>
+        {controlBar(true)}
+      </div>
 
-        {isRecording && (
-          <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-full z-10" data-testid="status-recording">
-            <CircleDot className="h-4 w-4 animate-pulse" />
-            <span className="font-semibold text-sm">Gravando</span>
-          </div>
-        )}
+      {/* Dashboard grid */}
+      <div className="flex-1 grid grid-cols-3 grid-rows-2 gap-2 p-2 overflow-hidden">
+        {/* Video - takes top-left, 1 col x 1 row */}
+        <div className="row-span-1">
+          {videoArea('w-full h-full', true)}
+        </div>
+        {/* Chat - top-center */}
+        <div className="row-span-1">
+          {chatPanel()}
+        </div>
+        {/* AI - top-right */}
+        <div className="row-span-1">
+          {aiPanel()}
+        </div>
+        {/* Transcription - bottom-left */}
+        <div className="row-span-1">
+          {transcriptionPanel()}
+        </div>
+        {/* Notes - bottom-center and right, spanning 2 cols */}
+        <div className="col-span-2 row-span-1">
+          {notesPanel()}
+        </div>
+      </div>
+    </div>
+  );
 
-        {isTranscribing && (
-          <div className="absolute top-4 left-40 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full z-10">
-            <AudioLines className="h-4 w-4 animate-pulse" />
-            <span className="font-semibold text-sm">Transcrevendo</span>
-          </div>
-        )}
+  const renderVideoLayout = () => (
+    <div className={`${isFullscreen ? 'fixed inset-0 z-50' : 'container mx-auto p-4'} bg-black flex flex-col`} data-testid="video-consultation-page">
+      {/* View mode selector floating */}
+      <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+        {viewModeSelector()}
+        <Button variant="outline" size="icon" onClick={() => setIsFullscreen(!isFullscreen)} className="rounded-full h-8 w-8 bg-gray-800/80 border-gray-600 text-white hover:text-white" data-testid="button-toggle-fullscreen">
+          {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+        </Button>
+      </div>
 
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-gray-900/90 px-6 py-3 rounded-full z-20">
-          <Button variant={isVideoOn ? 'default' : 'destructive'} size="icon" onClick={toggleVideo} className="rounded-full" data-testid="button-toggle-video">
-            {isVideoOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-          </Button>
-          <Button variant={isAudioOn ? 'default' : 'destructive'} size="icon" onClick={toggleAudio} className="rounded-full" data-testid="button-toggle-audio">
-            {isAudioOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-          </Button>
-          <Button variant={isRecording ? 'destructive' : 'secondary'} size="icon" onClick={toggleRecording} className="rounded-full" data-testid="button-toggle-recording" title="Gravar">
-            {isRecording ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-          </Button>
-          <Button variant={isTranscribing ? 'destructive' : 'secondary'} size="icon" onClick={toggleTranscription} className="rounded-full" title="Transcrição de Áudio">
-            <AudioLines className="h-5 w-5" />
-          </Button>
-          <Button variant={isScreenSharing ? 'destructive' : 'secondary'} size="icon" onClick={toggleScreenShare} className="rounded-full" title={isScreenSharing ? 'Parar compartilhamento' : 'Compartilhar tela'}>
-            {isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
-          </Button>
-          <Button variant="secondary" size="icon" onClick={() => setShowSpecialistDialog(true)} className="rounded-full" title="Convidar Especialista">
-            <UserPlus className="h-5 w-5" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={() => setIsFullscreen(!isFullscreen)} className="rounded-full" data-testid="button-toggle-fullscreen">
-            {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
-          </Button>
-          <Button variant="destructive" size="icon" onClick={endCall} className="rounded-full ml-2" data-testid="button-end-call">
-            <PhoneOff className="h-5 w-5" />
-          </Button>
+      <div className="flex-1 relative" style={{ minHeight: '60vh' }}>
+        {videoArea('absolute inset-0')}
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20">
+          {controlBar()}
         </div>
       </div>
 
@@ -765,37 +997,30 @@ export default function VideoConsultation() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
           <TabsList className="w-full grid grid-cols-4 h-10">
             <TabsTrigger value="chat" className="flex items-center gap-1 text-xs" data-testid="tab-chat">
-              <MessageSquare className="h-3.5 w-3.5" />
-              Chat
+              <MessageSquare className="h-3.5 w-3.5" /> Chat
               {chatNotes.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{chatNotes.length}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="ai" className="flex items-center gap-1 text-xs" data-testid="tab-ai">
-              <Brain className="h-3.5 w-3.5" />
-              IA
+              <Brain className="h-3.5 w-3.5" /> IA
               {aiLoading && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
             </TabsTrigger>
             <TabsTrigger value="transcription" className="flex items-center gap-1 text-xs">
-              <AudioLines className="h-3.5 w-3.5" />
-              Transcrição
+              <AudioLines className="h-3.5 w-3.5" /> Transcrição
               {transcriptEntries.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{transcriptEntries.length}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="notes" className="flex items-center gap-1 text-xs" data-testid="tab-notes">
-              <FileText className="h-3.5 w-3.5" />
-              Notas
+              <FileText className="h-3.5 w-3.5" /> Notas
             </TabsTrigger>
           </TabsList>
 
-          {/* CHAT TAB */}
           <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden mt-0">
             <ScrollArea className="flex-1 p-3" data-testid="scroll-chat">
               <div className="space-y-2" ref={chatScrollRef}>
-                {chatNotes.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-8">Nenhuma mensagem. Envie uma mensagem para o paciente.</p>
-                )}
+                {chatNotes.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhuma mensagem. Envie uma mensagem para o paciente.</p>}
                 {chatNotes.map((note) => {
                   const isDoctor = note.metadata?.senderRole === 'doctor' || note.userId === user?.id;
                   return (
-                    <div key={note.id} className={`flex ${isDoctor ? 'justify-end' : 'justify-start'}`} data-testid={`message-chat-${note.id}`}>
+                    <div key={note.id} className={`flex ${isDoctor ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[80%] rounded-xl px-3 py-2 ${isDoctor ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                         <div className="flex items-center gap-1 mb-0.5">
                           {isDoctor ? <Stethoscope className="h-3 w-3" /> : <User className="h-3 w-3" />}
@@ -812,203 +1037,121 @@ export default function VideoConsultation() {
               </div>
             </ScrollArea>
             <div className="p-3 border-t flex gap-2">
-              <Input
-                placeholder="Mensagem para o paciente..."
-                value={chatMessage}
-                onChange={(e) => setChatMessage(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
-                data-testid="input-chat-message"
-              />
-              <Button onClick={sendChatMessage} size="icon" disabled={createNoteMutation.isPending} data-testid="button-send-chat">
-                <Send className="h-4 w-4" />
-              </Button>
+              <Input placeholder="Mensagem para o paciente..." value={chatMessage} onChange={(e) => setChatMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()} data-testid="input-chat-message" />
+              <Button onClick={sendChatMessage} size="icon" disabled={createNoteMutation.isPending} data-testid="button-send-chat"><Send className="h-4 w-4" /></Button>
             </div>
           </TabsContent>
 
-          {/* AI TAB */}
           <TabsContent value="ai" className="flex-1 flex flex-col overflow-hidden mt-0">
-            <ScrollArea className="flex-1 p-3" data-testid="scroll-ai">
-              <div className="space-y-2" ref={aiScrollRef}>
-                {aiNotes.length === 0 && (
-                  <div className="text-center py-8">
-                    <Brain className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Faça perguntas diagnósticas à IA durante a consulta.</p>
-                    <p className="text-xs text-muted-foreground mt-1">A IA terá acesso ao histórico do paciente.</p>
+            <ScrollArea className="flex-1 p-3"><div className="space-y-2" ref={aiScrollRef}>
+              {aiNotes.length === 0 && <div className="text-center py-8"><Brain className="h-8 w-8 mx-auto mb-2 text-muted-foreground" /><p className="text-sm text-muted-foreground">Faça perguntas diagnósticas à IA.</p></div>}
+              {aiNotes.map((note) => (
+                <Card key={note.id} className={`p-3 ${note.type === 'ai_query' ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800' : 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800'}`}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    {note.type === 'ai_query' ? <Stethoscope className="h-3.5 w-3.5 text-blue-600" /> : <Brain className="h-3.5 w-3.5 text-green-600" />}
+                    <span className="text-xs font-semibold">{note.type === 'ai_query' ? 'Sua pergunta' : 'Resposta da IA'}</span>
+                    <span className="text-xs text-muted-foreground ml-auto">{new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
-                )}
-                {aiNotes.map((note) => (
-                  <Card
-                    key={note.id}
-                    className={`p-3 ${note.type === 'ai_query' ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800' : 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800'}`}
-                    data-testid={`message-ai-${note.id}`}
-                  >
-                    <div className="flex items-center gap-1.5 mb-1">
-                      {note.type === 'ai_query' ? <Stethoscope className="h-3.5 w-3.5 text-blue-600" /> : <Brain className="h-3.5 w-3.5 text-green-600" />}
-                      <span className="text-xs font-semibold">
-                        {note.type === 'ai_query' ? 'Sua pergunta' : 'Resposta da IA'}
-                      </span>
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <p className="text-sm whitespace-pre-wrap">{note.content}</p>
-                  </Card>
-                ))}
-                {aiLoading && (
-                  <Card className="p-3 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-green-600" />
-                      <span className="text-sm text-muted-foreground">IA analisando...</span>
-                    </div>
-                  </Card>
-                )}
-              </div>
-            </ScrollArea>
+                  <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                </Card>
+              ))}
+              {aiLoading && <Card className="p-3 bg-green-50 dark:bg-green-950"><div className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin text-green-600" /><span className="text-sm text-muted-foreground">IA analisando...</span></div></Card>}
+            </div></ScrollArea>
             <div className="p-3 border-t flex gap-2">
-              <Textarea
-                placeholder="Faça uma pergunta diagnóstica..."
-                value={aiQuery}
-                onChange={(e) => setAiQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAiQuery(); } }}
-                rows={1}
-                className="resize-none min-h-[36px]"
-                data-testid="input-ai-query"
-              />
-              <Button onClick={sendAiQuery} size="icon" disabled={aiLoading || createNoteMutation.isPending} data-testid="button-send-ai">
-                <Send className="h-4 w-4" />
-              </Button>
+              <Textarea placeholder="Faça uma pergunta diagnóstica..." value={aiQuery} onChange={(e) => setAiQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAiQuery(); } }} rows={1} className="resize-none min-h-[36px]" data-testid="input-ai-query" />
+              <Button onClick={sendAiQuery} size="icon" disabled={aiLoading || createNoteMutation.isPending} data-testid="button-send-ai"><Send className="h-4 w-4" /></Button>
             </div>
           </TabsContent>
 
-          {/* TRANSCRIPTION TAB */}
           <TabsContent value="transcription" className="flex-1 flex flex-col overflow-hidden mt-0">
-            <ScrollArea className="flex-1 p-3">
-              <div className="space-y-1.5" ref={transcriptScrollRef}>
-                {transcriptEntries.length === 0 && !isTranscribing && (
-                  <div className="text-center py-8">
-                    <AudioLines className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Clique no botão de transcrição na barra de controles para iniciar.</p>
-                    <p className="text-xs text-muted-foreground mt-1">O áudio será transcrito em tempo real com identificação de quem falou.</p>
-                    {!SpeechRecognitionAPI && (
-                      <p className="text-xs text-destructive mt-2">Seu navegador não suporta transcrição. Use Chrome ou Edge.</p>
-                    )}
-                  </div>
-                )}
-                {transcriptEntries.map((entry) => (
-                  <div key={entry.id} className={`flex items-start gap-2 p-2 rounded-lg ${entry.speaker === 'doctor' ? 'bg-blue-50 dark:bg-blue-950/50' : 'bg-orange-50 dark:bg-orange-950/50'}`}>
-                    <div className="flex-shrink-0 mt-0.5">
-                      {entry.speaker === 'doctor' ? (
-                        <Stethoscope className="h-4 w-4 text-blue-600" />
-                      ) : (
-                        <User className="h-4 w-4 text-orange-600" />
-                      )}
+            <ScrollArea className="flex-1 p-3"><div className="space-y-1.5" ref={transcriptScrollRef}>
+              {transcriptEntries.length === 0 && !isTranscribing && <div className="text-center py-8"><AudioLines className="h-8 w-8 mx-auto mb-2 text-muted-foreground" /><p className="text-sm text-muted-foreground">Clique no botão de transcrição para iniciar.</p></div>}
+              {transcriptEntries.map((entry) => (
+                <div key={entry.id} className={`flex items-start gap-2 p-2 rounded-lg ${entry.speaker === 'doctor' ? 'bg-blue-50 dark:bg-blue-950/50' : 'bg-orange-50 dark:bg-orange-950/50'}`}>
+                  {entry.speaker === 'doctor' ? <Stethoscope className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" /> : <User className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold ${entry.speaker === 'doctor' ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>{entry.speaker === 'doctor' ? 'Doutor' : 'Paciente'}</span>
+                      <span className="text-xs text-muted-foreground">{new Date(entry.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                      <button onClick={() => markAsSpeaker(entry.id, entry.speaker === 'doctor' ? 'patient' : 'doctor')} className="text-xs text-muted-foreground hover:text-foreground ml-auto underline">{entry.speaker === 'doctor' ? 'Marcar como Paciente' : 'Marcar como Doutor'}</button>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-semibold ${entry.speaker === 'doctor' ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>
-                          {entry.speaker === 'doctor' ? 'Doutor' : 'Paciente'}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(entry.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                        </span>
-                        <button
-                          onClick={() => markAsSpeaker(entry.id, entry.speaker === 'doctor' ? 'patient' : 'doctor')}
-                          className="text-xs text-muted-foreground hover:text-foreground ml-auto underline"
-                          title="Alternar identificação"
-                        >
-                          {entry.speaker === 'doctor' ? 'Marcar como Paciente' : 'Marcar como Doutor'}
-                        </button>
-                      </div>
-                      <p className="text-sm mt-0.5">{entry.text}</p>
-                    </div>
+                    <p className="text-sm mt-0.5">{entry.text}</p>
                   </div>
-                ))}
-                {interimText && (
-                  <div className="flex items-start gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-900 opacity-60">
-                    <Stethoscope className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <span className="text-xs font-semibold text-blue-600">Doutor</span>
-                      <p className="text-sm italic">{interimText}...</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
+                </div>
+              ))}
+              {interimText && <div className="flex items-start gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-900 opacity-60"><Stethoscope className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" /><p className="text-sm italic">{interimText}...</p></div>}
+            </div></ScrollArea>
             <div className="p-3 border-t flex items-center gap-2">
-              <Button
-                variant={isTranscribing ? 'destructive' : 'default'}
-                size="sm"
-                onClick={toggleTranscription}
-                className="gap-1.5"
-              >
-                {isTranscribing ? <><Pause className="h-3.5 w-3.5" /> Parar</> : <><AudioLines className="h-3.5 w-3.5" /> Iniciar Transcrição</>}
-              </Button>
-              {transcriptEntries.length > 0 && (
-                <>
-                  <Button variant="outline" size="sm" onClick={saveTranscriptionToNotes} className="gap-1.5">
-                    <FileText className="h-3.5 w-3.5" /> Salvar em Notas
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={exportTranscription} className="gap-1.5">
-                    <Download className="h-3.5 w-3.5" /> Exportar .txt
-                  </Button>
-                </>
-              )}
-              <span className="text-xs text-muted-foreground ml-auto">
-                {transcriptEntries.length} segmento(s)
-              </span>
+              <Button variant={isTranscribing ? 'destructive' : 'default'} size="sm" onClick={toggleTranscription} className="gap-1.5">{isTranscribing ? <><Pause className="h-3.5 w-3.5" /> Parar</> : <><AudioLines className="h-3.5 w-3.5" /> Iniciar Transcrição</>}</Button>
+              {transcriptEntries.length > 0 && <>
+                <Button variant="outline" size="sm" onClick={saveTranscriptionToNotes} className="gap-1.5"><FileText className="h-3.5 w-3.5" /> Salvar em Notas</Button>
+                <Button variant="outline" size="sm" onClick={exportTranscription} className="gap-1.5"><Download className="h-3.5 w-3.5" /> Exportar .txt</Button>
+              </>}
+              <span className="text-xs text-muted-foreground ml-auto">{transcriptEntries.length} segmento(s)</span>
             </div>
           </TabsContent>
 
-          {/* NOTES TAB */}
           <TabsContent value="notes" className="flex-1 flex flex-col overflow-hidden mt-0">
-            <ScrollArea className="flex-1 p-3" data-testid="scroll-notes">
-              <div className="space-y-2">
-                {doctorNotes.length === 0 && transcriptionNotes.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-8">Nenhuma anotação. Registre observações clínicas importantes.</p>
-                )}
-                {doctorNotes.map((note) => (
-                  <Card key={note.id} className="p-3 border-l-4 border-l-primary" data-testid={`note-doctor-${note.id}`}>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <FileText className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-xs font-semibold">Anotação Médica</span>
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <p className="text-sm whitespace-pre-wrap">{note.content}</p>
-                  </Card>
-                ))}
-                {transcriptionNotes.map((note) => (
-                  <Card key={note.id} className="p-3 border-l-4 border-l-blue-500">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <AudioLines className="h-3.5 w-3.5 text-blue-500" />
-                      <span className="text-xs font-semibold">Transcrição Salva</span>
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <pre className="text-xs whitespace-pre-wrap font-mono bg-muted/50 p-2 rounded mt-1 max-h-32 overflow-y-auto">{note.content}</pre>
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
+            <ScrollArea className="flex-1 p-3"><div className="space-y-2">
+              {doctorNotes.length === 0 && transcriptionNotes.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhuma anotação. Registre observações clínicas importantes.</p>}
+              {doctorNotes.map((note) => (
+                <Card key={note.id} className="p-3 border-l-4 border-l-primary"><div className="flex items-center gap-1.5 mb-1"><FileText className="h-3.5 w-3.5 text-primary" /><span className="text-xs font-semibold">Anotação Médica</span><span className="text-xs text-muted-foreground ml-auto">{new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div><p className="text-sm whitespace-pre-wrap">{note.content}</p></Card>
+              ))}
+              {transcriptionNotes.map((note) => (
+                <Card key={note.id} className="p-3 border-l-4 border-l-blue-500"><div className="flex items-center gap-1.5 mb-1"><AudioLines className="h-3.5 w-3.5 text-blue-500" /><span className="text-xs font-semibold">Transcrição Salva</span></div><pre className="text-xs whitespace-pre-wrap font-mono bg-muted/50 p-2 rounded mt-1 max-h-32 overflow-y-auto">{note.content}</pre></Card>
+              ))}
+            </div></ScrollArea>
             <div className="p-3 border-t flex gap-2">
-              <Textarea
-                placeholder="Observações clínicas, diagnóstico, conduta..."
-                value={doctorNote}
-                onChange={(e) => setDoctorNote(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveDoctorNote(); }}
-                rows={1}
-                className="resize-none min-h-[36px]"
-                data-testid="input-doctor-note"
-              />
-              <Button onClick={saveDoctorNote} size="icon" disabled={createNoteMutation.isPending} data-testid="button-save-note" title="Salvar (Ctrl+Enter)">
-                <Send className="h-4 w-4" />
-              </Button>
+              <Textarea placeholder="Observações clínicas, diagnóstico, conduta..." value={doctorNote} onChange={(e) => setDoctorNote(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveDoctorNote(); }} rows={1} className="resize-none min-h-[36px]" data-testid="input-doctor-note" />
+              <Button onClick={saveDoctorNote} size="icon" disabled={createNoteMutation.isPending} data-testid="button-save-note" title="Salvar (Ctrl+Enter)"><Send className="h-4 w-4" /></Button>
             </div>
           </TabsContent>
         </Tabs>
       </div>
+    </div>
+  );
+
+  const renderCompactLayout = () => (
+    <div className="fixed inset-0 z-50 bg-background flex flex-col" data-testid="video-consultation-page">
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-700">
+        {viewModeSelector()}
+        {controlBar(true)}
+      </div>
+
+      {/* Side by side */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: Video */}
+        <div className="w-1/2 p-2 flex flex-col">
+          {videoArea('flex-1', true)}
+        </div>
+        {/* Right: Tabs */}
+        <div className="w-1/2 border-l">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+            <TabsList className="w-full grid grid-cols-4 h-9 rounded-none">
+              <TabsTrigger value="chat" className="text-xs gap-1"><MessageSquare className="h-3 w-3" /> Chat</TabsTrigger>
+              <TabsTrigger value="ai" className="text-xs gap-1"><Brain className="h-3 w-3" /> IA</TabsTrigger>
+              <TabsTrigger value="transcription" className="text-xs gap-1"><AudioLines className="h-3 w-3" /> Trans.</TabsTrigger>
+              <TabsTrigger value="notes" className="text-xs gap-1"><FileText className="h-3 w-3" /> Notas</TabsTrigger>
+            </TabsList>
+            <TabsContent value="chat" className="flex-1 overflow-hidden mt-0">{chatPanel('h-full')}</TabsContent>
+            <TabsContent value="ai" className="flex-1 overflow-hidden mt-0">{aiPanel('h-full')}</TabsContent>
+            <TabsContent value="transcription" className="flex-1 overflow-hidden mt-0">{transcriptionPanel('h-full')}</TabsContent>
+            <TabsContent value="notes" className="flex-1 overflow-hidden mt-0">{notesPanel('h-full')}</TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {viewMode === 'dashboard' && renderDashboardLayout()}
+      {viewMode === 'video' && renderVideoLayout()}
+      {viewMode === 'compact' && renderCompactLayout()}
 
       <Dialog open={showSpecialistDialog} onOpenChange={setShowSpecialistDialog}>
         <DialogContent className="max-w-md">
@@ -1104,6 +1247,6 @@ export default function VideoConsultation() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

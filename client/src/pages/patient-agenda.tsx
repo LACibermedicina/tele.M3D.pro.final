@@ -58,7 +58,7 @@ export default function PatientAgenda() {
   // Create note mutation
   const createNoteMutation = useMutation({
     mutationFn: async (data: { title: string; content: string; date: Date }) => {
-      return await apiRequest('/api/patient-notes', 'POST', {
+      return await apiRequest('POST', '/api/patient-notes', {
         patientId: patientData.id,
         userId: user!.id,
         title: data.title,
@@ -80,7 +80,7 @@ export default function PatientAgenda() {
   // Update note mutation
   const updateNoteMutation = useMutation({
     mutationFn: async (data: { id: string; title: string; content: string }) => {
-      return await apiRequest(`/api/patient-notes/${data.id}`, 'PATCH', {
+      return await apiRequest('PATCH', `/api/patient-notes/${data.id}`, {
         title: data.title,
         content: data.content,
       });
@@ -98,7 +98,7 @@ export default function PatientAgenda() {
   // Delete note mutation
   const deleteNoteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/patient-notes/${id}`, 'DELETE');
+      return await apiRequest('DELETE', `/api/patient-notes/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/patient-notes'] });

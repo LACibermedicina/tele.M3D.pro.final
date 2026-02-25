@@ -7824,7 +7824,12 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
       } else if (req.user!.role === 'doctor' || req.user!.role === 'admin') {
         requests = await storage.getConsultationRequestsByDoctor(req.user!.id);
       } else {
-        requests = await storage.getConsultationRequestsByPatient(req.user!.id);
+        const patient = await storage.getPatientByUserId(req.user!.id);
+        if (patient) {
+          requests = await storage.getConsultationRequestsByPatient(patient.id);
+        } else {
+          requests = [];
+        }
       }
 
       res.json(requests);

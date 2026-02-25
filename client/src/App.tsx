@@ -99,7 +99,10 @@ function Router() {
           <Header />
           <Login />
         </Route>
-        <Route path="/join/:token" component={PatientJoin} />
+        <Route path="/join/:token">
+          <Header />
+          <PatientJoin />
+        </Route>
         
         {/* Registration routes - public */}
         <Route path="/register">
@@ -355,7 +358,10 @@ function Router() {
           </ProtectedRoute>
         </Route>
         
-        <Route component={NotFound} />
+        <Route>
+          <Header />
+          <NotFound />
+        </Route>
       </Switch>
       
       {/* Enhanced Footer with Quick Access */}
