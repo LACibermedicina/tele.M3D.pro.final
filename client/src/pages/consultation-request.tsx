@@ -107,9 +107,17 @@ export default function ConsultationRequest() {
       }
     },
     onError: (error: any) => {
-      const message = error?.message?.includes(':') 
-        ? error.message.split(': ').slice(1).join(': ')
-        : 'Tente novamente em alguns instantes.';
+      let message = 'Tente novamente em alguns instantes.';
+      try {
+        const raw = error?.message || '';
+        const jsonPart = raw.includes(':') ? raw.split(': ').slice(1).join(': ') : raw;
+        const parsed = JSON.parse(jsonPart);
+        if (parsed.message) message = parsed.message;
+      } catch {
+        if (error?.message?.includes(':')) {
+          message = error.message.split(': ').slice(1).join(': ');
+        }
+      }
       toast({ 
         title: "Erro ao enviar solicitação",
         description: message,

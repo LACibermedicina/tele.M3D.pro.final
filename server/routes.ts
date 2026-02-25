@@ -6635,7 +6635,6 @@ Format your response as valid JSON with this structure:
         previousComplaintsContext = `\nSolicitações anteriores do paciente:\n${recentComplaints}`;
       }
 
-      // AI Triage Analysis with comprehensive context
       let triageData;
       try {
         const triagePrompt = `Como médico especialista, analise os seguintes dados clínicos e classifique a urgência do atendimento.
@@ -6689,7 +6688,10 @@ IMPORTANTE: Responda APENAS com JSON válido, sem markdown, sem blocos de códig
 
 Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "standard", "non_urgent"`;
 
-        const aiResponse = await geminiService.generateText(triagePrompt);
+        const aiResponse = await Promise.race([
+          geminiService.generateText(triagePrompt),
+          new Promise<string>((_, reject) => setTimeout(() => reject(new Error('AI_TIMEOUT')), 30000))
+        ]);
         
         try {
           const cleanedResponse = aiResponse
@@ -6781,7 +6783,10 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
 
     } catch (error: any) {
       console.error('Create consultation request error:', error);
-      res.status(500).json({ message: 'Erro ao processar sua solicitação. Tente novamente em alguns instantes.' });
+      const userMessage = error?.message?.includes('AI_TIMEOUT')
+        ? 'O serviço de IA demorou para responder. Sua solicitação será processada com análise padrão.'
+        : 'Erro ao processar sua solicitação. Tente novamente em alguns instantes.';
+      res.status(500).json({ message: userMessage });
     }
   });
 
