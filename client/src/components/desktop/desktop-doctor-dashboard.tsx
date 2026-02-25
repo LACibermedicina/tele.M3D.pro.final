@@ -22,47 +22,53 @@ export function DesktopDoctorDashboard() {
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card data-testid="card-today-appointments">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Consultas Hoje</p>
-                    <p className="text-2xl font-bold" data-testid="text-today-appointments">
-                      {stats.todayConsultations || 0}
-                    </p>
+            <Link href="/schedule">
+              <Card data-testid="card-today-appointments" className="cursor-pointer transition-shadow hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Consultas Hoje</p>
+                      <p className="text-2xl font-bold" data-testid="text-today-appointments">
+                        {stats.todayConsultations || 0}
+                      </p>
+                    </div>
+                    <Calendar className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <Calendar className="w-8 h-8 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
 
-            <Card data-testid="card-my-patients">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Meus Pacientes</p>
-                    <p className="text-2xl font-bold" data-testid="text-my-patients">
-                      {stats.totalPatients || 0}
-                    </p>
+            <Link href="/patients">
+              <Card data-testid="card-my-patients" className="cursor-pointer transition-shadow hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Meus Pacientes</p>
+                      <p className="text-2xl font-bold" data-testid="text-my-patients">
+                        {stats.totalPatients || 0}
+                      </p>
+                    </div>
+                    <Users className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <Users className="w-8 h-8 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
 
-            <Card data-testid="card-records">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Prontuários</p>
-                    <p className="text-2xl font-bold" data-testid="text-records">
-                      {stats.secureRecords || 0}
-                    </p>
+            <Link href="/records">
+              <Card data-testid="card-records" className="cursor-pointer transition-shadow hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Prontuários</p>
+                      <p className="text-2xl font-bold" data-testid="text-records">
+                        {stats.secureRecords || 0}
+                      </p>
+                    </div>
+                    <FileText className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <FileText className="w-8 h-8 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         )}
 

@@ -2,7 +2,8 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, CreditCard, Check, Coins } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, CreditCard, Check, Coins, ArrowUpCircle, ArrowDownCircle, History } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PayPalButton from '@/components/PayPalButton';
 import { useState } from 'react';
@@ -20,6 +21,10 @@ export default function CreditsPage() {
 
   const { data: balance } = useQuery({
     queryKey: ['/api/tmc/balance'],
+  });
+
+  const { data: transactions = [], isLoading: transactionsLoading } = useQuery<any[]>({
+    queryKey: ['/api/tmc/transactions'],
   });
 
   const createOrderMutation = useMutation({
@@ -172,6 +177,53 @@ export default function CreditsPage() {
           />
         </Card>
       )}
+
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Histórico de Transações
+          </CardTitle>
+          <CardDescription>Todas as movimentações de créditos da sua conta</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {transactionsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : transactions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Nenhuma transação registrada.</p>
+          ) : (
+            <div className="space-y-2">
+              {transactions.map((tx: any) => (
+                <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div className="flex items-center gap-3">
+                    {tx.type === 'credit' || tx.type === 'purchase' || tx.type === 'recharge' || tx.type === 'bonus' ? (
+                      <ArrowUpCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    ) : (
+                      <ArrowDownCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                    )}
+                    <div>
+                      <p className="text-sm font-medium">{tx.description || tx.type}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(tx.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`font-semibold ${tx.type === 'credit' || tx.type === 'purchase' || tx.type === 'recharge' || tx.type === 'bonus' ? 'text-green-600' : 'text-red-500'}`}>
+                      {tx.type === 'credit' || tx.type === 'purchase' || tx.type === 'recharge' || tx.type === 'bonus' ? '+' : '-'}{Math.abs(tx.amount)} TMC
+                    </span>
+                    {tx.balanceAfter != null && (
+                      <p className="text-xs text-muted-foreground">Saldo: {tx.balanceAfter} TMC</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="mt-8">
         <CardHeader>

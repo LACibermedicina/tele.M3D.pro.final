@@ -45,6 +45,7 @@ import MedicalCafe from "@/pages/medical-cafe";
 import DoctorOffice from "@/pages/doctor-office";
 import CoffeeRoom from "@/pages/coffee-room";
 import PatientVideoConsultation from "@/pages/patient-video-consultation";
+import EpidemiologicalReports from "@/pages/epidemiological-reports";
 import UrgentAlertOverlay from "@/components/notifications/urgent-alert-overlay";
 import Header from "@/components/layout/header";
 import FloatingChatbot from "@/components/ui/floating-chatbot";
@@ -317,6 +318,13 @@ function Router() {
           <ProtectedRoute requiredRoles={['doctor']}>
             <Header />
             <CoffeeRoom />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/epidemiological-reports">
+          <ProtectedRoute requiredRoles={['doctor', 'admin']}>
+            <Header />
+            <EpidemiologicalReports />
           </ProtectedRoute>
         </Route>
         

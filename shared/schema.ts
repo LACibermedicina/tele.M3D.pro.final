@@ -818,6 +818,18 @@ export const medicalTeamMembers = pgTable("medical_team_members", {
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
 });
 
+// Medical Team Discussion Notes
+export const teamNotes = pgTable("team_notes", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: uuid("team_id").references(() => medicalTeams.id).notNull(),
+  authorId: uuid("author_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  noteType: text("note_type").notNull().default("discussion"), // discussion, interconsultation, case_summary, clinical_question
+  isUrgent: boolean("is_urgent").default(false),
+  parentNoteId: uuid("parent_note_id"), // For threaded replies
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   appointments: many(appointments),
@@ -1530,14 +1542,22 @@ export const insertMedicalTeamMemberSchema = createInsertSchema(medicalTeamMembe
 export type MedicalTeamMember = typeof medicalTeamMembers.$inferSelect;
 export type InsertMedicalTeamMember = z.infer<typeof insertMedicalTeamMemberSchema>;
 
+export const insertTeamNoteSchema = createInsertSchema(teamNotes).omit({
+  id: true,
+  createdAt: true,
+});
+export type TeamNote = typeof teamNotes.$inferSelect;
+export type InsertTeamNote = z.infer<typeof insertTeamNoteSchema>;
+
 // Dashboard stats type
 export interface DashboardStats {
   todayConsultations: number;
   whatsappMessages: number;
   aiScheduling: number;
   secureRecords: number;
-  tmcCredits: number;
-  activeUsers: number;
+  totalPatients?: number;
+  tmcCredits?: number;
+  activeUsers?: number;
 }
 
 // TMC system types

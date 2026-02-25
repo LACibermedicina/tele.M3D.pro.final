@@ -14,7 +14,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNotNull, inArray } from "drizzle-orm";
@@ -2793,6 +2793,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Leave consultation error:', error);
       res.status(500).json({ message: 'Falha ao sair da consulta' });
+    }
+  });
+
+  app.post('/api/video-consultations/:id/invite-specialist', async (req: any, res) => {
+    try {
+      const consultationId = req.params.id;
+      const { specialistId } = req.body;
+      const doctorUser = req.user as User;
+      if (!doctorUser) {
+        return res.status(401).json({ message: 'Autenticação necessária' });
+      }
+
+      if (!specialistId) {
+        return res.status(400).json({ message: 'specialistId é obrigatório' });
+      }
+
+      const consultation = await db.select().from(videoConsultations).where(eq(videoConsultations.id, consultationId)).limit(1);
+      if (!consultation.length) {
+        return res.status(404).json({ message: 'Consulta não encontrada' });
+      }
+
+      const specialist = await db.select().from(users).where(eq(users.id, specialistId)).limit(1);
+      if (!specialist.length) {
+        return res.status(404).json({ message: 'Especialista não encontrado' });
+      }
+
+      let patientName = 'Paciente';
+      try {
+        if (consultation[0].patientId) {
+          const patient = await storage.getPatient(consultation[0].patientId);
+          if (patient) patientName = patient.name;
+        }
+      } catch {}
+
+      broadcastToUser(specialistId, {
+        type: 'specialist_invite',
+        data: {
+          consultationId,
+          doctorName: doctorUser.name,
+          patientName,
+          message: `Dr. ${doctorUser.name} convida você para uma interconsulta com ${patientName}.`,
+          actionUrl: `/consultation/video/${consultation[0].patientId}?consultationId=${consultationId}`
+        }
+      });
+
+      try {
+        await db.insert(pendingNotifications).values({
+          userId: specialistId,
+          type: 'specialist_invite',
+          title: 'Convite para Interconsulta',
+          message: `Dr. ${doctorUser.name} convida você para uma consulta com ${patientName}`,
+          data: { consultationId, actionUrl: `/consultation/video/${consultation[0].patientId}?consultationId=${consultationId}` },
+        });
+      } catch {}
+
+      res.json({ message: 'Convite enviado com sucesso' });
+    } catch (error) {
+      console.error('Invite specialist error:', error);
+      res.status(500).json({ message: 'Falha ao enviar convite' });
     }
   });
 
@@ -6039,11 +6098,12 @@ DIRETRIZES DE REFERÊNCIA: Baseie suas respostas nas diretrizes da OMS, Protocol
       
       // Only doctors and admins should see appointment stats
       if (userRole === 'doctor') {
-        const [todayAppointments, unprocessedMessages, pendingSignatures, patients] = await Promise.all([
+        const [todayAppointments, unprocessedMessages, pendingSignatures, allPatients, doctorRecords] = await Promise.all([
           storage.getTodayAppointments(userId),
           storage.getUnprocessedWhatsappMessages(),
           storage.getPendingSignatures(userId),
-          storage.getAllPatients(),
+          db.select().from(patients).where(eq(patients.primaryDoctorId, userId)),
+          db.select().from(medicalRecords).where(eq(medicalRecords.doctorId, userId)),
         ]);
 
         const aiScheduledToday = todayAppointments.filter(apt => apt.aiScheduled).length;
@@ -6052,7 +6112,8 @@ DIRETRIZES DE REFERÊNCIA: Baseie suas respostas nas diretrizes da OMS, Protocol
           todayConsultations: todayAppointments.length,
           whatsappMessages: unprocessedMessages.length,
           aiScheduling: aiScheduledToday,
-          secureRecords: patients.length,
+          secureRecords: doctorRecords.length,
+          totalPatients: allPatients.length,
         });
       } else if (userRole === 'admin') {
         // Admins see aggregated system-wide stats
@@ -13413,6 +13474,165 @@ Você é um assistente de saúde especializado que ajuda visitantes da Tele<M3D>
   app.use('/api/credits', creditsRouter);
   app.use('/api/signatures', signaturesRouter);
   app.use('/api/medical-teams', requireAuth, medicalTeamsRouter);
+
+  app.get('/api/epidemiological-reports', requireAuth, async (req: any, res) => {
+    try {
+      const periodDays = parseInt(req.query.period as string) || 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - periodDays);
+
+      const consultations = await db.select().from(videoConsultations)
+        .where(sql`${videoConsultations.createdAt} >= ${startDate.toISOString()}`);
+
+      const reqList = await db.select().from(consultationRequests)
+        .where(sql`${consultationRequests.createdAt} >= ${startDate.toISOString()}`);
+
+      const totalConsultations = consultations.length + reqList.length;
+
+      const triageCounts: Record<string, number> = {};
+      for (const cr of reqList) {
+        const level = (cr as any).triageLevel || (cr as any).urgencyLevel || 'standard';
+        triageCounts[level] = (triageCounts[level] || 0) + 1;
+      }
+
+      const triageLevels = Object.entries(triageCounts).map(([level, count]) => ({
+        level,
+        count,
+        percentage: totalConsultations > 0 ? Math.round((count / totalConsultations) * 100) : 0,
+      }));
+
+      const patientsList = await db.select().from(patients);
+      const ageGroups: Record<string, number> = { '0-17': 0, '18-30': 0, '31-45': 0, '46-60': 0, '60+': 0 };
+      for (const p of patientsList) {
+        if (p.dateOfBirth) {
+          const age = Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+          if (age <= 17) ageGroups['0-17']++;
+          else if (age <= 30) ageGroups['18-30']++;
+          else if (age <= 45) ageGroups['31-45']++;
+          else if (age <= 60) ageGroups['46-60']++;
+          else ageGroups['60+']++;
+        }
+      }
+
+      res.json({
+        totalConsultations,
+        period: `${periodDays} dias`,
+        symptoms: [],
+        diagnoses: [],
+        triageLevels,
+        ageGroups: Object.entries(ageGroups).map(([group, count]) => ({ group, count })),
+        summary: '',
+      });
+    } catch (error) {
+      console.error('Epidemiological report error:', error);
+      res.status(500).json({ message: 'Failed to generate epidemiological report' });
+    }
+  });
+
+  app.post('/api/epidemiological-reports/analyze', requireAuth, async (req: any, res) => {
+    try {
+      const { period = 30 } = req.body;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - period);
+
+      const notesList = await db.select().from(consultationNotes)
+        .where(sql`${consultationNotes.timestamp} >= ${startDate.toISOString()}`);
+
+      const medRecords = await db.select().from(medicalRecords)
+        .where(sql`${medicalRecords.createdAt} >= ${startDate.toISOString()}`);
+
+      const reqList2 = await db.select().from(consultationRequests)
+        .where(sql`${consultationRequests.createdAt} >= ${startDate.toISOString()}`);
+
+      const vConsultations = await db.select().from(videoConsultations)
+        .where(sql`${videoConsultations.createdAt} >= ${startDate.toISOString()}`);
+
+      const totalConsultations = vConsultations.length + reqList2.length;
+
+      const clinicalTexts: string[] = [];
+      for (const note of notesList) {
+        if (note.content && (note.type === 'doctor_note' || note.type === 'ai_response' || note.type === 'transcription')) {
+          clinicalTexts.push(note.content);
+        }
+      }
+      for (const rec of medRecords) {
+        if (rec.diagnosis) clinicalTexts.push(rec.diagnosis as string);
+        if (rec.notes) clinicalTexts.push(rec.notes as string);
+      }
+      for (const cr of reqList2) {
+        if ((cr as any).symptoms) clinicalTexts.push(String((cr as any).symptoms));
+        if ((cr as any).description) clinicalTexts.push((cr as any).description);
+      }
+
+      const combinedText = clinicalTexts.slice(0, 50).join('\n---\n');
+
+      let analysisResult: any = { symptoms: [], diagnoses: [], summary: 'Análise não disponível.' };
+      if (combinedText.length > 20) {
+        try {
+          const { geminiService } = await import('./services/gemini');
+          const prompt = `Analise os seguintes textos clínicos e extraia dados epidemiológicos em formato JSON. Retorne APENAS JSON válido sem markdown:
+{
+  "symptoms": [{"symptom": "nome", "meshCode": "D000XXX", "count": N, "percentage": N, "trend": "up|down|stable"}],
+  "diagnoses": [{"diagnosis": "nome", "icdCode": "X00", "count": N, "percentage": N}],
+  "summary": "resumo epidemiológico em português"
+}
+
+Textos clínicos (${clinicalTexts.length} registros):
+${combinedText.slice(0, 8000)}`;
+
+          const aiResponse = await geminiService.generateText(prompt);
+          try {
+            const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              analysisResult = JSON.parse(jsonMatch[0]);
+            }
+          } catch {
+            analysisResult.summary = aiResponse;
+          }
+        } catch (aiErr) {
+          console.error('AI analysis error:', aiErr);
+        }
+      }
+
+      const triageCounts: Record<string, number> = {};
+      for (const cr of reqList2) {
+        const level = (cr as any).triageLevel || (cr as any).urgencyLevel || 'standard';
+        triageCounts[level] = (triageCounts[level] || 0) + 1;
+      }
+
+      const triageLevels = Object.entries(triageCounts).map(([level, count]) => ({
+        level,
+        count,
+        percentage: totalConsultations > 0 ? Math.round((count / totalConsultations) * 100) : 0,
+      }));
+
+      const patientsList2 = await db.select().from(patients);
+      const ageGroups: Record<string, number> = { '0-17': 0, '18-30': 0, '31-45': 0, '46-60': 0, '60+': 0 };
+      for (const p of patientsList2) {
+        if (p.dateOfBirth) {
+          const age = Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+          if (age <= 17) ageGroups['0-17']++;
+          else if (age <= 30) ageGroups['18-30']++;
+          else if (age <= 45) ageGroups['31-45']++;
+          else if (age <= 60) ageGroups['46-60']++;
+          else ageGroups['60+']++;
+        }
+      }
+
+      res.json({
+        totalConsultations,
+        period: `${period} dias`,
+        symptoms: analysisResult.symptoms || [],
+        diagnoses: analysisResult.diagnoses || [],
+        triageLevels,
+        ageGroups: Object.entries(ageGroups).map(([group, count]) => ({ group, count })),
+        summary: analysisResult.summary || '',
+      });
+    } catch (error) {
+      console.error('Epidemiological analysis error:', error);
+      res.status(500).json({ message: 'Failed to analyze epidemiological data' });
+    }
+  });
 
   return httpServer;
 }

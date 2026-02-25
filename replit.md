@@ -64,6 +64,8 @@ All AI prompts (chatbot, triage, video consultation, medical records, SOAP repor
 - **Chat**: Real-time chat with sender identity (doctor/patient), bubble-style messages
 - **AI Diagnostic**: Doctor sends questions, backend generates AI response using Gemini/OpenAI with patient context (history, allergies, records). Responses saved as `ai_response` notes.
 - **Audio Transcription**: Real-time speech-to-text using browser SpeechRecognition API (Chrome/Edge). Entries show timestamp, speaker (Doutor/Paciente), text. Doctor can toggle speaker identification manually. Export to .txt or save to consultation notes. Auto-saves on call end.
+- **Screen Sharing**: Doctor can share screen via Agora `createScreenVideoTrack()`. Toggle button in control bar (Monitor/MonitorOff icons). When active, replaces camera track; auto-reverts on stop. Floating red indicator shown.
+- **Specialist Invite**: Doctor can invite online specialists to join consultation. Dialog shows online doctors from `/api/doctors/online`. Backend `POST /api/video-consultations/:id/invite-specialist` sends WebSocket notification + `pendingNotifications` to specialist with join link.
 - **Notes**: Doctor annotations, saved transcriptions displayed with border accents. All notes included in meetingNotes on call end.
 - **Consultation note types**: `chat`, `ai_query`, `ai_response`, `doctor_note`, `annotation`, `transcription`
 - **End Call**: Doctor's "end call" button saves transcriptions, calculates duration, charges credits, and notifies patient via WebSocket
@@ -91,6 +93,29 @@ All AI prompts (chatbot, triage, video consultation, medical records, SOAP repor
 - **Applied to**: consultation-request.tsx, my-consultations.tsx, doctor-chat.tsx, patient-records.tsx, whatsapp.tsx (details panel)
 - **Legacy mapping**: `mapLegacyTriageLevel()` converts old values (routine, moderate, low, immediate) to new 5-level system
 - **Help dialog**: Accessible from WhatsApp details panel, doctor chat, and consultation request analysis page
+
+## Financial Management (Credits)
+- **Route**: `/credits` - TMC credits purchase and management
+- **Balance**: Current balance display with gradient card
+- **Packages**: 4 credit packages with PayPal checkout integration
+- **Transaction History**: Full history with credit/debit indicators, timestamps, and running balance (`GET /api/tmc/transactions`)
+- **Cost Table**: Lists costs per feature (Video: 50 TMC, WhatsApp: 10 TMC, AI Exam: 15 TMC, etc.)
+
+## Epidemiological Reports
+- **Route**: `/epidemiological-reports` - AI-powered epidemiological analysis for doctors and admins
+- **Backend**: `GET /api/epidemiological-reports` (basic stats), `POST /api/epidemiological-reports/analyze` (AI MeSH analysis)
+- **Data Sources**: Consultation notes, medical records, consultation requests, video consultations
+- **AI Analysis**: Gemini/OpenAI extracts symptoms → MeSH codes, diagnoses → ICD codes from clinical texts
+- **Tabs**: Visão Geral (overview with AI summary), Sintomas/MeSH, Diagnósticos, Classificação de Risco
+- **Charts**: Symptom frequency bars, triage level distribution, age group breakdown
+- **Period Filter**: 7/30/90/365 days
+- **Files**: `client/src/pages/epidemiological-reports.tsx`, routes in `server/routes.ts`
+
+## Medical Teams & Inter-Consultations
+- **Route**: `/medical-teams` - Team management and inter-consultation discussions
+- **Team Room**: `/team-room/:id` - 3 tabs: Discussion, Inter-Consultation, Files
+- **Notes**: `team_notes` table with types: discussion, interconsultation, case_summary, clinical_question
+- **Features**: Urgency flags, note threading (parentNoteId), doctor invitation dialog, online status
 
 ## Running
 - `npm run dev` starts the development server (Express + Vite on port 5000)

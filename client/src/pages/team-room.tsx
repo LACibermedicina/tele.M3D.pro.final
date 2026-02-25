@@ -7,13 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Video, FileUp, FileText, Users, Download, Trash2, StickyNote } from "lucide-react";
+import { Video, FileUp, FileText, Users, Download, StickyNote, MessageSquare, AlertCircle, Stethoscope, ArrowLeft, Send, BookOpen } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
 
@@ -29,21 +31,15 @@ interface TeamMember {
   specialization: string | null;
 }
 
-interface TeamFile {
-  id: string;
-  fileName: string;
-  fileUrl: string;
-  fileSize: number;
-  uploadedBy: string;
-  uploadedByName: string;
-  uploadedAt: string;
-}
-
 interface TeamNote {
   id: string;
   content: string;
+  noteType: string;
+  isUrgent: boolean;
+  parentNoteId: string | null;
   authorId: string;
   authorName: string;
+  authorSpecialization: string | null;
   createdAt: string;
 }
 
@@ -53,8 +49,8 @@ interface MedicalTeam {
   description: string | null;
   teamType: string;
   roomId: string | null;
+  memberRole: string;
   members: TeamMember[];
-  files: TeamFile[];
   notes: TeamNote[];
   patient: any;
 }
@@ -67,16 +63,17 @@ export default function TeamRoom() {
   const teamId = params?.id;
   
   const [noteContent, setNoteContent] = useState("");
+  const [noteType, setNoteType] = useState("discussion");
+  const [isUrgent, setIsUrgent] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [activeNoteFilter, setActiveNoteFilter] = useState("all");
 
-  // Fetch team details
   const { data: team, isLoading } = useQuery<MedicalTeam>({
     queryKey: ['/api/medical-teams', teamId],
     enabled: !!teamId,
     refetchInterval: 5000,
   });
 
-  // Start video call mutation
   const startVideoMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest('POST', `/api/medical-teams/${teamId}/meeting`, {});
@@ -84,43 +81,30 @@ export default function TeamRoom() {
     },
     onSuccess: (data) => {
       if (data.roomId) {
-        // Open video consultation in new window or navigate
         setLocation(`/video-consultation/${data.roomId}`);
       }
     },
     onError: () => {
-      toast({
-        title: "Erro",
-        description: "Erro ao iniciar chamada em grupo",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Erro ao iniciar chamada em grupo", variant: "destructive" });
     },
   });
 
-  // Add note mutation
   const addNoteMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const res = await apiRequest('POST', `/api/medical-teams/${teamId}/notes`, { content });
+    mutationFn: async ({ content, noteType, isUrgent }: { content: string; noteType: string; isUrgent: boolean }) => {
+      const res = await apiRequest('POST', `/api/medical-teams/${teamId}/notes`, { content, noteType, isUrgent });
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Anotação Adicionada",
-        description: "Anotação compartilhada com sucesso",
-      });
+      toast({ title: "Anotação Adicionada", description: "Anotação compartilhada com a equipe" });
       setNoteContent("");
+      setIsUrgent(false);
       queryClient.invalidateQueries({ queryKey: ['/api/medical-teams', teamId] });
     },
     onError: () => {
-      toast({
-        title: "Erro",
-        description: "Erro ao adicionar anotação",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Erro ao adicionar anotação", variant: "destructive" });
     },
   });
 
-  // Upload file mutation
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -138,17 +122,10 @@ export default function TeamRoom() {
 
       if (!res.ok) throw new Error('Upload failed');
 
-      toast({
-        title: "Arquivo Enviado",
-        description: "Arquivo compartilhado com sucesso",
-      });
+      toast({ title: "Arquivo Enviado", description: "Arquivo compartilhado com sucesso" });
       queryClient.invalidateQueries({ queryKey: ['/api/medical-teams', teamId] });
     } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao enviar arquivo",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Erro ao enviar arquivo", variant: "destructive" });
     } finally {
       setUploadingFile(false);
     }
@@ -156,19 +133,47 @@ export default function TeamRoom() {
 
   const handleAddNote = () => {
     if (!noteContent.trim()) {
-      toast({
-        title: "Erro",
-        description: "Digite uma anotação",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Digite uma anotação", variant: "destructive" });
       return;
     }
-    addNoteMutation.mutate(noteContent);
+    addNoteMutation.mutate({ content: noteContent, noteType, isUrgent });
   };
 
-  const handleStartVideo = () => {
-    startVideoMutation.mutate();
+  const getNoteTypeLabel = (type: string) => {
+    switch (type) {
+      case 'discussion': return 'Discussão';
+      case 'interconsultation': return 'Inter-Consulta';
+      case 'case_summary': return 'Resumo do Caso';
+      case 'clinical_question': return 'Pergunta Clínica';
+      default: return type;
+    }
   };
+
+  const getNoteTypeColor = (type: string) => {
+    switch (type) {
+      case 'discussion': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'interconsultation': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+      case 'case_summary': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'clinical_question': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+  };
+
+  const getNoteTypeIcon = (type: string) => {
+    switch (type) {
+      case 'discussion': return <MessageSquare className="h-3 w-3" />;
+      case 'interconsultation': return <Stethoscope className="h-3 w-3" />;
+      case 'case_summary': return <FileText className="h-3 w-3" />;
+      case 'clinical_question': return <BookOpen className="h-3 w-3" />;
+      default: return <StickyNote className="h-3 w-3" />;
+    }
+  };
+
+  const filteredNotes = (team?.notes || []).filter(note => {
+    if (activeNoteFilter === 'all') return true;
+    if (activeNoteFilter === 'urgent') return note.isUrgent;
+    return note.noteType === activeNoteFilter;
+  });
 
   if (!user || user.role !== 'doctor') {
     return (
@@ -176,9 +181,7 @@ export default function TeamRoom() {
         <div className="p-8">
           <Card>
             <CardContent className="pt-6">
-              <p className="text-center text-muted-foreground">
-                Acesso restrito a médicos
-              </p>
+              <p className="text-center text-muted-foreground">Acesso restrito a médicos</p>
             </CardContent>
           </Card>
         </div>
@@ -214,57 +217,73 @@ export default function TeamRoom() {
 
   return (
     <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
-      <div className="p-8 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">{team.name}</h1>
-            <p className="text-muted-foreground mt-2">
-              {team.description || "Sala de colaboração da equipe"}
-            </p>
+      <div className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => setLocation('/medical-teams')}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{team.name}</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {team.description || "Sala de colaboração da equipe"}
+              </p>
+            </div>
           </div>
           
           <Button
-            onClick={handleStartVideo}
+            onClick={() => startVideoMutation.mutate()}
             disabled={startVideoMutation.isPending}
             size="lg"
             data-testid="button-start-group-call"
           >
             <Video className="h-5 w-5 mr-2" />
-            Iniciar Chamada em Grupo
+            Chamada em Grupo
           </Button>
         </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Panel - Members */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
+        {team.patient && (
+          <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
+            <CardContent className="py-3 px-4 flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-sm">Paciente em discussão: {team.patient.name}</p>
+                {team.patient.healthStatus && (
+                  <p className="text-xs text-muted-foreground">Status: {team.patient.healthStatus}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <Card className="lg:col-span-1">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4" />
                 Membros ({team.members?.length || 0})
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[600px]">
-                <div className="space-y-3">
+              <ScrollArea className="h-[300px] lg:h-[500px]">
+                <div className="space-y-2">
                   {team.members?.map((member) => (
-                    <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted">
-                      <Avatar>
+                    <div key={member.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted">
+                      <Avatar className="h-8 w-8">
                         <AvatarImage src={member.profilePicture || undefined} />
-                        <AvatarFallback>
+                        <AvatarFallback className="text-xs">
                           {member.userName.substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{member.userName}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {member.specialization || member.userEmail}
+                        <p className="font-medium text-sm truncate">{member.userName}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {member.specialization || "Médico"}
                         </p>
-                        {member.role === 'leader' && (
-                          <Badge variant="outline" className="mt-1 text-xs">Líder</Badge>
-                        )}
                       </div>
+                      {member.role === 'leader' && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0">Líder</Badge>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -272,65 +291,122 @@ export default function TeamRoom() {
             </CardContent>
           </Card>
 
-          {/* Center/Right Panel - Tabs for Files and Notes */}
-          <div className="lg:col-span-2">
-            <Tabs defaultValue="notes" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="notes" data-testid="tab-notes">
-                  <StickyNote className="h-4 w-4 mr-2" />
-                  Anotações Compartilhadas
+          <div className="lg:col-span-3">
+            <Tabs defaultValue="discussion" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="discussion" data-testid="tab-discussion">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Discussão
+                </TabsTrigger>
+                <TabsTrigger value="interconsultation" data-testid="tab-interconsultation">
+                  <Stethoscope className="h-4 w-4 mr-2" />
+                  Inter-Consulta
                 </TabsTrigger>
                 <TabsTrigger value="files" data-testid="tab-files">
                   <FileText className="h-4 w-4 mr-2" />
-                  Arquivos Compartilhados
+                  Arquivos
                 </TabsTrigger>
               </TabsList>
 
-              {/* Notes Tab */}
-              <TabsContent value="notes">
+              <TabsContent value="discussion">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Anotações da Equipe</CardTitle>
+                  <CardHeader className="pb-3">
+                    <CardTitle>Discussão de Caso</CardTitle>
                     <CardDescription>
-                      Compartilhe notas e observações com os membros da equipe
+                      Compartilhe notas clínicas, observações e resumos com a equipe
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Add Note Form */}
-                    <div className="space-y-2">
-                      <Label htmlFor="note-content">Nova Anotação</Label>
+                    <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
                       <Textarea
-                        id="note-content"
-                        placeholder="Digite suas anotações aqui..."
+                        placeholder="Compartilhe sua análise clínica, hipóteses diagnósticas ou observações..."
                         value={noteContent}
                         onChange={(e) => setNoteContent(e.target.value)}
-                        rows={4}
+                        rows={3}
                         data-testid="textarea-note"
                       />
-                      <Button
-                        onClick={handleAddNote}
-                        disabled={addNoteMutation.isPending || !noteContent.trim()}
-                        data-testid="button-add-note"
-                      >
-                        <StickyNote className="h-4 w-4 mr-2" />
-                        Adicionar Anotação
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Select value={noteType} onValueChange={setNoteType}>
+                          <SelectTrigger className="w-[200px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="discussion">Discussão</SelectItem>
+                            <SelectItem value="case_summary">Resumo do Caso</SelectItem>
+                            <SelectItem value="clinical_question">Pergunta Clínica</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="flex items-center gap-2">
+                          <Switch checked={isUrgent} onCheckedChange={setIsUrgent} id="urgent" />
+                          <Label htmlFor="urgent" className="text-sm cursor-pointer flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3 text-red-500" />
+                            Urgente
+                          </Label>
+                        </div>
+                        <Button
+                          onClick={handleAddNote}
+                          disabled={addNoteMutation.isPending || !noteContent.trim()}
+                          data-testid="button-add-note"
+                          className="ml-auto"
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          Enviar
+                        </Button>
+                      </div>
                     </div>
 
-                    {/* Notes List */}
-                    <ScrollArea className="h-[400px] border rounded-lg p-4">
-                      {!team.notes || team.notes.length === 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {["all", "discussion", "case_summary", "clinical_question", "urgent"].map((filter) => (
+                        <Button
+                          key={filter}
+                          variant={activeNoteFilter === filter ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setActiveNoteFilter(filter)}
+                        >
+                          {filter === 'all' ? 'Todas' :
+                           filter === 'urgent' ? '🔴 Urgentes' :
+                           getNoteTypeLabel(filter)}
+                        </Button>
+                      ))}
+                    </div>
+
+                    <ScrollArea className="h-[400px]">
+                      {filteredNotes.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
-                          <StickyNote className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                          <p>Nenhuma anotação ainda</p>
+                          <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                          <p>Nenhuma anotação nesta categoria</p>
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          {team.notes.map((note) => (
-                            <div key={note.id} className="border-l-4 border-primary pl-4 py-2">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="font-medium text-sm">{note.authorName}</p>
-                                <span className="text-xs text-muted-foreground">
+                          {filteredNotes.map((note) => (
+                            <div
+                              key={note.id}
+                              className={`border-l-4 pl-4 py-3 rounded-r-lg ${
+                                note.isUrgent
+                                  ? 'border-red-500 bg-red-50/50 dark:bg-red-950/20'
+                                  : 'border-primary bg-muted/30'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <Avatar className="h-6 w-6">
+                                  <AvatarFallback className="text-[10px]">
+                                    {note.authorName.substring(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium text-sm">{note.authorName}</span>
+                                {note.authorSpecialization && (
+                                  <span className="text-xs text-muted-foreground">• {note.authorSpecialization}</span>
+                                )}
+                                <Badge className={`text-[10px] px-1.5 py-0 ${getNoteTypeColor(note.noteType)}`}>
+                                  {getNoteTypeIcon(note.noteType)}
+                                  <span className="ml-1">{getNoteTypeLabel(note.noteType)}</span>
+                                </Badge>
+                                {note.isUrgent && (
+                                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                    Urgente
+                                  </Badge>
+                                )}
+                                <span className="text-xs text-muted-foreground ml-auto">
                                   {new Date(note.createdAt).toLocaleString('pt-BR')}
                                 </span>
                               </div>
@@ -344,17 +420,110 @@ export default function TeamRoom() {
                 </Card>
               </TabsContent>
 
-              {/* Files Tab */}
-              <TabsContent value="files">
+              <TabsContent value="interconsultation">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Arquivos Compartilhados</CardTitle>
+                  <CardHeader className="pb-3">
+                    <CardTitle>Pedido de Inter-Consulta</CardTitle>
                     <CardDescription>
-                      Faça upload e compartilhe documentos com a equipe
+                      Solicite parecer de especialistas sobre o caso em discussão
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Upload Form */}
+                    <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
+                      <Textarea
+                        placeholder="Descreva o motivo da inter-consulta, hipóteses diagnósticas e informações relevantes do caso..."
+                        value={noteType === 'interconsultation' ? noteContent : ''}
+                        onChange={(e) => {
+                          setNoteType('interconsultation');
+                          setNoteContent(e.target.value);
+                        }}
+                        rows={5}
+                        data-testid="textarea-interconsultation"
+                      />
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={isUrgent}
+                            onCheckedChange={setIsUrgent}
+                            id="urgent-ic"
+                          />
+                          <Label htmlFor="urgent-ic" className="text-sm cursor-pointer flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3 text-red-500" />
+                            Urgente
+                          </Label>
+                        </div>
+                        <Button
+                          onClick={() => {
+                            if (!noteContent.trim()) {
+                              toast({ title: "Erro", description: "Descreva o pedido de inter-consulta", variant: "destructive" });
+                              return;
+                            }
+                            addNoteMutation.mutate({ content: noteContent, noteType: 'interconsultation', isUrgent });
+                          }}
+                          disabled={addNoteMutation.isPending}
+                          className="ml-auto"
+                        >
+                          <Stethoscope className="h-4 w-4 mr-2" />
+                          Enviar Pedido
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Histórico de Inter-Consultas</h4>
+                      <ScrollArea className="h-[350px]">
+                        {(team.notes || []).filter(n => n.noteType === 'interconsultation').length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Stethoscope className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                            <p>Nenhum pedido de inter-consulta registrado</p>
+                            <p className="text-xs mt-1">Solicite parecer de especialistas sobre casos complexos</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {(team.notes || [])
+                              .filter(n => n.noteType === 'interconsultation')
+                              .map((note) => (
+                                <div
+                                  key={note.id}
+                                  className={`border rounded-lg p-4 ${
+                                    note.isUrgent
+                                      ? 'border-red-300 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20'
+                                      : 'border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Stethoscope className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                                    <span className="font-medium text-sm">{note.authorName}</span>
+                                    {note.authorSpecialization && (
+                                      <Badge variant="outline" className="text-[10px]">{note.authorSpecialization}</Badge>
+                                    )}
+                                    {note.isUrgent && (
+                                      <Badge variant="destructive" className="text-[10px]">Urgente</Badge>
+                                    )}
+                                    <span className="text-xs text-muted-foreground ml-auto">
+                                      {new Date(note.createdAt).toLocaleString('pt-BR')}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="files">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle>Arquivos Compartilhados</CardTitle>
+                    <CardDescription>
+                      Compartilhe exames, laudos e documentos relevantes ao caso
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="file-upload">Enviar Arquivo</Label>
                       <div className="flex gap-2">
@@ -374,44 +543,12 @@ export default function TeamRoom() {
                       </p>
                     </div>
 
-                    {/* Files List */}
                     <ScrollArea className="h-[400px] border rounded-lg p-4">
-                      {!team.files || team.files.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                          <p>Nenhum arquivo compartilhado</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {team.files.map((file) => (
-                            <div
-                              key={file.id}
-                              className="flex items-center justify-between p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
-                            >
-                              <div className="flex items-center gap-3 flex-1 min-w-0">
-                                <FileText className="h-5 w-5 text-primary flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium truncate">{file.fileName}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    Por {file.uploadedByName} • {new Date(file.uploadedAt).toLocaleDateString('pt-BR')}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  asChild
-                                >
-                                  <a href={file.fileUrl} download target="_blank" rel="noopener noreferrer">
-                                    <Download className="h-4 w-4" />
-                                  </a>
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>Nenhum arquivo compartilhado</p>
+                        <p className="text-xs mt-1">Envie exames e documentos para discussão</p>
+                      </div>
                     </ScrollArea>
                   </CardContent>
                 </Card>

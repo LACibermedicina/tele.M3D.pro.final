@@ -1,20 +1,18 @@
 import { Router } from 'express';
 import { db } from '../db';
-import { medicalTeams, medicalTeamMembers, users, patients } from '@shared/schema';
+import { medicalTeams, medicalTeamMembers, teamNotes, users, patients } from '@shared/schema';
 import { insertMedicalTeamSchema, insertMedicalTeamMemberSchema } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 const router = Router();
 
-// Get all medical teams for the logged-in doctor
 router.get('/', async (req: any, res) => {
   try {
     if (!req.user || req.user.role !== 'doctor') {
       return res.status(403).json({ message: 'Only doctors can access this endpoint' });
     }
 
-    // Get teams where user is a member
     const teamMemberships = await db
       .select({
         team: medicalTeams,
@@ -28,7 +26,6 @@ router.get('/', async (req: any, res) => {
       ))
       .orderBy(desc(medicalTeams.lastMeetingAt));
 
-    // Get members count for each team
     const teamsWithDetails = await Promise.all(
       teamMemberships.map(async ({ team, memberRole }) => {
         const members = await db
@@ -55,12 +52,27 @@ router.get('/', async (req: any, res) => {
           patientInfo = patientData[0] || null;
         }
 
+        const notesCount = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(teamNotes)
+          .where(eq(teamNotes.teamId, team.id));
+
+        const urgentNotes = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(teamNotes)
+          .where(and(
+            eq(teamNotes.teamId, team.id),
+            eq(teamNotes.isUrgent, true)
+          ));
+
         return {
           ...team,
           memberRole,
           membersCount: members.length,
           members,
           patient: patientInfo,
+          notesCount: Number(notesCount[0]?.count || 0),
+          urgentNotesCount: Number(urgentNotes[0]?.count || 0),
         };
       })
     );
@@ -72,7 +84,6 @@ router.get('/', async (req: any, res) => {
   }
 });
 
-// Create a new medical team
 router.post('/', async (req: any, res) => {
   try {
     if (!req.user || req.user.role !== 'doctor') {
@@ -84,7 +95,6 @@ router.post('/', async (req: any, res) => {
       createdBy: req.user.id,
     });
 
-    // Create team
     const [newTeam] = await db
       .insert(medicalTeams)
       .values({
@@ -93,7 +103,6 @@ router.post('/', async (req: any, res) => {
       })
       .returning();
 
-    // Add creator as team leader
     await db.insert(medicalTeamMembers).values({
       teamId: newTeam.id,
       userId: req.user.id,
@@ -110,7 +119,37 @@ router.post('/', async (req: any, res) => {
   }
 });
 
-// Get specific team details
+router.get('/available-doctors', async (req: any, res) => {
+  try {
+    if (!req.user || req.user.role !== 'doctor') {
+      return res.status(403).json({ message: 'Only doctors can access this endpoint' });
+    }
+
+    const doctors = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        specialization: users.specialization,
+        medicalLicense: users.medicalLicense,
+        profilePicture: users.profilePicture,
+        isOnline: users.isOnline,
+      })
+      .from(users)
+      .where(and(
+        eq(users.role, 'doctor'),
+        eq(users.isBlocked, false)
+      ))
+      .orderBy(users.name);
+
+    const filtered = doctors.filter((d: any) => d.id !== req.user.id);
+    res.json(filtered);
+  } catch (error) {
+    console.error('Get available doctors error:', error);
+    res.status(500).json({ message: 'Failed to fetch available doctors' });
+  }
+});
+
 router.get('/:id', async (req: any, res) => {
   try {
     if (!req.user || req.user.role !== 'doctor') {
@@ -129,7 +168,6 @@ router.get('/:id', async (req: any, res) => {
 
     const team = teamData[0];
 
-    // Check if user is a member
     const membership = await db
       .select()
       .from(medicalTeamMembers)
@@ -143,7 +181,6 @@ router.get('/:id', async (req: any, res) => {
       return res.status(403).json({ message: 'Not authorized to view this team' });
     }
 
-    // Get all members
     const members = await db
       .select({
         id: medicalTeamMembers.id,
@@ -170,12 +207,29 @@ router.get('/:id', async (req: any, res) => {
       patientInfo = patientData[0] || null;
     }
 
+    const notes = await db
+      .select({
+        id: teamNotes.id,
+        content: teamNotes.content,
+        noteType: teamNotes.noteType,
+        isUrgent: teamNotes.isUrgent,
+        parentNoteId: teamNotes.parentNoteId,
+        authorId: teamNotes.authorId,
+        authorName: users.name,
+        authorSpecialization: users.specialization,
+        createdAt: teamNotes.createdAt,
+      })
+      .from(teamNotes)
+      .innerJoin(users, eq(teamNotes.authorId, users.id))
+      .where(eq(teamNotes.teamId, team.id))
+      .orderBy(desc(teamNotes.createdAt));
+
     res.json({
       ...team,
+      memberRole: membership[0].role,
       members,
       patient: patientInfo,
-      notes: [], // Placeholder for notes - would come from separate table in production
-      files: [], // Placeholder for files - would come from separate table in production
+      notes,
     });
   } catch (error) {
     console.error('Get team details error:', error);
@@ -183,7 +237,6 @@ router.get('/:id', async (req: any, res) => {
   }
 });
 
-// Add member to team
 router.post('/:id/members', async (req: any, res) => {
   try {
     if (!req.user || req.user.role !== 'doctor') {
@@ -200,7 +253,6 @@ router.post('/:id/members', async (req: any, res) => {
       return res.status(404).json({ message: 'Team not found' });
     }
 
-    // Check if user is team leader
     const membership = await db
       .select()
       .from(medicalTeamMembers)
@@ -219,7 +271,6 @@ router.post('/:id/members', async (req: any, res) => {
       teamId: req.params.id,
     });
 
-    // Check if member already exists
     const existingMember = await db
       .select()
       .from(medicalTeamMembers)
@@ -248,14 +299,12 @@ router.post('/:id/members', async (req: any, res) => {
   }
 });
 
-// Remove member from team
 router.delete('/:id/members/:userId', async (req: any, res) => {
   try {
     if (!req.user || req.user.role !== 'doctor') {
       return res.status(403).json({ message: 'Only doctors can remove members' });
     }
 
-    // Check if user is team leader
     const membership = await db
       .select()
       .from(medicalTeamMembers)
@@ -269,7 +318,6 @@ router.delete('/:id/members/:userId', async (req: any, res) => {
       return res.status(403).json({ message: 'Only team leaders can remove members' });
     }
 
-    // Cannot remove yourself if you're the leader
     if (req.params.userId === req.user.id) {
       return res.status(400).json({ message: 'Team leaders cannot remove themselves' });
     }
@@ -288,14 +336,12 @@ router.delete('/:id/members/:userId', async (req: any, res) => {
   }
 });
 
-// Update team
 router.patch('/:id', async (req: any, res) => {
   try {
     if (!req.user || req.user.role !== 'doctor') {
       return res.status(403).json({ message: 'Only doctors can update teams' });
     }
 
-    // Check if user is team leader
     const membership = await db
       .select()
       .from(medicalTeamMembers)
@@ -325,14 +371,12 @@ router.patch('/:id', async (req: any, res) => {
   }
 });
 
-// Update last meeting time and return room info
 router.post('/:id/meeting', async (req: any, res) => {
   try {
     if (!req.user || req.user.role !== 'doctor') {
       return res.status(403).json({ message: 'Only doctors can update meeting time' });
     }
 
-    // Check if user is a member
     const membership = await db
       .select()
       .from(medicalTeamMembers)
@@ -372,14 +416,12 @@ router.post('/:id/meeting', async (req: any, res) => {
   }
 });
 
-// Add note to team
 router.post('/:id/notes', async (req: any, res) => {
   try {
     if (!req.user || req.user.role !== 'doctor') {
       return res.status(403).json({ message: 'Only doctors can add notes' });
     }
 
-    // Check if user is a member
     const membership = await db
       .select()
       .from(medicalTeamMembers)
@@ -393,20 +435,35 @@ router.post('/:id/notes', async (req: any, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    const { content } = req.body;
+    const { content, noteType, isUrgent, parentNoteId } = req.body;
     if (!content || !content.trim()) {
       return res.status(400).json({ message: 'Note content is required' });
     }
 
-    // For now, return success - in production you'd want to store in a separate table
-    res.json({ 
-      success: true, 
-      note: {
-        id: `note_${Date.now()}`,
-        content: content.trim(),
+    const [note] = await db
+      .insert(teamNotes)
+      .values({
+        teamId: req.params.id,
         authorId: req.user.id,
-        authorName: req.user.name,
-        createdAt: new Date().toISOString(),
+        content: content.trim(),
+        noteType: noteType || 'discussion',
+        isUrgent: isUrgent || false,
+        parentNoteId: parentNoteId || null,
+      })
+      .returning();
+
+    const authorData = await db
+      .select({ name: users.name, specialization: users.specialization })
+      .from(users)
+      .where(eq(users.id, req.user.id))
+      .limit(1);
+
+    res.json({
+      success: true,
+      note: {
+        ...note,
+        authorName: authorData[0]?.name || 'Unknown',
+        authorSpecialization: authorData[0]?.specialization || null,
       }
     });
   } catch (error) {
@@ -415,14 +472,12 @@ router.post('/:id/notes', async (req: any, res) => {
   }
 });
 
-// Upload file to team (placeholder)
-router.post('/:id/files', async (req: any, res) => {
+router.get('/:id/notes', async (req: any, res) => {
   try {
     if (!req.user || req.user.role !== 'doctor') {
-      return res.status(403).json({ message: 'Only doctors can upload files' });
+      return res.status(403).json({ message: 'Only doctors can view notes' });
     }
 
-    // Check if user is a member
     const membership = await db
       .select()
       .from(medicalTeamMembers)
@@ -436,7 +491,56 @@ router.post('/:id/files', async (req: any, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    // For now, return success - in production you'd handle file upload
+    const noteType = req.query.type as string | undefined;
+
+    let query = db
+      .select({
+        id: teamNotes.id,
+        content: teamNotes.content,
+        noteType: teamNotes.noteType,
+        isUrgent: teamNotes.isUrgent,
+        parentNoteId: teamNotes.parentNoteId,
+        authorId: teamNotes.authorId,
+        authorName: users.name,
+        authorSpecialization: users.specialization,
+        createdAt: teamNotes.createdAt,
+      })
+      .from(teamNotes)
+      .innerJoin(users, eq(teamNotes.authorId, users.id))
+      .where(
+        noteType
+          ? and(eq(teamNotes.teamId, req.params.id), eq(teamNotes.noteType, noteType))
+          : eq(teamNotes.teamId, req.params.id)
+      )
+      .orderBy(desc(teamNotes.createdAt));
+
+    const notes = await query;
+    res.json(notes);
+  } catch (error) {
+    console.error('Get notes error:', error);
+    res.status(500).json({ message: 'Failed to fetch notes' });
+  }
+});
+
+router.post('/:id/files', async (req: any, res) => {
+  try {
+    if (!req.user || req.user.role !== 'doctor') {
+      return res.status(403).json({ message: 'Only doctors can upload files' });
+    }
+
+    const membership = await db
+      .select()
+      .from(medicalTeamMembers)
+      .where(and(
+        eq(medicalTeamMembers.teamId, req.params.id),
+        eq(medicalTeamMembers.userId, req.user.id)
+      ))
+      .limit(1);
+
+    if (membership.length === 0) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
     res.json({ 
       success: true,
       message: 'File uploaded successfully'

@@ -6,6 +6,7 @@ import AgoraRTC, {
   IAgoraRTCRemoteUser,
   ICameraVideoTrack,
   IMicrophoneAudioTrack,
+  ILocalVideoTrack,
 } from 'agora-rtc-sdk-ng';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -36,6 +38,9 @@ import {
   User,
   Stethoscope,
   Download,
+  Monitor,
+  MonitorOff,
+  UserPlus,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -85,6 +90,10 @@ export default function VideoConsultation() {
   const [doctorNote, setDoctorNote] = useState('');
   const [activeTab, setActiveTab] = useState('chat');
   const [aiLoading, setAiLoading] = useState(false);
+
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenTrack, setScreenTrack] = useState<ILocalVideoTrack | null>(null);
+  const [showSpecialistDialog, setShowSpecialistDialog] = useState(false);
 
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
@@ -398,6 +407,71 @@ export default function VideoConsultation() {
     }
   };
 
+  const toggleScreenShare = async () => {
+    if (!client || !joined) return;
+    if (isScreenSharing) {
+      if (screenTrack) {
+        await client.unpublish(screenTrack);
+        screenTrack.close();
+        setScreenTrack(null);
+      }
+      if (localVideoTrack) {
+        await client.publish(localVideoTrack);
+        if (localVideoRef.current) localVideoTrack.play(localVideoRef.current);
+      }
+      setIsScreenSharing(false);
+      toast({ title: 'Compartilhamento encerrado', description: 'Voltou para a câmera.' });
+    } else {
+      try {
+        const track = await AgoraRTC.createScreenVideoTrack({}, 'disable');
+        const videoTrack = Array.isArray(track) ? track[0] : track;
+        if (localVideoTrack) {
+          await client.unpublish(localVideoTrack);
+        }
+        await client.publish(videoTrack);
+        if (localVideoRef.current) videoTrack.play(localVideoRef.current);
+        setScreenTrack(videoTrack);
+        setIsScreenSharing(true);
+        (videoTrack as any).on?.('track-ended', async () => {
+          await client.unpublish(videoTrack);
+          videoTrack.close();
+          setScreenTrack(null);
+          if (localVideoTrack) {
+            await client.publish(localVideoTrack);
+            if (localVideoRef.current) localVideoTrack.play(localVideoRef.current);
+          }
+          setIsScreenSharing(false);
+        });
+        toast({ title: 'Compartilhando tela', description: 'Sua tela está sendo compartilhada com o paciente.' });
+      } catch (err: any) {
+        if (err?.message?.includes('Permission')) {
+          toast({ title: 'Permissão negada', description: 'Você cancelou o compartilhamento de tela.', variant: 'destructive' });
+        } else {
+          toast({ title: 'Erro', description: 'Não foi possível compartilhar a tela.', variant: 'destructive' });
+        }
+      }
+    }
+  };
+
+  const { data: onlineDoctors } = useQuery<any[]>({
+    queryKey: ['/api/doctors/online'],
+    enabled: showSpecialistDialog,
+    refetchInterval: showSpecialistDialog ? 10000 : false,
+  });
+
+  const inviteSpecialistMutation = useMutation({
+    mutationFn: async (specialistId: number) => {
+      return apiRequest('POST', `/api/video-consultations/${consultationId}/invite-specialist`, { specialistId });
+    },
+    onSuccess: () => {
+      toast({ title: 'Convite enviado', description: 'O especialista foi notificado e poderá entrar na consulta.' });
+      setShowSpecialistDialog(false);
+    },
+    onError: () => {
+      toast({ title: 'Erro', description: 'Não foi possível enviar o convite.', variant: 'destructive' });
+    },
+  });
+
   const markAsSpeaker = (entryId: string, speaker: 'doctor' | 'patient') => {
     setTranscriptEntries(prev => prev.map(e => e.id === entryId ? { ...e, speaker } : e));
   };
@@ -582,6 +656,12 @@ export default function VideoConsultation() {
           </Button>
           <Button variant={isTranscribing ? 'destructive' : 'secondary'} size="icon" onClick={toggleTranscription} className="rounded-full" title="Transcrição de Áudio">
             <AudioLines className="h-5 w-5" />
+          </Button>
+          <Button variant={isScreenSharing ? 'destructive' : 'secondary'} size="icon" onClick={toggleScreenShare} className="rounded-full" title={isScreenSharing ? 'Parar compartilhamento' : 'Compartilhar tela'}>
+            {isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
+          </Button>
+          <Button variant="secondary" size="icon" onClick={() => setShowSpecialistDialog(true)} className="rounded-full" title="Convidar Especialista">
+            <UserPlus className="h-5 w-5" />
           </Button>
           <Button variant="outline" size="icon" onClick={() => setIsFullscreen(!isFullscreen)} className="rounded-full" data-testid="button-toggle-fullscreen">
             {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
@@ -840,6 +920,48 @@ export default function VideoConsultation() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={showSpecialistDialog} onOpenChange={setShowSpecialistDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Convidar Especialista
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            {!onlineDoctors || onlineDoctors.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhum médico online no momento.</p>
+            ) : (
+              onlineDoctors.filter((d: any) => d.id !== user?.id).map((doctor: any) => (
+                <Card key={doctor.id} className="p-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-sm">{doctor.name}</p>
+                    <p className="text-xs text-muted-foreground">{doctor.specialty || 'Clínico Geral'}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => inviteSpecialistMutation.mutate(doctor.id)}
+                    disabled={inviteSpecialistMutation.isPending}
+                  >
+                    {inviteSpecialistMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Convidar'}
+                  </Button>
+                </Card>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {isScreenSharing && (
+        <div className="fixed top-4 right-4 z-[60] bg-red-600 text-white px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
+          <Monitor className="h-4 w-4" />
+          <span className="text-sm font-medium">Compartilhando tela</span>
+          <Button variant="ghost" size="sm" onClick={toggleScreenShare} className="text-white hover:text-white hover:bg-red-700 h-6 px-2 ml-1">
+            Parar
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
