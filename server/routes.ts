@@ -1397,8 +1397,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/appointments/doctor/:doctorId', async (req, res) => {
     try {
       const date = req.query.date ? new Date(req.query.date as string) : undefined;
-      const appointments = await storage.getAppointmentsByDoctor(req.params.doctorId, date);
-      res.json(appointments);
+      const appts = await storage.getAppointmentsByDoctor(req.params.doctorId, date);
+      
+      const patientIds = [...new Set(appts.map(a => a.patientId).filter(Boolean))];
+      const patientMap: Record<string, any> = {};
+      for (const pid of patientIds) {
+        if (pid) {
+          try {
+            const p = await storage.getPatient(pid);
+            if (p) patientMap[pid] = p;
+          } catch {}
+        }
+      }
+
+      const enriched = appts.map(a => ({
+        ...a,
+        patientName: a.patientId && patientMap[a.patientId] ? patientMap[a.patientId].name : 'Paciente não identificado',
+        patientEmail: a.patientId && patientMap[a.patientId] ? patientMap[a.patientId].email : null,
+        patientPhone: a.patientId && patientMap[a.patientId] ? patientMap[a.patientId].phone : null,
+      }));
+      
+      res.json(enriched);
     } catch (error) {
       res.status(500).json({ message: 'Failed to get appointments' });
     }
@@ -1522,12 +1541,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endedAt: videoConsultations.endedAt,
         duration: videoConsultations.duration,
         meetingNotes: videoConsultations.meetingNotes,
+        connectionLogs: videoConsultations.connectionLogs,
         createdAt: videoConsultations.createdAt,
       })
         .from(videoConsultations)
         .where(and(
           eq(videoConsultations.doctorId, doctorId),
-          eq(videoConsultations.status, 'ended')
+          inArray(videoConsultations.status, ['ended', 'completed', 'incomplete'])
         ))
         .orderBy(desc(videoConsultations.createdAt))
         .limit(parseInt(queryLimit.toString()));
@@ -2718,17 +2738,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // End video consultation (doctor ends the consultation)
   app.post('/api/video-consultations/:id/end', async (req: any, res) => {
     try {
-      const { duration, meetingNotes } = req.body;
+      const { duration, meetingNotes, completionStatus, endReason } = req.body;
+      
+      const finalStatus = completionStatus === 'completed' ? 'completed' : 
+                          completionStatus === 'incomplete' ? 'incomplete' : 'ended';
       
       const consultation = await storage.updateVideoConsultation(req.params.id, {
-        status: 'ended',
+        status: finalStatus,
         endedAt: new Date(),
         duration: duration || 0,
-        meetingNotes: meetingNotes || ''
+        meetingNotes: meetingNotes || '',
+        connectionLogs: endReason ? { endReason, completionStatus: finalStatus } : undefined
       });
       
       if (!consultation) {
         return res.status(404).json({ message: 'Consulta não encontrada' });
+      }
+
+      // Auto-generate medical record from consultation data
+      if (consultation.patientId && meetingNotes && finalStatus === 'completed') {
+        try {
+          const patient = await storage.getPatient(consultation.patientId);
+          const consultNotes = await storage.getConsultationNotes(consultation.id);
+          const doctorNotes = consultNotes.filter((n: any) => n.type === 'doctor_note' || n.type === 'annotation').map((n: any) => n.content).join('\n');
+          const transcriptions = consultNotes.filter((n: any) => n.type === 'transcription').map((n: any) => n.content).join('\n');
+          const chatMessages = consultNotes.filter((n: any) => n.type === 'chat').map((n: any) => n.content).join('\n');
+          const aiResponses = consultNotes.filter((n: any) => n.type === 'ai_response').map((n: any) => n.content).join('\n');
+          
+          const clinicalSummary = [
+            meetingNotes ? `Notas da consulta: ${meetingNotes}` : '',
+            doctorNotes ? `Anotações médicas: ${doctorNotes}` : '',
+            transcriptions ? `Transcrição: ${transcriptions}` : '',
+            aiResponses ? `Análise IA: ${aiResponses}` : '',
+          ].filter(Boolean).join('\n\n');
+
+          let aiSummary = clinicalSummary;
+          try {
+            const summaryPrompt = `Com base nos dados a seguir de uma teleconsulta médica, elabore um prontuário clínico completo e estruturado em português brasileiro, seguindo os protocolos do Ministério da Saúde do Brasil. Inclua: Queixa principal, História da doença atual, Exame clínico (se mencionado), Hipótese diagnóstica, Conduta/Plano terapêutico, e Observações.\n\nPaciente: ${patient?.name || 'Não identificado'}\n\n${clinicalSummary}`;
+            aiSummary = await geminiService.generateText(summaryPrompt, 'Você é um assistente médico especializado em prontuários clínicos.');
+          } catch (aiErr) {
+            console.warn('AI summary generation failed, using raw notes:', aiErr);
+          }
+
+          await storage.createMedicalRecord({
+            patientId: consultation.patientId,
+            doctorId: consultation.doctorId || req.user?.id || DEFAULT_DOCTOR_ID,
+            date: new Date(),
+            type: 'consultation',
+            diagnosis: '',
+            treatment: '',
+            notes: aiSummary,
+            vitalSigns: {},
+          });
+          console.log(`✅ Auto-generated medical record for patient ${consultation.patientId}`);
+        } catch (recordErr) {
+          console.error('Failed to auto-generate medical record:', recordErr);
+        }
+      }
+
+      // If incomplete, notify doctor with follow-up options
+      if (finalStatus === 'incomplete' && consultation.doctorId) {
+        try {
+          const incPatient = await storage.getPatient(consultation.patientId!);
+          const patientName = incPatient?.name || 'Paciente';
+          
+          await db.insert(pendingNotifications).values({
+            userId: consultation.doctorId,
+            type: 'incomplete_consultation',
+            title: `Consulta inconcluída - ${patientName}`,
+            message: endReason || 'A consulta foi encerrada sem confirmação de conclusão. Ações de acompanhamento necessárias.',
+            priority: 'high',
+            actionUrl: `/consultation/video/${consultation.patientId}`,
+            senderId: consultation.patientId || undefined,
+            delivered: false,
+            read: false,
+            metadata: { 
+              consultationId: consultation.id,
+              patientId: consultation.patientId,
+              patientName,
+              endReason: endReason || 'Saída sem conclusão',
+              allowReactivate: true,
+              allowComplete: true,
+              allowMessage: true
+            }
+          });
+          
+          broadcastToDoctor(consultation.doctorId, {
+            type: 'incomplete_consultation',
+            data: {
+              title: `Consulta inconcluída - ${patientName}`,
+              message: endReason || 'Consulta encerrada sem confirmação de conclusão.',
+              consultationId: consultation.id,
+              patientId: consultation.patientId,
+              patientName,
+              actionUrl: `/consultation/video/${consultation.patientId}`,
+              allowReactivate: true,
+              allowComplete: true
+            }
+          });
+        } catch (notifErr) {
+          console.error('Failed to send incomplete consultation notification:', notifErr);
+        }
       }
 
       // Calculate and charge credits for consultation duration
@@ -2814,6 +2924,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('End consultation error:', error);
       res.status(500).json({ message: 'Falha ao encerrar consulta' });
+    }
+  });
+
+  // Complete an incomplete consultation (doctor confirms completion later)
+  app.post('/api/video-consultations/:id/complete', async (req: any, res) => {
+    try {
+      if (!req.user || (req.user.role !== 'doctor' && req.user.role !== 'admin')) {
+        return res.status(403).json({ message: 'Apenas médicos podem concluir consultas' });
+      }
+
+      const { notes } = req.body;
+      const existing = await storage.getVideoConsultation(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ message: 'Consulta não encontrada' });
+      }
+
+      const updatedNotes = existing.meetingNotes 
+        ? `${existing.meetingNotes}\n\n--- Conclusão posterior ---\n${notes || 'Consulta concluída pelo médico.'}`
+        : notes || 'Consulta concluída pelo médico.';
+
+      const consultation = await storage.updateVideoConsultation(req.params.id, {
+        status: 'completed',
+        meetingNotes: updatedNotes
+      });
+
+      // Auto-generate medical record
+      if (consultation && consultation.patientId) {
+        try {
+          const patient = await storage.getPatient(consultation.patientId);
+          const consultNotes = await storage.getConsultationNotes(consultation.id);
+          const allNotes = consultNotes.map((n: any) => n.content).join('\n');
+          
+          let aiSummary = `${updatedNotes}\n${allNotes}`;
+          try {
+            const summaryPrompt = `Com base nos dados a seguir de uma teleconsulta médica, elabore um prontuário clínico completo em português brasileiro. Inclua: Queixa principal, HDA, Hipótese diagnóstica, Conduta.\n\nPaciente: ${patient?.name || 'Não identificado'}\n\n${updatedNotes}\n${allNotes}`;
+            aiSummary = await geminiService.generateText(summaryPrompt, 'Você é um assistente médico especializado em prontuários clínicos.');
+          } catch {}
+          
+          await storage.createMedicalRecord({
+            patientId: consultation.patientId,
+            doctorId: consultation.doctorId || req.user.id,
+            date: new Date(),
+            type: 'consultation',
+            diagnosis: '',
+            treatment: '',
+            notes: aiSummary,
+            vitalSigns: {},
+          });
+        } catch (recordErr) {
+          console.error('Failed to auto-generate medical record on completion:', recordErr);
+        }
+      }
+
+      // Notify patient
+      if (consultation && consultation.patientId) {
+        try {
+          const patient = await storage.getPatient(consultation.patientId);
+          if (patient?.userId) {
+            broadcastToUser(patient.userId, {
+              type: 'consultation_completed',
+              data: {
+                consultationId: consultation.id,
+                message: 'Sua consulta foi concluída pelo médico. O prontuário foi atualizado.',
+                actionUrl: '/my-consultations'
+              }
+            });
+          }
+        } catch {}
+      }
+
+      res.json(consultation);
+    } catch (error) {
+      console.error('Complete consultation error:', error);
+      res.status(500).json({ message: 'Falha ao concluir consulta' });
+    }
+  });
+
+  // Reactivate an incomplete consultation
+  app.post('/api/video-consultations/:id/reactivate', async (req: any, res) => {
+    try {
+      if (!req.user || (req.user.role !== 'doctor' && req.user.role !== 'admin')) {
+        return res.status(403).json({ message: 'Apenas médicos podem reativar consultas' });
+      }
+
+      const consultation = await storage.updateVideoConsultation(req.params.id, {
+        status: 'waiting',
+        endedAt: null as any,
+      });
+
+      if (!consultation) {
+        return res.status(404).json({ message: 'Consulta não encontrada' });
+      }
+
+      // Notify patient
+      if (consultation.patientId) {
+        try {
+          const patient = await storage.getPatient(consultation.patientId);
+          if (patient?.userId) {
+            broadcastToUser(patient.userId, {
+              type: 'consultation_invite',
+              data: {
+                title: 'Consulta Reativada',
+                message: `Dr(a). ${req.user.name} reativou sua consulta. Clique para entrar.`,
+                consultationId: consultation.id,
+                actionUrl: `/patient/video/${consultation.id}`,
+                priority: 'critical'
+              }
+            });
+            await db.insert(pendingNotifications).values({
+              userId: patient.userId,
+              type: 'consultation_invite',
+              title: 'Consulta Reativada',
+              message: `Dr(a). ${req.user.name} reativou sua consulta. Clique para entrar na videochamada.`,
+              priority: 'critical',
+              actionUrl: `/patient/video/${consultation.id}`,
+              senderId: req.user.id,
+              delivered: false,
+              read: false,
+              metadata: { consultationId: consultation.id }
+            });
+          }
+        } catch {}
+      }
+
+      res.json(consultation);
+    } catch (error) {
+      console.error('Reactivate consultation error:', error);
+      res.status(500).json({ message: 'Falha ao reativar consulta' });
     }
   });
 

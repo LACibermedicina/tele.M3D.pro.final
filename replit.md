@@ -70,7 +70,12 @@ All AI prompts (chatbot, triage, video consultation, medical records, SOAP repor
 - **Specialist Invite**: Doctor can invite online specialists to join consultation. Dialog shows online doctors from `/api/doctors/online`. Backend `POST /api/video-consultations/:id/invite-specialist` sends WebSocket notification + `pendingNotifications` to specialist with join link.
 - **Notes**: Doctor annotations, saved transcriptions displayed with border accents. All notes included in meetingNotes on call end.
 - **Consultation note types**: `chat`, `ai_query`, `ai_response`, `doctor_note`, `annotation`, `transcription`
-- **End Call**: Doctor's "end call" button saves transcriptions, calculates duration, charges credits, and notifies patient via WebSocket
+- **End Call Flow**: Doctor clicks "end call" → completion dialog with two options:
+  - **Concluir Consulta** (`completionStatus: 'completed'`): Marks as completed, auto-generates medical record via AI (Gemini/OpenAI) from consultation notes/transcriptions/chat, charges credits
+  - **Sair sem Concluir** (`completionStatus: 'incomplete'`): Marks as incomplete with optional reason, creates `incomplete_consultation` notification for doctor with follow-up actions
+- **Incomplete Consultation Actions** (in schedule history + notification center): Reactivate (re-opens consultation, notifies patient), New Video Call, Complete Later (generates medical record), Send Message
+- **Routes**: `POST /api/video-consultations/:id/complete` (complete an incomplete consultation), `POST /api/video-consultations/:id/reactivate` (reactivate for patient to rejoin)
+- **Auto Medical Records**: On `completed` status, AI generates structured clinical record (Queixa principal, HDA, Hipótese diagnóstica, Conduta) from all consultation data
 
 ## Video Consultation Features (Patient)
 - **Route**: `/patient/video/:consultationId`

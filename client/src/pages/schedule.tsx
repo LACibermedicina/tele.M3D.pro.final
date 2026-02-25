@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, startOfDay, endOfDay, isToday, addMinutes, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2, Video, Plus, MoreHorizontal, Download, Upload, History, PhoneCall, Wifi, XCircle, Trash2 } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2, Video, Plus, MoreHorizontal, Download, Upload, History, PhoneCall, Wifi, XCircle, Trash2, RotateCcw, FileCheck, MessageSquare } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -195,6 +195,32 @@ export default function Schedule() {
         description: errorInfo.description,
         variant: "destructive",
       });
+    },
+  });
+
+  const reactivateConsultationMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiRequest('POST', `/api/video-consultations/${id}/reactivate`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
+      toast({ title: "Consulta reativada", description: "O paciente foi notificado para retornar à videochamada." });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: "destructive" });
+    },
+  });
+
+  const completeConsultationMutation = useMutation({
+    mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
+      apiRequest('POST', `/api/video-consultations/${id}/complete`, { notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
+      toast({ title: "Consulta concluída", description: "Prontuário gerado automaticamente." });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: "destructive" });
     },
   });
 
@@ -857,10 +883,13 @@ export default function Schedule() {
                               Teleconsultas Realizadas ({historyData.videoConsultations.length})
                             </h3>
                             <div className="space-y-3">
-                              {historyData.videoConsultations.map((vc: any) => (
-                                <div key={vc.id} className="flex items-center space-x-4 p-4 rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors">
+                              {historyData.videoConsultations.map((vc: any) => {
+                                const isIncomplete = vc.status === 'incomplete';
+                                const endReasonText = vc.connectionLogs?.endReason;
+                                return (
+                                <div key={vc.id} className={`flex items-start space-x-4 p-4 rounded-xl border transition-colors ${isIncomplete ? 'border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-950/20' : 'border-border/50 bg-muted/30 hover:bg-muted/50'}`}>
                                   <div className="flex-shrink-0">
-                                    <div className="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                                    <div className={`p-2 rounded-lg text-white ${isIncomplete ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-blue-500 to-purple-500'}`}>
                                       <Video className="h-4 w-4" />
                                     </div>
                                   </div>
@@ -871,16 +900,69 @@ export default function Schedule() {
                                       {vc.startedAt ? format(new Date(vc.startedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : format(new Date(vc.createdAt), "dd/MM/yyyy", { locale: ptBR })}
                                       {vc.duration && <span>• {Math.round(vc.duration / 60)} min</span>}
                                     </div>
+                                    {endReasonText && isIncomplete && (
+                                      <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Motivo: {endReasonText}</p>
+                                    )}
                                     {vc.meetingNotes && (
                                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{vc.meetingNotes}</p>
                                     )}
+                                    {isIncomplete && (
+                                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-xs gap-1"
+                                          onClick={() => reactivateConsultationMutation.mutate(vc.id)}
+                                          disabled={reactivateConsultationMutation.isPending}
+                                        >
+                                          <RotateCcw className="h-3 w-3" />
+                                          Reativar
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-xs gap-1"
+                                          onClick={() => setLocation(`/consultation/video/${vc.patientId}`)}
+                                        >
+                                          <Video className="h-3 w-3" />
+                                          Nova Chamada
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-xs gap-1"
+                                          onClick={() => completeConsultationMutation.mutate({ id: vc.id })}
+                                          disabled={completeConsultationMutation.isPending}
+                                        >
+                                          <FileCheck className="h-3 w-3" />
+                                          Concluir
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-xs gap-1"
+                                          onClick={() => setLocation(`/whatsapp`)}
+                                        >
+                                          <MessageSquare className="h-3 w-3" />
+                                          Mensagem
+                                        </Button>
+                                      </div>
+                                    )}
                                   </div>
-                                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                                    Concluída
-                                  </Badge>
+                                  {isIncomplete ? (
+                                    <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 flex-shrink-0">
+                                      <AlertCircle className="h-3 w-3 mr-1" />
+                                      Inconcluída
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 flex-shrink-0">
+                                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                                      Concluída
+                                    </Badge>
+                                  )}
                                 </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         )}

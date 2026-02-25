@@ -84,6 +84,8 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
         return <Video className={`h-4 w-4 ${iconClass}`} />;
       case 'consultation_message':
         return <MessageCircle className={`h-4 w-4 ${iconClass}`} />;
+      case 'incomplete_consultation':
+        return <AlertTriangle className={`h-4 w-4 ${iconClass} text-orange-500`} />;
       case 'doctor_message':
         return <Stethoscope className={`h-4 w-4 ${iconClass}`} />;
       default:
@@ -251,6 +253,41 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
                           <Video className="h-3 w-3 mr-1" />
                           Entrar
                         </Button>
+                      )}
+                      {notification.type === 'incomplete_consultation' && (
+                        <>
+                          <Button
+                            size="sm"
+                            className="h-6 px-2 text-xs bg-orange-600 hover:bg-orange-700 text-white"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markAsRead(notification.id);
+                              setLocation(notification.data?.actionUrl || notification.actionUrl || '/schedule');
+                              setIsOpen(false);
+                            }}
+                          >
+                            <Video className="h-3 w-3 mr-1" />
+                            Retomar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs text-green-600 hover:text-green-800"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              markAsRead(notification.id);
+                              const cId = notification.data?.consultationId || notification.metadata?.consultationId;
+                              if (cId) {
+                                try {
+                                  await apiRequest('POST', `/api/video-consultations/${cId}/complete`, { notes: 'Concluída via notificação' });
+                                } catch {}
+                              }
+                              setIsOpen(false);
+                            }}
+                          >
+                            Concluir
+                          </Button>
+                        </>
                       )}
                       {notification.type === 'appointment' && notification.data?.requestId && (
                         <Button

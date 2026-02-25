@@ -96,6 +96,8 @@ export default function VideoConsultation() {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [screenTrack, setScreenTrack] = useState<ILocalVideoTrack | null>(null);
   const [showSpecialistDialog, setShowSpecialistDialog] = useState(false);
+  const [showEndCallDialog, setShowEndCallDialog] = useState(false);
+  const [endCallReason, setEndCallReason] = useState('');
 
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
@@ -188,20 +190,23 @@ export default function VideoConsultation() {
   });
 
   const endConsultationMutation = useMutation({
-    mutationFn: async (data: { duration: number; meetingNotes: string }) => {
+    mutationFn: async (data: { duration: number; meetingNotes: string; completionStatus: string; endReason?: string }) => {
       return apiRequest(
         'POST',
         '/api/video-consultations/' + consultationId + '/end',
         data
       );
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/video-consultations', consultationId] });
+      const isCompleted = variables.completionStatus === 'completed';
       toast({
-        title: 'Consulta Finalizada',
-        description: 'Todas as notas, transcrições e gravações foram salvas.',
+        title: isCompleted ? 'Consulta Concluída' : 'Consulta Encerrada',
+        description: isCompleted 
+          ? 'Consulta concluída com sucesso. Prontuário gerado automaticamente.'
+          : 'Consulta encerrada como inconcluída. Você poderá retomá-la posteriormente.',
       });
-      setLocation('/dashboard');
+      setLocation('/schedule');
     },
   });
 
@@ -614,7 +619,7 @@ export default function VideoConsultation() {
     toast({ title: 'Anotação Salva', description: 'Sua anotação foi salva com sucesso.' });
   };
 
-  const endCall = async () => {
+  const prepareEndCallData = async () => {
     if (isTranscribing) stopTranscription();
 
     if (transcriptEntries.length > 0) {
@@ -645,8 +650,23 @@ export default function VideoConsultation() {
     const allTranscriptions = [savedTranscriptions, unsavedTranscription].filter(Boolean).join('\n');
     const meetingNotes = [allDoctorNotes, allTranscriptions ? `\n\n--- TRANSCRIÇÃO ---\n${allTranscriptions}` : ''].filter(Boolean).join('');
 
+    return { duration, meetingNotes };
+  };
+
+  const endCall = () => {
+    setShowEndCallDialog(true);
+  };
+
+  const confirmEndCall = async (completionStatus: 'completed' | 'incomplete') => {
+    setShowEndCallDialog(false);
+    const { duration, meetingNotes } = await prepareEndCallData();
     await leaveChannel();
-    endConsultationMutation.mutate({ duration, meetingNotes });
+    endConsultationMutation.mutate({ 
+      duration, 
+      meetingNotes, 
+      completionStatus,
+      endReason: completionStatus === 'incomplete' ? (endCallReason || 'Saída sem conclusão pelo médico') : undefined
+    });
   };
 
   const chatNotes = notes.filter((n) => n.type === 'chat');
@@ -1031,6 +1051,59 @@ export default function VideoConsultation() {
           </Button>
         </div>
       )}
+
+      <Dialog open={showEndCallDialog} onOpenChange={setShowEndCallDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Encerrar Consulta</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Como você deseja encerrar esta consulta?
+            </p>
+            <div className="space-y-3">
+              <Button
+                className="w-full justify-start h-auto py-3 px-4"
+                variant="default"
+                onClick={() => confirmEndCall('completed')}
+                disabled={endConsultationMutation.isPending}
+              >
+                <div className="text-left">
+                  <p className="font-medium">Concluir Consulta</p>
+                  <p className="text-xs opacity-80 mt-0.5">Consulta finalizada com sucesso. Prontuário será gerado automaticamente.</p>
+                </div>
+              </Button>
+              <div className="space-y-2">
+                <Button
+                  className="w-full justify-start h-auto py-3 px-4"
+                  variant="outline"
+                  onClick={() => confirmEndCall('incomplete')}
+                  disabled={endConsultationMutation.isPending}
+                >
+                  <div className="text-left">
+                    <p className="font-medium text-orange-600 dark:text-orange-400">Sair sem Concluir</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Problema técnico ou desconexão. Poderá retomar ou concluir depois.</p>
+                  </div>
+                </Button>
+                <Textarea
+                  placeholder="Motivo (opcional): ex. queda de conexão, paciente saiu..."
+                  value={endCallReason}
+                  onChange={(e) => setEndCallReason(e.target.value)}
+                  className="text-sm"
+                  rows={2}
+                />
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() => setShowEndCallDialog(false)}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
