@@ -344,6 +344,13 @@ export default function Header() {
     return item.roles.includes('visitor');
   });
 
+  const { data: pendingPostItems } = useQuery<any[]>({
+    queryKey: ["/api/post-consultation/pending"],
+    enabled: !!user && user.role === "doctor",
+    refetchInterval: 60000,
+  });
+  const pendingPostCount = pendingPostItems?.length || 0;
+
   return (
     <header 
       className={`border-b sticky top-0 z-50 transition-all duration-300 w-full ${
@@ -412,6 +419,7 @@ export default function Header() {
                 <nav className="flex flex-col p-6 space-y-2">
                   {navItems.map((item) => {
                     const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                    const mobileBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
                     return (
                       <Link
                         key={item.path}
@@ -431,12 +439,22 @@ export default function Header() {
                               : "transparent"
                           }}
                         >
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          <div className={`relative w-10 h-10 rounded-lg flex items-center justify-center ${
                             isActive ? "bg-white/20" : "bg-muted"
                           }`}>
                             <i className={`${item.faIcon} text-white`}></i>
+                            {mobileBadge && (
+                              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                {pendingPostCount > 9 ? '9+' : pendingPostCount}
+                              </span>
+                            )}
                           </div>
                           <span className="font-medium">{item.label}</span>
+                          {mobileBadge && (
+                            <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                              {pendingPostCount}
+                            </span>
+                          )}
                         </div>
                       </Link>
                     );
@@ -558,6 +576,8 @@ export default function Header() {
                 const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
                 const IconComponent = item.icon;
                 
+                const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
+                
                 return (
                   <Tooltip key={item.path}>
                     <TooltipTrigger asChild>
@@ -565,33 +585,40 @@ export default function Header() {
                         href={item.path}
                         data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}
                       >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={`icon-link-primary group w-10 h-10 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg ${
-                            isActive
-                              ? "text-white shadow-md"
-                              : `${getTextColor()} hover:bg-primary/10`
-                          }`}
-                          style={{
-                            background: isActive
-                              ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)"
-                              : "transparent"
-                          }}
-                        >
-                          <IconComponent 
-                            className={`h-5 w-5 transition-all duration-300 ${isActive ? 'text-white' : getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
+                        <div className="relative">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`icon-link-primary group w-10 h-10 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg ${
+                              isActive
+                                ? "text-white shadow-md"
+                                : `${getTextColor()} hover:bg-primary/10`
+                            }`}
                             style={{
-                              filter: isActive 
-                                ? 'drop-shadow(0 2px 8px rgba(255,255,255,0.3))'
-                                : (isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'))
+                              background: isActive
+                                ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)"
+                                : "transparent"
                             }}
-                          />
-                        </Button>
+                          >
+                            <IconComponent 
+                              className={`h-5 w-5 transition-all duration-300 ${isActive ? 'text-white' : getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
+                              style={{
+                                filter: isActive 
+                                  ? 'drop-shadow(0 2px 8px rgba(255,255,255,0.3))'
+                                  : (isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'))
+                              }}
+                            />
+                          </Button>
+                          {hasBadge && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-md animate-pulse">
+                              {pendingPostCount > 9 ? '9+' : pendingPostCount}
+                            </span>
+                          )}
+                        </div>
                       </Link>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
-                      <p className="text-white">{item.label}</p>
+                      <p className="text-white">{item.label}{hasBadge ? ` (${pendingPostCount})` : ''}</p>
                     </TooltipContent>
                   </Tooltip>
                 );

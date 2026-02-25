@@ -76,6 +76,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize default doctor if not exists and get the actual ID
   const actualDoctorId = await initializeDefaultDoctor();
   
+  // Initialize default system settings
+  await initializeDefaultSystemSettings();
+  
   // Initialize scheduling service
   const schedulingService = new SchedulingService(storage);
   
@@ -6728,9 +6731,17 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
       }
 
+      let expiryHours = 2;
+      try {
+        const setting = await storage.getSystemSetting('temporary_access_link_expiry_hours');
+        if (setting) {
+          expiryHours = parseFloat(setting.settingValue) || 2;
+        }
+      } catch (e) {}
+
       const crypto = await import('crypto');
       const code = crypto.randomBytes(16).toString('hex');
-      const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+      const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
 
       const baseUrl = `${req.protocol}://${req.get('host')}`;
       const accessLink = `${baseUrl}/immediate-consultation?access=${code}`;
@@ -6739,6 +6750,7 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         code,
         accessLink,
         expiresAt: expiresAt.toISOString(),
+        expiryHours,
         generatedBy: req.user.name,
       });
     } catch (error) {
@@ -10082,7 +10094,7 @@ Retorne apenas o JSON válido.`;
       }
 
       const videoHistory = patientVideoConsultations
-        .filter(v => v.status === 'ended')
+        .filter(v => v.status === 'ended' || v.status === 'completed')
         .map(v => ({
           ...v,
           doctor: doctorMap[v.doctorId] || { name: 'Médico', specialty: '' },
@@ -16032,6 +16044,103 @@ async function migrateMedicalTeamsTables() {
     console.log('✓ Medical teams tables migrated successfully');
   } catch (error) {
     console.error('Failed to migrate medical teams tables:', error);
+  }
+}
+
+async function initializeDefaultSystemSettings() {
+  const defaultSettings = [
+    {
+      settingKey: 'temporary_access_link_expiry_hours',
+      settingValue: '2',
+      settingType: 'number',
+      description: 'Período de validade do link de acesso temporário para visitantes (em horas)',
+      category: 'access',
+      isEditable: true,
+    },
+    {
+      settingKey: 'consultation_access_token_expiry_hours',
+      settingValue: '48',
+      settingType: 'number',
+      description: 'Período de validade do token de acesso direto à consulta (em horas)',
+      category: 'access',
+      isEditable: true,
+    },
+    {
+      settingKey: 'max_consultation_duration_minutes',
+      settingValue: '60',
+      settingType: 'number',
+      description: 'Duração máxima da consulta por vídeo (em minutos)',
+      category: 'consultations',
+      isEditable: true,
+    },
+    {
+      settingKey: 'ai_auto_triage_enabled',
+      settingValue: 'true',
+      settingType: 'boolean',
+      description: 'Habilitar triagem automática por IA nas solicitações de consulta',
+      category: 'ai',
+      isEditable: true,
+    },
+    {
+      settingKey: 'ai_diagnostic_confidence_threshold',
+      settingValue: '96',
+      settingType: 'number',
+      description: 'Limiar de confiança (%) para aprovação automática de inferências diagnósticas',
+      category: 'ai',
+      isEditable: true,
+    },
+    {
+      settingKey: 'post_consultation_auto_generate',
+      settingValue: 'true',
+      settingType: 'boolean',
+      description: 'Gerar automaticamente prescrições, exames e encaminhamentos após consulta',
+      category: 'consultations',
+      isEditable: true,
+    },
+    {
+      settingKey: 'whatsapp_notifications_enabled',
+      settingValue: 'true',
+      settingType: 'boolean',
+      description: 'Habilitar envio de notificações via WhatsApp para pacientes',
+      category: 'notifications',
+      isEditable: true,
+    },
+    {
+      settingKey: 'waiting_room_max_patients',
+      settingValue: '20',
+      settingType: 'number',
+      description: 'Número máximo de pacientes simultâneos na sala de espera',
+      category: 'consultations',
+      isEditable: true,
+    },
+    {
+      settingKey: 'prescription_require_digital_signature',
+      settingValue: 'true',
+      settingType: 'boolean',
+      description: 'Exigir assinatura digital ICP-Brasil nas prescrições',
+      category: 'prescriptions',
+      isEditable: true,
+    },
+    {
+      settingKey: 'tmc_credit_cost_consultation',
+      settingValue: '5',
+      settingType: 'number',
+      description: 'Custo em créditos TMC por consulta por vídeo',
+      category: 'financial',
+      isEditable: true,
+    },
+  ];
+
+  try {
+    for (const setting of defaultSettings) {
+      const existing = await storage.getSystemSetting(setting.settingKey);
+      if (!existing) {
+        await storage.createSystemSetting(setting);
+      }
+    }
+    console.log('✓ Default system settings initialized');
+  } catch (error) {
+    console.error('Failed to initialize system settings:', error);
   }
 }
 

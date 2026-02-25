@@ -408,6 +408,12 @@ export default function AdminPage() {
               <span>Limpeza de Dados</span>
             </div>
           </TabsTrigger>
+          <TabsTrigger value="system-settings" data-testid="tab-system-settings">
+            <div className="flex items-center space-x-2">
+              <Key className="h-4 w-4" />
+              <span>Configurações</span>
+            </div>
+          </TabsTrigger>
         </TabsList>
 
         {/* Users Tab */}
@@ -1497,6 +1503,9 @@ export default function AdminPage() {
 
         {/* Database Cleanup Tab */}
         <DatabaseCleanupTab />
+
+        {/* System Settings Tab */}
+        <SystemSettingsTab />
       </Tabs>
       </div>
     </PageWrapper>
@@ -1801,6 +1810,195 @@ function CreateApiKeyForm({
         </Button>
       </DialogFooter>
     </form>
+  );
+}
+
+interface SystemSetting {
+  id: string;
+  settingKey: string;
+  settingValue: string;
+  settingType: string;
+  description: string | null;
+  category: string;
+  isEditable: boolean;
+  updatedAt: string;
+}
+
+const categoryLabels: Record<string, string> = {
+  access: "Acesso",
+  consultations: "Consultas",
+  ai: "Inteligência Artificial",
+  notifications: "Notificações",
+  prescriptions: "Prescrições",
+  financial: "Financeiro",
+  general: "Geral",
+};
+
+function SystemSettingsTab() {
+  const { toast } = useToast();
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+
+  const { data: settings, isLoading } = useQuery<SystemSetting[]>({
+    queryKey: ['/api/system-settings'],
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      const res = await apiRequest('PUT', `/api/system-settings/${key}`, { settingValue: value });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Configuração atualizada com sucesso" });
+      queryClient.invalidateQueries({ queryKey: ['/api/system-settings'] });
+      setEditingKey(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro ao atualizar", description: formatErrorForToast(error), variant: "destructive" });
+    },
+  });
+
+  const startEdit = (setting: SystemSetting) => {
+    setEditingKey(setting.settingKey);
+    setEditValue(setting.settingValue);
+  };
+
+  const cancelEdit = () => {
+    setEditingKey(null);
+    setEditValue('');
+  };
+
+  const saveEdit = (key: string) => {
+    updateMutation.mutate({ key, value: editValue });
+  };
+
+  const categories = [...new Set((settings || []).map(s => s.category))];
+  const filtered = filterCategory === 'all' 
+    ? settings || [] 
+    : (settings || []).filter(s => s.category === filterCategory);
+
+  const grouped = filtered.reduce<Record<string, SystemSetting[]>>((acc, s) => {
+    if (!acc[s.category]) acc[s.category] = [];
+    acc[s.category].push(s);
+    return acc;
+  }, {});
+
+  const renderValueInput = (setting: SystemSetting) => {
+    if (setting.settingType === 'boolean') {
+      return (
+        <Select value={editValue} onValueChange={setEditValue}>
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="true">Ativado</SelectItem>
+            <SelectItem value="false">Desativado</SelectItem>
+          </SelectContent>
+        </Select>
+      );
+    }
+    return (
+      <Input 
+        value={editValue} 
+        onChange={e => setEditValue(e.target.value)}
+        type={setting.settingType === 'number' ? 'number' : 'text'}
+        className="w-32"
+      />
+    );
+  };
+
+  const renderValueDisplay = (setting: SystemSetting) => {
+    if (setting.settingType === 'boolean') {
+      return (
+        <Badge variant={setting.settingValue === 'true' ? 'default' : 'secondary'}>
+          {setting.settingValue === 'true' ? 'Ativado' : 'Desativado'}
+        </Badge>
+      );
+    }
+    return <span className="font-mono text-sm bg-muted px-2 py-1 rounded">{setting.settingValue}</span>;
+  };
+
+  return (
+    <TabsContent value="system-settings" className="space-y-4">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center space-x-2">
+                <Key className="h-5 w-5" />
+                <span>Configurações do Sistema</span>
+              </CardTitle>
+              <CardDescription>
+                Gerencie parâmetros de configuração do sistema como períodos de validade, limites e funcionalidades
+              </CardDescription>
+            </div>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filtrar por categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as categorias</SelectItem>
+                {categories.map(cat => (
+                  <SelectItem key={cat} value={cat}>{categoryLabels[cat] || cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Carregando configurações...</div>
+          ) : !settings?.length ? (
+            <div className="text-center py-8 text-muted-foreground">Nenhuma configuração encontrada</div>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(grouped).map(([category, items]) => (
+                <div key={category}>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Activity className="h-4 w-4" />
+                    {categoryLabels[category] || category}
+                  </h3>
+                  <div className="border rounded-lg divide-y">
+                    {items.map(setting => (
+                      <div key={setting.settingKey} className="p-4 flex items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{setting.description || setting.settingKey}</p>
+                          <p className="text-xs text-muted-foreground font-mono mt-0.5">{setting.settingKey}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {editingKey === setting.settingKey ? (
+                            <>
+                              {renderValueInput(setting)}
+                              <Button size="sm" onClick={() => saveEdit(setting.settingKey)} disabled={updateMutation.isPending}>
+                                <Shield className="h-3 w-3 mr-1" />
+                                Salvar
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={cancelEdit}>
+                                Cancelar
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              {renderValueDisplay(setting)}
+                              {setting.isEditable && (
+                                <Button size="sm" variant="ghost" onClick={() => startEdit(setting)}>
+                                  <Edit3 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </TabsContent>
   );
 }
 

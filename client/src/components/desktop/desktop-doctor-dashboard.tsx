@@ -228,7 +228,7 @@ export function DesktopDoctorDashboard() {
                 </div>
               </div>
               <p className="text-xs text-center text-muted-foreground">
-                Válido até {new Date(generatedAccess.expiresAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · Gerado por {generatedAccess.generatedBy}
+                Válido por {generatedAccess.expiryHours}h — até {new Date(generatedAccess.expiresAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · Gerado por {generatedAccess.generatedBy}
               </p>
             </div>
           )}
