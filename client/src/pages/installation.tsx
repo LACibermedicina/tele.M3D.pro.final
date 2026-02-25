@@ -166,8 +166,8 @@ npm run dev`} />
                     Clonar e Instalar
                   </h3>
                   <CodeBlock title="Terminal" code={`# Clonar o repositório
-git clone https://github.com/seu-usuario/telemed3.git
-cd telemed3
+git clone https://github.com/LACibermedicina/tele.M3D.pro.git
+cd tele.M3D.pro
 
 # Instalar dependências
 npm install`} />
@@ -321,6 +321,22 @@ echo "============================================"`} />
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Terminal className="h-4 w-4 text-green-600" />
+                    <span className="font-bold text-green-800 dark:text-green-200">Instalador Automático (Recomendado)</span>
+                  </div>
+                  <p className="text-sm text-green-700 dark:text-green-300 mb-3">
+                    Copie e execute o comando abaixo no terminal do seu servidor Ubuntu/Debian como root. O script instala tudo automaticamente: Node.js, PostgreSQL, Nginx, SSL, PM2 e a aplicação.
+                  </p>
+                  <CodeBlock title="Executar no servidor (como root)" code={`curl -fsSL https://raw.githubusercontent.com/LACibermedicina/tele.M3D.pro/main/install.sh | sudo bash`} />
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                    O script clona o repositório do GitHub, configura o banco de dados, compila a aplicação e inicia o serviço com PM2.
+                  </p>
+                </div>
+
+                <Separator />
+
                 <div>
                   <h3 className="font-semibold mb-2 flex items-center gap-2">
                     <Badge variant="outline">1</Badge>
