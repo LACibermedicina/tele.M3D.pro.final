@@ -2756,6 +2756,230 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all incomplete consultations for the current doctor
+  app.get('/api/video-consultations/incomplete', async (req: any, res) => {
+    try {
+      const doctorId = req.user?.id || actualDoctorId || DEFAULT_DOCTOR_ID;
+      const incompleteVCs = await db.select()
+        .from(videoConsultations)
+        .where(and(
+          eq(videoConsultations.doctorId, doctorId),
+          eq(videoConsultations.status, 'incomplete')
+        ))
+        .orderBy(desc(videoConsultations.createdAt));
+
+      const patientIds = [...new Set(incompleteVCs.map(vc => vc.patientId).filter(Boolean))];
+      const patientMap: Record<string, any> = {};
+      for (const pid of patientIds) {
+        if (pid) {
+          try {
+            const p = await storage.getPatient(pid);
+            if (p) patientMap[pid] = p;
+          } catch {}
+        }
+      }
+
+      const enriched = incompleteVCs.map(vc => ({
+        ...vc,
+        patientName: vc.patientId && patientMap[vc.patientId] ? patientMap[vc.patientId].name : 'Paciente não identificado',
+        patientEmail: vc.patientId && patientMap[vc.patientId] ? patientMap[vc.patientId].email : null,
+        patientPhone: vc.patientId && patientMap[vc.patientId] ? patientMap[vc.patientId].phone : null,
+      }));
+
+      res.json(enriched);
+    } catch (error) {
+      console.error('Get incomplete consultations error:', error);
+      res.status(500).json({ message: 'Failed to get incomplete consultations' });
+    }
+  });
+
+  // Get video consultation history for a specific patient
+  app.get('/api/video-consultations/patient-history/:patientId', async (req: any, res) => {
+    try {
+      const history = await db.select()
+        .from(videoConsultations)
+        .where(eq(videoConsultations.patientId, req.params.patientId))
+        .orderBy(desc(videoConsultations.createdAt));
+
+      res.json(history);
+    } catch (error) {
+      console.error('Get patient video history error:', error);
+      res.status(500).json({ message: 'Failed to get patient video history' });
+    }
+  });
+
+  // Request inter-consultation with a specialist
+  app.post('/api/video-consultations/:id/request-interconsult', async (req: any, res) => {
+    try {
+      const { specialistId, message, patientId } = req.body;
+      const consultation = await storage.getVideoConsultation(req.params.id);
+      if (!consultation) {
+        return res.status(404).json({ message: 'Consultation not found' });
+      }
+
+      const doctorId = req.user?.id || actualDoctorId || DEFAULT_DOCTOR_ID;
+      let patientName = 'Paciente';
+      if (patientId) {
+        try {
+          const patient = await storage.getPatient(patientId);
+          if (patient) patientName = patient.name;
+        } catch {}
+      }
+
+      let doctorName = 'Médico';
+      try {
+        const doctorArr = await db.select().from(users).where(eq(users.id, doctorId)).limit(1);
+        if (doctorArr[0]) doctorName = doctorArr[0].name || doctorArr[0].username;
+      } catch {}
+
+      await db.insert(pendingNotifications).values({
+        userId: specialistId,
+        type: 'interconsultation_request',
+        title: `Solicitação de Interconsulta - ${patientName}`,
+        message: message || `Dr(a). ${doctorName} solicita interconsulta para o paciente ${patientName}.`,
+        priority: 'high',
+        actionUrl: `/consultation/video/${patientId}`,
+        senderId: doctorId,
+        delivered: false,
+        read: false,
+        metadata: {
+          consultationId: consultation.id,
+          patientId,
+          patientName,
+          requestingDoctorId: doctorId,
+          requestingDoctorName: doctorName,
+          message,
+          allowJoin: true,
+        }
+      });
+
+      broadcastToUser(specialistId, {
+        type: 'interconsultation_request',
+        data: {
+          consultationId: consultation.id,
+          patientId,
+          patientName,
+          requestingDoctorId: doctorId,
+          requestingDoctorName: doctorName,
+          message,
+          actionUrl: `/consultation/video/${patientId}`,
+        }
+      });
+
+      res.json({ success: true, message: 'Interconsultation request sent' });
+    } catch (error) {
+      console.error('Request interconsult error:', error);
+      res.status(500).json({ message: 'Failed to request interconsultation' });
+    }
+  });
+
+  // Notify offline doctors about interconsultation need
+  app.post('/api/video-consultations/:id/notify-offline-doctors', async (req: any, res) => {
+    try {
+      const { doctorIds, message, patientId } = req.body;
+      const consultation = await storage.getVideoConsultation(req.params.id);
+      if (!consultation) {
+        return res.status(404).json({ message: 'Consultation not found' });
+      }
+
+      const doctorId = req.user?.id || actualDoctorId || DEFAULT_DOCTOR_ID;
+      let patientName = 'Paciente';
+      if (patientId) {
+        try {
+          const patient = await storage.getPatient(patientId);
+          if (patient) patientName = patient.name;
+        } catch {}
+      }
+
+      let requestingDoctorName = 'Médico';
+      try {
+        const doctorArr = await db.select().from(users).where(eq(users.id, doctorId)).limit(1);
+        if (doctorArr[0]) requestingDoctorName = doctorArr[0].name || doctorArr[0].username;
+      } catch {}
+
+      const notificationResults: any[] = [];
+
+      for (const targetDoctorId of doctorIds) {
+        try {
+          // System notification
+          await db.insert(pendingNotifications).values({
+            userId: targetDoctorId,
+            type: 'interconsultation_request',
+            title: `Urgente: Interconsulta - ${patientName}`,
+            message: `Dr(a). ${requestingDoctorName} solicita interconsulta para ${patientName}. ${message}`,
+            priority: 'critical',
+            actionUrl: `/consultation/video/${patientId}`,
+            senderId: doctorId,
+            delivered: false,
+            read: false,
+            metadata: {
+              consultationId: consultation.id,
+              patientId,
+              patientName,
+              requestingDoctorId: doctorId,
+              requestingDoctorName,
+              offlineNotification: true,
+              channels: ['system', 'whatsapp', 'sms'],
+            }
+          });
+
+          // WebSocket notification (in case they come online)
+          broadcastToUser(targetDoctorId, {
+            type: 'interconsultation_request',
+            data: {
+              consultationId: consultation.id,
+              patientId,
+              patientName,
+              requestingDoctorName,
+              message,
+              urgent: true,
+            }
+          });
+
+          // WhatsApp message
+          try {
+            const targetDocArr = await db.select().from(users).where(eq(users.id, targetDoctorId)).limit(1);
+            if (targetDocArr[0]?.phone) {
+              const whatsappMsg = `🔴 INTERCONSULTA URGENTE\n\nDr(a). ${requestingDoctorName} solicita sua avaliação para o paciente ${patientName}.\n\n${message}\n\nAcesse o sistema para mais detalhes e entrar na consulta.`;
+              
+              await db.insert(whatsappMessages).values({
+                patientId: targetDoctorId,
+                direction: 'outbound',
+                messageType: 'text',
+                content: whatsappMsg,
+                status: 'sent',
+                senderRole: 'system',
+                metadata: {
+                  type: 'interconsultation_notification',
+                  consultationId: consultation.id,
+                  patientId,
+                },
+              });
+
+              try {
+                await whatsAppService.sendMessage(targetDocArr[0].phone, whatsappMsg);
+              } catch (whatsErr) {
+                console.warn('WhatsApp send failed (API not configured):', whatsErr);
+              }
+            }
+          } catch (whatsappErr) {
+            console.warn('WhatsApp notification failed:', whatsappErr);
+          }
+
+          notificationResults.push({ doctorId: targetDoctorId, status: 'notified' });
+        } catch (notifErr) {
+          console.error(`Failed to notify doctor ${targetDoctorId}:`, notifErr);
+          notificationResults.push({ doctorId: targetDoctorId, status: 'failed' });
+        }
+      }
+
+      res.json({ success: true, results: notificationResults });
+    } catch (error) {
+      console.error('Notify offline doctors error:', error);
+      res.status(500).json({ message: 'Failed to notify offline doctors' });
+    }
+  });
+
   // Get video consultation by ID (generic route - must come after specific routes)
   app.get('/api/video-consultations/:id', async (req, res) => {
     try {

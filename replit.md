@@ -1,144 +1,41 @@
 # Medical Practice Management App
 
 ## Overview
-A full-stack medical practice management application built with Express.js backend and React frontend.
+This project is a full-stack medical practice management application designed to streamline clinical workflows, enhance patient care through AI-powered tools, and provide robust administrative features. It aims to modernize healthcare operations by integrating video consultations, AI diagnostics, sophisticated scheduling, and comprehensive patient record management. The application focuses on improving efficiency for healthcare providers and accessibility for patients, with a strong emphasis on adhering to medical guidelines and ensuring data security.
 
-## Architecture
-- **Backend**: Express.js with TypeScript (`server/`)
-- **Frontend**: React with Vite (`client/`)
-- **Database**: PostgreSQL via Neon (Drizzle ORM with `drizzle-orm/node-postgres`)
-- **Shared types**: `shared/schema.ts`
+## User Preferences
+I want iterative development.
+I prefer detailed explanations.
+Ask before making major changes.
 
-## Key Files
-- `server/db.ts` - Database connection (constructs URL from individual PG env vars if DATABASE_URL is not a full connection string)
-- `server/routes.ts` - API routes
-- `server/storage.ts` - Database storage layer
-- `server/index.ts` - Server entry point
-- `shared/schema.ts` - Drizzle schema and types (46 tables)
-- `client/src/App.tsx` - Frontend entry point
+## System Architecture
+The application features an Express.js backend and a React frontend, with shared TypeScript schemas for consistency. PostgreSQL is used for the database, managed with Drizzle ORM. AI services primarily leverage Google Gemini API for advanced capabilities, with Replit OpenAI AI Integrations (`gpt-4o-mini`) as a fallback.
 
-## Database
-- PostgreSQL hosted on Neon (heliumdb)
-- Uses `drizzle-orm/node-postgres` with `pg` driver
-- Environment variables: `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`
-- Schema migrations via `npm run db:push`
-- On startup, creates default doctor user and schedule if not present
+**UI/UX Decisions:**
+- **Doctor Notes:** macOS Notes-style interface with folders, search, pinning, and color labels.
+- **Triage System:** Implements a 5-level Manchester Protocol (or WHO ETAT fallback) visual classification with color-coded badges and help dialogs.
+- **WhatsApp IA:** Messages display with role labels (Doctor, Patient, AI) and color-coded bubbles. Patient online status is shown in real-time.
+- **Documentation:** Public-facing manual, FAQ, and installation guides with searchable content, category filters, and code blocks.
 
-## AI Services
-- **Primary**: Google Gemini API (`gemini-2.0-flash`) via `server/services/gemini.ts`
-- **Fallback**: Replit OpenAI AI Integrations (`gpt-4o-mini`) — auto-fallback when Gemini quota/rate limits are hit
-- **Environment**: `GEMINI_API_KEY`, `AI_INTEGRATIONS_OPENAI_API_KEY`, `AI_INTEGRATIONS_OPENAI_BASE_URL`
-- **Integration files**: `server/replit_integrations/` (chat, audio, image, batch)
+**Technical Implementations:**
+- **Database:** PostgreSQL on Neon, using `drizzle-orm/node-postgres`. Schema migrations handled via `npm run db:push`. Default doctor user and schedule created on startup.
+- **AI Services:** Integrates Google Gemini API (`gemini-2.0-flash`) for AI functionalities (chatbot, triage, video consultation, medical records, SOAP reports). Replit OpenAI AI Integrations provide a robust fallback mechanism. AI prompts consistently reference OMS (WHO), Protocolos de Atenção Primária - MS/Brasil, and DSM-5/DSM-5-TR (APA) guidelines.
+- **Video Consultations:** Utilizes Agora for real-time video, audio, and screen sharing. Features include real-time chat, AI diagnostic queries, real-time audio transcription (browser SpeechRecognition API), and specialist invitation. Comprehensive end-call flow with options for completing consultations and auto-generating medical records via AI.
+- **Patient Features:** Includes AI-powered symptom triage, a waiting room for immediate consultations, tracking of consultation requests, prescription management, and access to medical records.
+- **Doctor Notes:** A dedicated interface for doctors to manage clinical notes with flexible organization and auto-save functionality.
+- **Incomplete Consultations Dashboard:** Provides doctors with a tool to manage and evaluate unfinished consultations, offering options to reactivate, invite specialists, or complete cases.
+- **WhatsApp IA:** Enables intelligent messaging for doctors, including message persistence, patient online status tracking, and AI-powered analysis of incoming patient messages.
+- **Financial Management:** Manages TMC credits with package purchases via PayPal and a detailed transaction history.
+- **Epidemiological Reports:** AI-powered analysis of clinical data to generate epidemiological insights, including symptom frequency, triage level distribution, and age group breakdowns using MeSH and ICD codes.
+- **Medical Teams & Inter-Consultations:** Facilitates team collaboration with discussion rooms, inter-consultation features, and structured note-taking.
+- **Doctor Schedule:** Comprehensive daily schedule and history views, with an option for instant consultations with online patients.
 
-## Clinical Reference Guidelines (Default)
-All AI prompts (chatbot, triage, video consultation, medical records, SOAP reports) reference these three standard guideline sets:
-1. **OMS (WHO)**: Diretrizes clínicas internacionais, mhGAP, GINA, GOLD, ETAT, Lista de Medicamentos Essenciais
-2. **Protocolos de Atenção Primária - MS/Brasil**: Cadernos de Atenção Básica (CAB 19, 32, 36, 37), PCDT/CONITEC, PNAB, ESF, RENAME, Previne Brasil, vigilância epidemiológica
-3. **DSM-5/DSM-5-TR (APA)**: Critérios diagnósticos para transtornos mentais, classificação e terapêutica psiquiátrica, complementado por diretrizes ABP e mhGAP-OMS
-- Stored in `chatbot_references` table with priority 10 and `use_for_diagnostics = true`
-- Keyword matching in `server/services/gemini.ts` boosts relevance for psychiatric terms, OMS protocols, and primary care queries
-- Doctor system prompt in `server/routes.ts` explicitly lists all three guideline sets
-
-## Dependencies
-- jspdf v4.2.0 (PDF generation)
-- openai (for Replit AI Integrations fallback)
-- See `package.json` for full list
-
-## Patient Features
-- **Consultation Request**: `/consultation-request` - AI-powered 4-step symptom triage and doctor recommendations
-- **Waiting Room**: `/immediate-consultation` - View online doctors with urgency room section for on-duty doctors, stats cards, urgency level selector (normal/urgent/emergency). Accessible to visitors and logged-in users.
-- **My Consultations**: `/my-consultations` - Track consultation requests with 3 tabs: Próximas (pending/accepted + active video consultations with join button), Solicitações (completed/declined), Histórico (video consultation history with doctor info, duration, notes). Features: cancel individual consultation, cancel all open consultations, archive all to history. Active video cards show "Entrar na Consulta" button.
-- **Prescriptions**: Nav item conditionally shown for patients with active prescriptions within validity dates (via `/api/prescriptions/recent` query in header)
-- **Medical Records**: Nav item "Meu Prontuário" conditionally shown if patient has existing records (via `/api/medical-records/my` query in header). Route `/records` accessible to patients.
-- Navigation: Top header bar always visible for patient pages. Prescription and records nav items only appear for patients who have data.
-
-## Doctor Notes (macOS Notes-style)
-- **Route**: `/doctor-notes` - Full-featured note-taking interface for doctors
-- **Database**: `doctor_notes` table with title, content, folder, color, isPinned, optional patientId
-- **Features**: Sidebar with folder tabs (Todas, Clínicas, Pacientes, Estudos, Pessoais), search, pinned notes, color labels, auto-save (800ms debounce)
-- **API**: CRUD at `/api/doctor-notes` (GET, POST, PATCH /:id, DELETE /:id) - doctor-only access
-- **Files**: `client/src/pages/doctor-notes.tsx`, schema in `shared/schema.ts`, storage in `server/storage.ts`
-
-## Video Consultation Features (Doctor)
-- **Route**: `/consultation/video/:patientId`
-- **Channel**: Both doctor and patient use `consultationId` (UUID) as Agora channel name — ensures same room
-- **Entry Points**: Patient profile "Videochamada" button, schedule "Iniciar" button, instant consultation — all navigate to `/consultation/video/:patientId` (Agora-based page, not WebRTC dialog)
-- **Chat**: Real-time chat with sender identity (doctor/patient), bubble-style messages
-- **AI Diagnostic**: Doctor sends questions, backend generates AI response using Gemini/OpenAI with patient context (history, allergies, records). Responses saved as `ai_response` notes.
-- **Audio Transcription**: Real-time speech-to-text using browser SpeechRecognition API (Chrome/Edge). Entries show timestamp, speaker (Doutor/Paciente), text. Doctor can toggle speaker identification manually. Export to .txt or save to consultation notes. Auto-saves on call end.
-- **Screen Sharing**: Doctor can share screen via Agora `createScreenVideoTrack()`. Toggle button in control bar (Monitor/MonitorOff icons). When active, replaces camera track; auto-reverts on stop. Floating red indicator shown.
-- **Specialist Invite**: Doctor can invite online specialists to join consultation. Dialog shows online doctors from `/api/doctors/online`. Backend `POST /api/video-consultations/:id/invite-specialist` sends WebSocket notification + `pendingNotifications` to specialist with join link.
-- **Notes**: Doctor annotations, saved transcriptions displayed with border accents. All notes included in meetingNotes on call end.
-- **Consultation note types**: `chat`, `ai_query`, `ai_response`, `doctor_note`, `annotation`, `transcription`
-- **End Call Flow**: Doctor clicks "end call" → completion dialog with two options:
-  - **Concluir Consulta** (`completionStatus: 'completed'`): Marks as completed, auto-generates medical record via AI (Gemini/OpenAI) from consultation notes/transcriptions/chat, charges credits
-  - **Sair sem Concluir** (`completionStatus: 'incomplete'`): Marks as incomplete with optional reason, creates `incomplete_consultation` notification for doctor with follow-up actions
-- **Incomplete Consultation Actions** (in schedule history + notification center): Reactivate (re-opens consultation, notifies patient), New Video Call, Complete Later (generates medical record), Send Message
-- **Routes**: `POST /api/video-consultations/:id/complete` (complete an incomplete consultation), `POST /api/video-consultations/:id/reactivate` (reactivate for patient to rejoin)
-- **Auto Medical Records**: On `completed` status, AI generates structured clinical record (Queixa principal, HDA, Hipótese diagnóstica, Conduta) from all consultation data
-
-## Video Consultation Features (Patient)
-- **Route**: `/patient/video/:consultationId`
-- **Channel**: Uses same `consultationId` as channel name (matches doctor's channel)
-- **Join**: Patient joins via `/api/doctor-office/join/:doctorId` (idempotent, reuses existing active consultation)
-- **Leave**: Patient can leave call via "Sair" button → calls `/api/video-consultations/:id/leave` → notifies doctor
-- **Auto-redirect**: If doctor ends consultation, patient is auto-redirected to `/my-consultations` via polling consultation status
-- **Chat**: Real-time chat with doctor during video call
-- **Pre-call Messages**: Patient chat messages sent while consultation status is 'waiting' are forwarded as `consultation_message` notifications to the doctor. Doctor can reply from notification center (creates consultation note). Doctor can also click "Entrar" to join the video room.
-
-## WhatsApp IA (Doctor Messaging)
-- **Route**: `/whatsapp` - Central de mensagens inteligente
-- **Backend**: `/api/whatsapp/send` saves doctor messages to DB regardless of WhatsApp Business API status (works internally without API credentials)
-- **Message fields**: `direction` (inbound/outbound/doctor_to_patient), `senderRole` (patient/doctor/ai/system), `doctorId`
-- **Frontend**: Messages display with role labels (Doutor(a), Paciente, IA MedPro) and color-coded bubbles (blue for doctor, gray for patient, AI indicator style for AI)
-- **Patient Online Status**: Real-time via WebSocket tracking (`GET /api/patients/online-status`, polled every 10s). Both doctors and patients tracked in `authenticatedClients` map. Shows green/gray dot + Online/Offline text.
-- **Allow Reply Toggle**: Doctor can toggle "Resposta habilitada" / "Sem resposta" per message. When enabled, patient sees "Responder" button in notification center. Patient replies via `POST /api/notifications/patient-reply` → saved as WhatsApp message + WebSocket notification to doctor.
-- **AI Processing**: Incoming patient messages are analyzed by Gemini/OpenAI for scheduling requests and clinical questions; AI responses are auto-generated
-- **Files**: `client/src/pages/whatsapp.tsx`, `server/services/whatsapp.ts`, routes in `server/routes.ts`, `client/src/components/notifications/notification-center.tsx`
-
-## Triage System (Classificação de Risco)
-- **Protocol**: Protocolo de Manchester (MTS) / Ministério da Saúde Brasil, with WHO ETAT fallback
-- **5 Levels**: emergency (red), very_urgent (orange), urgent (yellow), standard (green), non_urgent (blue)
-- **Components**: `client/src/lib/triage.ts` (constants, config, mapping), `client/src/components/triage/triage-badge.tsx` (TriageBadge, TriageColorBar, TriageDot), `client/src/components/triage/triage-help-dialog.tsx` (protocol guide dialog)
-- **AI Integration**: Triage prompt in `server/routes.ts` uses 5-level Manchester Protocol classification with criteria
-- **Applied to**: consultation-request.tsx, my-consultations.tsx, doctor-chat.tsx, patient-records.tsx, whatsapp.tsx (details panel)
-- **Legacy mapping**: `mapLegacyTriageLevel()` converts old values (routine, moderate, low, immediate) to new 5-level system
-- **Help dialog**: Accessible from WhatsApp details panel, doctor chat, and consultation request analysis page
-
-## Financial Management (Credits)
-- **Route**: `/credits` - TMC credits purchase and management
-- **Balance**: Current balance display with gradient card
-- **Packages**: 4 credit packages with PayPal checkout integration
-- **Transaction History**: Full history with credit/debit indicators, timestamps, and running balance (`GET /api/tmc/transactions`)
-- **Cost Table**: Lists costs per feature (Video: 50 TMC, WhatsApp: 10 TMC, AI Exam: 15 TMC, etc.)
-
-## Epidemiological Reports
-- **Route**: `/epidemiological-reports` - AI-powered epidemiological analysis for doctors and admins
-- **Backend**: `GET /api/epidemiological-reports` (basic stats), `POST /api/epidemiological-reports/analyze` (AI MeSH analysis)
-- **Data Sources**: Consultation notes, medical records, consultation requests, video consultations
-- **AI Analysis**: Gemini/OpenAI extracts symptoms → MeSH codes, diagnoses → ICD codes from clinical texts
-- **Tabs**: Visão Geral (overview with AI summary), Sintomas/MeSH, Diagnósticos, Classificação de Risco
-- **Charts**: Symptom frequency bars, triage level distribution, age group breakdown
-- **Period Filter**: 7/30/90/365 days
-- **Files**: `client/src/pages/epidemiological-reports.tsx`, routes in `server/routes.ts`
-
-## Medical Teams & Inter-Consultations
-- **Route**: `/medical-teams` - Team management and inter-consultation discussions
-- **Team Room**: `/team-room/:id` - 3 tabs: Discussion, Inter-Consultation, Files
-- **Notes**: `team_notes` table with types: discussion, interconsultation, case_summary, clinical_question
-- **Features**: Urgency flags, note threading (parentNoteId), doctor invitation dialog, online status
-
-## Doctor Schedule (`/schedule`)
-- **Tabs**: "Agenda do Dia" (active/scheduled appointments only) and "Histórico" (completed/cancelled appointments + ended video consultations)
-- **Instant Consultation**: "Consulta Instantânea" button opens dialog showing online patients (from `/api/patients/online-status`); starts video call via `POST /api/video-consultations/start-with-patient/:patientId` and sends notification to patient
-- **History API**: `GET /api/appointments/doctor/:doctorId/history` returns past appointments and video consultations with patient names
-
-## Documentation Pages (Public)
-- **Manual**: `/manual` - Complete user guide with sidebar navigation covering all features (getting started, teleconsultas, agenda, WhatsApp, prontuários, IA, triagem, créditos, equipes, epidemiologia)
-- **FAQ**: `/faq` - Searchable FAQ with 30+ questions, category filter badges, expandable accordion items
-- **Installation**: `/installation` - 3 tabs (Replit, Local, Produção) with copyable code blocks, shell scripts, Docker configs, env var reference, DB schema overview
-- **Navigation**: Accessible from header dropdown menu (Manual, FAQ, Instalação) and from documentation page link cards
-- **Files**: `client/src/pages/manual.tsx`, `client/src/pages/faq.tsx`, `client/src/pages/installation.tsx`
-
-## Running
-- `npm run dev` starts the development server (Express + Vite on port 5000)
+## External Dependencies
+- **Database:** PostgreSQL (hosted on Neon)
+- **ORM:** Drizzle ORM (`drizzle-orm/node-postgres`)
+- **AI/ML:**
+    - Google Gemini API (`gemini-2.0-flash`)
+    - Replit OpenAI AI Integrations (`gpt-4o-mini`)
+- **Video Conferencing:** Agora
+- **PDF Generation:** jspdf
+- **Payment Processing:** PayPal (for credit packages)

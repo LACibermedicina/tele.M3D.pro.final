@@ -46,6 +46,7 @@ import DoctorOffice from "@/pages/doctor-office";
 import CoffeeRoom from "@/pages/coffee-room";
 import PatientVideoConsultation from "@/pages/patient-video-consultation";
 import EpidemiologicalReports from "@/pages/epidemiological-reports";
+import IncompleteConsultations from "@/pages/incomplete-consultations";
 import Manual from "@/pages/manual";
 import FAQ from "@/pages/faq";
 import Installation from "@/pages/installation";
@@ -344,6 +345,13 @@ function Router() {
           <ProtectedRoute requiredRoles={['doctor', 'admin']}>
             <Header />
             <EpidemiologicalReports />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/incomplete-consultations">
+          <ProtectedRoute requiredRoles={['doctor', 'admin']}>
+            <Header />
+            <IncompleteConsultations />
           </ProtectedRoute>
         </Route>
         
