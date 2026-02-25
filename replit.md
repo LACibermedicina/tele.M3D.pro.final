@@ -124,5 +124,12 @@ All AI prompts (chatbot, triage, video consultation, medical records, SOAP repor
 - **Instant Consultation**: "Consulta Instantânea" button opens dialog showing online patients (from `/api/patients/online-status`); starts video call via `POST /api/video-consultations/start-with-patient/:patientId` and sends notification to patient
 - **History API**: `GET /api/appointments/doctor/:doctorId/history` returns past appointments and video consultations with patient names
 
+## Documentation Pages (Public)
+- **Manual**: `/manual` - Complete user guide with sidebar navigation covering all features (getting started, teleconsultas, agenda, WhatsApp, prontuários, IA, triagem, créditos, equipes, epidemiologia)
+- **FAQ**: `/faq` - Searchable FAQ with 30+ questions, category filter badges, expandable accordion items
+- **Installation**: `/installation` - 3 tabs (Replit, Local, Produção) with copyable code blocks, shell scripts, Docker configs, env var reference, DB schema overview
+- **Navigation**: Accessible from header dropdown menu (Manual, FAQ, Instalação) and from documentation page link cards
+- **Files**: `client/src/pages/manual.tsx`, `client/src/pages/faq.tsx`, `client/src/pages/installation.tsx`
+
 ## Running
 - `npm run dev` starts the development server (Express + Vite on port 5000)

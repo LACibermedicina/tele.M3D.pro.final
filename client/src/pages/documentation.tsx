@@ -544,6 +544,36 @@ export default function Documentation() {
             </Card>
           </section>
 
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+            <Link href="/manual">
+              <Card className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-6 text-center">
+                  <BookOpen className="w-10 h-10 mx-auto mb-3 text-blue-600" />
+                  <h3 className="font-bold text-blue-900 dark:text-blue-100 mb-1">Manual do Usuário</h3>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">Guia completo de uso da plataforma</p>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/faq">
+              <Card className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-purple-200 dark:border-purple-800">
+                <CardContent className="p-6 text-center">
+                  <ArrowRight className="w-10 h-10 mx-auto mb-3 text-purple-600" />
+                  <h3 className="font-bold text-purple-900 dark:text-purple-100 mb-1">FAQ</h3>
+                  <p className="text-sm text-purple-700 dark:text-purple-300">Perguntas frequentes</p>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/installation">
+              <Card className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1 bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-950/30 dark:to-teal-950/30 border-green-200 dark:border-green-800">
+                <CardContent className="p-6 text-center">
+                  <Settings className="w-10 h-10 mx-auto mb-3 text-green-600" />
+                  <h3 className="font-bold text-green-900 dark:text-green-100 mb-1">Instalação</h3>
+                  <p className="text-sm text-green-700 dark:text-green-300">Script e guia de instalação</p>
+                </CardContent>
+              </Card>
+            </Link>
+          </section>
+
         </div>
       </div>
     </PageWrapper>

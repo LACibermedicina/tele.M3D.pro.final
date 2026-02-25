@@ -9,7 +9,7 @@ import LanguageSelector from "@/components/ui/language-selector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { formatErrorForToast } from "@/lib/error-handler";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -662,6 +662,36 @@ export default function Header() {
                   <div>
                     <p className="font-semibold">Documentação</p>
                     <p className="text-xs text-muted-foreground">Guias e tutoriais</p>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => navigate('/manual')}
+                  className="cursor-pointer hover:bg-primary/10 py-3"
+                >
+                  <BookOpen className="mr-3 h-5 w-5 text-blue-500" />
+                  <div>
+                    <p className="font-semibold">Manual do Usuário</p>
+                    <p className="text-xs text-muted-foreground">Guia completo de uso</p>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => navigate('/faq')}
+                  className="cursor-pointer hover:bg-primary/10 py-3"
+                >
+                  <HelpCircle className="mr-3 h-5 w-5 text-pink-500" />
+                  <div>
+                    <p className="font-semibold">FAQ</p>
+                    <p className="text-xs text-muted-foreground">Perguntas frequentes</p>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => navigate('/installation')}
+                  className="cursor-pointer hover:bg-primary/10 py-3"
+                >
+                  <Terminal className="mr-3 h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="font-semibold">Instalação</p>
+                    <p className="text-xs text-muted-foreground">Script de instalação</p>
                   </div>
                 </DropdownMenuItem>
                 

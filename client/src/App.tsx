@@ -46,6 +46,9 @@ import DoctorOffice from "@/pages/doctor-office";
 import CoffeeRoom from "@/pages/coffee-room";
 import PatientVideoConsultation from "@/pages/patient-video-consultation";
 import EpidemiologicalReports from "@/pages/epidemiological-reports";
+import Manual from "@/pages/manual";
+import FAQ from "@/pages/faq";
+import Installation from "@/pages/installation";
 import UrgentAlertOverlay from "@/components/notifications/urgent-alert-overlay";
 import Header from "@/components/layout/header";
 import FloatingChatbot from "@/components/ui/floating-chatbot";
@@ -121,6 +124,18 @@ function Router() {
         <Route path="/documentation">
           <Header />
           <Documentation />
+        </Route>
+        <Route path="/manual">
+          <Header />
+          <Manual />
+        </Route>
+        <Route path="/faq">
+          <Header />
+          <FAQ />
+        </Route>
+        <Route path="/installation">
+          <Header />
+          <Installation />
         </Route>
         
         {/* Public homepage - accessible to all including visitors */}
