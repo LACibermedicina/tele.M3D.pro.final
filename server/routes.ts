@@ -1129,8 +1129,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/patients', async (req, res) => {
+  app.get('/api/patients', async (req: any, res) => {
     try {
+      if (!req.user || (req.user.role !== 'doctor' && req.user.role !== 'admin')) {
+        return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
+      }
       const patients = await storage.getAllPatients();
       res.json(patients);
     } catch (error) {
@@ -1138,8 +1141,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/patients/:id', async (req, res) => {
+  app.get('/api/patients/:id', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      if (req.user.role === 'patient') {
+        const ownPatient = await storage.getPatientByUserId(req.user.id);
+        if (!ownPatient || ownPatient.id !== req.params.id) {
+          return res.status(403).json({ message: 'Acesso negado. Você só pode visualizar seus próprios dados.' });
+        }
+      }
       const patient = await storage.getPatient(req.params.id);
       if (!patient) {
         return res.status(404).json({ message: 'Patient not found' });
@@ -1172,8 +1184,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Patient ID required' });
       }
 
-      // Only patient or admin can view notes
-      if (req.user.role !== 'patient' && req.user.role !== 'admin') {
+      // Only patient (own data), doctor, or admin can view notes
+      if (req.user.role === 'patient') {
+        const ownPatient = await storage.getPatientByUserId(req.user.id);
+        if (!ownPatient || ownPatient.id !== patientId) {
+          return res.status(403).json({ message: 'Acesso negado. Você só pode visualizar suas próprias notas.' });
+        }
+      } else if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Access denied' });
       }
 
@@ -1423,8 +1440,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/appointments/patient/:patientId', async (req, res) => {
+  app.get('/api/appointments/patient/:patientId', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      if (req.user.role === 'patient') {
+        const ownPatient = await storage.getPatientByUserId(req.user.id);
+        if (!ownPatient || ownPatient.id !== req.params.patientId) {
+          return res.status(403).json({ message: 'Acesso negado. Você só pode visualizar seus próprios agendamentos.' });
+        }
+      }
       const appointments = await storage.getAppointmentsByPatient(req.params.patientId);
       res.json(appointments);
     } catch (error) {
@@ -1727,8 +1753,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // WhatsApp Messages API
-  app.get('/api/whatsapp/messages/:patientId', async (req, res) => {
+  app.get('/api/whatsapp/messages/:patientId', async (req: any, res) => {
     try {
+      if (!req.user || (req.user.role !== 'doctor' && req.user.role !== 'admin')) {
+        return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
+      }
       const messages = await storage.getWhatsappMessagesByPatient(req.params.patientId);
       res.json(messages);
     } catch (error) {
@@ -5691,6 +5720,9 @@ DIRETRIZES DE REFERÊNCIA: Baseie suas respostas nas diretrizes da OMS, Protocol
 
   app.get('/api/patients/online-status', requireAuth, async (req: any, res) => {
     try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
+      }
       const allPatients = await db.select({
         id: patients.id,
         userId: patients.userId,
