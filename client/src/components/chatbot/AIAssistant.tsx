@@ -66,38 +66,12 @@ export function AIAssistant({ open, onOpenChange, initialContext, mode = 'genera
 
   const getGreeting = () => {
     if (!user) {
-      if (mode === 'symptoms') {
-        return `🩺 Análise de Sintomas - Tele<M3D>
+      return `👋 Olá! Sou o assistente virtual da Tele<M3D>. Posso ajudá-lo com:
 
-Descreva seus sintomas e farei uma avaliação inicial baseada nos protocolos:
-• Protocolo de Manchester (Classificação de Risco)
-• Diretrizes OMS/WHO
-• Protocolos do Ministério da Saúde do Brasil
+📅 Agendar uma consulta médica
+🔑 Solicitar acesso temporário para conhecer a plataforma
 
-⚠️ Esta avaliação é informativa e NÃO substitui consulta médica.
-📊 Você pode fazer até ${MAX_VISITOR_QUESTIONS} perguntas como visitante.
-
-Descreva o que está sentindo:`;
-      }
-      if (mode === 'questions') {
-        return `💬 Tire suas Dúvidas - Tele<M3D>
-
-Posso ajudar com perguntas sobre:
-• Saúde e prevenção
-• Serviços da plataforma
-• Orientações médicas gerais
-• Exames e procedimentos
-
-📊 Até ${MAX_VISITOR_QUESTIONS} perguntas como visitante.
-
-Qual sua dúvida?`;
-      }
-      return `👋 Olá! Sou o assistente virtual da Tele<M3D>. Posso ajudar com:
-• Análise inicial de sintomas
-• Orientações médicas gerais
-• Informações sobre nossos serviços
-
-⚠️ Para funcionalidades completas, faça login ou registre-se!`;
+Para acesso completo (triagem, prontuário, teleconsulta), faça login ou registre-se!`;
     }
 
     const name = user.name.split(' ')[0];
@@ -301,17 +275,6 @@ Deseja confirmar este agendamento?`,
     }
   };
 
-  const visitorSymptomsActions = [
-    { label: "Dor de cabeça", icon: HeartPulse, message: "Estou com dor de cabeça frequente" },
-    { label: "Febre", icon: HeartPulse, message: "Estou com febre" },
-    { label: "Dor no peito", icon: AlertTriangle, message: "Estou sentindo dor no peito" },
-  ];
-
-  const visitorQuestionsActions = [
-    { label: "Como funciona?", icon: Settings, message: "Como funciona a plataforma de telemedicina?" },
-    { label: "Tipos de consulta", icon: Stethoscope, message: "Quais tipos de consulta estão disponíveis?" },
-    { label: "Prevenção", icon: HeartPulse, message: "Dicas de prevenção e saúde" },
-  ];
 
   const quickActions = user?.role === 'patient' ? [
     { label: "Triagem de Sintomas", icon: HeartPulse, message: "Estou com alguns sintomas e gostaria de orientação" },
@@ -325,10 +288,9 @@ Deseja confirmar este agendamento?`,
     { label: "Estatísticas", icon: BarChart3, message: "Mostre as estatísticas gerais da plataforma" },
     { label: "Fila de Espera", icon: Users, message: "Quantos pacientes estão em espera agora?" },
     { label: "Consultas Hoje", icon: Calendar, message: "Ver todas as consultas agendadas de hoje" },
-  ] : mode === 'symptoms' ? visitorSymptomsActions : mode === 'questions' ? visitorQuestionsActions : [
-    { label: "Orientação Médica", icon: Stethoscope, message: "Gostaria de uma orientação sobre sintomas" },
-    { label: "Sobre Serviços", icon: Settings, message: "Quais serviços a plataforma oferece?" },
-    { label: "Prevenção", icon: HeartPulse, message: "Dicas de prevenção e autocuidado" },
+  ] : [
+    { label: "Agendar Consulta", icon: Calendar, message: "Gostaria de agendar uma consulta médica" },
+    { label: "Acesso Temporário", icon: LogIn, message: "Gostaria de solicitar um acesso temporário para conhecer a plataforma" },
   ];
 
   const getDialogTitle = () => {

@@ -15733,61 +15733,40 @@ REGRAS IMPORTANTES:
 • Seja empático mas direto
 • Incentive cadastro para consulta médica completa`;
 
-      // Visitor-specific system prompt (limited functionality, no diagnosis)
-      const systemPrompt = mode === 'symptoms' ? symptomSystemPrompt : `╔══════════════════════════════════════════════════════════════╗
-║  ASSISTENTE VIRTUAL IA - TELEMED                             ║
+      const visitorGeneralPrompt = `╔══════════════════════════════════════════════════════════════╗
+║  ASSISTENTE VIRTUAL IA - TELE<M3D>                            ║
 ║  Sistema: Gemini 2.0 Flash                                   ║
-║  Modo: Visitante (Funcionalidades Limitadas)                 ║
+║  Modo: Visitante (Não Autenticado)                           ║
 ╚══════════════════════════════════════════════════════════════╝
 
 🎯 OBJETIVO PRINCIPAL:
-Você é um assistente de saúde especializado que ajuda visitantes da Tele<M3D> com informações médicas confiáveis, baseadas em evidências científicas.
+Você é o assistente virtual da plataforma Tele<M3D>. Como o usuário NÃO está logado, você oferece APENAS duas opções:
 
-📚 SUAS CAPACIDADES:
-✓ Informações gerais sobre serviços de telemedicina
-✓ Orientações sobre quando procurar atendimento médico
-✓ Explicações sobre exames e procedimentos comuns
-✓ Dicas de prevenção e autocuidado
-✓ Responder dúvidas sobre saúde baseadas em referências médicas confiáveis
+1. 📅 AGENDAMENTO DE CONSULTA:
+   • Colete: nome completo, telefone/WhatsApp, motivo da consulta, preferência de data/horário
+   • Explique que após coletar os dados, a equipe entrará em contato para confirmar
+   • Incentive o cadastro na plataforma para agendamento direto e mais rápido
+   • Se for urgência, oriente SAMU 192 / UPA / Pronto-Socorro
 
-⚠️ REGRAS CRÍTICAS (NUNCA QUEBRE):
+2. 🔑 ACESSO TEMPORÁRIO PARA TESTE:
+   • Explique que é possível solicitar um link de acesso temporário para conhecer a plataforma
+   • Colete: nome, e-mail e motivo do interesse
+   • Informe que a solicitação será enviada ao administrador para aprovação
+   • O link temporário tem validade limitada (configurável pelo admin)
 
-1. 📖 PRIORIDADE ABSOLUTA - REFERÊNCIAS MÉDICAS:
-   • Se referências médicas foram fornecidas, use APENAS essas informações
-   • SEMPRE cite a fonte quando usar informação de uma referência
-   • Se a informação NÃO estiver nas referências, diga honestamente:
-     "Não encontrei essa informação nas referências médicas disponíveis. Recomendo consultar um médico."
-   • Prefira dados das referências sobre conhecimento geral
+⚠️ REGRAS CRÍTICAS:
+• NÃO ofereça triagem médica, análise de sintomas ou orientações clínicas para visitantes
+• NÃO faça diagnósticos nem prescreva medicamentos
+• Se o usuário perguntar sobre saúde, oriente que faça login ou se cadastre para acesso ao assistente médico completo
+• Seja educado, direto e objetivo
+• Respostas curtas (20-50 palavras), claras e práticas
 
-2. 🎯 OBJETIVIDADE E CLAREZA:
-   • Respostas diretas e objetivas (20-40 palavras)
-   • Use mais palavras APENAS quando o usuário pedir detalhes ou explicação completa
-   • Linguagem simples, evite jargões médicos complexos
-   • Seja prático e útil
+Se o usuário pedir algo fora dessas duas opções, responda:
+"Para acessar essa funcionalidade, é necessário criar uma conta ou fazer login na plataforma. Posso ajudá-lo a agendar uma consulta ou solicitar um acesso temporário para teste."
 
-3. 🚫 LIMITAÇÕES IMPORTANTES:
-   • NUNCA faça diagnósticos
-   • NUNCA prescreva medicamentos
-   • NUNCA substitua consulta médica presencial
-   • Sempre recomende avaliação médica profissional para casos específicos
+Quando o visitante fornecer dados para acesso temporário, inclua na resposta a tag [TEMP_ACCESS_REQUEST] seguida dos dados coletados em formato JSON: {"name": "...", "email": "...", "reason": "..."}`;
 
-4. 🚨 SITUAÇÕES DE EMERGÊNCIA:
-   Se identificar sinais de emergência (dor no peito, falta de ar grave, sangramento intenso, etc.):
-   • Oriente IMEDIATAMENTE a procurar UPA, Pronto Socorro ou SAMU 192
-   • Use tom URGENTE mas não alarmista
-   • Seja DIRETO e CLARO sobre a gravidade
-
-5. ℹ️ TRANSPARÊNCIA COM O VISITANTE:
-   • Deixe claro que é um assistente virtual
-   • Informe que não pode agendar consultas (visitante não registrado)
-   • Incentive o cadastro para acesso completo aos serviços
-
-💡 ESTILO DE COMUNICAÇÃO:
-• Empático mas profissional
-• Educado e respeitoso
-• Claro e direto
-• Baseado em evidências
-• Honesto sobre limitações`;
+      const systemPrompt = mode === 'symptoms' ? symptomSystemPrompt : visitorGeneralPrompt;
 
 
       // Call Gemini API with context - using 'visitor' role to filter appropriate references
@@ -15810,8 +15789,37 @@ Você é um assistente de saúde especializado que ajuda visitantes da Tele<M3D>
         }
       }
 
+      let responseText = aiResult.response;
+
+      if (responseText.includes('[TEMP_ACCESS_REQUEST]')) {
+        try {
+          const tagIdx = responseText.indexOf('[TEMP_ACCESS_REQUEST]');
+          const jsonStr = responseText.substring(tagIdx + '[TEMP_ACCESS_REQUEST]'.length).trim();
+          const jsonMatch = jsonStr.match(/\{[^}]+\}/);
+          if (jsonMatch) {
+            const requestData = JSON.parse(jsonMatch[0]);
+            const admins = await db.select().from(users).where(eq(users.role, 'admin'));
+            for (const admin of admins) {
+              await db.insert(pendingNotifications).values({
+                userId: admin.id,
+                type: 'temp_access_request',
+                title: 'Solicitação de Acesso Temporário',
+                message: `Visitante ${requestData.name || 'Anônimo'} (${requestData.email || 'sem e-mail'}) solicita acesso temporário. Motivo: ${requestData.reason || 'não informado'}`,
+                actionUrl: '/admin',
+                delivered: false,
+                read: false,
+                metadata: { visitorName: requestData.name, visitorEmail: requestData.email, reason: requestData.reason },
+              });
+            }
+          }
+          responseText = responseText.substring(0, tagIdx).trim();
+        } catch (parseErr) {
+          console.error('Failed to parse temp access request from AI:', parseErr);
+        }
+      }
+
       res.json({
-        response: aiResult.response,
+        response: responseText,
         referencesUsed: aiResult.referencesUsed,
       });
     } catch (error) {

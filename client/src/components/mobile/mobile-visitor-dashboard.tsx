@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { UserPlus, Calendar, FileText, Shield, Phone, MessageCircle, Users, Clock, MapPin, Bot } from "lucide-react"
+import { UserPlus, Calendar, FileText, Shield, Phone, MessageCircle, Users, Clock, MapPin, Bot, Key } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Link } from "wouter"
 import { useState } from "react"
@@ -244,26 +244,26 @@ export function MobileVisitorDashboard() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-purple-600">
-            Nosso assistente virtual pode ajudar com agendamento, análise de sintomas e orientações médicas.
+            Nosso assistente pode ajudá-lo a agendar consultas ou solicitar acesso temporário para conhecer a plataforma.
           </p>
           <div className="grid grid-cols-1 gap-2">
             <Button 
               variant="outline" 
-              className="border-purple-300 text-purple-700 hover:bg-purple-50"
+              className="border-green-300 text-green-700 hover:bg-green-50"
               onClick={handleChatBot}
-              data-testid="button-ai-symptom-analysis"
+              data-testid="button-ai-schedule"
             >
-              <Bot className="w-4 h-4 mr-2" />
-              Análise de Sintomas
+              <Calendar className="w-4 h-4 mr-2" />
+              Agendar Consulta
             </Button>
             <Button 
               variant="outline" 
-              className="border-purple-300 text-purple-700 hover:bg-purple-50"
+              className="border-blue-300 text-blue-700 hover:bg-blue-50"
               onClick={handleChatBot}
-              data-testid="button-ai-questions"
+              data-testid="button-ai-temp-access"
             >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Tirar Dúvidas
+              <Key className="w-4 h-4 mr-2" />
+              Solicitar Acesso Temporário
             </Button>
           </div>
         </CardContent>

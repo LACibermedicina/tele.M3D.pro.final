@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { UserPlus, Calendar, FileText, Shield, Phone, MessageCircle, Users, Clock, MapPin, Star, Globe, Video, Bot, HeartPulse } from "lucide-react"
+import { UserPlus, Calendar, FileText, Shield, Phone, MessageCircle, Users, Clock, MapPin, Star, Globe, Video, Bot, HeartPulse, Key } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Link } from "wouter"
 import { useState } from "react"
@@ -491,24 +491,24 @@ export function DesktopVisitorDashboard() {
           </CardHeader>
           <CardContent className="space-y-4 relative z-10">
             <p className="text-purple-600">
-              Nosso assistente virtual pode ajudar com agendamento de consultas, análise de sintomas e orientações médicas iniciais.
+              Nosso assistente virtual pode ajudá-lo a agendar consultas ou solicitar um acesso temporário para conhecer a plataforma.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Button 
-                className="bg-red-600 text-white hover:bg-red-700 hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg"
-                onClick={() => handleChatBot('symptoms')}
-                data-testid="button-ai-symptom-analysis"
+                className="bg-green-600 text-white hover:bg-green-700 hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg"
+                onClick={() => handleChatBot('general')}
+                data-testid="button-ai-schedule"
               >
-                <HeartPulse className="w-4 h-4 mr-2" />
-                Análise de Sintomas
+                <Calendar className="w-4 h-4 mr-2" />
+                Agendar Consulta
               </Button>
               <Button 
                 className="bg-blue-600 text-white hover:bg-blue-700 hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg"
-                onClick={() => handleChatBot('questions')}
-                data-testid="button-ai-questions"
+                onClick={() => handleChatBot('general')}
+                data-testid="button-ai-temp-access"
               >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Tirar Dúvidas
+                <Key className="w-4 h-4 mr-2" />
+                Solicitar Acesso Temporário
               </Button>
             </div>
           </CardContent>

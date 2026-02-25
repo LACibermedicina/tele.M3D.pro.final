@@ -70,11 +70,18 @@ export default function FloatingChatbot() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [currentMessage, setCurrentMessage] = useState('');
   const [activeInterviewId, setActiveInterviewId] = useState<string | null>(null);
+  const getWelcomeMessage = () => {
+    if (!user) {
+      return '👋 Olá! Sou o assistente virtual da Tele<M3D>. Posso ajudá-lo com:\n\n📅 Agendar uma consulta médica\n🔑 Solicitar acesso temporário para conhecer a plataforma\n\nPara acesso completo, faça login ou registre-se!';
+    }
+    return t('chatbot.welcome_message');
+  };
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
       type: 'ai',
-      content: t('chatbot.welcome_message'),
+      content: getWelcomeMessage(),
       timestamp: new Date(),
     }
   ]);
@@ -237,7 +244,7 @@ export default function FloatingChatbot() {
       {
         id: '1',
         type: 'ai',
-        content: t('chatbot.welcome_message'),
+        content: getWelcomeMessage(),
         timestamp: new Date(),
       }
     ]);
@@ -482,7 +489,31 @@ export default function FloatingChatbot() {
               
               {/* Role-specific Quick Actions */}
               <div className="flex flex-wrap gap-1 mt-2">
-                {(!user || user.role === 'patient') && (
+                {!user && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentMessage('Gostaria de agendar uma consulta médica')}
+                      className="text-xs"
+                      data-testid="button-quick-scheduling"
+                    >
+                      <Calendar className="w-3 h-3 mr-1" />
+                      Agendar Consulta
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentMessage('Gostaria de solicitar um acesso temporário para conhecer a plataforma')}
+                      className="text-xs"
+                      data-testid="button-request-temp-access"
+                    >
+                      <Stethoscope className="w-3 h-3 mr-1" />
+                      Solicitar Acesso Temporário
+                    </Button>
+                  </>
+                )}
+                {user?.role === 'patient' && (
                   <>
                     {!activeInterviewId && (
                       <Button
@@ -501,7 +532,7 @@ export default function FloatingChatbot() {
                       size="sm"
                       onClick={() => setCurrentMessage(t('chatbot.quick_scheduling'))}
                       className="text-xs"
-                      data-testid="button-quick-scheduling"
+                      data-testid="button-quick-scheduling-patient"
                     >
                       <Calendar className="w-3 h-3 mr-1" />
                       Agendar
