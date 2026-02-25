@@ -1404,9 +1404,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Appointments API
   app.get('/api/appointments/today/:doctorId', async (req, res) => {
     try {
-      const appointments = await storage.getTodayAppointments(req.params.doctorId);
-      res.json(appointments);
+      const appts = await storage.getTodayAppointments(req.params.doctorId);
+      
+      const patientIds = [...new Set(appts.map((a: any) => a.patientId).filter(Boolean))];
+      const patientMap: Record<string, any> = {};
+      for (const pid of patientIds) {
+        if (pid) {
+          try {
+            const p = await storage.getPatient(pid);
+            if (p) patientMap[pid] = p;
+          } catch {}
+        }
+      }
+
+      const enriched = appts.map((a: any) => ({
+        ...a,
+        patientName: a.patientId && patientMap[a.patientId] ? patientMap[a.patientId].name : 'Paciente não identificado',
+        patientEmail: a.patientId && patientMap[a.patientId] ? patientMap[a.patientId].email : null,
+        patientPhone: a.patientId && patientMap[a.patientId] ? patientMap[a.patientId].phone : null,
+        patient: a.patientId && patientMap[a.patientId] ? { id: patientMap[a.patientId].id, name: patientMap[a.patientId].name } : undefined,
+      }));
+
+      // Also include active/waiting video consultations for today
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const activeConsultations = await db.select()
+        .from(videoConsultations)
+        .where(and(
+          eq(videoConsultations.doctorId, req.params.doctorId),
+          inArray(videoConsultations.status, ['waiting', 'active']),
+          sql`${videoConsultations.createdAt} >= ${todayStart.toISOString()}`
+        ));
+
+      const vcPatientIds = [...new Set(activeConsultations.map(vc => vc.patientId).filter(Boolean))];
+      for (const pid of vcPatientIds) {
+        if (pid && !patientMap[pid]) {
+          try {
+            const p = await storage.getPatient(pid);
+            if (p) patientMap[pid] = p;
+          } catch {}
+        }
+      }
+
+      const activeVcItems = activeConsultations.map(vc => ({
+        id: `vc-${vc.id}`,
+        consultationId: vc.id,
+        type: 'video-consultation' as const,
+        status: vc.status,
+        patientId: vc.patientId,
+        patientName: vc.patientId && patientMap[vc.patientId] ? patientMap[vc.patientId].name : 'Paciente não identificado',
+        patientPhone: vc.patientId && patientMap[vc.patientId] ? patientMap[vc.patientId].phone : null,
+        patient: vc.patientId && patientMap[vc.patientId] ? { id: patientMap[vc.patientId].id, name: patientMap[vc.patientId].name } : undefined,
+        scheduledAt: vc.createdAt,
+        createdAt: vc.createdAt,
+        startedAt: vc.startedAt,
+        agoraChannelName: vc.agoraChannelName,
+      }));
+      
+      res.json([...enriched, ...activeVcItems]);
     } catch (error) {
+      console.error('Today appointments error:', error);
       res.status(500).json({ message: 'Failed to get appointments' });
     }
   });
@@ -2756,6 +2813,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       broadcastToDoctor(consultation.doctorId || actualDoctorId || DEFAULT_DOCTOR_ID, { type: 'consultation_started', data: consultation });
+      
+      // Notify patient that doctor has joined
+      if (consultation.patientId) {
+        try {
+          const patient = await storage.getPatient(consultation.patientId);
+          if (patient?.userId) {
+            broadcastToUser(patient.userId, {
+              type: 'doctor_joined',
+              data: {
+                consultationId: consultation.id,
+                message: 'O médico entrou na consulta.',
+                status: 'active'
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Failed to notify patient about doctor join:', e);
+        }
+      }
       
       res.json(consultation);
     } catch (error) {

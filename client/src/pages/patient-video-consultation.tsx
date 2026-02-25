@@ -183,13 +183,44 @@ export default function PatientVideoConsultation() {
 
   useEffect(() => {
     const latestMsg = wsMessages[wsMessages.length - 1];
-    if (latestMsg?.type === 'consultation_note_added' && consultationId) {
+    if (!latestMsg || !consultationId) return;
+    
+    if (latestMsg.type === 'consultation_note_added') {
       const noteData = latestMsg.data;
       if (!noteData?.consultationId || noteData.consultationId === consultationId) {
         queryClient.invalidateQueries({ queryKey: ['/api/video-consultations', consultationId, 'notes'] });
       }
     }
+    
+    if (latestMsg.type === 'doctor_joined' && latestMsg.data?.consultationId === consultationId) {
+      toast({ title: 'Médico conectado', description: 'O médico entrou na consulta.' });
+    }
+
+    if (latestMsg.type === 'consultation_ended' && latestMsg.data?.consultationId === consultationId) {
+      leaveChannel();
+      toast({ title: 'Consulta encerrada', description: latestMsg.data?.message || 'A consulta foi encerrada pelo médico.' });
+      setLocation('/my-consultations');
+    }
   }, [wsMessages, consultationId]);
+
+  useEffect(() => {
+    if (!consultationId) return;
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/video-consultations/${consultationId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'ended' || data.status === 'completed' || data.status === 'incomplete') {
+            clearInterval(pollInterval);
+            leaveChannel();
+            toast({ title: 'Consulta encerrada', description: 'A consulta foi encerrada pelo médico.' });
+            setLocation('/my-consultations');
+          }
+        }
+      } catch {}
+    }, 8000);
+    return () => clearInterval(pollInterval);
+  }, [consultationId]);
 
   const joinChannel = async () => {
     if (!client || !agoraConfig || joined) return;

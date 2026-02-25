@@ -102,15 +102,19 @@ function Router() {
         
         {/* Registration routes - public */}
         <Route path="/register">
+          <Header />
           <RegisterSelect />
         </Route>
         <Route path="/register/patient">
+          <Header />
           <PatientRegister />
         </Route>
         <Route path="/register/doctor">
+          <Header />
           <DoctorRegister />
         </Route>
         <Route path="/register/admin">
+          <Header />
           <AdminRegister />
         </Route>
         
