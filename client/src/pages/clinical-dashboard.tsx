@@ -22,8 +22,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import Header from "@/components/layout/header";
-
 interface TimelineEvent {
   type: string;
   date: string;
@@ -143,23 +141,18 @@ export default function ClinicalDashboard() {
 
   if (user?.role !== 'patient' && user?.role !== 'doctor' && user?.role !== 'admin') {
     return (
-      <>
-        <Header />
-        <div className="container mx-auto px-4 py-8">
-          <Card>
-            <CardContent className="p-6">
-              <p>Acesso não autorizado</p>
-            </CardContent>
-          </Card>
-        </div>
-      </>
+      <div className="container mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="p-6">
+            <p>Acesso não autorizado</p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <>
-      <Header />
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Dashboard Clínico</h1>
           <p className="text-muted-foreground">
@@ -401,7 +394,6 @@ export default function ClinicalDashboard() {
             </Tabs>
           </div>
         )}
-      </div>
-    </>
+    </div>
   );
 }

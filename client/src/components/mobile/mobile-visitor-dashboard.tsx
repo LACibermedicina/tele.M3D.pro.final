@@ -1,352 +1,138 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { UserPlus, Calendar, FileText, Shield, Phone, MessageCircle, Users, Clock, MapPin, Bot, Key } from "lucide-react"
-import { useAuth } from "@/contexts/AuthContext"
+import { UserPlus, Stethoscope, LogIn, Phone, MessageCircle, Brain, Shield, Clock } from "lucide-react"
 import { Link } from "wouter"
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
-import { AIAssistant } from "@/components/chatbot/AIAssistant"
 
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  price: string;
-  duration: string;
-  available: boolean;
+interface MobileVisitorDashboardProps {
+  onOpenIAM3D?: () => void;
 }
 
-export function MobileVisitorDashboard() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [showSupportDialog, setShowSupportDialog] = useState(false);
-  const [showChatBot, setShowChatBot] = useState(false);
-  const [supportForm, setSupportForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    message: ''
-  });
-
-  // Support phone number - will be configurable in admin later
+export function MobileVisitorDashboard({ onOpenIAM3D }: MobileVisitorDashboardProps) {
   const supportPhone = '+5511960708817';
-
-  const handleSupportContact = () => {
-    setShowSupportDialog(true);
-  };
 
   const handleWhatsAppContact = () => {
     const message = encodeURIComponent('Olá! Preciso de suporte com a plataforma Tele<M3D>.');
     window.open(`https://wa.me/${supportPhone.replace(/\D/g, '')}?text=${message}`, '_blank');
   };
 
-  const handleSupportSubmit = () => {
-    toast({
-      title: "Mensagem enviada!",
-      description: "Nossa equipe entrará em contato em breve.",
-    });
-    setShowSupportDialog(false);
-    setSupportForm({ name: '', email: '', phone: '', message: '' });
-  };
-
-  const handleChatBot = () => {
-    setShowChatBot(true);
-  };
-  
-  // Public services available for visitors
-  const publicServices: Service[] = [
-    {
-      id: "1",
-      name: "Consulta Geral",
-      description: "Consulta médica geral online",
-      price: "150 TMC",
-      duration: "30 min",
-      available: true
-    },
-    {
-      id: "2", 
-      name: "Orientação Médica",
-      description: "Esclarecimento de dúvidas médicas",
-      price: "80 TMC",
-      duration: "15 min",
-      available: true
-    },
-    {
-      id: "3",
-      name: "Avaliação de Exames",
-      description: "Análise e interpretação de exames",
-      price: "100 TMC",
-      duration: "20 min",
-      available: false
-    }
-  ];
-
   return (
-    <>
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 px-4 py-6 space-y-6">
-      
-      {/* Welcome Header */}
-      <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
-        <CardContent className="p-6">
-          <div className="text-center">
-            <UserPlus className="w-16 h-16 mx-auto mb-4 opacity-90" />
-            <h1 className="text-2xl font-bold">Conexão que cuida, cuidados que conectam</h1>
-            <p className="text-blue-100 mt-2"></p>
-            <div className="mt-4">
-              <Badge className="bg-white/20 text-white">Visitante</Badge>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 px-4 py-6 space-y-6">
+
+      <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
+        <CardContent className="p-6 text-center">
+          <h1 className="text-2xl font-bold">Tele&lt;M3D&gt; Pro</h1>
+          <p className="text-blue-100 mt-2">Conexão que cuida, cuidados que conectam</p>
+          <div className="mt-4">
+            <Badge className="bg-white/20 text-white border-white/30">Visitante</Badge>
           </div>
         </CardContent>
       </Card>
 
-      {/* Quick Registration */}
-      <Card className="shadow-lg border-blue-200">
+      <Card className="shadow-lg border-blue-200 dark:border-gray-700 dark:bg-gray-800">
         <CardHeader className="pb-3">
-          <h2 className="text-lg font-semibold flex items-center text-blue-800">
-            <UserPlus className="w-5 h-5 mr-2" />
-            Criar Conta
-          </h2>
+          <h2 className="text-lg font-semibold text-blue-800 dark:text-blue-300">Comece Agora</h2>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Registre-se para acessar todos os recursos da plataforma
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <Link href="/register/patient">
-              <Button 
-                className="bg-medical-primary hover:bg-medical-primary/90 w-full"
-                data-testid="button-register-patient"
-              >
-                Sou Paciente
-              </Button>
-            </Link>
-            <Link href="/register/doctor">
-              <Button 
-                variant="outline" 
-                className="border-medical-secondary text-medical-secondary w-full"
-                data-testid="button-register-doctor"
-              >
-                Sou Médico
-              </Button>
-            </Link>
-          </div>
+        <CardContent className="space-y-3">
+          <Link href="/register/patient">
+            <Button
+              className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white text-base"
+              aria-label="Registrar como paciente"
+            >
+              <UserPlus className="w-5 h-5 mr-3" />
+              Sou Paciente
+            </Button>
+          </Link>
+          <Link href="/register/doctor">
+            <Button
+              className="w-full h-16 bg-teal-600 hover:bg-teal-700 text-white text-base"
+              aria-label="Registrar como médico"
+            >
+              <Stethoscope className="w-5 h-5 mr-3" />
+              Sou Médico
+            </Button>
+          </Link>
+          <Link href="/login">
+            <Button
+              variant="outline"
+              className="w-full h-16 text-base dark:border-gray-600 dark:text-gray-200"
+              aria-label="Fazer login"
+            >
+              <LogIn className="w-5 h-5 mr-3" />
+              Já tenho conta
+            </Button>
+          </Link>
         </CardContent>
       </Card>
 
-      {/* Available Services */}
-      <Card className="shadow-lg">
+      <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold flex items-center">
-              <FileText className="w-5 h-5 mr-2 text-blue-600" />
-              Serviços Disponíveis
-            </h2>
-            <Badge variant="secondary">{publicServices.filter(s => s.available).length} ativos</Badge>
-          </div>
+          <h2 className="text-lg font-semibold dark:text-gray-100">Serviços Disponíveis</h2>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {publicServices.map((service, index) => (
-            <div key={service.id}>
-              <div className="flex items-start space-x-3">
-                <div className="flex-1">
-                  <h3 className="font-medium" data-testid={`text-service-name-${service.id}`}>{service.name}</h3>
-                  <p className="text-sm text-muted-foreground">{service.description}</p>
-                  <div className="flex items-center space-x-4 mt-2">
-                    <div className="flex items-center space-x-1">
-                      <Clock className="w-3 h-3 text-blue-600" />
-                      <span className="text-sm font-medium">{service.duration}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <span className="text-sm font-medium text-green-600">{service.price}</span>
-                    </div>
-                    <Badge 
-                      variant={service.available ? "default" : "secondary"}
-                      className="text-xs"
-                    >
-                      {service.available ? "Disponível" : "Indisponível"}
-                    </Badge>
-                  </div>
-                </div>
-                <Link href="/login">
-                  <Button 
-                    size="sm" 
-                    disabled={!service.available}
-                    data-testid={`button-book-${service.id}`}
-                  >
-                    {service.available ? "Login" : "Indisponível"}
-                  </Button>
-                </Link>
+        <CardContent className="space-y-3">
+          <Card className="bg-blue-50 dark:bg-gray-700 border-blue-100 dark:border-gray-600">
+            <CardContent className="p-4">
+              <h3 className="font-medium dark:text-gray-100">Consulta Geral</h3>
+              <p className="text-sm text-muted-foreground mt-1">Consulta médica geral online com profissionais qualificados</p>
+              <div className="flex items-center mt-2 text-sm text-blue-600 dark:text-blue-400">
+                <Clock className="w-3.5 h-3.5 mr-1" />
+                <span>30 min</span>
               </div>
-              {index < publicServices.length - 1 && <Separator className="mt-4" />}
-            </div>
-          ))}
+            </CardContent>
+          </Card>
+          <Card className="bg-teal-50 dark:bg-gray-700 border-teal-100 dark:border-gray-600">
+            <CardContent className="p-4">
+              <h3 className="font-medium dark:text-gray-100">Orientação Médica</h3>
+              <p className="text-sm text-muted-foreground mt-1">Esclarecimento de dúvidas e orientações preventivas</p>
+              <div className="flex items-center mt-2 text-sm text-teal-600 dark:text-teal-400">
+                <Clock className="w-3.5 h-3.5 mr-1" />
+                <span>15 min</span>
+              </div>
+            </CardContent>
+          </Card>
         </CardContent>
       </Card>
 
-      {/* Contact Information */}
-      <Card className="shadow-lg bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
-        <CardHeader className="pb-3">
-          <h2 className="text-lg font-semibold flex items-center text-green-800">
+      <Card className="shadow-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30 border-purple-200 dark:border-purple-700">
+        <CardContent className="p-6 text-center space-y-4">
+          <Brain className="w-12 h-12 mx-auto text-purple-600 dark:text-purple-400" />
+          <h2 className="text-lg font-semibold text-purple-800 dark:text-purple-300">Assistente de Voz IAM3D</h2>
+          <p className="text-sm text-purple-600 dark:text-purple-400">Converse por voz com nosso assistente</p>
+          <Button
+            className="w-full h-14 bg-purple-600 hover:bg-purple-700 text-white text-base"
+            onClick={onOpenIAM3D}
+            aria-label="Abrir assistente de voz IAM3D"
+          >
+            <Brain className="w-5 h-5 mr-3" />
+            Falar com IAM3D
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border-green-200 dark:border-green-700">
+        <CardContent className="p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-green-800 dark:text-green-300 flex items-center">
             <Phone className="w-5 h-5 mr-2" />
             Contato & Suporte
           </h2>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <MessageCircle className="w-5 h-5 text-green-600" />
-              <div>
-                <div className="font-medium text-green-800">WhatsApp</div>
-                <div className="text-sm text-green-600">+55 11 96070-8817</div>
-              </div>
+          <Button
+            className="w-full h-14 bg-green-600 hover:bg-green-700 text-white text-base"
+            onClick={handleWhatsAppContact}
+            aria-label="Contato via WhatsApp"
+          >
+            <MessageCircle className="w-5 h-5 mr-3" />
+            WhatsApp Suporte
+          </Button>
+          <div className="flex items-center rounded-lg bg-red-50 dark:bg-red-900/30 p-4 border border-red-200 dark:border-red-700">
+            <Shield className="w-8 h-8 text-red-600 dark:text-red-400 mr-3 flex-shrink-0" />
+            <div>
+              <p className="font-bold text-red-800 dark:text-red-300">SAMU 192</p>
+              <p className="text-xs text-red-600 dark:text-red-400">Em caso de emergência, ligue 192 ou dirija-se ao hospital mais próximo</p>
             </div>
-            <div className="flex items-center space-x-3">
-              <MapPin className="w-5 h-5 text-green-600" />
-              <div>
-                <div className="font-medium text-green-800">Endereço</div>
-                <div className="text-sm text-green-600">São Paulo, SP - Brasil</div>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Button 
-              variant="outline" 
-              className="w-full text-green-700 border-green-300"
-              onClick={handleSupportContact}
-              data-testid="button-contact-support"
-            >
-              Falar com Suporte
-            </Button>
-            <Button 
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
-              onClick={handleWhatsAppContact}
-              data-testid="button-whatsapp-contact"
-            >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              WhatsApp Direto
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* AI Chatbot Section */}
-      <Card className="shadow-lg bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
-        <CardHeader className="pb-3">
-          <h2 className="text-lg font-semibold flex items-center text-purple-800">
-            <Bot className="w-5 h-5 mr-2" />
-            Assistente Virtual IA
-          </h2>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-purple-600">
-            Nosso assistente pode ajudá-lo a agendar consultas ou solicitar acesso temporário para conhecer a plataforma.
-          </p>
-          <div className="grid grid-cols-1 gap-2">
-            <Button 
-              variant="outline" 
-              className="border-green-300 text-green-700 hover:bg-green-50"
-              onClick={handleChatBot}
-              data-testid="button-ai-schedule"
-            >
-              <Calendar className="w-4 h-4 mr-2" />
-              Agendar Consulta
-            </Button>
-            <Button 
-              variant="outline" 
-              className="border-blue-300 text-blue-700 hover:bg-blue-50"
-              onClick={handleChatBot}
-              data-testid="button-ai-temp-access"
-            >
-              <Key className="w-4 h-4 mr-2" />
-              Solicitar Acesso Temporário
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Emergency Notice */}
-      <Card className="shadow-lg bg-gradient-to-r from-red-50 to-pink-50 border-red-200">
-        <CardContent className="p-4">
-          <div className="text-center">
-            <Shield className="w-8 h-8 mx-auto mb-2 text-red-600" />
-            <h3 className="font-bold text-red-800">Emergência Médica?</h3>
-            <p className="text-sm text-red-600 mt-1">
-              Em caso de emergência, ligue 192 (SAMU) ou dirija-se ao hospital mais próximo
-            </p>
           </div>
         </CardContent>
       </Card>
 
     </div>
-
-    {/* Support Dialog */}
-    <Dialog open={showSupportDialog} onOpenChange={setShowSupportDialog}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Falar com Suporte</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Nome</label>
-            <Input
-              value={supportForm.name}
-              onChange={(e) => setSupportForm(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Seu nome completo"
-              data-testid="input-support-name"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Email</label>
-            <Input
-              type="email"
-              value={supportForm.email}
-              onChange={(e) => setSupportForm(prev => ({ ...prev, email: e.target.value }))}
-              placeholder="seu@email.com"
-              data-testid="input-support-email"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Telefone</label>
-            <Input
-              value={supportForm.phone}
-              onChange={(e) => setSupportForm(prev => ({ ...prev, phone: e.target.value }))}
-              placeholder="(11) 99999-9999"
-              data-testid="input-support-phone"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Mensagem</label>
-            <Textarea
-              value={supportForm.message}
-              onChange={(e) => setSupportForm(prev => ({ ...prev, message: e.target.value }))}
-              placeholder="Descreva sua dúvida ou problema..."
-              rows={3}
-              data-testid="textarea-support-message"
-            />
-          </div>
-          <div className="flex space-x-2">
-            <Button onClick={handleSupportSubmit} className="flex-1" data-testid="button-support-submit">
-              Enviar
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleWhatsAppContact}
-              data-testid="button-support-whatsapp"
-            >
-              <MessageCircle className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-
-    {/* AI Assistant */}
-    <AIAssistant open={showChatBot} onOpenChange={setShowChatBot} />
-    </>
   );
 }

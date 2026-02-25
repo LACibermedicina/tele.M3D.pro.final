@@ -69,6 +69,13 @@ import fs from 'fs';
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
+  const express = await import('express');
+  const uploadsPublicDir = path.join(process.cwd(), 'client', 'public', 'uploads');
+  if (!fs.existsSync(uploadsPublicDir)) {
+    fs.mkdirSync(uploadsPublicDir, { recursive: true });
+  }
+  app.use('/uploads', express.default.static(uploadsPublicDir));
+  
   // Migrate database schema for new features
   await migrateOnDutyColumns();
   await migrateMedicalTeamsTables();
