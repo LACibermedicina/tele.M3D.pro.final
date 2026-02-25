@@ -1560,6 +1560,28 @@ export interface DashboardStats {
   activeUsers?: number;
 }
 
+// Post-consultation items (auto-generated prescriptions, exams, referrals)
+export const postConsultationItems = pgTable('post_consultation_items', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  consultationId: varchar('consultation_id').notNull(),
+  patientId: varchar('patient_id').notNull(),
+  doctorId: varchar('doctor_id').notNull(),
+  type: varchar('type', { length: 50 }).notNull(), // prescription, exam, referral, followup
+  title: varchar('title', { length: 500 }).notNull(),
+  description: text('description'),
+  details: jsonb('details'), // structured data: medications, exams, etc.
+  status: varchar('status', { length: 50 }).default('pending_review').notNull(), // pending_review, approved, rejected, signed
+  patientSummary: text('patient_summary'), // accessible language for patient
+  reviewNotes: text('review_notes'),
+  aiAnalysis: jsonb('ai_analysis'), // drug interactions, contraindications, etc.
+  reviewedAt: timestamp('reviewed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const insertPostConsultationItemSchema = createInsertSchema(postConsultationItems).omit({ id: true, createdAt: true });
+export type InsertPostConsultationItem = z.infer<typeof insertPostConsultationItemSchema>;
+export type PostConsultationItem = typeof postConsultationItems.$inferSelect;
+
 // TMC system types
 export interface TmcBalance {
   userId: string;

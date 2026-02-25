@@ -3120,6 +3120,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
             vitalSigns: {},
           });
           console.log(`✅ Auto-generated medical record for patient ${consultation.patientId}`);
+
+          // Auto-generate post-consultation items (prescriptions, exams, referrals)
+          try {
+            const itemsPrompt = `Com base nos dados da teleconsulta abaixo, extraia TODOS os itens pós-consulta em formato JSON. Para cada item, retorne um objeto com: type ("prescription"|"exam"|"referral"|"followup"), title (nome curto), description (descrição clínica detalhada), details (objeto JSON com dados específicos), patientSummary (explicação em linguagem acessível para o paciente).
+
+Para prescrições (prescription): details deve conter { medications: [{ name, dosage, frequency, duration, route, instructions }] }
+Para exames (exam): details deve conter { exams: [{ name, type, urgency, justification }] }
+Para encaminhamentos (referral): details deve conter { specialty, reason, urgency, notes }
+Para retornos (followup): details deve conter { suggestedDate, reason, instructions }
+
+Retorne APENAS um array JSON válido. Se não houver itens, retorne [].
+
+Dados da consulta:
+${clinicalSummary}`;
+            const itemsJson = await geminiService.generateText(itemsPrompt, 'Você é um assistente médico que extrai dados estruturados de prontuários. Retorne APENAS JSON válido, sem markdown.');
+            const cleanJson = itemsJson.replace(/```json?\s*/g, '').replace(/```\s*/g, '').trim();
+            const items = JSON.parse(cleanJson);
+            if (Array.isArray(items)) {
+              for (const item of items) {
+                await storage.createPostConsultationItem({
+                  consultationId: consultation.id,
+                  patientId: consultation.patientId!,
+                  doctorId: consultation.doctorId || req.user?.id || DEFAULT_DOCTOR_ID,
+                  type: item.type || 'prescription',
+                  title: item.title || 'Item pós-consulta',
+                  description: item.description || '',
+                  details: item.details || {},
+                  status: 'pending_review',
+                  patientSummary: item.patientSummary || '',
+                  reviewNotes: null,
+                  aiAnalysis: null,
+                  reviewedAt: null,
+                });
+              }
+              console.log(`✅ Auto-generated ${items.length} post-consultation items`);
+
+              if (items.length > 0) {
+                const doctorId = consultation.doctorId || req.user?.id || DEFAULT_DOCTOR_ID;
+                await db.insert(pendingNotifications).values({
+                  userId: doctorId,
+                  type: 'post_consultation_review',
+                  title: `${items.length} itens pós-consulta aguardam revisão`,
+                  message: `Prescrições, exames e encaminhamentos gerados automaticamente para ${patient?.name || 'paciente'} precisam da sua aprovação.`,
+                  priority: 'high',
+                  actionUrl: '/post-consultation-review',
+                  delivered: false,
+                  read: false,
+                  metadata: { consultationId: consultation.id, itemCount: items.length }
+                });
+                broadcastToDoctor(doctorId, {
+                  type: 'post_consultation_review',
+                  data: { consultationId: consultation.id, itemCount: items.length, patientName: patient?.name }
+                });
+              }
+            }
+          } catch (itemsErr) {
+            console.error('Failed to auto-generate post-consultation items:', itemsErr);
+          }
         } catch (recordErr) {
           console.error('Failed to auto-generate medical record:', recordErr);
         }
@@ -3301,6 +3359,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
             notes: aiSummary,
             vitalSigns: {},
           });
+
+          // Auto-generate post-consultation items on complete
+          try {
+            const clinicalData = `${updatedNotes}\n${allNotes}`;
+            const itemsPrompt = `Com base nos dados da teleconsulta abaixo, extraia TODOS os itens pós-consulta em formato JSON. Para cada item, retorne um objeto com: type ("prescription"|"exam"|"referral"|"followup"), title (nome curto), description (descrição clínica detalhada), details (objeto JSON com dados específicos), patientSummary (explicação em linguagem acessível para o paciente).
+
+Para prescrições (prescription): details deve conter { medications: [{ name, dosage, frequency, duration, route, instructions }] }
+Para exames (exam): details deve conter { exams: [{ name, type, urgency, justification }] }
+Para encaminhamentos (referral): details deve conter { specialty, reason, urgency, notes }
+Para retornos (followup): details deve conter { suggestedDate, reason, instructions }
+
+Retorne APENAS um array JSON válido. Se não houver itens, retorne [].
+
+Dados da consulta:
+${clinicalData}`;
+            const itemsJson = await geminiService.generateText(itemsPrompt, 'Você é um assistente médico que extrai dados estruturados de prontuários. Retorne APENAS JSON válido, sem markdown.');
+            const cleanJson = itemsJson.replace(/```json?\s*/g, '').replace(/```\s*/g, '').trim();
+            const parsedItems = JSON.parse(cleanJson);
+            if (Array.isArray(parsedItems)) {
+              for (const item of parsedItems) {
+                await storage.createPostConsultationItem({
+                  consultationId: consultation.id,
+                  patientId: consultation.patientId!,
+                  doctorId: consultation.doctorId || req.user.id,
+                  type: item.type || 'prescription',
+                  title: item.title || 'Item pós-consulta',
+                  description: item.description || '',
+                  details: item.details || {},
+                  status: 'pending_review',
+                  patientSummary: item.patientSummary || '',
+                  reviewNotes: null,
+                  aiAnalysis: null,
+                  reviewedAt: null,
+                });
+              }
+              console.log(`✅ Auto-generated ${parsedItems.length} post-consultation items on completion`);
+            }
+          } catch (itemsErr) {
+            console.error('Failed to auto-generate post-consultation items on completion:', itemsErr);
+          }
         } catch (recordErr) {
           console.error('Failed to auto-generate medical record on completion:', recordErr);
         }
@@ -5767,6 +5865,213 @@ DIRETRIZES DE REFERÊNCIA: Baseie suas respostas nas diretrizes da OMS, Protocol
       next();
     };
   };
+
+  // ===== POST-CONSULTATION REVIEW API ROUTES =====
+
+  app.get('/api/post-consultation/pending', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos' });
+      }
+      const items = await storage.getPendingPostConsultationItems(req.user.id);
+      res.json(items);
+    } catch (error) {
+      console.error('Error fetching pending items:', error);
+      res.status(500).json({ message: 'Erro ao buscar itens pendentes' });
+    }
+  });
+
+  app.get('/api/post-consultation/:consultationId/items', requireAuth, async (req: any, res) => {
+    try {
+      const items = await storage.getPostConsultationItemsByConsultation(req.params.consultationId);
+      res.json(items);
+    } catch (error) {
+      console.error('Error fetching consultation items:', error);
+      res.status(500).json({ message: 'Erro ao buscar itens da consulta' });
+    }
+  });
+
+  app.get('/api/post-consultation/patient-items', requireAuth, async (req: any, res) => {
+    try {
+      const patient = await storage.getPatientByUserId(req.user.id);
+      if (!patient) {
+        return res.json([]);
+      }
+      const items = await storage.getPostConsultationItemsByPatient(patient.id);
+      const visibleItems = items.filter(i => i.status === 'approved' || i.status === 'signed');
+      res.json(visibleItems);
+    } catch (error) {
+      console.error('Error fetching patient items:', error);
+      res.status(500).json({ message: 'Erro ao buscar itens' });
+    }
+  });
+
+  app.post('/api/post-consultation/items/:id/review', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos' });
+      }
+      const { action, reviewNotes } = req.body;
+      if (!['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ message: 'Ação inválida' });
+      }
+
+      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      const updated = await storage.updatePostConsultationItem(req.params.id, {
+        status: newStatus,
+        reviewNotes: reviewNotes || null,
+        reviewedAt: new Date(),
+      });
+
+      if (!updated) {
+        return res.status(404).json({ message: 'Item não encontrado' });
+      }
+
+      if (action === 'approve' && updated.patientId) {
+        try {
+          const patient = await storage.getPatient(updated.patientId);
+          if (patient?.userId) {
+            await db.insert(pendingNotifications).values({
+              userId: patient.userId,
+              type: 'prescription_approved',
+              title: `${updated.type === 'prescription' ? 'Prescrição' : updated.type === 'exam' ? 'Exame' : updated.type === 'referral' ? 'Encaminhamento' : 'Retorno'} aprovado`,
+              message: updated.patientSummary || updated.title,
+              priority: 'medium',
+              actionUrl: '/my-consultations',
+              delivered: false,
+              read: false,
+              metadata: { itemId: updated.id, type: updated.type }
+            });
+          }
+        } catch (notifErr) {
+          console.error('Failed to send approval notification:', notifErr);
+        }
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error('Error reviewing item:', error);
+      res.status(500).json({ message: 'Erro ao revisar item' });
+    }
+  });
+
+  app.post('/api/post-consultation/items/:id/analyze', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos' });
+      }
+
+      const items = await storage.getPostConsultationItemsByConsultation(req.body.consultationId || '');
+      const item = items.find(i => i.id === req.params.id);
+      if (!item) {
+        const allPending = await storage.getPendingPostConsultationItems(req.user.id);
+        const found = allPending.find(i => i.id === req.params.id);
+        if (!found) {
+          return res.status(404).json({ message: 'Item não encontrado' });
+        }
+        Object.assign(item || {}, found);
+      }
+
+      const targetItem = item || (await storage.getPendingPostConsultationItems(req.user.id)).find(i => i.id === req.params.id);
+      if (!targetItem) {
+        return res.status(404).json({ message: 'Item não encontrado' });
+      }
+
+      const patient = await storage.getPatient(targetItem.patientId);
+      const allConsultItems = await storage.getPostConsultationItemsByConsultation(targetItem.consultationId);
+      const allMedications = allConsultItems
+        .filter(i => i.type === 'prescription' && i.details)
+        .flatMap(i => (i.details as any)?.medications || []);
+
+      let analysisPrompt = '';
+      if (targetItem.type === 'prescription') {
+        const meds = (targetItem.details as any)?.medications || [];
+        const medNames = meds.map((m: any) => `${m.name} ${m.dosage}`).join(', ');
+        const otherMeds = allMedications.filter((m: any) => !meds.some((tm: any) => tm.name === m.name));
+        analysisPrompt = `Analise a seguinte prescrição médica e retorne um JSON com a análise:
+
+Medicamentos prescritos: ${medNames}
+Outros medicamentos na mesma consulta: ${otherMeds.map((m: any) => m.name).join(', ') || 'Nenhum'}
+Paciente: ${patient?.name || 'Não identificado'}, ${patient?.dateOfBirth ? `Nascimento: ${patient.dateOfBirth}` : ''}
+
+Retorne JSON com:
+{
+  "drugInteractions": [{ "drugs": ["med1", "med2"], "severity": "alta|média|baixa", "description": "descrição da interação" }],
+  "contraindications": [{ "drug": "nome", "condition": "condição", "risk": "descrição" }],
+  "adverseEffects": [{ "drug": "nome", "effects": ["efeito1", "efeito2"], "frequency": "comum|raro" }],
+  "efficacy": { "percentage": 85, "evidence": "descrição do nível de evidência" },
+  "alternatives": [{ "drug": "alternativa", "advantage": "vantagem", "disadvantage": "desvantagem" }],
+  "recommendations": "recomendações gerais baseadas em diretrizes OMS e Ministério da Saúde do Brasil"
+}`;
+      } else if (targetItem.type === 'exam') {
+        const exams = (targetItem.details as any)?.exams || [];
+        analysisPrompt = `Analise os seguintes exames solicitados e retorne JSON:
+
+Exames: ${exams.map((e: any) => e.name).join(', ')}
+Paciente: ${patient?.name || 'Não identificado'}
+
+Retorne JSON com:
+{
+  "examAnalysis": [{ "exam": "nome", "purpose": "finalidade", "preparation": "preparo necessário", "expectedResults": "o que avaliar" }],
+  "alternatives": [{ "exam": "alternativa", "advantage": "vantagem", "cost": "custo relativo" }],
+  "urgencyAssessment": "avaliação de urgência",
+  "recommendations": "recomendações baseadas em protocolos do Ministério da Saúde"
+}`;
+      } else {
+        analysisPrompt = `Analise o seguinte item pós-consulta e retorne JSON com avaliação clínica:
+
+Tipo: ${targetItem.type}
+Título: ${targetItem.title}
+Descrição: ${targetItem.description}
+
+Retorne JSON com:
+{
+  "assessment": "avaliação geral",
+  "recommendations": "recomendações",
+  "alternatives": [{ "option": "alternativa", "rationale": "justificativa" }],
+  "priority": "alta|média|baixa"
+}`;
+      }
+
+      const aiResponse = await geminiService.generateText(analysisPrompt, 'Você é um farmacêutico clínico e médico especialista em interações medicamentosas. Baseie sua análise nas diretrizes da OMS, ANVISA, e Ministério da Saúde do Brasil. Retorne APENAS JSON válido.');
+      const cleanResponse = aiResponse.replace(/```json?\s*/g, '').replace(/```\s*/g, '').trim();
+      const analysis = JSON.parse(cleanResponse);
+
+      await storage.updatePostConsultationItem(req.params.id, { aiAnalysis: analysis });
+
+      res.json(analysis);
+    } catch (error) {
+      console.error('Error analyzing item:', error);
+      res.status(500).json({ message: 'Erro na análise. Tente novamente.' });
+    }
+  });
+
+  app.post('/api/post-consultation/bulk-review', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos' });
+      }
+      const { itemIds, action, reviewNotes } = req.body;
+      if (!Array.isArray(itemIds) || !['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ message: 'Dados inválidos' });
+      }
+
+      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      const results = [];
+      for (const id of itemIds) {
+        const updated = await storage.updatePostConsultationItem(id, {
+          status: newStatus,
+          reviewNotes: reviewNotes || null,
+          reviewedAt: new Date(),
+        });
+        if (updated) results.push(updated);
+      }
+      res.json({ updated: results.length, items: results });
+    } catch (error) {
+      console.error('Error bulk reviewing:', error);
+      res.status(500).json({ message: 'Erro na revisão em lote' });
+    }
+  });
 
   // ===== DOCTOR OFFICE (CONSULTÓRIO) API ROUTES =====
   

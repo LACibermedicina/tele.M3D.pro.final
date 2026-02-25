@@ -21,7 +21,8 @@ import {
   type ConsultationSession, type InsertConsultationSession,
   type ClinicalAsset, type InsertClinicalAsset,
   type PatientChatThread, type InsertPatientChatThread,
-  type DoctorNote, type InsertDoctorNote
+  type DoctorNote, type InsertDoctorNote,
+  postConsultationItems, type PostConsultationItem, type InsertPostConsultationItem
 } from "@shared/schema";
 
 export type ErrorLog = typeof errorLogs.$inferSelect;
@@ -1945,6 +1946,40 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(patientChatThreads)
       .set({ ...thread, updatedAt: sql`now()` })
       .where(eq(patientChatThreads.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async createPostConsultationItem(item: InsertPostConsultationItem): Promise<PostConsultationItem> {
+    const [created] = await db.insert(postConsultationItems).values(item).returning();
+    return created;
+  }
+
+  async getPostConsultationItemsByConsultation(consultationId: string): Promise<PostConsultationItem[]> {
+    return db.select().from(postConsultationItems)
+      .where(eq(postConsultationItems.consultationId, consultationId))
+      .orderBy(desc(postConsultationItems.createdAt));
+  }
+
+  async getPostConsultationItemsByPatient(patientId: string): Promise<PostConsultationItem[]> {
+    return db.select().from(postConsultationItems)
+      .where(eq(postConsultationItems.patientId, patientId))
+      .orderBy(desc(postConsultationItems.createdAt));
+  }
+
+  async getPendingPostConsultationItems(doctorId: string): Promise<PostConsultationItem[]> {
+    return db.select().from(postConsultationItems)
+      .where(and(
+        eq(postConsultationItems.doctorId, doctorId),
+        eq(postConsultationItems.status, 'pending_review')
+      ))
+      .orderBy(desc(postConsultationItems.createdAt));
+  }
+
+  async updatePostConsultationItem(id: string, data: Partial<InsertPostConsultationItem>): Promise<PostConsultationItem | undefined> {
+    const [updated] = await db.update(postConsultationItems)
+      .set(data)
+      .where(eq(postConsultationItems.id, id))
       .returning();
     return updated || undefined;
   }
