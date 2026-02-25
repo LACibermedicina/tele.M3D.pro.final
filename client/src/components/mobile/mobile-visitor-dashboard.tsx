@@ -93,21 +93,23 @@ export function MobileVisitorDashboard({ onOpenIAM3D }: MobileVisitorDashboardPr
         </CardContent>
       </Card>
 
-      <Card className="shadow-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30 border-purple-200 dark:border-purple-700">
-        <CardContent className="p-6 text-center space-y-4">
-          <Brain className="w-12 h-12 mx-auto text-purple-600 dark:text-purple-400" />
-          <h2 className="text-lg font-semibold text-purple-800 dark:text-purple-300">Assistente de Voz IAM3D</h2>
-          <p className="text-sm text-purple-600 dark:text-purple-400">Converse por voz com nosso assistente</p>
-          <Button
-            className="w-full h-14 bg-purple-600 hover:bg-purple-700 text-white text-base"
-            onClick={onOpenIAM3D}
-            aria-label="Abrir assistente de voz IAM3D"
-          >
-            <Brain className="w-5 h-5 mr-3" />
-            Falar com IAM3D
-          </Button>
-        </CardContent>
-      </Card>
+      {localStorage.getItem('voice_assistant_preference') === 'enabled' && (
+        <Card className="shadow-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30 border-purple-200 dark:border-purple-700">
+          <CardContent className="p-6 text-center space-y-4">
+            <Brain className="w-12 h-12 mx-auto text-purple-600 dark:text-purple-400" />
+            <h2 className="text-lg font-semibold text-purple-800 dark:text-purple-300">Assistente de Voz IAM3D</h2>
+            <p className="text-sm text-purple-600 dark:text-purple-400">Converse por voz com nosso assistente</p>
+            <Button
+              className="w-full h-14 bg-purple-600 hover:bg-purple-700 text-white text-base"
+              onClick={onOpenIAM3D}
+              aria-label="Abrir assistente de voz IAM3D"
+            >
+              <Brain className="w-5 h-5 mr-3" />
+              Falar com IAM3D
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="shadow-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border-green-200 dark:border-green-700">
         <CardContent className="p-6 space-y-4">

@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { MessageCircle, X, Send, Brain, Calendar, Stethoscope, Minimize2, Maximize2, ClipboardList, Users, Activity, FileText, HeartPulse, BarChart3, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { MessageCircle, X, Send, Brain, Calendar, Stethoscope, Minimize2, Maximize2, ClipboardList, Users, Activity, FileText, HeartPulse, BarChart3, Mic, MicOff, Volume2, VolumeX, AudioLines } from 'lucide-react';
 
 interface SuggestedAppointment {
   dateIso: string;
@@ -71,8 +71,28 @@ export default function FloatingChatbot() {
   const [currentMessage, setCurrentMessage] = useState('');
   const [activeInterviewId, setActiveInterviewId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
-  const [ttsEnabled, setTtsEnabled] = useState(true);
+  const [ttsEnabled, setTtsEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('voice_assistant_preference');
+      return saved === 'enabled';
+    }
+    return false;
+  });
   const [voiceSupported, setVoiceSupported] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('voice_assistant_preference');
+      return saved === 'enabled';
+    }
+    return false;
+  });
+  const [showVoicePrompt, setShowVoicePrompt] = useState(false);
+  const [voicePromptShown, setVoicePromptShown] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('voice_assistant_preference') !== null;
+    }
+    return false;
+  });
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
 
@@ -137,6 +157,32 @@ export default function FloatingChatbot() {
     };
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      setVoiceEnabled(true);
+      setVoicePromptShown(true);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (isOpen && !user && !voicePromptShown) {
+      setShowVoicePrompt(true);
+    }
+  }, [isOpen, user, voicePromptShown]);
+
+  const handleVoicePreference = (enabled: boolean) => {
+    setVoiceEnabled(enabled);
+    setTtsEnabled(enabled);
+    setVoicePromptShown(true);
+    setShowVoicePrompt(false);
+    localStorage.setItem('voice_assistant_preference', enabled ? 'enabled' : 'disabled');
+    if (!enabled && synthRef.current) {
+      synthRef.current.cancel();
+    }
+  };
+
+  const isVoiceActive = user ? true : voiceEnabled;
+
   const toggleListening = () => {
     if (!recognitionRef.current) return;
     if (isListening) {
@@ -150,7 +196,7 @@ export default function FloatingChatbot() {
   };
 
   const speakText = (text: string) => {
-    if (!synthRef.current || !ttsEnabled) return;
+    if (!synthRef.current || !ttsEnabled || !isVoiceActive) return;
     synthRef.current.cancel();
     const cleanText = text
       .replace(/[📅🔑👋⚠️✅🩺📊📋🎯💡🚨⚡🔴🟠🟡🟢🔵]/g, '')
@@ -398,22 +444,63 @@ export default function FloatingChatbot() {
     };
   };
 
+  const voicePromptDialog = (
+    <Dialog open={showVoicePrompt} onOpenChange={setShowVoicePrompt}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            <AudioLines className="w-5 h-5 text-primary" />
+            Assistente de Voz
+          </DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground pt-2">
+            Deseja ativar o assistente de voz? Com ele, você pode falar com o assistente usando o microfone e ouvir as respostas em áudio.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3 pt-4">
+          <Button
+            onClick={() => handleVoicePreference(true)}
+            className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-700 text-white"
+          >
+            <Volume2 className="w-4 h-4 mr-2" />
+            Sim, ativar voz
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleVoicePreference(false)}
+            className="w-full"
+          >
+            <VolumeX className="w-4 h-4 mr-2" />
+            Não, apenas texto
+          </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            Você pode alterar essa preferência a qualquer momento.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   if (!isOpen) {
     return (
-      <div className="fixed bottom-6 right-6 z-50">
-        <Button
-          onClick={() => setIsOpen(true)}
-          size="sm"
-          className="rounded-full w-10 h-10 p-0 hover:scale-105 transition-transform bg-gradient-to-br from-primary/90 to-medical-primary/90 hover:from-primary hover:to-medical-primary border-2 border-gray-800 dark:border-gray-700 shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
-          data-testid="button-open-chatbot"
-        >
-          <MessageCircle className="w-5 h-5 text-white" />
-        </Button>
-      </div>
+      <>
+        {voicePromptDialog}
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button
+            onClick={() => setIsOpen(true)}
+            size="sm"
+            className="rounded-full w-10 h-10 p-0 hover:scale-105 transition-transform bg-gradient-to-br from-primary/90 to-medical-primary/90 hover:from-primary hover:to-medical-primary border-2 border-gray-800 dark:border-gray-700 shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
+            data-testid="button-open-chatbot"
+          >
+            <MessageCircle className="w-5 h-5 text-white" />
+          </Button>
+        </div>
+      </>
     );
   }
 
   return (
+    <>
+    {voicePromptDialog}
     <div className="fixed bottom-20 right-6 z-50">
       <Card className={`w-96 shadow-xl border-2 border-white/20 dark:border-gray-700 backdrop-blur-sm ${isMinimized ? 'h-16' : 'h-[500px]'} transition-all duration-300`}>
         <CardHeader className="pb-3 border-b bg-gradient-to-r from-primary to-medical-primary text-white rounded-t-lg">
@@ -427,19 +514,21 @@ export default function FloatingChatbot() {
               </CardTitle>
             </div>
             <div className="flex items-center space-x-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setTtsEnabled(!ttsEnabled);
-                  if (ttsEnabled && synthRef.current) synthRef.current.cancel();
-                }}
-                className="text-white hover:bg-white/20 w-8 h-8 p-0"
-                title={ttsEnabled ? 'Desativar voz' : 'Ativar voz'}
-                data-testid="button-toggle-tts"
-              >
-                {ttsEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-              </Button>
+              {isVoiceActive && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setTtsEnabled(!ttsEnabled);
+                    if (ttsEnabled && synthRef.current) synthRef.current.cancel();
+                  }}
+                  className="text-white hover:bg-white/20 w-8 h-8 p-0"
+                  title={ttsEnabled ? 'Desativar voz' : 'Ativar voz'}
+                  data-testid="button-toggle-tts"
+                >
+                  {ttsEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -568,7 +657,7 @@ export default function FloatingChatbot() {
             {/* Input Area */}
             <div className="border-t p-3">
               <div className="flex space-x-1.5">
-                {voiceSupported && (
+                {voiceSupported && isVoiceActive && (
                   <Button
                     onClick={toggleListening}
                     size="sm"
@@ -775,5 +864,6 @@ export default function FloatingChatbot() {
         )}
       </Card>
     </div>
+    </>
   );
 }
