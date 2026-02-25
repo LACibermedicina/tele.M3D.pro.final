@@ -6955,7 +6955,7 @@ IMPORTANTE: Responda APENAS com JSON válido, sem markdown, sem blocos de códig
 Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "standard", "non_urgent"`;
 
         const aiResponse = await Promise.race([
-          geminiService.generateText(triagePrompt),
+          geminiService.generateText(triagePrompt, 'Você é um médico triagista especializado no Protocolo de Manchester e diretrizes OMS/Ministério da Saúde do Brasil. Classifique o risco clínico com precisão e forneça análise detalhada em português brasileiro.'),
           new Promise<string>((_, reject) => setTimeout(() => reject(new Error('AI_TIMEOUT')), 30000))
         ]);
         
@@ -10649,10 +10649,17 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
   });
 
   // Get prescriptions for a patient
-  app.get('/api/patients/:patientId/prescriptions', requireAuth, async (req, res) => {
+  app.get('/api/patients/:patientId/prescriptions', requireAuth, async (req: any, res) => {
     try {
       const { patientId } = req.params;
       const { status, limit = '10' } = req.query;
+      
+      if (req.user.role === 'patient') {
+        const patientRecord = await db.select().from(patients).where(eq(patients.userId, req.user.id)).limit(1);
+        if (!patientRecord.length || patientRecord[0].id !== patientId) {
+          return res.status(403).json({ message: 'Acesso negado' });
+        }
+      }
       
       const prescriptionList = await db.select({
         id: prescriptions.id,
