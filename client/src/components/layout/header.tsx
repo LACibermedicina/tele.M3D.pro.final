@@ -9,7 +9,7 @@ import LanguageSelector from "@/components/ui/language-selector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines, ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { formatErrorForToast } from "@/lib/error-handler";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -355,6 +355,7 @@ export default function Header() {
       items: [
         { path: "/whatsapp", label: "WhatsApp IA", icon: MessageCircle, faIcon: "fab fa-whatsapp", roles: ["admin", "doctor"] },
         { path: "/medical-references", label: "Referências Médicas", icon: BookOpenCheck, faIcon: "fas fa-file-pdf", roles: ["admin", "doctor"] },
+        { path: "/coffee-room", label: "Cafeteria Virtual", icon: Coffee, faIcon: "fas fa-mug-hot", roles: ["doctor"] },
       ],
     },
     {
@@ -439,9 +440,7 @@ export default function Header() {
                     >
                       <Menu 
                         className={`h-5 w-5 transition-all duration-300 ${getTextColor()}`}
-                        style={{
-                          filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
-                        }}
+                        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
                       />
                     </Button>
                   </SheetTrigger>
@@ -589,11 +588,11 @@ export default function Header() {
                     style={{ 
                       filter: isAuthenticatedPage 
                         ? (isScrolled 
-                            ? 'brightness(0) invert(1)' 
-                            : 'brightness(0) invert(0)')
+                            ? 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))' 
+                            : 'brightness(0) invert(0) drop-shadow(0 2px 6px rgba(0,0,0,0.25))')
                         : (isScrolled 
-                            ? 'brightness(0) invert(1)' 
-                            : 'brightness(0) invert(1) drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
+                            ? 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))' 
+                            : 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))')
                     }}
                   />
                   {/* Dark mode override for authenticated pages when not scrolled */}
@@ -639,68 +638,122 @@ export default function Header() {
             )}
           </div>
 
-          {/* Desktop Navigation - Grouped by functional area */}
+          {/* Desktop Navigation - Grouped by functional area with dropdown menus */}
           <TooltipProvider>
             <nav className="hidden md:flex items-center space-x-1" data-testid="nav-main">
-              {filteredGroups.map((group, groupIdx) => (
-                <div key={group.category} className="flex items-center">
-                  {groupIdx > 0 && (
-                    <div className={`mx-1 h-6 w-px ${isAuthenticatedPage ? 'bg-border/50' : (isScrolled ? 'bg-white/20' : 'bg-white/15')}`} />
-                  )}
-                  <div className="flex items-center space-x-1">
-                    {group.items.map((item) => {
-                      const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
-                      const IconComponent = item.icon;
-                      const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
-                      
-                      return (
-                        <Tooltip key={item.path}>
-                          <TooltipTrigger asChild>
-                            <Link
-                              href={item.path}
-                              data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}
+              {filteredGroups.map((group, groupIdx) => {
+                const groupHasActive = group.items.some(item => location === item.path || (location === "/" && item.path === "/dashboard"));
+                const groupHasBadge = group.items.some(item => item.path === '/post-consultation-review' && pendingPostCount > 0);
+                const FirstIcon = group.items[0]?.icon;
+
+                if (group.items.length === 1) {
+                  const item = group.items[0];
+                  const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                  const IconComponent = item.icon;
+                  return (
+                    <div key={group.category} className="flex items-center">
+                      {groupIdx > 0 && (
+                        <div className={`mx-1 h-6 w-px ${isAuthenticatedPage ? 'bg-border/50' : (isScrolled ? 'bg-white/20' : 'bg-white/15')}`} />
+                      )}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Link href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={`icon-link-primary group w-9 h-9 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg ${
+                                isActive ? "text-white shadow-md" : `${getTextColor()} hover:bg-primary/10`
+                              }`}
+                              style={{
+                                background: isActive ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" : "transparent"
+                              }}
                             >
-                              <div className="relative">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className={`icon-link-primary group w-9 h-9 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg ${
-                                    isActive
-                                      ? "text-white shadow-md"
-                                      : `${getTextColor()} hover:bg-primary/10`
-                                  }`}
-                                  style={{
-                                    background: isActive
-                                      ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)"
-                                      : "transparent"
-                                  }}
-                                >
-                                  <IconComponent 
-                                    className={`h-4.5 w-4.5 transition-all duration-300 ${isActive ? 'text-white' : getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
-                                    style={{
-                                      filter: isActive 
-                                        ? 'drop-shadow(0 2px 8px rgba(255,255,255,0.3))'
-                                        : (isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'))
-                                    }}
+                              <IconComponent 
+                                className={`h-4.5 w-4.5 transition-all duration-300 ${isActive ? 'text-white' : getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
+                                style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+                              />
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
+                          <p className="text-white">{item.label}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={group.category} className="flex items-center">
+                    {groupIdx > 0 && (
+                      <div className={`mx-1 h-6 w-px ${isAuthenticatedPage ? 'bg-border/50' : (isScrolled ? 'bg-white/20' : 'bg-white/15')}`} />
+                    )}
+                    <DropdownMenu>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className={`icon-link-primary group h-9 px-2 rounded-lg transition-all duration-300 hover:scale-105 hover:shadow-lg ${
+                                groupHasActive ? "text-white shadow-md" : `${getTextColor()} hover:bg-primary/10`
+                              }`}
+                              style={{
+                                background: groupHasActive ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" : "transparent"
+                              }}
+                              data-testid={`dropdown-nav-${group.category}`}
+                            >
+                              <div className="relative flex items-center gap-0.5">
+                                {FirstIcon && (
+                                  <FirstIcon 
+                                    className={`h-4.5 w-4.5 transition-all duration-300 ${groupHasActive ? 'text-white' : getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
+                                    style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
                                   />
-                                </Button>
-                                {hasBadge && (
-                                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-md animate-pulse">
+                                )}
+                                <ChevronDown className={`h-3 w-3 transition-all duration-300 ${groupHasActive ? 'text-white/70' : getTextColor()} opacity-60`} />
+                                {groupHasBadge && (
+                                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-md animate-pulse">
                                     {pendingPostCount > 9 ? '9+' : pendingPostCount}
                                   </span>
                                 )}
                               </div>
-                            </Link>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
-                            <p className="text-white">{item.label}{hasBadge ? ` (${pendingPostCount})` : ''}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      );
-                    })}
+                            </Button>
+                          </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
+                          <p className="text-white">{group.label}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <DropdownMenuContent align="center" className="w-56 bg-background/95 backdrop-blur-lg border-primary/20 shadow-2xl">
+                        <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                          {group.label}
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {group.items.map((item) => {
+                          const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                          const IconComponent = item.icon;
+                          const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
+                          return (
+                            <DropdownMenuItem
+                              key={item.path}
+                              onClick={() => navigate(item.path)}
+                              className={`cursor-pointer py-2.5 px-3 transition-all ${isActive ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-primary/5'}`}
+                              data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}
+                            >
+                              <IconComponent className={`mr-3 h-4 w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))' }} />
+                              <span className="flex-1">{item.label}</span>
+                              {hasBadge && (
+                                <span className="ml-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                  {pendingPostCount > 9 ? '9+' : pendingPostCount}
+                                </span>
+                              )}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </nav>
           </TooltipProvider>
 
@@ -718,9 +771,7 @@ export default function Header() {
                     >
                       <Zap 
                         className={`h-5 w-5 transition-all duration-300 ${getTextColor()} group-hover:text-white group-hover:drop-shadow-[0_2px_12px_rgba(251,191,36,1)]`}
-                        style={{
-                          filter: isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))')
-                        }}
+                        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
                       />
                     </Button>
                   </DropdownMenuTrigger>
@@ -818,18 +869,6 @@ export default function Header() {
                       <div>
                         <p className="font-semibold text-blue-600 dark:text-blue-400">Abrir Consultório</p>
                         <p className="text-xs text-muted-foreground">Sala de atendimento</p>
-                      </div>
-                    </DropdownMenuItem>
-                    
-                    <DropdownMenuItem 
-                      onClick={() => navigate('/coffee-room')}
-                      className="cursor-pointer hover:bg-amber-500/10 py-3"
-                      data-testid="menu-coffee-room"
-                    >
-                      <Coffee className="mr-3 h-5 w-5 text-amber-600" />
-                      <div>
-                        <p className="font-semibold">Cafeteria Virtual</p>
-                        <p className="text-xs text-muted-foreground">Área de descanso</p>
                       </div>
                     </DropdownMenuItem>
                   </>
@@ -997,11 +1036,7 @@ export default function Header() {
                     >
                       <Shield 
                         className="h-5 w-5 text-white group-hover:drop-shadow-[0_2px_12px_rgba(59,130,246,0.8)] transition-all duration-300" 
-                        style={{
-                          filter: isScrolled 
-                            ? 'none' 
-                            : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
-                        }}
+                        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
                       />
                     </Button>
                   </TooltipTrigger>
@@ -1028,11 +1063,7 @@ export default function Header() {
                     >
                       <Ambulance 
                         className="h-5 w-5 text-white group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)] transition-all duration-300" 
-                        style={{
-                          filter: isScrolled 
-                            ? 'none' 
-                            : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
-                        }}
+                        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
                       />
                     </Button>
                   </TooltipTrigger>
@@ -1052,11 +1083,7 @@ export default function Header() {
                     >
                       <UserPlus 
                         className="h-5 w-5 text-white group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300" 
-                        style={{
-                          filter: isScrolled 
-                            ? 'none' 
-                            : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
-                        }}
+                        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
                       />
                     </Button>
                   </TooltipTrigger>
