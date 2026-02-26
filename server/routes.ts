@@ -16,6 +16,7 @@ import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
 import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations } from "@shared/schema";
 import { creditService } from "./services/credit-service";
+import { searchExternalMedications } from "./services/medication-search";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNotNull, inArray, gte, lte } from "drizzle-orm";
@@ -12984,6 +12985,32 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     } catch (error) {
       console.error('Get medications error:', error);
       res.status(500).json({ message: 'Failed to get medications' });
+    }
+  });
+
+  app.get('/api/medications/search-external', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'doctor' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Only doctors and admins can search external databases' });
+      }
+
+      const { term, locale = 'BR', limit = '20' } = req.query;
+
+      if (!term || typeof term !== 'string' || term.trim().length < 2) {
+        return res.json({ results: [], sources: [] });
+      }
+
+      const searchLocale = typeof locale === 'string' ? locale : 'BR';
+      const searchLimit = Math.min(parseInt(String(limit), 10) || 20, 50);
+
+      const searchResults = await searchExternalMedications(term.trim(), searchLocale, searchLimit);
+
+      console.log(`[MED-SEARCH] Query: "${term}" | Locale: ${searchLocale} | Results: ${searchResults.results.length} | Sources: ${searchResults.sources.join(', ')}`);
+
+      res.json(searchResults);
+    } catch (error) {
+      console.error('External medication search error:', error);
+      res.status(500).json({ message: 'Failed to search external medication databases' });
     }
   });
 

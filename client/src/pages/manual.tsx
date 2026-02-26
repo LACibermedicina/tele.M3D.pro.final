@@ -560,6 +560,7 @@ Os prontuários são acessíveis durante teleconsultas, permitindo consulta em t
         text: `O módulo de prescrições oferece:
 
 - **Criação Manual**: Adicione medicamentos com dosagem, via, frequência e duração
+- **Busca em Bases Externas**: Pesquise medicamentos em RxNorm (NIH), OpenFDA e ANVISA/RENAME com seletor de localidade (Brasil, EUA, Global)
 - **Auto-Geração por IA**: Prescrições sugeridas automaticamente após consultas
 - **Templates**: Use modelos pré-definidos para prescrições comuns
 - **PDF com Assinatura Digital**: Gere PDF da prescrição com sua assinatura digital

@@ -522,6 +522,7 @@ export function generateSystemDocumentationHTML(): string {
   <li><strong>Encaminhamentos:</strong> Referências para especialistas quando necessário</li>
   <li><strong>Follow-up:</strong> Orientações de acompanhamento para o paciente</li>
   <li><strong>Interações Medicamentosas:</strong> Análise automática de conflitos antes da prescrição</li>
+  <li><strong>Busca em Bases Externas:</strong> Pesquisa integrada em RxNorm (NIH), OpenFDA e ANVISA/RENAME com seletor de localidade (Brasil, EUA, Global)</li>
 </ul>
 
 <h4>Classificação Diagnóstica</h4>

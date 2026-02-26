@@ -183,7 +183,7 @@ export default function Documentation() {
         {
           title: "Prescrições e Fluxo Pós-Consulta",
           description: "Emissão de receitas com assinatura digital, análise de interações e workflow pós-consulta com IA",
-          features: ["Assinatura digital FIPS", "PDF com QR Code verificação", "Análise de interações medicamentosas", "Fluxo pós-consulta automatizado"]
+          features: ["Assinatura digital FIPS", "PDF com QR Code verificação", "Análise de interações medicamentosas", "Fluxo pós-consulta automatizado", "Busca em bases externas (RxNorm, OpenFDA, ANVISA/RENAME)"]
         },
         {
           title: "Resultados de Exames",

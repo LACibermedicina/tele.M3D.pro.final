@@ -150,7 +150,12 @@ const faqData: FaqItem[] = [
   {
     category: "Prescrições",
     question: "Como criar uma prescrição digital?",
-    answer: "Em 'Prescrições', clique em 'Nova Prescrição', selecione o paciente, adicione medicamentos com dosagens e instruções. A prescrição recebe um número único e pode ser exportada em PDF com assinatura digital."
+    answer: "Em 'Prescrições', clique em 'Nova Prescrição', selecione o paciente, adicione medicamentos com dosagens e instruções. Você pode buscar medicamentos na base local ou pesquisar em bases externas (RxNorm, OpenFDA, ANVISA/RENAME) com seletor de localidade (Brasil, EUA, Global). A prescrição recebe um número único e pode ser exportada em PDF com assinatura digital."
+  },
+  {
+    category: "Prescrições",
+    question: "Como funciona a busca de medicamentos em bases externas?",
+    answer: "Na criação de prescrições, o campo 'Buscar Base de Dados' permite pesquisar medicamentos em bases oficiais: ANVISA/RENAME (Brasil, 50+ medicamentos comuns), RxNorm (base americana NIH) e OpenFDA (FDA americana). O sistema prioriza a base conforme o locale selecionado (Brasil → ANVISA primeiro, EUA → FDA primeiro). Os resultados mostram nome, princípio ativo, dosagem e fonte."
   },
   {
     category: "Prescrições",

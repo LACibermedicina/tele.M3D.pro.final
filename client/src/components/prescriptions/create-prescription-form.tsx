@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,11 +12,27 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Plus, Trash2, AlertTriangle, Activity, TrendingUp, Loader2 } from 'lucide-react';
+import { Search, Plus, Trash2, AlertTriangle, Activity, TrendingUp, Loader2, Database, Globe } from 'lucide-react';
 import { formatErrorForToast } from '@/lib/error-handler';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+interface ExternalMedication {
+  externalId: string;
+  source: string;
+  name: string;
+  genericName: string;
+  activeIngredient: string;
+  dosageForm: string;
+  strength: string;
+  route: string;
+  category: string;
+  manufacturer: string;
+  registrationNumber: string;
+  requiresPrescription: boolean;
+}
 
 // Form validation schema
 const prescriptionFormSchema = z.object({
@@ -89,6 +105,11 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
   const [showInteractionDialog, setShowInteractionDialog] = useState(false);
   const [interactionAnalysis, setInteractionAnalysis] = useState<DrugInteractionAnalysis[]>([]);
   const [isCheckingInteractions, setIsCheckingInteractions] = useState(false);
+  const [externalSearchTerm, setExternalSearchTerm] = useState('');
+  const [externalResults, setExternalResults] = useState<ExternalMedication[]>([]);
+  const [externalSources, setExternalSources] = useState<string[]>([]);
+  const [isSearchingExternal, setIsSearchingExternal] = useState(false);
+  const [searchLocale, setSearchLocale] = useState('BR');
 
   const form = useForm<PrescriptionFormData>({
     resolver: zodResolver(prescriptionFormSchema),
@@ -134,6 +155,52 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
     patient.name.toLowerCase().includes(searchPatient.toLowerCase()) ||
     patient.phone.includes(searchPatient)
   );
+
+  const searchExternalDebounced = useCallback(
+    (() => {
+      let timer: ReturnType<typeof setTimeout>;
+      return (term: string) => {
+        clearTimeout(timer);
+        if (term.trim().length < 2) {
+          setExternalResults([]);
+          setExternalSources([]);
+          return;
+        }
+        timer = setTimeout(async () => {
+          setIsSearchingExternal(true);
+          try {
+            const res = await fetch(`/api/medications/search-external?term=${encodeURIComponent(term)}&locale=${searchLocale}&limit=15`);
+            if (res.ok) {
+              const data = await res.json();
+              setExternalResults(data.results || []);
+              setExternalSources(data.sources || []);
+            }
+          } catch (err) {
+            console.error('External search error:', err);
+          } finally {
+            setIsSearchingExternal(false);
+          }
+        }, 400);
+      };
+    })(),
+    [searchLocale]
+  );
+
+  useEffect(() => {
+    searchExternalDebounced(externalSearchTerm);
+  }, [externalSearchTerm, searchExternalDebounced]);
+
+  const selectExternalMedication = (med: ExternalMedication, index: number) => {
+    form.setValue(`items.${index}.customMedication`, `${med.name} (${med.genericName}) - ${med.strength} ${med.dosageForm}`);
+    form.setValue(`items.${index}.dosage`, med.strength || '');
+    form.setValue(`items.${index}.medicationId`, '');
+    setExternalSearchTerm('');
+    setExternalResults([]);
+    toast({
+      title: "Medicamento selecionado",
+      description: `${med.name} da base ${med.source}`,
+    });
+  };
 
   const addMedicationItem = () => {
     const currentItems = form.getValues('items');
@@ -457,12 +524,82 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
                       name={`items.${index}.customMedication`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Medicamento Personalizado</FormLabel>
+                          <FormLabel className="flex items-center gap-2">
+                            <Database className="h-3.5 w-3.5" />
+                            Buscar Base de Dados
+                            {externalSources.length > 0 && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                                {externalSources.join(' + ')}
+                              </Badge>
+                            )}
+                          </FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="Ou digite o nome do medicamento..."
-                              {...field}
-                            />
+                            <div className="space-y-2">
+                              <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                  <Input
+                                    placeholder="Buscar medicamento nas bases externas..."
+                                    value={externalSearchTerm || field.value || ''}
+                                    onChange={(e) => {
+                                      setExternalSearchTerm(e.target.value);
+                                      field.onChange(e.target.value);
+                                    }}
+                                    className="pl-9"
+                                  />
+                                  {isSearchingExternal && (
+                                    <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                                  )}
+                                </div>
+                                <Select value={searchLocale} onValueChange={setSearchLocale}>
+                                  <SelectTrigger className="w-[100px]">
+                                    <Globe className="h-3.5 w-3.5 mr-1" />
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="BR">Brasil</SelectItem>
+                                    <SelectItem value="US">EUA</SelectItem>
+                                    <SelectItem value="INT">Global</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              {externalResults.length > 0 && (
+                                <ScrollArea className="max-h-48 rounded-md border bg-popover">
+                                  <div className="p-1">
+                                    {externalResults.map((med) => (
+                                      <button
+                                        key={med.externalId}
+                                        type="button"
+                                        onClick={() => selectExternalMedication(med, index)}
+                                        className="w-full text-left px-3 py-2 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors text-sm"
+                                      >
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="min-w-0 flex-1">
+                                            <div className="font-medium truncate">{med.name}</div>
+                                            <div className="text-xs text-muted-foreground truncate">
+                                              {med.genericName} • {med.strength} • {med.dosageForm}
+                                            </div>
+                                            {med.activeIngredient && med.activeIngredient !== med.genericName && (
+                                              <div className="text-xs text-muted-foreground truncate">
+                                                Princípio ativo: {med.activeIngredient}
+                                              </div>
+                                            )}
+                                          </div>
+                                          <Badge variant="secondary" className="text-[10px] shrink-0 px-1.5 py-0">
+                                            {med.source.split(' ')[0]}
+                                          </Badge>
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </ScrollArea>
+                              )}
+                              {externalSearchTerm.length >= 2 && !isSearchingExternal && externalResults.length === 0 && (
+                                <p className="text-xs text-muted-foreground px-1">
+                                  Nenhum resultado encontrado. O texto digitado será usado como medicamento personalizado.
+                                </p>
+                              )}
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
