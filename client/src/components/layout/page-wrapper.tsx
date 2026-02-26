@@ -79,7 +79,6 @@ export default function PageWrapper({
     return (
       <div className={`min-h-screen ${variants[variant]} ${className}`}>
         <AnimatedOrigamiBackground />
-        {/* Imagem de origami como vetor no fundo */}
         {origamiImage && (
           <div 
             className="fixed inset-0 pointer-events-none z-[2]"

@@ -68,6 +68,7 @@ import FloatingChatbot from "@/components/ui/floating-chatbot";
 import CommandPalette from "@/components/command-palette";
 import QuickActionsBar from "@/components/quick-actions-bar";
 import { VoiceAssistantProvider } from "@/contexts/VoiceAssistantContext";
+import { LayoutSettingsProvider, useLayoutSettings } from "@/contexts/LayoutSettingsContext";
 import { VoiceAssistantPrompt } from "@/components/voice-assistant-prompt";
 import { VoiceAssistantOverlay } from "@/components/voice-assistant-overlay";
 
@@ -89,13 +90,19 @@ function Router() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { isCommandPaletteOpen, setIsCommandPaletteOpen } = useGlobalShortcuts();
+  const { mobileMenuStyle, sidebarCollapsed } = useLayoutSettings();
   
   // Enable command events and global shortcuts
   useCommandEvents();
   useApplicationShortcuts();
 
+  const sidebarMargin = mobileMenuStyle === 'sidebar' && user
+    ? (sidebarCollapsed ? 'md:ml-0 ml-[60px]' : 'md:ml-0 ml-64')
+    : '';
+  const bottomPadding = mobileMenuStyle === 'bottom' && user ? 'md:pb-0 pb-16' : '';
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen bg-background transition-all duration-300 ${sidebarMargin} ${bottomPadding}`}>
       {user && <UrgentAlertOverlay />}
       
       {/* Command Palette */}
@@ -502,13 +509,15 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <NavigationProvider>
-          <VoiceAssistantProvider>
-            <TooltipProvider>
-              <Toaster />
-              <InactivityMonitor />
-              <Router />
-            </TooltipProvider>
-          </VoiceAssistantProvider>
+          <LayoutSettingsProvider>
+            <VoiceAssistantProvider>
+              <TooltipProvider>
+                <Toaster />
+                <InactivityMonitor />
+                <Router />
+              </TooltipProvider>
+            </VoiceAssistantProvider>
+          </LayoutSettingsProvider>
         </NavigationProvider>
       </AuthProvider>
     </QueryClientProvider>

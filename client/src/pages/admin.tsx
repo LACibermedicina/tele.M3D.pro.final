@@ -1628,6 +1628,9 @@ export default function AdminPage() {
           </Dialog>
         </TabsContent>
 
+        {/* Layout & Theme Tab */}
+        <LayoutThemeTab />
+
         {/* Financial Management Tab */}
         <FinancialManagementTab />
 
@@ -1964,6 +1967,171 @@ const categoryLabels: Record<string, string> = {
   general: "Geral",
   pharmacy: "Farmácia",
 };
+
+function LayoutThemeTab() {
+  const { toast } = useToast();
+
+  const { data: layoutSettings, isLoading } = useQuery<any[]>({
+    queryKey: ['/api/layout-settings/public'],
+  });
+
+  const currentMobileMenuStyle = (() => {
+    if (!layoutSettings) return 'sidebar';
+    const s = layoutSettings.find((ls: any) => ls.settingKey === 'mobile_menu_style');
+    return s?.settingValue || 'sidebar';
+  })();
+
+  const saveSetting = useMutation({
+    mutationFn: async ({ key, value, type, category, description }: { key: string; value: string; type: string; category: string; description: string }) => {
+      await apiRequest('POST', '/api/admin/layout-settings', {
+        settingKey: key,
+        settingValue: value,
+        settingType: type,
+        category,
+        description,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/layout-settings/public'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/layout-settings'] });
+      toast({ title: 'Configuração salva', description: 'A configuração de layout foi atualizada.' });
+    },
+    onError: () => {
+      toast({ title: 'Erro', description: 'Não foi possível salvar a configuração.', variant: 'destructive' });
+    },
+  });
+
+  const menuStyles = [
+    {
+      value: 'sidebar',
+      label: 'Sidebar Lateral',
+      description: 'Menu lateral fixo que empurra o conteúdo. Pode ser expandido ou recolhido (somente ícones). Ideal para navegação rápida sem sobrepor a tela.',
+      icon: '◫',
+    },
+    {
+      value: 'slide',
+      label: 'Slide-out (Deslizante)',
+      description: 'Menu que desliza da esquerda e sobrepõe o conteúdo. Estilo clássico de apps mobile com sobreposição escura.',
+      icon: '☰',
+    },
+    {
+      value: 'bottom',
+      label: 'Barra Inferior',
+      description: 'Navegação fixa na parte inferior da tela com os itens principais. Itens adicionais ficam no botão "Mais". Estilo iOS/Android.',
+      icon: '▂',
+    },
+  ];
+
+  return (
+    <TabsContent value="layout-theme" className="space-y-6">
+      <Card className="bg-white/5 border-white/10">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Configurações de Layout
+          </CardTitle>
+          <CardDescription className="text-gray-400">
+            Personalize a aparência e comportamento do sistema para todos os usuários.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <Label className="text-white text-sm font-semibold mb-3 block">
+              Estilo do Menu Mobile
+            </Label>
+            <p className="text-xs text-gray-400 mb-4">
+              Define como o menu de navegação é exibido em dispositivos móveis (telas menores que 768px). Essa configuração não afeta a visualização desktop.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {menuStyles.map((style) => (
+                <div
+                  key={style.value}
+                  onClick={() => saveSetting.mutate({
+                    key: 'mobile_menu_style',
+                    value: style.value,
+                    type: 'text',
+                    category: 'layout',
+                    description: 'Estilo do menu de navegação mobile',
+                  })}
+                  className={`relative cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 hover:shadow-lg ${
+                    currentMobileMenuStyle === style.value
+                      ? 'border-primary bg-primary/10 shadow-primary/20 shadow-md'
+                      : 'border-white/10 hover:border-white/30 bg-white/5'
+                  }`}
+                >
+                  {currentMobileMenuStyle === style.value && (
+                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                  <div className="text-3xl mb-2">{style.icon}</div>
+                  <h4 className="text-white font-semibold text-sm mb-1">{style.label}</h4>
+                  <p className="text-gray-400 text-xs leading-relaxed">{style.description}</p>
+
+                  {style.value === 'sidebar' && (
+                    <div className="mt-3 flex items-center gap-2 border-t border-white/10 pt-3">
+                      <div className="w-16 h-10 rounded border border-white/20 flex">
+                        <div className="w-4 bg-primary/30 rounded-l flex flex-col items-center justify-center gap-0.5">
+                          <div className="w-2 h-0.5 bg-white/40 rounded" />
+                          <div className="w-2 h-0.5 bg-white/40 rounded" />
+                          <div className="w-2 h-0.5 bg-white/40 rounded" />
+                        </div>
+                        <div className="flex-1 bg-white/5 p-1">
+                          <div className="w-full h-1 bg-white/10 rounded mb-0.5" />
+                          <div className="w-3/4 h-1 bg-white/10 rounded" />
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-gray-500">Recolhível</span>
+                    </div>
+                  )}
+                  {style.value === 'slide' && (
+                    <div className="mt-3 flex items-center gap-2 border-t border-white/10 pt-3">
+                      <div className="w-16 h-10 rounded border border-white/20 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-black/30" />
+                        <div className="absolute left-0 top-0 bottom-0 w-8 bg-white/20 border-r border-white/20 p-0.5">
+                          <div className="w-full h-1 bg-white/30 rounded mb-0.5" />
+                          <div className="w-full h-1 bg-white/30 rounded mb-0.5" />
+                          <div className="w-full h-1 bg-white/30 rounded" />
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-gray-500">Sobreposição</span>
+                    </div>
+                  )}
+                  {style.value === 'bottom' && (
+                    <div className="mt-3 flex items-center gap-2 border-t border-white/10 pt-3">
+                      <div className="w-16 h-10 rounded border border-white/20 flex flex-col">
+                        <div className="flex-1 bg-white/5 p-1">
+                          <div className="w-full h-1 bg-white/10 rounded mb-0.5" />
+                          <div className="w-3/4 h-1 bg-white/10 rounded" />
+                        </div>
+                        <div className="h-2.5 bg-primary/20 border-t border-white/20 flex items-center justify-around px-1">
+                          <div className="w-1 h-1 bg-white/40 rounded-full" />
+                          <div className="w-1 h-1 bg-white/40 rounded-full" />
+                          <div className="w-1 h-1 bg-white/40 rounded-full" />
+                          <div className="w-1 h-1 bg-white/40 rounded-full" />
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-gray-500">Barra fixa</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {saveSetting.isPending && (
+              <p className="text-xs text-primary mt-2 flex items-center gap-1">
+                <span className="animate-spin">⏳</span> Salvando...
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </TabsContent>
+  );
+}
 
 function SystemSettingsTab() {
   const { toast } = useToast();

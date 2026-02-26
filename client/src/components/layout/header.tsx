@@ -18,6 +18,7 @@ import CommandPalette from "@/components/command-palette";
 import telemedLogo from "@/assets/logo-fundo.png";
 import userIcon from "@/assets/user-icon.png";
 import { useVoiceAssistant } from "@/contexts/VoiceAssistantContext";
+import { useLayoutSettings } from "@/contexts/LayoutSettingsContext";
 
 export default function Header() {
   const [location, navigate] = useLocation();
@@ -27,6 +28,7 @@ export default function Header() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const { voiceMode, setVoiceMode, hasDecided } = useVoiceAssistant();
+  const { mobileMenuStyle, sidebarCollapsed, setSidebarCollapsed } = useLayoutSettings();
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -499,6 +501,20 @@ export default function Header() {
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-14 sm:h-20 lg:h-24">
           <div className="flex items-center space-x-4">
+            {mobileMenuStyle === 'sidebar' && user && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`md:hidden w-10 h-10 hover:bg-primary/10 transition-colors duration-300 ${getIconColor()}`}
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                data-testid="button-sidebar-toggle"
+              >
+                <Menu 
+                  className={`h-5 w-5 transition-all duration-300 ${getIconColor()}`}
+                  style={{ filter: getIconFilter() }}
+                />
+              </Button>
+            )}
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -506,7 +522,7 @@ export default function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`md:hidden w-10 h-10 hover:bg-primary/10 transition-colors duration-300 ${getIconColor()}`}
+                      className={`${mobileMenuStyle === 'slide' ? 'md:hidden' : 'hidden'} w-10 h-10 hover:bg-primary/10 transition-colors duration-300 ${getIconColor()}`}
                       data-testid="button-hamburger"
                     >
                       <Menu 
@@ -1288,6 +1304,159 @@ export default function Header() {
               </Button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Mobile Persistent Sidebar - "sidebar" mode */}
+      {mobileMenuStyle === 'sidebar' && user && (
+        <div
+          className={`md:hidden fixed top-14 left-0 bottom-0 z-40 bg-background/95 backdrop-blur-lg border-r border-border/50 transition-all duration-300 overflow-y-auto overflow-x-hidden ${
+            sidebarCollapsed ? 'w-[60px]' : 'w-64'
+          }`}
+          data-testid="mobile-persistent-sidebar"
+        >
+          {!sidebarCollapsed && (
+            <div className="px-4 py-3 border-b border-border/30">
+              <div className="flex items-center space-x-2">
+                <Avatar className="w-8 h-8 shrink-0">
+                  <AvatarFallback className="text-white font-semibold text-xs" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
+                    {getUserInitials(user.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{getShortName(user.name)}</p>
+                  <p className="text-[10px] text-muted-foreground">{getRoleDisplay(user.role)}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <nav className={`flex flex-col ${sidebarCollapsed ? 'px-1.5' : 'px-3'} py-2 space-y-0.5`}>
+            {filteredGroups.map((group, groupIdx) => (
+              <div key={group.category}>
+                {groupIdx > 0 && <div className="my-1.5 border-t border-border/30" />}
+                {!sidebarCollapsed && (
+                  <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold px-2 mb-0.5 mt-1">{group.label}</p>
+                )}
+                {group.items.map((item) => {
+                  const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                  const IconComponent = item.icon;
+                  return sidebarCollapsed ? (
+                    <Tooltip key={item.path}>
+                      <TooltipTrigger asChild>
+                        <Link href={item.path}>
+                          <div
+                            className={`flex items-center justify-center w-10 h-10 mx-auto rounded-xl transition-all duration-200 ${
+                              isActive
+                                ? "text-white shadow-md"
+                                : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                            }`}
+                            style={{
+                              background: isActive
+                                ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)"
+                                : "transparent"
+                            }}
+                          >
+                            <IconComponent className="h-4 w-4" />
+                          </div>
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="bg-primary text-white font-medium px-3 py-1.5">
+                        <p className="text-white text-xs">{item.label}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Link key={item.path} href={item.path}>
+                      <div
+                        className={`flex items-center space-x-2.5 px-2.5 py-2 rounded-xl transition-all duration-200 ${
+                          isActive
+                            ? "text-white shadow-md"
+                            : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                        }`}
+                        style={{
+                          background: isActive
+                            ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)"
+                            : "transparent"
+                        }}
+                      >
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-white/20" : "bg-muted"}`}>
+                          <IconComponent className="h-3.5 w-3.5" />
+                        </div>
+                        <span className="font-medium text-xs truncate">{item.label}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
+
+            <div className="my-1.5 border-t border-border/30" />
+            {sidebarCollapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    onClick={handleLogout}
+                    className="flex items-center justify-center w-10 h-10 mx-auto rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/5 cursor-pointer"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="bg-destructive text-white font-medium px-3 py-1.5">
+                  <p className="text-white text-xs">Sair</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <div
+                onClick={handleLogout}
+                className="flex items-center space-x-2.5 px-2.5 py-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/5 cursor-pointer"
+              >
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-muted shrink-0">
+                  <LogOut className="h-3.5 w-3.5" />
+                </div>
+                <span className="font-medium text-xs">Sair</span>
+              </div>
+            )}
+          </nav>
+        </div>
+      )}
+
+      {/* Mobile Bottom Navigation - "bottom" mode */}
+      {mobileMenuStyle === 'bottom' && user && (
+        <div
+          className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-t border-border/50 safe-area-bottom"
+          data-testid="mobile-bottom-nav"
+        >
+          <nav className="flex items-center justify-around px-1 py-1.5">
+            {filteredGroups.flatMap(g => g.items).slice(0, 5).map((item) => {
+              const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+              const IconComponent = item.icon;
+              return (
+                <Link key={item.path} href={item.path}>
+                  <div className={`flex flex-col items-center px-2 py-1 rounded-xl transition-all duration-200 min-w-[56px] ${
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  }`}>
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+                      isActive ? "bg-primary/10 shadow-sm" : ""
+                    }`}>
+                      <IconComponent className={`h-4.5 w-4.5 ${isActive ? "text-primary" : ""}`} />
+                    </div>
+                    <span className={`text-[9px] mt-0.5 font-medium truncate max-w-[56px] ${isActive ? "text-primary font-semibold" : ""}`}>
+                      {item.label}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="flex flex-col items-center px-2 py-1 rounded-xl text-muted-foreground min-w-[56px]"
+            >
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center">
+                <Menu className="h-4.5 w-4.5" />
+              </div>
+              <span className="text-[9px] mt-0.5 font-medium">Mais</span>
+            </button>
+          </nav>
         </div>
       )}
     </header>
