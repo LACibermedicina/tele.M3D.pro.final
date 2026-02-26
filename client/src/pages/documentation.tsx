@@ -124,17 +124,22 @@ export default function Documentation() {
         {
           title: "Consultas por Vídeo",
           description: "Sistema de videochamada em tempo real com tecnologia Agora.io, suportando HD e baixa latência",
-          features: ["Qualidade HD", "Compartilhamento de tela", "Gravação de consultas", "Chat integrado"]
+          features: ["Qualidade HD", "Compartilhamento de tela", "Gravação e transcrição em tempo real", "Chat integrado", "Convite a especialistas durante consulta"]
         },
         {
           title: "Agendamento Inteligente",
-          description: "Agenda automática com IA que sugere melhores horários e evita conflitos",
-          features: ["Sincronização automática", "Lembretes por WhatsApp", "Reagendamento fácil", "Múltiplas especialidades"]
+          description: "Agenda com 3 abas (Hoje, Futuro, Histórico), cancelamento em lote e limpeza de agenda",
+          features: ["Agenda 3 abas: Hoje/Futuro/Histórico", "Cancelamento em lote", "Limpar agenda completa", "Múltiplas especialidades"]
+        },
+        {
+          title: "Solicitação de Consultas",
+          description: "Dois caminhos: por especialidade ou triagem IA (Protocolo de Manchester)",
+          features: ["Consulta por especialidade", "Triagem IA (Manchester 5 níveis)", "QR Code e código curto de acesso", "Links temporários para visitantes"]
         },
         {
           title: "Atendimento 24/7",
-          description: "Plantão médico disponível a qualquer hora com sistema de escalas",
-          features: ["Médicos de plantão", "Emergências priorizadas", "Histórico acessível", "Continuidade do cuidado"]
+          description: "Plantão médico disponível a qualquer hora com sistema de escalas e inter-consulta",
+          features: ["Médicos de plantão", "Emergências priorizadas", "Inter-consulta entre médicos", "Continuidade do cuidado"]
         }
       ]
     },
@@ -145,18 +150,18 @@ export default function Documentation() {
       items: [
         {
           title: "Assistente Médico IA",
-          description: "Powered by Google Gemini com base de conhecimento Harrison's Principles",
-          features: ["Suporte diagnóstico", "Interações medicamentosas", "Protocolos clínicos", "Pesquisa de evidências"]
+          description: "Powered by Google Gemini (OMS/MS-Brasil/DSM-5) com fallback OpenAI GPT-4o-mini",
+          features: ["Suporte diagnóstico", "Interações medicamentosas", "Protocolos clínicos (OMS/MS-Brasil)", "Pesquisa de evidências"]
         },
         {
-          title: "Chatbot para Visitantes",
-          description: "Assistente virtual para informações gerais sobre o sistema",
-          features: ["Disponível sem login", "Respostas instantâneas", "Triagem inicial", "Direcionamento adequado"]
+          title: "Classificação Diagnóstica Pós-Consulta",
+          description: "IA auto-gera prescrições, exames, encaminhamentos e classificação CID-10/11 e DSM-5/TR",
+          features: ["Auto-geração pós-consulta", "CID-10/11 e DSM-5/TR", "Níveis de confiança", "Análise de interações medicamentosas"]
         },
         {
-          title: "Análise Preditiva",
-          description: "IA analisa padrões e sugere cuidados preventivos",
-          features: ["Alertas de risco", "Tendências de saúde", "Recomendações personalizadas", "Machine Learning"]
+          title: "Chatbot e Triagem IA",
+          description: "Assistente virtual com triagem Manchester e direcionamento inteligente",
+          features: ["Disponível sem login", "Triagem Manchester 5 níveis", "Respostas instantâneas", "Direcionamento adequado"]
         }
       ]
     },
@@ -171,9 +176,14 @@ export default function Documentation() {
           features: ["Histórico completo", "Acesso controlado", "Backup automático", "Busca avançada"]
         },
         {
-          title: "Prescrições Digitais",
-          description: "Emissão de receitas com assinatura digital certificada",
-          features: ["Assinatura FIPS", "QR Code verificação", "Exportação USB", "Validade jurídica"]
+          title: "Exportação de Dados (HL7 FHIR R4)",
+          description: "Exportação multi-padrão: Brasil/SUS (RNDS, RAC, SBIS, LGPD), USA (HIPAA, USCDI v3), Europa (GDPR), Internacional (ICD-11, SNOMED)",
+          features: ["Brasil: RNDS/RAC/SBIS/LGPD", "USA: HIPAA/USCDI v3", "Europa: GDPR", "Opção de desidentificação"]
+        },
+        {
+          title: "Prescrições e Fluxo Pós-Consulta",
+          description: "Emissão de receitas com assinatura digital, análise de interações e workflow pós-consulta com IA",
+          features: ["Assinatura digital FIPS", "PDF com QR Code verificação", "Análise de interações medicamentosas", "Fluxo pós-consulta automatizado"]
         },
         {
           title: "Resultados de Exames",
@@ -188,19 +198,19 @@ export default function Documentation() {
       color: "orange",
       items: [
         {
-          title: "WhatsApp Business",
-          description: "Integração oficial com WhatsApp para comunicação automatizada",
-          features: ["Lembretes automáticos", "Confirmação de consultas", "Resultados de exames", "Suporte técnico"]
+          title: "WhatsApp IA",
+          description: "Integração com WhatsApp para comunicação automatizada com status online de pacientes",
+          features: ["Lembretes automáticos", "Confirmação de consultas", "Status online pacientes", "Suporte técnico"]
+        },
+        {
+          title: "Inter-Consultas Médicas",
+          description: "Agendamento de inter-consultas entre médicos e salas de discussão de equipes",
+          features: ["Inter-consulta entre médicos", "Equipes médicas", "Salas de discussão", "Notas de equipe"]
         },
         {
           title: "Notificações em Tempo Real",
-          description: "Sistema de notificações push e em tempo real",
+          description: "Sistema de notificações push e em tempo real via WebSocket",
           features: ["WebSocket", "Alertas importantes", "Histórico completo", "Configurável"]
-        },
-        {
-          title: "Central de Mensagens",
-          description: "Comunicação segura entre médicos e pacientes",
-          features: ["Criptografia E2E", "Anexos seguros", "Busca de conversas", "Arquivamento"]
         }
       ]
     },
@@ -210,19 +220,19 @@ export default function Documentation() {
       color: "amber",
       items: [
         {
-          title: "Compra de Créditos",
-          description: "Sistema de pagamento integrado com PayPal para compra de créditos",
-          features: ["PayPal seguro", "Pacotes variados", "Histórico de compras", "Recibos automáticos"]
+          title: "Compra de Créditos via PayPal",
+          description: "6 pacotes de crédito pré-definidos com checkout seguro PayPal",
+          features: ["PayPal Checkout seguro", "6 pacotes de crédito", "15 custos de funcionalidades", "Recibos automáticos"]
         },
         {
-          title: "Gestão de Créditos",
-          description: "Controle completo de saldo e transações de créditos TMC",
-          features: ["Saldo em tempo real", "Extrato detalhado", "Transferências", "Sistema de comissões"]
+          title: "Carteira Digital",
+          description: "Controle completo de saldo, transferências, histórico e vinculação de carteira externa",
+          features: ["Saldo em tempo real", "Extrato detalhado", "Transferências", "Solicitação de saque"]
         },
         {
-          title: "Cobrança Automática",
-          description: "Débito automático de créditos por consultas realizadas",
-          features: ["Tarifação justa", "Transparência total", "Relatórios mensais", "Baixas taxas"]
+          title: "Auditoria Financeira",
+          description: "Log de auditoria com filtros e resumos semanais de todas as transações",
+          features: ["Log de auditoria completo", "Filtro por ação", "Resumos semanais", "Transparência total"]
         }
       ]
     },
@@ -237,14 +247,14 @@ export default function Documentation() {
           features: ["AES-256", "TLS 1.3", "Chaves HSM", "Zero-knowledge"]
         },
         {
-          title: "Conformidade LGPD",
-          description: "Total adequação à Lei Geral de Proteção de Dados",
-          features: ["Consentimento claro", "Direito ao esquecimento", "Portabilidade", "Auditoria contínua"]
+          title: "Conformidade Multi-Padrão",
+          description: "LGPD, HIPAA, GDPR e conformidade FHIR R4",
+          features: ["Conformidade LGPD", "Desidentificação HIPAA", "GDPR Europa", "FHIR R4 compliance"]
         },
         {
-          title: "Controle de Acesso",
-          description: "Sistema robusto de autenticação e autorização",
-          features: ["RBAC granular", "Sessões seguras", "Logs de auditoria", "2FA opcional"]
+          title: "Detecção de Inatividade e Auto-Logout",
+          description: "Timeout configurável com prompt, desconexão Agora e logout automático",
+          features: ["Timeout configurável", "Prompt antes do logout", "Desconexão Agora automática", "RBAC granular"]
         }
       ]
     },
@@ -255,18 +265,18 @@ export default function Documentation() {
       items: [
         {
           title: "Dashboard Administrativo",
-          description: "Painel completo para gestão da plataforma",
-          features: ["Métricas em tempo real", "Gestão de usuários", "Configurações globais", "Relatórios customizados"]
+          description: "Painel completo com tema escuro para gestão da plataforma",
+          features: ["Métricas em tempo real", "Gestão de usuários", "Configurações globais (inatividade, PayPal, IA)", "Tema escuro"]
         },
         {
-          title: "Analytics e Relatórios",
-          description: "Sistema completo de análise e geração de relatórios",
-          features: ["Gráficos interativos", "Exportação Excel/PDF", "Filtros avançados", "Comparativos"]
+          title: "Relatórios e Analytics",
+          description: "Dashboard de relatórios: consultas, pacientes, financeiro, performance médica",
+          features: ["Relatórios de consultas", "Análise de pacientes", "Financeiro detalhado", "Performance médica"]
         },
         {
-          title: "Gestão de Referências IA",
-          description: "Upload e gerenciamento de PDFs médicos para base de conhecimento da IA",
-          features: ["Upload seguro", "Validação automática", "Acesso controlado", "Versionamento"]
+          title: "Gestão Financeira Admin",
+          description: "CRUD de pacotes de crédito, custos de funcionalidades e taxa de câmbio TMC/USD",
+          features: ["Pacotes de crédito CRUD", "15 custos de funcionalidades", "Taxa TMC/USD", "Envio de créditos"]
         }
       ]
     },
@@ -282,8 +292,8 @@ export default function Documentation() {
         },
         {
           title: "Funcionalidades por Perfil",
-          description: "Badges de capacidade baseados no papel do usuário",
-          features: ["Paciente: Triagem/Agendar/Urgente", "Médico: Diagnóstico/Protocolos/Plantão", "Confirmação de agendamento", "Consulta urgente"]
+          description: "Badges de capacidade baseados no papel do usuário com chamadas urgentes",
+          features: ["Paciente: Triagem/Agendar/Urgente", "Médico: Diagnóstico/Protocolos/Plantão", "Chamadas urgentes a plantonistas", "Inter-consulta por voz"]
         },
         {
           title: "Integração com Chatbot",
@@ -298,18 +308,18 @@ export default function Documentation() {
       color: "amber",
       items: [
         {
-          title: "NFTs de Dados Médicos",
-          description: "Tokenização de insights clínicos anonimizados conforme LGPD",
-          features: ["Dados anonimizados", "Consentimento LGPD", "Cotas de propriedade", "Rastreamento de valor"]
+          title: "NFTs Dinâmicos de Dados Médicos",
+          description: "Tokenização de insights clínicos anonimizados conforme LGPD com cotas de propriedade",
+          features: ["Dados anonimizados LGPD", "NFTs dinâmicos", "Cotas de propriedade", "Rastreamento de valor"]
         },
         {
-          title: "Broker Interno",
-          description: "Negociação de cotas de NFTs e tokens TM3D",
-          features: ["Livro de ofertas", "Ordens de compra/venda", "Histórico de negociações", "Controle de supply"]
+          title: "Broker Interno TM3D/NFT",
+          description: "Plataforma de negociação com livro de ofertas, ordens e controle de supply TM3D",
+          features: ["Livro de ofertas (order book)", "Ordens de compra/venda", "Histórico de negociações", "Controle de supply TM3D"]
         },
         {
           title: "Carteira Externa",
-          description: "Integração com MetaMask e WalletConnect para operações externas",
+          description: "Integração com MetaMask e WalletConnect para operações externas e saques",
           features: ["Vincular MetaMask", "WalletConnect", "Solicitação de saque", "Auditoria completa"]
         }
       ]
@@ -323,15 +333,15 @@ export default function Documentation() {
     },
     {
       title: "Arquitetura Backend",
-      items: ["Node.js com Express", "PostgreSQL (Neon)", "Drizzle ORM", "WebSocket para real-time", "50+ tabelas"]
+      items: ["Node.js com Express", "PostgreSQL (Neon)", "Drizzle ORM", "WebSocket para real-time", "61+ tabelas"]
     },
     {
       title: "Integrações",
-      items: ["Google Gemini 2.0 Flash", "OpenAI GPT-4o-mini (fallback)", "Agora.io Video SDK", "PayPal Checkout", "MetaMask/WalletConnect"]
+      items: ["Google Gemini 2.0 Flash", "OpenAI GPT-4o-mini (fallback)", "Agora.io Video SDK", "PayPal Checkout", "HL7 FHIR R4 Export"]
     },
     {
       title: "Segurança",
-      items: ["HTTPS/TLS 1.3", "Criptografia AES-256", "RBAC granular", "Conformidade LGPD", "Auditoria completa"]
+      items: ["HTTPS/TLS 1.3", "Criptografia AES-256", "RBAC granular", "LGPD/HIPAA/GDPR", "FHIR R4 compliance"]
     }
   ];
 
@@ -340,26 +350,27 @@ export default function Documentation() {
       role: "Pacientes",
       icon: Users,
       guides: [
-        "Como agendar uma consulta",
-        "Como solicitar triagem por IA",
-        "Como usar o assistente de voz IAM3D",
-        "Como solicitar consulta urgente",
+        "Como solicitar consulta (por especialidade ou triagem IA)",
+        "Como usar o assistente de voz IAM3D (consulta urgente)",
         "Como comprar créditos TMC via PayPal",
         "Como participar de videochamada",
-        "Como acessar prescrições e prontuário"
+        "Como acessar prescrições e prontuário",
+        "Como exportar dados médicos (FHIR R4 - direito LGPD)",
+        "Como funciona a detecção de inatividade"
       ]
     },
     {
       role: "Médicos",
       icon: Activity,
       guides: [
-        "Como gerenciar sua agenda e disponibilidade",
-        "Como ativar plantão 24h",
-        "Como realizar consultas online com IA",
-        "Como emitir prescrições e diagnósticos",
-        "Como usar notas médicas e interconsultas",
-        "Como negociar NFTs médicos",
-        "Como gerenciar carteira digital"
+        "Como gerenciar agenda (3 abas, limpar agenda)",
+        "Como usar o fluxo pós-consulta (IA auto-gera prescrições)",
+        "Como revisar classificação diagnóstica (CID-10/DSM-5)",
+        "Como realizar consultas online com IA e convidar especialistas",
+        "Como usar notas médicas (estilo macOS Notes)",
+        "Como agendar inter-consultas entre médicos",
+        "Como exportar dados de pacientes (FHIR R4)",
+        "Como acessar o dashboard de relatórios"
       ]
     },
     {
@@ -367,12 +378,12 @@ export default function Documentation() {
       icon: Settings,
       guides: [
         "Como gerenciar usuários e licenças",
-        "Como configurar pacotes de crédito",
-        "Como enviar créditos a usuários",
-        "Como gerenciar custos de funcionalidades",
-        "Como visualizar relatórios e analytics",
+        "Como configurar timeout de inatividade",
+        "Como configurar e-mail PayPal destinatário",
+        "Como gerenciar pacotes de crédito e custos",
+        "Como acessar o dashboard de relatórios",
         "Como auditar transações financeiras",
-        "Como configurar taxa de câmbio TMC/USD"
+        "Como gerenciar conformidade FHIR e exportação"
       ]
     }
   ];
@@ -402,7 +413,7 @@ export default function Documentation() {
               </Badge>
               <Badge className="bg-white/20 text-white text-sm px-4 py-2">
                 <Star className="w-4 h-4 mr-2" />
-                Versão 2.1
+                Versão 3.0
               </Badge>
             </div>
             <div className="mt-6">

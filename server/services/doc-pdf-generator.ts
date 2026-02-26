@@ -67,7 +67,7 @@ export function generateSystemDocumentationHTML(): string {
   <div class="cover-title">Tele&lt;M3D&gt; Pro</div>
   <div class="cover-subtitle">Sistema de Gestão Médica e Telemedicina</div>
   <p style="font-size:14px;color:#475569;margin-bottom:20px">Documentação Completa do Sistema</p>
-  <div class="cover-version">Versão 2.1</div>
+  <div class="cover-version">Versão 3.0</div>
   <p class="cover-date" style="margin-top:40px">${today}</p>
   <p style="font-size:10px;color:#94a3b8;margin-top:10px">Cybermedicina Ltda. — Todos os direitos reservados</p>
 </div>
@@ -89,6 +89,8 @@ export function generateSystemDocumentationHTML(): string {
   <div class="toc-item"><span>11. Estrutura do Banco de Dados</span><span>16</span></div>
   <div class="toc-item"><span>12. API Endpoints</span><span>17</span></div>
   <div class="toc-item"><span>13. Instalação e Configuração</span><span>18</span></div>
+  <div class="toc-item"><span>14. Exportação de Dados do Paciente (HL7 FHIR R4)</span><span>20</span></div>
+  <div class="toc-item"><span>15. Detecção de Inatividade e Auto-Logout</span><span>22</span></div>
 </div>
 </div>
 
@@ -107,36 +109,56 @@ export function generateSystemDocumentationHTML(): string {
       <li>Plantão 24h com chamadas urgentes</li>
       <li>Sala de espera com triagem automática</li>
       <li>Código QR e código curto para acesso</li>
+      <li>Convite de especialistas durante consulta</li>
+      <li>Solicitação de consulta (2 caminhos: especialidade ou triagem IA)</li>
+      <li>Agenda do médico em 3 abas (Hoje, Futuro, Histórico)</li>
+      <li>Limpar agenda e cancelamento em massa</li>
     </ul>
   </div>
   <div class="card">
     <div class="card-header">🤖 Inteligência Artificial</div>
     <ul>
       <li>Chatbot médico (Google Gemini)</li>
-      <li>Assistente de voz IAM3D</li>
-      <li>Triagem pelo Protocolo de Manchester</li>
+      <li>Assistente de voz IAM3D (full-screen, esfera animada, badges por papel)</li>
+      <li>Triagem pelo Protocolo de Manchester (5 níveis)</li>
       <li>Diagnóstico diferencial assistido</li>
-      <li>Relatórios epidemiológicos com IA</li>
+      <li>Relatórios epidemiológicos com IA (MeSH/ICD)</li>
+      <li>Classificação diagnóstica pós-consulta (CID-10/11, DSM-5/TR)</li>
+      <li>IAM3D: chamadas urgentes, médicos de plantão</li>
     </ul>
   </div>
   <div class="card">
     <div class="card-header">📋 Gestão Clínica</div>
     <ul>
       <li>Prontuário eletrônico completo</li>
-      <li>Prescrições digitais com PDF</li>
-      <li>Notas médicas estilo macOS Notes</li>
-      <li>Classificação diagnóstica CID-10/11, DSM-5</li>
-      <li>Fluxo pós-consulta com IA</li>
+      <li>Prescrições digitais com PDF e assinatura digital</li>
+      <li>Notas médicas estilo macOS Notes (pastas, fixação, cores)</li>
+      <li>Classificação diagnóstica CID-10/11, DSM-5/TR</li>
+      <li>Fluxo pós-consulta com IA (prescrições, exames, encaminhamentos, follow-up)</li>
+      <li>Análise de interações medicamentosas</li>
+      <li>Exportação de dados do paciente (HL7 FHIR R4)</li>
+      <li>Interconsultas médicas e equipes de discussão</li>
     </ul>
   </div>
   <div class="card">
     <div class="card-header">💰 Sistema Financeiro</div>
     <ul>
       <li>Créditos TMC com taxa configurável</li>
-      <li>Checkout via PayPal</li>
-      <li>Carteira digital com auditoria</li>
+      <li>Checkout via PayPal (6 pacotes, 15 custos de funcionalidades)</li>
+      <li>Carteira digital com auditoria completa</li>
       <li>NFTs de dados médicos (LGPD)</li>
-      <li>Broker interno para TM3D/NFTs</li>
+      <li>Broker interno para TM3D/NFTs (order book, histórico)</li>
+      <li>Carteiras externas (MetaMask/WalletConnect)</li>
+      <li>Solicitação de saque</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header">🔒 Segurança e Conformidade</div>
+    <ul>
+      <li>Detecção de inatividade e auto-logout configurável</li>
+      <li>Exportação FHIR R4 (Brasil/SUS, USA/HIPAA, EU/GDPR, Internacional)</li>
+      <li>Desidentificação HIPAA de dados exportados</li>
+      <li>Dashboard de relatórios (consultas, pacientes, financeiro, performance)</li>
     </ul>
   </div>
 </div>
@@ -149,6 +171,10 @@ export function generateSystemDocumentationHTML(): string {
   <tr><td>DSM-5 / DSM-5-TR (APA)</td><td>Critérios diagnósticos para transtornos mentais</td></tr>
   <tr><td>Protocolo de Manchester</td><td>Classificação de risco em 5 níveis com cores</td></tr>
   <tr><td>LGPD (Lei 13.709/2018)</td><td>Proteção de dados pessoais e médicos</td></tr>
+  <tr><td>HL7 FHIR R4</td><td>Interoperabilidade e exportação de dados clínicos</td></tr>
+  <tr><td>HIPAA</td><td>Conformidade e desidentificação de dados (USA)</td></tr>
+  <tr><td>GDPR</td><td>Proteção de dados e direitos do titular (EU)</td></tr>
+  <tr><td>ICD-10/11, SNOMED CT</td><td>Codificação diagnóstica e terminologia clínica internacional</td></tr>
 </table>
 </div>
 
@@ -193,7 +219,7 @@ export function generateSystemDocumentationHTML(): string {
   <rect x="240" y="200" width="200" height="100" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
   <text x="340" y="225" text-anchor="middle" font-weight="700" fill="#92400e" font-size="13">Banco de Dados</text>
   <text x="340" y="245" text-anchor="middle" font-size="10" fill="#475569">PostgreSQL (Neon)</text>
-  <text x="340" y="260" text-anchor="middle" font-size="10" fill="#475569">50+ tabelas</text>
+  <text x="340" y="260" text-anchor="middle" font-size="10" fill="#475569">61 tabelas</text>
   <text x="340" y="275" text-anchor="middle" font-size="10" fill="#475569">Drizzle Migrations</text>
   <text x="340" y="290" text-anchor="middle" font-size="10" fill="#475569">JSONB para dados flexíveis</text>
 
@@ -223,6 +249,7 @@ export function generateSystemDocumentationHTML(): string {
   <tr><td>Vídeo</td><td>Agora.io SDK</td><td>Videoconsultas em tempo real</td></tr>
   <tr><td>Pagamento</td><td>PayPal REST API</td><td>Checkout para créditos TMC</td></tr>
   <tr><td>Voz</td><td>Web Speech API</td><td>STT/TTS para IAM3D</td></tr>
+  <tr><td>Exportação</td><td>HL7 FHIR R4</td><td>Exportação de dados clínicos multi-padrão</td></tr>
 </table>
 </div>
 
@@ -383,7 +410,25 @@ export function generateSystemDocumentationHTML(): string {
   <li>Histórico de consultas anteriores</li>
 </ul>
 
-<h3>4.5 Créditos TMC</h3>
+<h3>4.5 Exportação de Dados (FHIR R4)</h3>
+<p>Como direito garantido pela LGPD, o paciente pode exportar seus dados clínicos em formato HL7 FHIR R4:</p>
+<ul>
+  <li><strong>Brasil/SUS:</strong> Formato compatível com RNDS, RAC, SBIS, LGPD</li>
+  <li><strong>USA:</strong> Formato HIPAA/USCDI v3</li>
+  <li><strong>Europa:</strong> Formato GDPR</li>
+  <li><strong>Internacional:</strong> ICD-11, SNOMED CT</li>
+  <li><strong>Desidentificação:</strong> Opção de remoção de dados identificáveis (HIPAA Safe Harbor)</li>
+</ul>
+
+<h3>4.6 Detecção de Inatividade</h3>
+<ul>
+  <li>O sistema monitora inatividade do usuário (tempo configurável pelo admin)</li>
+  <li>Ao atingir o limite, exibe prompt perguntando se deseja continuar</li>
+  <li>Se não houver resposta, realiza auto-logout e desconecta do Agora.io</li>
+  <li>Protege a segurança dos dados do paciente em terminais compartilhados</li>
+</ul>
+
+<h3>4.7 Créditos TMC</h3>
 <ul>
   <li>Compra de créditos via PayPal</li>
   <li>6 pacotes disponíveis (Básico, Padrão, Profissional, Premium, Empresarial, Ilimitado)</li>
@@ -399,13 +444,26 @@ export function generateSystemDocumentationHTML(): string {
 <h3>5.1 Dashboard do Médico</h3>
 <p>Painel com consultas do dia, pacientes em espera, notificações urgentes, e acesso rápido às funcionalidades.</p>
 
-<h3>5.2 Gerenciar Disponibilidade</h3>
+<h3>5.2 Gerenciar Disponibilidade e Agenda</h3>
 <ul>
   <li><strong>Status Online:</strong> Toggle para marcar-se como disponível</li>
   <li><strong>Atendimento Imediato:</strong> Habilitar recebimento de consultas emergenciais</li>
   <li><strong>Plantão 24h:</strong> Ativar plantão que mantém disponibilidade automática por 24 horas</li>
   <li><strong>Chamadas IAM3D:</strong> Quando em plantão, recebe solicitações urgentes do assistente de voz</li>
   <li><strong>Agenda Semanal:</strong> Definir horários de atendimento (manhã/tarde) por dia da semana</li>
+</ul>
+
+<h4>Agenda em 3 Abas</h4>
+<ul>
+  <li><strong>Hoje:</strong> Consultas do dia atual com status em tempo real</li>
+  <li><strong>Futuro:</strong> Consultas agendadas para os próximos dias</li>
+  <li><strong>Histórico:</strong> Consultas passadas com detalhes e resultados</li>
+</ul>
+
+<h4>Ações de Agenda</h4>
+<ul>
+  <li><strong>Cancelamento em Massa:</strong> Selecionar e cancelar múltiplas consultas de uma vez</li>
+  <li><strong>Limpar Agenda:</strong> Cancelar todas as consultas futuras com um clique</li>
 </ul>
 
 <h3>5.3 Videoconsulta</h3>
@@ -457,11 +515,50 @@ export function generateSystemDocumentationHTML(): string {
 <p>Interface estilo macOS Notes com pastas, busca, fixação de notas, etiquetas coloridas e auto-save.</p>
 
 <h3>5.6 Fluxo Pós-Consulta</h3>
+<p>Após encerrar a videoconsulta, a IA gera automaticamente os itens pós-consulta para revisão do médico:</p>
 <ul>
-  <li>IA gera automaticamente: prescrições, exames, encaminhamentos, follow-up</li>
-  <li>Análise de interações medicamentosas antes da prescrição</li>
-  <li>Classificação diagnóstica com CID-10/11 e DSM-5/TR</li>
-  <li>Médico revisa e autoriza antes de liberar ao paciente</li>
+  <li><strong>Prescrições:</strong> Medicamentos sugeridos com posologia baseada na transcrição</li>
+  <li><strong>Exames:</strong> Exames complementares recomendados</li>
+  <li><strong>Encaminhamentos:</strong> Referências para especialistas quando necessário</li>
+  <li><strong>Follow-up:</strong> Orientações de acompanhamento para o paciente</li>
+  <li><strong>Interações Medicamentosas:</strong> Análise automática de conflitos antes da prescrição</li>
+</ul>
+
+<h4>Classificação Diagnóstica</h4>
+<ul>
+  <li><strong>CID-10/11:</strong> Código de classificação internacional de doenças</li>
+  <li><strong>DSM-5/TR:</strong> Critérios diagnósticos para transtornos mentais</li>
+  <li><strong>Nível de Confiança:</strong> Percentual de certeza do diagnóstico</li>
+  <li>Médico revisa, ajusta e autoriza antes de liberar ao paciente</li>
+</ul>
+
+<h3>5.7 Interconsultas</h3>
+<ul>
+  <li>Agendar interconsultas com outros médicos especialistas</li>
+  <li>IAM3D pode solicitar interconsulta durante videoconsulta</li>
+  <li>Compartilhamento de dados clínicos relevantes entre médicos</li>
+</ul>
+
+<h3>5.8 Consultas Incompletas</h3>
+<ul>
+  <li>Dashboard de consultas que não foram finalizadas corretamente</li>
+  <li>Permite retomar fluxo pós-consulta de sessões anteriores</li>
+  <li>Garante que nenhum atendimento fique sem documentação</li>
+</ul>
+
+<h3>5.9 Exportação de Dados do Paciente (FHIR)</h3>
+<ul>
+  <li>Exportar dados de pacientes em formato HL7 FHIR R4</li>
+  <li>Suporte a múltiplos padrões: Brasil/SUS, USA/HIPAA, EU/GDPR, Internacional</li>
+  <li>Opção de desidentificação (HIPAA Safe Harbor)</li>
+</ul>
+
+<h3>5.10 Dashboard de Relatórios</h3>
+<ul>
+  <li>Resumo de consultas realizadas por período</li>
+  <li>Performance individual e estatísticas de atendimento</li>
+  <li>Relatórios epidemiológicos com análise IA</li>
+  <li>Exportação de dados em CSV</li>
 </ul>
 </div>
 
@@ -496,16 +593,29 @@ export function generateSystemDocumentationHTML(): string {
   <tr><td>Triagem IA</td><td>Habilitar/desabilitar triagem automática</td><td>Ativada</td></tr>
   <tr><td>Taxa câmbio TMC</td><td>Relação USD para TMC</td><td>5.00</td></tr>
   <tr><td>Margem reagendamento</td><td>Horas mínimas antes de poder reagendar</td><td>24h</td></tr>
+  <tr><td>Timeout de inatividade</td><td>Tempo em minutos antes do auto-logout por inatividade</td><td>30 min</td></tr>
+  <tr><td>E-mail PayPal destinatário</td><td>E-mail para recebimento de pagamentos PayPal</td><td>Configurável</td></tr>
+  <tr><td>Configurações financeiras</td><td>Parâmetros gerais do módulo financeiro</td><td>Configurável</td></tr>
 </table>
 
-<h3>6.5 Relatórios</h3>
+<h3>6.5 Dashboard de Relatórios</h3>
 <ul>
   <li>Resumo de consultas (por status, tipo, período)</li>
   <li>Demografia de pacientes</li>
-  <li>Resumo financeiro (fluxo de créditos)</li>
-  <li>Performance de médicos</li>
+  <li>Resumo financeiro (fluxo de créditos, receitas, despesas)</li>
+  <li>Performance de médicos (consultas realizadas, avaliações)</li>
   <li>Relatórios epidemiológicos com IA (MeSH, ICD)</li>
   <li>Exportação em CSV</li>
+  <li>Conformidade FHIR R4 para dados exportados</li>
+</ul>
+
+<h3>6.6 Gestão Financeira Avançada</h3>
+<ul>
+  <li><strong>Pacotes de Crédito:</strong> CRUD completo com ativação/desativação e promoções</li>
+  <li><strong>Custos de Funcionalidades:</strong> 15 custos configuráveis (consulta, prescrição, etc.)</li>
+  <li><strong>Taxa de Câmbio:</strong> TMC/USD com atualização em tempo real</li>
+  <li><strong>Envio de Créditos:</strong> Adicionar créditos diretamente a contas de usuários</li>
+  <li><strong>Log de Auditoria:</strong> Histórico completo de transações com filtros por ação e resumos semanais</li>
 </ul>
 </div>
 
@@ -584,6 +694,21 @@ export function generateSystemDocumentationHTML(): string {
   <line x1="470" y1="57" x2="490" y2="57" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
 </svg>
 </div>
+
+<h3>7.5 IAM3D e Médicos de Plantão</h3>
+<p>O IAM3D integra-se ao sistema de plantão para emergências:</p>
+<ul>
+  <li><strong>Chamadas Urgentes:</strong> Quando o paciente solicita atendimento urgente, o IAM3D busca automaticamente médicos de plantão online</li>
+  <li><strong>Notificação ao Médico:</strong> O médico de plantão recebe alerta em tempo real via WebSocket</li>
+  <li><strong>Prioridade:</strong> Pacientes com triagem vermelha/laranja têm prioridade na fila</li>
+</ul>
+
+<h3>7.6 IAM3D durante Videoconsulta (Interconsulta)</h3>
+<ul>
+  <li>Durante uma videoconsulta ativa, o médico pode invocar o IAM3D para solicitar interconsulta</li>
+  <li>O assistente busca especialistas disponíveis e facilita o convite</li>
+  <li>Suporte a diagnóstico diferencial em tempo real durante a consulta</li>
+</ul>
 </div>
 
 <!-- 8. SISTEMA DE CRÉDITOS -->
@@ -709,7 +834,7 @@ export function generateSystemDocumentationHTML(): string {
 <!-- 11. ESTRUTURA DO BANCO -->
 <div class="page-break">
 <h2>11. Estrutura do Banco de Dados</h2>
-<p>PostgreSQL com mais de 50 tabelas gerenciadas pelo Drizzle ORM.</p>
+<p>PostgreSQL com 61 tabelas gerenciadas pelo Drizzle ORM.</p>
 
 <h3>Tabelas Principais</h3>
 <table>
@@ -731,6 +856,18 @@ export function generateSystemDocumentationHTML(): string {
   <tr><td>medical_teams</td><td>Equipes médicas</td><td>users (members)</td></tr>
   <tr><td>inter_consultations</td><td>Interconsultas médicas</td><td>users, consultation_sessions</td></tr>
   <tr><td>system_settings</td><td>Configurações globais</td><td>-</td></tr>
+  <tr><td>wallet_audit_log</td><td>Log de auditoria de operações financeiras</td><td>users</td></tr>
+  <tr><td>nft_ownership</td><td>Propriedade e cotas de NFTs</td><td>dynamic_nfts, users</td></tr>
+  <tr><td>broker_trades</td><td>Negociações realizadas no broker</td><td>broker_orders, users</td></tr>
+  <tr><td>tm3d_supply</td><td>Controle de supply do token TM3D</td><td>-</td></tr>
+  <tr><td>withdrawal_requests</td><td>Solicitações de saque</td><td>users, external_wallets</td></tr>
+  <tr><td>post_consultation_items</td><td>Itens gerados pela IA pós-consulta</td><td>consultation_sessions</td></tr>
+  <tr><td>diagnostic_inferences</td><td>Classificações diagnósticas com CID/DSM</td><td>consultation_sessions</td></tr>
+  <tr><td>consultation_access_tokens</td><td>Tokens QR/código curto para acesso</td><td>consultation_sessions</td></tr>
+  <tr><td>consultation_requests</td><td>Solicitações de consulta (2 caminhos)</td><td>patients, users</td></tr>
+  <tr><td>consultation_sessions</td><td>Sessões de consulta ativas</td><td>users, appointments</td></tr>
+  <tr><td>tmc_credit_packages</td><td>Pacotes de crédito para venda</td><td>-</td></tr>
+  <tr><td>paypal_orders</td><td>Ordens de pagamento PayPal</td><td>users, tmc_credit_packages</td></tr>
 </table>
 
 <div class="diagram">
@@ -880,9 +1017,106 @@ npm run dev</div>
 <div class="info-box">
   <strong>Nota:</strong> As migrações do banco de dados são executadas automaticamente na inicialização do servidor. O seed de dados padrão (pacotes de crédito, custos de funcionalidades, médico padrão) também é executado automaticamente.
 </div>
+</div>
+
+<!-- 14. EXPORTAÇÃO DE DADOS (FHIR R4) -->
+<div class="page-break">
+<h2>14. Exportação de Dados do Paciente (HL7 FHIR R4)</h2>
+<p>O sistema suporta exportação completa de dados clínicos do paciente em formato HL7 FHIR R4, atendendo a múltiplos padrões internacionais de interoperabilidade.</p>
+
+<h3>14.1 Padrões Suportados</h3>
+<table>
+  <tr><th>Padrão</th><th>Região</th><th>Conformidade</th></tr>
+  <tr><td>Brasil / SUS</td><td>Brasil</td><td>RNDS (Rede Nacional de Dados em Saúde), RAC (Registro de Atendimento Clínico), SBIS, LGPD</td></tr>
+  <tr><td>HIPAA / USCDI v3</td><td>Estados Unidos</td><td>Health Insurance Portability and Accountability Act, US Core Data for Interoperability v3</td></tr>
+  <tr><td>GDPR</td><td>União Europeia</td><td>General Data Protection Regulation, direitos do titular</td></tr>
+  <tr><td>Internacional</td><td>Global</td><td>ICD-11, SNOMED CT, LOINC</td></tr>
+</table>
+
+<h3>14.2 Recursos FHIR Exportados</h3>
+<ul>
+  <li><strong>Patient:</strong> Dados demográficos do paciente</li>
+  <li><strong>Encounter:</strong> Registros de consultas e atendimentos</li>
+  <li><strong>Condition:</strong> Diagnósticos e condições clínicas (CID-10/11)</li>
+  <li><strong>MedicationRequest:</strong> Prescrições médicas</li>
+  <li><strong>Observation:</strong> Resultados de exames e observações clínicas</li>
+  <li><strong>DiagnosticReport:</strong> Laudos e relatórios diagnósticos</li>
+  <li><strong>AllergyIntolerance:</strong> Alergias e intolerâncias registradas</li>
+  <li><strong>Immunization:</strong> Registros de vacinação</li>
+</ul>
+
+<h3>14.3 Desidentificação (HIPAA Safe Harbor)</h3>
+<p>A exportação suporta desidentificação de dados conforme o método Safe Harbor do HIPAA:</p>
+<ul>
+  <li>Remoção de 18 identificadores diretos (nome, CPF, endereço, telefone, etc.)</li>
+  <li>Generalização de datas (manter apenas ano)</li>
+  <li>Supressão de dados geográficos granulares</li>
+  <li>Substituição de IDs por identificadores opacos</li>
+  <li>Manutenção da utilidade clínica dos dados para pesquisa</li>
+</ul>
+
+<h3>14.4 Fluxo de Exportação</h3>
+<div class="diagram">
+<svg width="550" height="100" viewBox="0 0 550 100">
+  <rect x="10" y="25" width="100" height="50" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="60" y="48" text-anchor="middle" font-size="9" fill="#1e40af" font-weight="600">Selecionar</text>
+  <text x="60" y="63" text-anchor="middle" font-size="8" fill="#475569">Paciente + Padrão</text>
+
+  <rect x="130" y="25" width="100" height="50" rx="6" fill="#f3e8ff" stroke="#a855f7"/>
+  <text x="180" y="48" text-anchor="middle" font-size="9" fill="#6b21a8" font-weight="600">Processar</text>
+  <text x="180" y="63" text-anchor="middle" font-size="8" fill="#475569">FHIR Bundle</text>
+
+  <rect x="250" y="25" width="100" height="50" rx="6" fill="#fef3c7" stroke="#eab308"/>
+  <text x="300" y="48" text-anchor="middle" font-size="9" fill="#a16207" font-weight="600">Desidentificar</text>
+  <text x="300" y="63" text-anchor="middle" font-size="8" fill="#475569">(Opcional)</text>
+
+  <rect x="370" y="25" width="100" height="50" rx="6" fill="#dcfce7" stroke="#22c55e"/>
+  <text x="420" y="48" text-anchor="middle" font-size="9" fill="#166534" font-weight="600">Download</text>
+  <text x="420" y="63" text-anchor="middle" font-size="8" fill="#475569">JSON FHIR R4</text>
+
+  <line x1="110" y1="50" x2="130" y2="50" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="230" y1="50" x2="250" y2="50" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="350" y1="50" x2="370" y2="50" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+</svg>
+</div>
+</div>
+
+<!-- 15. DETECÇÃO DE INATIVIDADE -->
+<div class="page-break">
+<h2>15. Detecção de Inatividade e Auto-Logout</h2>
+<p>O sistema monitora a atividade do usuário para proteger dados sensíveis em terminais compartilhados ou em caso de ausência prolongada.</p>
+
+<h3>15.1 Como Funciona</h3>
+<ul>
+  <li>O monitor de inatividade rastreia movimentos do mouse, cliques, teclado e scroll</li>
+  <li>Após o tempo configurado pelo administrador (padrão: 30 minutos), exibe um prompt de alerta</li>
+  <li>O usuário tem 60 segundos para confirmar que deseja continuar</li>
+  <li>Se não houver resposta, o sistema realiza auto-logout automático</li>
+</ul>
+
+<h3>15.2 Ações do Auto-Logout</h3>
+<ul>
+  <li>Encerramento da sessão do usuário</li>
+  <li>Desconexão de videoconsultas ativas (Agora.io)</li>
+  <li>Limpeza de dados sensíveis da memória do navegador</li>
+  <li>Redirecionamento para a página de login</li>
+  <li>Registro do evento no log de auditoria</li>
+</ul>
+
+<h3>15.3 Configuração (Admin)</h3>
+<table>
+  <tr><th>Parâmetro</th><th>Descrição</th><th>Padrão</th></tr>
+  <tr><td>Timeout de inatividade</td><td>Tempo em minutos antes do prompt de alerta</td><td>30 min</td></tr>
+  <tr><td>Tempo do prompt</td><td>Tempo de espera para confirmação do usuário</td><td>60 seg</td></tr>
+  <tr><td>Ativação</td><td>Habilitar/desabilitar detecção de inatividade</td><td>Ativado</td></tr>
+</table>
+
+<div class="info-box">
+  <strong>Segurança:</strong> A detecção de inatividade é especialmente importante em ambientes hospitalares e clínicas onde terminais podem ser compartilhados por múltiplos profissionais.
+</div>
 
 <div class="footer">
-  <p>Tele&lt;M3D&gt; Pro v2.1 — Documentação Gerada em ${today}</p>
+  <p>Tele&lt;M3D&gt; Pro v3.0 — Documentação Gerada em ${today}</p>
   <p>Cybermedicina Ltda. — github.com/LACibermedicina/tele.M3D.pro</p>
 </div>
 

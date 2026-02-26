@@ -55,7 +55,7 @@ export default function Installation() {
                 Guia de Instalação
               </h1>
               <p className="text-muted-foreground">
-                Script de instalação e configuração do Tele{"<"}M3D{">"}
+                Script de instalação e configuração do Tele{"<"}M3D{">"} Pro v3.0
               </p>
             </div>
           </div>
@@ -87,7 +87,7 @@ export default function Installation() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  O Tele{"<"}M3D{">"} é otimizado para rodar no Replit. A maior parte da configuração é automática.
+                  O Tele{"<"}M3D{">"} Pro v3.0 é otimizado para rodar no Replit. O sistema possui 61 tabelas no banco de dados e a maior parte da configuração é automática.
                 </p>
 
                 <div className="space-y-4">
@@ -107,7 +107,7 @@ export default function Installation() {
                       Banco de Dados PostgreSQL
                     </h3>
                     <p className="text-sm text-muted-foreground mb-2">
-                      Adicione o módulo PostgreSQL no painel de ferramentas do Replit. A variável DATABASE_URL será configurada automaticamente.
+                      Adicione o módulo PostgreSQL no painel de ferramentas do Replit. A variável DATABASE_URL será configurada automaticamente. O schema completo com 61 tabelas será criado automaticamente.
                     </p>
                   </div>
 
@@ -123,6 +123,11 @@ export default function Installation() {
 GEMINI_API_KEY=sua_chave_gemini_api`} />
                     <CodeBlock title="Variáveis opcionais (Agora para vídeo)" code={`AGORA_APP_ID=seu_agora_app_id
 AGORA_APP_CERTIFICATE=seu_agora_certificate`} />
+                    <CodeBlock title="Variáveis opcionais (PayPal para créditos)" code={`PAYPAL_CLIENT_ID=seu_paypal_client_id
+PAYPAL_CLIENT_SECRET=seu_paypal_client_secret`} />
+                    <CodeBlock title="Variáveis opcionais (OpenAI fallback e sessão)" code={`SESSION_SECRET=uma_chave_secreta_longa
+AI_INTEGRATIONS_OPENAI_API_KEY=sua_chave_openai
+AI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1`} />
                   </div>
 
                   <div>
@@ -195,6 +200,14 @@ GEMINI_API_KEY=sua_chave_gemini_api
 AGORA_APP_ID=seu_agora_app_id
 AGORA_APP_CERTIFICATE=seu_agora_certificate
 
+# PayPal para compra de créditos TMC (opcional)
+PAYPAL_CLIENT_ID=seu_paypal_client_id
+PAYPAL_CLIENT_SECRET=seu_paypal_client_secret
+
+# OpenAI como fallback de IA (opcional)
+AI_INTEGRATIONS_OPENAI_API_KEY=sua_chave_openai
+AI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1
+
 # Sessão
 SESSION_SECRET=uma_chave_secreta_longa_e_aleatoria`} />
                 </div>
@@ -207,7 +220,7 @@ SESSION_SECRET=uma_chave_secreta_longa_e_aleatoria`} />
                   <CodeBlock title="Terminal" code={`# Criar banco de dados (se necessário)
 createdb telemed3
 
-# Aplicar schema do Drizzle
+# Aplicar schema do Drizzle (61 tabelas)
 npm run db:push`} />
                 </div>
 
@@ -240,7 +253,7 @@ npm run dev
 set -e
 
 echo "============================================"
-echo "  Tele<M3D> - Script de Instalação"
+echo "  Tele<M3D> Pro v3.0 - Script de Instalação"
 echo "============================================"
 echo ""
 
@@ -279,8 +292,8 @@ if [ -z "$DATABASE_URL" ]; then
 else
     echo "[OK] DATABASE_URL configurada"
     
-    # Aplicar schema
-    echo "[INFO] Aplicando schema do banco de dados..."
+    # Aplicar schema (61 tabelas)
+    echo "[INFO] Aplicando schema do banco de dados (61 tabelas)..."
     npm run db:push
     echo "[OK] Schema aplicado com sucesso"
 fi
@@ -291,6 +304,27 @@ if [ -z "$GEMINI_API_KEY" ]; then
     echo "  Obtenha em: https://makersuite.google.com/app/apikey"
 else
     echo "[OK] GEMINI_API_KEY configurada"
+fi
+
+if [ -z "$AGORA_APP_ID" ]; then
+    echo "[INFO] AGORA_APP_ID não configurada (opcional)."
+    echo "  Necessária para teleconsultas por vídeo."
+else
+    echo "[OK] AGORA_APP_ID configurada"
+fi
+
+if [ -z "$PAYPAL_CLIENT_ID" ]; then
+    echo "[INFO] PAYPAL_CLIENT_ID não configurada (opcional)."
+    echo "  Necessária para compra de créditos TMC via PayPal."
+else
+    echo "[OK] PAYPAL_CLIENT_ID configurada"
+fi
+
+if [ -z "$PAYPAL_CLIENT_SECRET" ]; then
+    echo "[INFO] PAYPAL_CLIENT_SECRET não configurada (opcional)."
+    echo "  Necessária para processamento de pagamentos PayPal."
+else
+    echo "[OK] PAYPAL_CLIENT_SECRET configurada"
 fi
 
 echo ""
@@ -331,7 +365,7 @@ echo "============================================"`} />
                   </p>
                   <CodeBlock title="Executar no servidor (como root)" code={`curl -fsSL https://raw.githubusercontent.com/LACibermedicina/tele.M3D.pro/main/install.sh | sudo bash`} />
                   <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                    O script clona o repositório do GitHub, configura o banco de dados, compila a aplicação e inicia o serviço com PM2.
+                    O script clona o repositório do GitHub, configura o banco de dados (61 tabelas), compila a aplicação e inicia o serviço com PM2.
                   </p>
                 </div>
 
@@ -386,6 +420,12 @@ services:
       - DATABASE_URL=postgresql://postgres:senha@db:5432/telemed3
       - GEMINI_API_KEY=\${GEMINI_API_KEY}
       - SESSION_SECRET=\${SESSION_SECRET}
+      - AGORA_APP_ID=\${AGORA_APP_ID}
+      - AGORA_APP_CERTIFICATE=\${AGORA_APP_CERTIFICATE}
+      - PAYPAL_CLIENT_ID=\${PAYPAL_CLIENT_ID}
+      - PAYPAL_CLIENT_SECRET=\${PAYPAL_CLIENT_SECRET}
+      - AI_INTEGRATIONS_OPENAI_API_KEY=\${AI_INTEGRATIONS_OPENAI_API_KEY}
+      - AI_INTEGRATIONS_OPENAI_BASE_URL=\${AI_INTEGRATIONS_OPENAI_BASE_URL}
       - NODE_ENV=production
     depends_on:
       - db
@@ -406,7 +446,7 @@ volumes:
                   <CodeBlock title="Terminal" code={`# Build e iniciar
 docker-compose up -d
 
-# Aplicar migrações
+# Aplicar migrações (61 tabelas)
 docker-compose exec app npm run db:push
 
 # Ver logs
@@ -423,13 +463,17 @@ docker-compose logs -f app`} />
                   <div className="space-y-2 text-sm">
                     {[
                       "Configurar DATABASE_URL com banco de produção (Neon, Supabase, AWS RDS)",
-                      "Definir GEMINI_API_KEY para IA médica",
+                      "Definir GEMINI_API_KEY para IA médica (Google Gemini)",
                       "Configurar AGORA_APP_ID e AGORA_APP_CERTIFICATE para teleconsultas",
+                      "Configurar PAYPAL_CLIENT_ID e PAYPAL_CLIENT_SECRET para compra de créditos TMC",
                       "Definir SESSION_SECRET com chave forte e aleatória",
                       "Ativar HTTPS/TLS (obrigatório para WebRTC)",
-                      "Configurar backup automático do banco de dados",
+                      "Configurar backup automático do banco de dados (61 tabelas)",
                       "Configurar monitoramento e alertas",
                       "Revisar permissões de acesso e CORS",
+                      "Configurar timeout de inatividade no painel Admin (auto-logout)",
+                      "Configurar e-mail de destinatário PayPal nas configurações do Admin",
+                      "Verificar conformidade FHIR R4 para exportação de dados de pacientes",
                       "Testar todas as funcionalidades críticas",
                       "Configurar domínio personalizado e DNS"
                     ].map((item, idx) => (
@@ -454,7 +498,7 @@ docker-compose logs -f app`} />
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4">
-                  O schema possui 46 tabelas gerenciadas pelo Drizzle ORM. Principais tabelas:
+                  O schema possui 61 tabelas gerenciadas pelo Drizzle ORM. Principais tabelas:
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   {[
@@ -463,15 +507,31 @@ docker-compose logs -f app`} />
                     { name: "appointments", desc: "Agendamentos de consultas" },
                     { name: "video_consultations", desc: "Teleconsultas por vídeo" },
                     { name: "consultation_notes", desc: "Notas das teleconsultas" },
+                    { name: "consultation_requests", desc: "Solicitações de consulta" },
+                    { name: "consultation_sessions", desc: "Sessões de consulta ativas" },
+                    { name: "consultation_access_tokens", desc: "Tokens QR/código de acesso" },
+                    { name: "inter_consultations", desc: "Inter-consultas médicas" },
                     { name: "medical_records", desc: "Prontuários eletrônicos" },
                     { name: "prescriptions", desc: "Prescrições médicas" },
+                    { name: "post_consultation_items", desc: "Itens pós-consulta (IA)" },
+                    { name: "diagnostic_inferences", desc: "Classificação diagnóstica (CID/DSM)" },
                     { name: "whatsapp_messages", desc: "Mensagens do WhatsApp IA" },
-                    { name: "consultation_requests", desc: "Solicitações de consulta" },
                     { name: "doctor_notes", desc: "Anotações do médico" },
+                    { name: "doctor_schedule", desc: "Horários dos médicos" },
+                    { name: "medical_teams", desc: "Equipes médicas" },
+                    { name: "tmc_credit_packages", desc: "Pacotes de créditos TMC" },
+                    { name: "paypal_orders", desc: "Pedidos PayPal" },
+                    { name: "tmc_transactions", desc: "Transações de créditos TMC" },
+                    { name: "wallet_audit_log", desc: "Auditoria de carteira" },
+                    { name: "dynamic_nfts", desc: "NFTs dinâmicos (LGPD)" },
+                    { name: "nft_ownership", desc: "Propriedade de NFTs" },
+                    { name: "broker_orders", desc: "Ordens do broker TM3D/NFT" },
+                    { name: "broker_trades", desc: "Negociações do broker" },
+                    { name: "tm3d_supply", desc: "Oferta de tokens TM3D" },
+                    { name: "external_wallets", desc: "Carteiras externas (MetaMask)" },
+                    { name: "withdrawal_requests", desc: "Solicitações de saque" },
                     { name: "chatbot_references", desc: "Referências clínicas da IA" },
                     { name: "pending_notifications", desc: "Notificações pendentes" },
-                    { name: "team_notes", desc: "Notas de equipes médicas" },
-                    { name: "doctor_schedules", desc: "Horários dos médicos" },
                   ].map((table) => (
                     <div key={table.name} className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
                       <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{table.name}</code>
@@ -504,6 +564,8 @@ docker-compose logs -f app`} />
                     { name: "SESSION_SECRET", required: false, desc: "Chave secreta para sessões" },
                     { name: "AI_INTEGRATIONS_OPENAI_API_KEY", required: false, desc: "Chave OpenAI (fallback IA)" },
                     { name: "AI_INTEGRATIONS_OPENAI_BASE_URL", required: false, desc: "URL base OpenAI (fallback)" },
+                    { name: "PAYPAL_CLIENT_ID", required: false, desc: "Client ID do PayPal (compra de créditos TMC)" },
+                    { name: "PAYPAL_CLIENT_SECRET", required: false, desc: "Client Secret do PayPal (processamento de pagamentos)" },
                   ].map((env) => (
                     <div key={env.name} className="flex items-center gap-3 p-2 rounded-md bg-muted/30">
                       <code className="text-xs font-mono font-semibold">{env.name}</code>
