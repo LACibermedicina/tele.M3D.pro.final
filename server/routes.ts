@@ -17378,6 +17378,14 @@ async function initializeDefaultSystemSettings() {
       category: 'financial',
       isEditable: true,
     },
+    {
+      settingKey: 'paypal_recipient_email',
+      settingValue: 'lucasmedicina86@icloud.com',
+      settingType: 'string',
+      description: 'E-mail do destinatário PayPal para recebimento de pagamentos de créditos TMC',
+      category: 'financial',
+      isEditable: true,
+    },
   ];
 
   try {

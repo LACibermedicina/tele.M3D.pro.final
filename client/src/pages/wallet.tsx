@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import PayPalButton from "@/components/PayPalButton";
+import WalletPayPalCheckout from "@/components/WalletPayPalCheckout";
 import {
   Wallet,
   Coins,
@@ -448,10 +448,33 @@ export default function WalletPage() {
                 <p className="text-sm text-muted-foreground">
                   Complete o pagamento com PayPal para receber seus créditos instantaneamente.
                 </p>
-                <PayPalButton
+                <WalletPayPalCheckout
                   amount={selectedPackage.priceUsd}
                   currency="USD"
-                  intent="CAPTURE"
+                  orderId={paypalOrderId}
+                  onSuccess={(data) => {
+                    setPaypalOrderId(null);
+                    setSelectedPackage(null);
+                    queryClient.invalidateQueries({ queryKey: ["/api/tmc/balance"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/tmc/transactions"] });
+                    toast({
+                      title: "Créditos adicionados!",
+                      description: data.message || "Seus créditos foram adicionados com sucesso.",
+                    });
+                  }}
+                  onError={(errorMsg) => {
+                    toast({
+                      title: "Erro no pagamento",
+                      description: errorMsg,
+                      variant: "destructive",
+                    });
+                  }}
+                  onCancel={() => {
+                    toast({
+                      title: "Pagamento cancelado",
+                      description: "O pagamento foi cancelado.",
+                    });
+                  }}
                 />
                 <Button
                   variant="ghost"

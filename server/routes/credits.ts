@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { creditService } from '../services/credit-service';
 import type { User } from '../../shared/schema';
+import { Client, Environment, OrdersController } from '@paypal/paypal-server-sdk';
 
 // Simple auth middleware - will be replaced with proper middleware from parent
 const requireAuth = (req: any, res: Response, next: NextFunction) => {
@@ -41,23 +42,31 @@ router.post('/purchase/create-order', requireAuth, async (req, res) => {
       return res.status(404).json({ message: 'Pacote não encontrado' });
     }
 
-    // Create PayPal order through PayPal API
-    const orderPayload = {
-      amount: pkg.priceUsd,
-      currency: 'USD',
-      intent: 'CAPTURE',
-    };
+    const paypalClient = new Client({
+      clientCredentialsAuthCredentials: {
+        oAuthClientId: process.env.PAYPAL_CLIENT_ID!,
+        oAuthClientSecret: process.env.PAYPAL_CLIENT_SECRET!,
+      },
+      environment: process.env.NODE_ENV === 'production' ? Environment.Production : Environment.Sandbox,
+    });
+    const paypalOrdersController = new OrdersController(paypalClient);
 
-    // Call PayPal SDK to create order
-    const paypalResponse = await fetch(`${req.protocol}://${req.get('host')}/paypal/order`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(orderPayload),
+    const { body: orderBody } = await paypalOrdersController.createOrder({
+      body: {
+        intent: 'CAPTURE',
+        purchaseUnits: [{
+          amount: {
+            currencyCode: 'USD',
+            value: pkg.priceUsd,
+          },
+        }],
+      },
+      prefer: 'return=minimal',
     });
 
-    const paypalOrder = await paypalResponse.json();
+    const paypalOrder = JSON.parse(String(orderBody));
 
-    if (!paypalResponse.ok) {
+    if (!paypalOrder.id) {
       throw new Error('Failed to create PayPal order');
     }
 
@@ -81,7 +90,6 @@ router.post('/purchase/create-order', requireAuth, async (req, res) => {
   }
 });
 
-// Capture PayPal payment and credit account
 router.post('/purchase/capture', requireAuth, async (req, res) => {
   try {
     const { orderID } = req.body;
@@ -90,31 +98,41 @@ router.post('/purchase/capture', requireAuth, async (req, res) => {
       return res.status(400).json({ message: 'ID da ordem é obrigatório' });
     }
 
-    // Capture payment through PayPal
-    const captureResponse = await fetch(
-      `${req.protocol}://${req.get('host')}/paypal/order/${orderID}/capture`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    const client = new Client({
+      clientCredentialsAuthCredentials: {
+        oAuthClientId: process.env.PAYPAL_CLIENT_ID!,
+        oAuthClientSecret: process.env.PAYPAL_CLIENT_SECRET!,
+      },
+      environment: process.env.NODE_ENV === 'production' ? Environment.Production : Environment.Sandbox,
+    });
+    const ordersController = new OrdersController(client);
 
-    const captureData = await captureResponse.json();
+    const { body, ...httpResponse } = await ordersController.captureOrder({
+      id: orderID,
+      prefer: 'return=minimal',
+    });
 
-    if (!captureResponse.ok || captureData.status !== 'COMPLETED') {
-      return res.status(400).json({ 
+    const captureData = JSON.parse(String(body));
+
+    if (httpResponse.statusCode !== 201 && httpResponse.statusCode !== 200) {
+      return res.status(400).json({
         message: 'Falha ao capturar pagamento',
-        details: captureData 
+        details: captureData,
       });
     }
 
-    // Extract capture information
+    if (captureData.status !== 'COMPLETED') {
+      return res.status(400).json({
+        message: 'Pagamento não completado',
+        status: captureData.status,
+      });
+    }
+
     const capture = captureData.purchase_units[0].payments.captures[0];
     const captureId = capture.id;
     const payerEmail = captureData.payer?.email_address;
     const payerId = captureData.payer?.payer_id;
 
-    // Credit user account
     await creditService.captureAndCreditOrder(
       orderID,
       captureId,

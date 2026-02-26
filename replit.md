@@ -61,4 +61,14 @@ The application features an Express.js backend and a React frontend, with shared
 - **AI/ML:** Google Gemini API, Replit OpenAI AI Integrations
 - **Video Conferencing:** Agora
 - **PDF Generation:** jspdf
-- **Payment Processing:** PayPal
+- **Payment Processing:** PayPal (recipient email configurable via admin system settings: `paypal_recipient_email`, default: `lucasmedicina86@icloud.com`)
+
+## PayPal Credit Purchase Flow
+1. User selects a credit package on `/wallet` → calls `POST /api/credits/purchase/create-order` with `packageId`
+2. Backend creates PayPal order via SDK, stores in `paypalOrders` table, returns PayPal order ID + package info
+3. `WalletPayPalCheckout` component starts PayPal checkout session using the existing order ID (no duplicate order)
+4. User approves on PayPal → `onApprove` callback fires
+5. Component calls `POST /api/credits/purchase/capture` with the order ID
+6. Backend captures via PayPal SDK, credits user via `creditService.captureAndCreditOrder`, records transaction
+7. Key files: `client/src/components/WalletPayPalCheckout.tsx`, `server/routes/credits.ts`, `server/services/credit-service.ts`
+8. CRITICAL: `server/paypal.ts` and `client/src/components/PayPalButton.tsx` must NOT be modified (integration blueprint code)
