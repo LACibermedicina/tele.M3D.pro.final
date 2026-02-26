@@ -229,6 +229,8 @@ export default function WalletPage() {
     transferMutation.mutate({ toUserId: transferUserId, amount: parseInt(transferAmount), reason: transferReason || "Transferência entre usuários" });
   };
 
+  const isAdmin = user?.role === 'admin';
+
   const totalCredits = transactions.filter((t: any) => isCredit(t.type)).reduce((sum: number, t: any) => sum + Math.abs(t.amount || 0), 0);
   const totalDebits = transactions.filter((t: any) => !isCredit(t.type)).reduce((sum: number, t: any) => sum + Math.abs(t.amount || 0), 0);
   const totalCommissions = transactions.filter((t: any) => t.type === "commission").reduce((sum: number, t: any) => sum + Math.abs(t.amount || 0), 0);
@@ -311,7 +313,7 @@ export default function WalletPage() {
       </div>
 
       <Tabs defaultValue="comprar" className="space-y-4">
-        <TabsList className="grid grid-cols-6 w-full max-w-3xl">
+        <TabsList className={`grid w-full max-w-3xl ${isAdmin ? 'grid-cols-6' : 'grid-cols-2'}`}>
           <TabsTrigger value="comprar" className="flex items-center gap-1.5">
             <ShoppingCart className="h-4 w-4" />
             <span className="hidden sm:inline">Comprar</span>
@@ -320,22 +322,26 @@ export default function WalletPage() {
             <History className="h-4 w-4" />
             <span className="hidden sm:inline">Histórico</span>
           </TabsTrigger>
-          <TabsTrigger value="transferir" className="flex items-center gap-1.5">
-            <Send className="h-4 w-4" />
-            <span className="hidden sm:inline">Transferir</span>
-          </TabsTrigger>
-          <TabsTrigger value="custos" className="flex items-center gap-1.5">
-            <Info className="h-4 w-4" />
-            <span className="hidden sm:inline">Custos</span>
-          </TabsTrigger>
-          <TabsTrigger value="carteira-externa" className="flex items-center gap-1.5">
-            <ExternalLink className="h-4 w-4" />
-            <span className="hidden sm:inline">Externa</span>
-          </TabsTrigger>
-          <TabsTrigger value="auditoria" className="flex items-center gap-1.5">
-            <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Auditoria</span>
-          </TabsTrigger>
+          {isAdmin && (
+            <>
+              <TabsTrigger value="transferir" className="flex items-center gap-1.5">
+                <Send className="h-4 w-4" />
+                <span className="hidden sm:inline">Transferir</span>
+              </TabsTrigger>
+              <TabsTrigger value="custos" className="flex items-center gap-1.5">
+                <Info className="h-4 w-4" />
+                <span className="hidden sm:inline">Custos</span>
+              </TabsTrigger>
+              <TabsTrigger value="carteira-externa" className="flex items-center gap-1.5">
+                <ExternalLink className="h-4 w-4" />
+                <span className="hidden sm:inline">Externa</span>
+              </TabsTrigger>
+              <TabsTrigger value="auditoria" className="flex items-center gap-1.5">
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">Auditoria</span>
+              </TabsTrigger>
+            </>
+          )}
         </TabsList>
 
         <TabsContent value="comprar" className="space-y-4">
@@ -515,7 +521,7 @@ export default function WalletPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="transferir" className="space-y-4">
+        {isAdmin && (<TabsContent value="transferir" className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Send className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Transferir Créditos</h2>
@@ -613,9 +619,9 @@ export default function WalletPage() {
               </Card>
             </div>
           </div>
-        </TabsContent>
+        </TabsContent>)}
 
-        <TabsContent value="custos" className="space-y-4">
+        {isAdmin && (<TabsContent value="custos" className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Info className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Custos das Funcionalidades</h2>
@@ -654,9 +660,9 @@ export default function WalletPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent>)}
 
-        <TabsContent value="carteira-externa" className="space-y-4">
+        {isAdmin && (<TabsContent value="carteira-externa" className="space-y-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <ExternalLink className="h-5 w-5 text-primary" />
@@ -919,9 +925,9 @@ export default function WalletPage() {
               </Card>
             )}
           </div>
-        </TabsContent>
+        </TabsContent>)}
 
-        <TabsContent value="auditoria" className="space-y-4">
+        {isAdmin && (<TabsContent value="auditoria" className="space-y-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
@@ -1010,24 +1016,24 @@ export default function WalletPage() {
                   </TableHeader>
                   <TableBody>
                     {auditLog
-                      .filter((entry: any) => auditFilterType === "all" || entry.actionType === auditFilterType || entry.type === auditFilterType)
+                      .filter((entry: any) => auditFilterType === "all" || entry.action === auditFilterType)
                       .map((entry: any, i: number) => (
                         <TableRow key={entry.id || i}>
                           <TableCell className="text-xs whitespace-nowrap">
-                            {new Date(entry.createdAt || entry.date).toLocaleDateString("pt-BR", {
+                            {new Date(entry.createdAt).toLocaleDateString("pt-BR", {
                               day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
                             })}
                           </TableCell>
                           <TableCell>
-                            <TransactionLabel type={entry.actionType || entry.type} />
+                            <TransactionLabel type={entry.action} />
                           </TableCell>
-                          <TableCell className={`font-medium ${isCredit(entry.actionType || entry.type) ? "text-green-600" : "text-red-500"}`}>
-                            {isCredit(entry.actionType || entry.type) ? "+" : "-"}{Math.abs(entry.amount)} TMC
+                          <TableCell className={`font-medium ${isCredit(entry.action) ? "text-green-600" : "text-red-500"}`}>
+                            {isCredit(entry.action) ? "+" : "-"}{Math.abs(entry.amount)} TMC
                           </TableCell>
                           <TableCell className="text-xs">{entry.balanceBefore ?? "—"} TMC</TableCell>
                           <TableCell className="text-xs">{entry.balanceAfter ?? "—"} TMC</TableCell>
-                          <TableCell className="text-xs max-w-[200px] truncate">{entry.description || entry.reason || "—"}</TableCell>
-                          <TableCell className="text-xs">{entry.actor || entry.actorName || "Sistema"}</TableCell>
+                          <TableCell className="text-xs max-w-[200px] truncate">{entry.description || "—"}</TableCell>
+                          <TableCell className="text-xs">{entry.actorRole || "Sistema"}</TableCell>
                         </TableRow>
                       ))}
                   </TableBody>
@@ -1035,7 +1041,7 @@ export default function WalletPage() {
               </CardContent>
             </Card>
           )}
-        </TabsContent>
+        </TabsContent>)}
       </Tabs>
     </div>
     </PageWrapper>
