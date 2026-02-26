@@ -564,16 +564,26 @@ export default function Header() {
                     </div>
                   ))}
 
-                  {!user && (
+                  <div className="my-2 border-t border-border/50" />
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-1 mt-1">Acesso</p>
+                  {user ? (
+                    <div
+                      onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
+                      className="flex items-center space-x-3 p-2.5 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/5 cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted shrink-0">
+                        <LogOut className="h-4 w-4" />
+                      </div>
+                      <span className="font-medium text-sm">Sair</span>
+                    </div>
+                  ) : (
                     <>
-                      <div className="my-2 border-t border-border/50" />
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-1 mt-1">Acesso</p>
                       <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
                         <div className="flex items-center space-x-3 p-2.5 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/5">
                           <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted shrink-0">
                             <LogIn className="h-4 w-4" />
                           </div>
-                          <span className="font-medium text-sm">{t("auth.login")}</span>
+                          <span className="font-medium text-sm">Entrar</span>
                         </div>
                       </Link>
                       <Link href="/register" onClick={() => setIsMobileMenuOpen(false)}>
@@ -612,6 +622,7 @@ export default function Header() {
                     </>
                   )}
                 </nav>
+
 
                 {user ? (
                   <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t">
