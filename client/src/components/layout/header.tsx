@@ -479,7 +479,9 @@ export default function Header() {
       className={`border-b sticky top-0 z-50 transition-all duration-300 w-full ${
         isScrolled 
           ? 'bg-slate-900/80 backdrop-blur-md border-slate-700 shadow-lg' 
-          : 'bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border-gray-200/50 dark:border-slate-700 shadow-sm'
+          : isAuthenticatedPage
+            ? 'bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border-gray-200/50 dark:border-slate-700 shadow-sm'
+            : 'bg-transparent border-transparent'
       }`} 
       data-testid="header-main"
     >
