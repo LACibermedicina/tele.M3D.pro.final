@@ -845,19 +845,21 @@ export default function FloatingChatbot() {
                     </Button>
                   </>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    clearChat();
-                    setActiveInterviewId(null);
-                  }}
-                  className="text-xs"
-                  data-testid="button-clear-chat"
-                >
-                  <X className="w-3 h-3 mr-1" />
-                  Limpar
-                </Button>
+                {user && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      clearChat();
+                      setActiveInterviewId(null);
+                    }}
+                    className="text-xs"
+                    data-testid="button-clear-chat"
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    Limpar
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
