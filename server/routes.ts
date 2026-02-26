@@ -14531,6 +14531,19 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
+  app.get('/api/system-settings/public/inactivity-timeout', async (_req: Request, res: Response) => {
+    try {
+      const setting = await db.select()
+        .from(systemSettings)
+        .where(eq(systemSettings.settingKey, 'inactivity_timeout_minutes'))
+        .limit(1);
+      
+      res.json({ settingValue: setting.length > 0 ? setting[0].settingValue : '30' });
+    } catch {
+      res.json({ settingValue: '30' });
+    }
+  });
+
   app.get('/api/system-settings/:key', async (req: Request, res: Response) => {
     try {
       if (!req.user || !['admin', 'doctor'].includes(req.user.role)) {

@@ -5,6 +5,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import InactivityMonitor from "@/components/inactivity-monitor";
 import { NavigationProvider } from "@/contexts/NavigationContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Dashboard from "@/pages/dashboard";
@@ -481,6 +482,7 @@ function App() {
           <VoiceAssistantProvider>
             <TooltipProvider>
               <Toaster />
+              <InactivityMonitor />
               <Router />
             </TooltipProvider>
           </VoiceAssistantProvider>

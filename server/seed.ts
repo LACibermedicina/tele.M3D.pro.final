@@ -138,7 +138,15 @@ async function seed() {
         settingType: 'boolean',
         description: 'Modo de manutenção do sistema',
         category: 'general',
-        isEditable: false, // Protected setting
+        isEditable: false,
+      },
+      {
+        settingKey: 'inactivity_timeout_minutes',
+        settingValue: '30',
+        settingType: 'number',
+        description: 'Tempo de inatividade (em minutos) antes de perguntar se o usuário ainda está online. O usuário terá 3 minutos para responder antes do logout automático.',
+        category: 'security',
+        isEditable: true,
       },
     ];
 

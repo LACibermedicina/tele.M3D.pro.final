@@ -53,6 +53,7 @@ The application features an Express.js backend and a React frontend, with shared
 - **Internal Broker:** Dedicated page for trading NFT shares and TM3D tokens, featuring an order book, order management, and trade history.
 - **External Wallet Integration:** Tab in wallet for linking MetaMask/WalletConnect, viewing linked wallets, and managing withdrawal requests.
 - **Wallet Audit Log:** Comprehensive transaction auditing with action type filtering and weekly report summaries.
+- **Inactivity Detection & Auto-Logout:** Configurable inactivity timeout (default 30 min, stored in `systemSettings` as `inactivity_timeout_minutes`). After inactivity period, shows "Você ainda está online?" prompt with 3-minute countdown. Auto-logout if no response. Disconnects all Agora audio/video services and media streams on both auto-logout and manual logout. Public endpoint `/api/system-settings/public/inactivity-timeout` serves the setting to all logged-in users. Component: `client/src/components/inactivity-monitor.tsx`.
 
 ## External Dependencies
 - **Database:** PostgreSQL (Neon)

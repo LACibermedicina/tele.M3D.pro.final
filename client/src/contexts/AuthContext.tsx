@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { disconnectAllMediaServices } from '@/components/inactivity-monitor';
 
 interface User {
   id: string;
@@ -109,14 +110,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      disconnectAllMediaServices();
       await apiRequest('POST', '/api/auth/logout');
       setUser(null);
-      
-      // Clear all cached data
       queryClient.clear();
     } catch (error) {
       console.error('Logout failed:', error);
-      // Still clear user data even if logout request fails
+      disconnectAllMediaServices();
       setUser(null);
       queryClient.clear();
     }
