@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { TriageBadge } from "@/components/triage/triage-badge";
+import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 import {
   FileText,
   Calendar,
@@ -146,6 +148,7 @@ export default function PatientRecords() {
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
     <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-5xl">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
@@ -318,6 +321,7 @@ export default function PatientRecords() {
         </div>
       )}
     </div>
+    </PageWrapper>
   );
 }
 

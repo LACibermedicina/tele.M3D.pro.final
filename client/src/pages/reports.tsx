@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { FileDown, Calendar, Stethoscope, Users, DollarSign, UserCheck } from 'lucide-react';
+import PageWrapper from '@/components/layout/page-wrapper';
+import origamiHeroImage from '@assets/image_1759773239051.png';
 
 interface ConsultationsReport {
   totalConsultations: number;
@@ -461,6 +463,7 @@ export default function Reports() {
   };
 
   return (
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
     <div className="container mx-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold">Relatórios</h1>
@@ -525,5 +528,6 @@ export default function Reports() {
         </TabsContent>
       </Tabs>
     </div>
+    </PageWrapper>
   );
 }

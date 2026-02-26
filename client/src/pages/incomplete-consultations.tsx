@@ -4,6 +4,8 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -283,6 +285,7 @@ export default function IncompleteConsultations() {
   }
 
   return (
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
     <div className="container mx-auto p-4 max-w-7xl">
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -1176,5 +1179,6 @@ export default function IncompleteConsultations() {
         </DialogContent>
       </Dialog>
     </div>
+    </PageWrapper>
   );
 }

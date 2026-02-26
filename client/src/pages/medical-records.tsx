@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,10 +13,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { z } from "zod";
 import { DEFAULT_DOCTOR_ID } from "@shared/schema";
+import PageWrapper from "@/components/layout/page-wrapper";
+import origamiHeroImage from "@assets/image_1759773239051.png";
 
 const medicalRecordSchema = z.object({
   patientId: z.string().min(1, "Paciente é obrigatório"),
@@ -35,19 +39,29 @@ export default function MedicalRecords() {
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isDoctor = user?.role === 'doctor' || user?.role === 'admin';
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (user && !isDoctor) {
+      setLocation('/patient-records');
+    }
+  }, [user, isDoctor, setLocation]);
 
   const { data: patients } = useQuery({
     queryKey: ['/api/patients'],
+    enabled: isDoctor,
   });
 
   const { data: medicalRecords, isLoading: recordsLoading } = useQuery({
     queryKey: ['/api/medical-records', selectedPatientId],
-    enabled: !!selectedPatientId,
+    enabled: !!selectedPatientId && isDoctor,
   });
 
   const { data: examResults } = useQuery({
     queryKey: ['/api/exam-results', selectedPatientId],
-    enabled: !!selectedPatientId,
+    enabled: !!selectedPatientId && isDoctor,
   });
 
   const form = useForm<MedicalRecordFormData>({
@@ -126,17 +140,23 @@ export default function MedicalRecords() {
   };
 
   return (
+    <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
     <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">Prontuários Médicos</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Acesso restrito a médicos e administradores - Sistema seguro com assinatura digital</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
+            {isDoctor ? 'Prontuários Médicos' : 'Meus Prontuários'}
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            {isDoctor ? 'Acesso restrito a médicos e administradores - Sistema seguro com assinatura digital' : 'Visualize seus prontuários e histórico médico'}
+          </p>
         </div>
         <div className="flex items-center space-x-2">
           <div className="security-badge px-3 py-1 rounded-full text-white text-xs font-medium">
             <i className="fas fa-shield-alt mr-1"></i>
             Dados Criptografados
           </div>
+          {isDoctor && (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button disabled={!selectedPatient} data-testid="button-new-record">
@@ -254,6 +274,7 @@ export default function MedicalRecords() {
               </Form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
       </div>
 
@@ -616,5 +637,6 @@ export default function MedicalRecords() {
         </div>
       </div>
     </div>
+    </PageWrapper>
   );
 }
