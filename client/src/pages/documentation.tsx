@@ -46,7 +46,11 @@ import {
   BarChart,
   Settings,
   BookOpen,
-  ArrowRight
+  ArrowRight,
+  Download,
+  AudioLines,
+  Coins,
+  Landmark
 } from "lucide-react";
 
 export default function Documentation() {
@@ -265,25 +269,69 @@ export default function Documentation() {
           features: ["Upload seguro", "Validação automática", "Acesso controlado", "Versionamento"]
         }
       ]
+    },
+    {
+      category: "Assistente de Voz IAM3D",
+      icon: AudioLines,
+      color: "purple",
+      items: [
+        {
+          title: "Assistente por Voz",
+          description: "IA de voz full-screen com esfera animada para interação natural",
+          features: ["Web Speech API", "Overlay full-screen", "Esfera animada 3D", "Fechamento por voz"]
+        },
+        {
+          title: "Funcionalidades por Perfil",
+          description: "Badges de capacidade baseados no papel do usuário",
+          features: ["Paciente: Triagem/Agendar/Urgente", "Médico: Diagnóstico/Protocolos/Plantão", "Confirmação de agendamento", "Consulta urgente"]
+        },
+        {
+          title: "Integração com Chatbot",
+          description: "Unificado com o chatbot para respostas contextuais e ações",
+          features: ["Botões de ação na resposta", "Persistência de conversação", "Modo texto alternativo", "Navegação por voz"]
+        }
+      ]
+    },
+    {
+      category: "Blockchain e NFTs",
+      icon: Coins,
+      color: "amber",
+      items: [
+        {
+          title: "NFTs de Dados Médicos",
+          description: "Tokenização de insights clínicos anonimizados conforme LGPD",
+          features: ["Dados anonimizados", "Consentimento LGPD", "Cotas de propriedade", "Rastreamento de valor"]
+        },
+        {
+          title: "Broker Interno",
+          description: "Negociação de cotas de NFTs e tokens TM3D",
+          features: ["Livro de ofertas", "Ordens de compra/venda", "Histórico de negociações", "Controle de supply"]
+        },
+        {
+          title: "Carteira Externa",
+          description: "Integração com MetaMask e WalletConnect para operações externas",
+          features: ["Vincular MetaMask", "WalletConnect", "Solicitação de saque", "Auditoria completa"]
+        }
+      ]
     }
   ];
 
   const technicalSpecs = [
     {
       title: "Arquitetura Frontend",
-      items: ["React 18 com TypeScript", "Tailwind CSS para estilização", "Wouter para roteamento", "TanStack Query para estado"]
+      items: ["React 18 com TypeScript", "Tailwind CSS + shadcn/ui", "Wouter para roteamento", "TanStack Query v5", "Web Speech API (IAM3D)"]
     },
     {
       title: "Arquitetura Backend",
-      items: ["Node.js com Express", "PostgreSQL (Neon)", "Drizzle ORM", "WebSocket para real-time"]
+      items: ["Node.js com Express", "PostgreSQL (Neon)", "Drizzle ORM", "WebSocket para real-time", "50+ tabelas"]
     },
     {
       title: "Integrações",
-      items: ["Google Gemini API", "Agora.io Video SDK", "WhatsApp Business API", "PayPal Payment Gateway"]
+      items: ["Google Gemini 2.0 Flash", "OpenAI GPT-4o-mini (fallback)", "Agora.io Video SDK", "PayPal Checkout", "MetaMask/WalletConnect"]
     },
     {
       title: "Segurança",
-      items: ["HTTPS/TLS 1.3", "Criptografia AES-256", "Sessões seguras", "RBAC completo"]
+      items: ["HTTPS/TLS 1.3", "Criptografia AES-256", "RBAC granular", "Conformidade LGPD", "Auditoria completa"]
     }
   ];
 
@@ -293,32 +341,38 @@ export default function Documentation() {
       icon: Users,
       guides: [
         "Como agendar uma consulta",
-        "Como fazer upload de exames",
-        "Como usar o chatbot de IA",
-        "Como comprar créditos TMC",
-        "Como participar de videochamada"
+        "Como solicitar triagem por IA",
+        "Como usar o assistente de voz IAM3D",
+        "Como solicitar consulta urgente",
+        "Como comprar créditos TMC via PayPal",
+        "Como participar de videochamada",
+        "Como acessar prescrições e prontuário"
       ]
     },
     {
       role: "Médicos",
       icon: Activity,
       guides: [
-        "Como gerenciar sua agenda",
-        "Como realizar consultas online",
-        "Como emitir prescrições digitais",
-        "Como usar o assistente de IA",
-        "Como receber pagamentos em TMC"
+        "Como gerenciar sua agenda e disponibilidade",
+        "Como ativar plantão 24h",
+        "Como realizar consultas online com IA",
+        "Como emitir prescrições e diagnósticos",
+        "Como usar notas médicas e interconsultas",
+        "Como negociar NFTs médicos",
+        "Como gerenciar carteira digital"
       ]
     },
     {
       role: "Administradores",
       icon: Settings,
       guides: [
-        "Como gerenciar usuários",
-        "Como fazer upload de referências médicas",
-        "Como visualizar analytics",
-        "Como configurar o sistema",
-        "Como gerenciar créditos TMC"
+        "Como gerenciar usuários e licenças",
+        "Como configurar pacotes de crédito",
+        "Como enviar créditos a usuários",
+        "Como gerenciar custos de funcionalidades",
+        "Como visualizar relatórios e analytics",
+        "Como auditar transações financeiras",
+        "Como configurar taxa de câmbio TMC/USD"
       ]
     }
   ];
@@ -344,12 +398,22 @@ export default function Documentation() {
             <div className="flex justify-center gap-3 flex-wrap">
               <Badge className="bg-white/20 text-white text-sm px-4 py-2">
                 <CheckCircle className="w-4 h-4 mr-2" />
-                Atualizado em Outubro 2025
+                Atualizado em Fevereiro 2026
               </Badge>
               <Badge className="bg-white/20 text-white text-sm px-4 py-2">
                 <Star className="w-4 h-4 mr-2" />
-                Versão 2.0
+                Versão 2.1
               </Badge>
+            </div>
+            <div className="mt-6">
+              <Button
+                onClick={() => window.open('/api/docs/pdf', '_blank')}
+                className="bg-white/20 hover:bg-white/30 text-white border border-white/30 px-6 py-3"
+                size="lg"
+              >
+                <Download className="w-5 h-5 mr-2" />
+                Documentação Completa para Impressão
+              </Button>
             </div>
           </div>
 

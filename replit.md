@@ -18,7 +18,7 @@ The application features an Express.js backend and a React frontend, with shared
 - **Doctor Notes:** macOS Notes-style interface with folders, search, pinning, and color labels.
 - **Triage System:** Implements a 5-level Manchester Protocol (or WHO ETAT fallback) visual classification with color-coded badges and help dialogs.
 - **WhatsApp IA:** Messages display with role labels (Doctor, Patient, AI) and color-coded bubbles. Patient online status is shown in real-time.
-- **Documentation:** Public-facing manual, FAQ, and installation guides with searchable content, category filters, and code blocks.
+- **Documentation:** Public-facing manual, FAQ, and installation guides with searchable content, category filters, and code blocks. Downloadable comprehensive PDF documentation with SVG diagrams (architecture, module relationships, ER diagrams, user guides by role).
 - **Mobile Dashboards:** Rebuilt mobile patient and visitor dashboards with real API data, touch-friendly buttons, and IAM3D voice assistant integration.
 
 **Technical Implementations:**

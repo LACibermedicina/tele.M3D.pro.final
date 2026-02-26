@@ -17124,6 +17124,19 @@ ${combinedText.slice(0, 8000)}`;
   });
 
 
+  app.get('/api/docs/pdf', async (_req, res) => {
+    try {
+      const { generateSystemDocumentationHTML } = await import('./services/doc-pdf-generator');
+      const html = generateSystemDocumentationHTML();
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Disposition', 'inline; filename="TeleM3D-Documentacao.html"');
+      res.send(html);
+    } catch (error) {
+      console.error('Failed to generate documentation PDF:', error);
+      res.status(500).json({ message: 'Failed to generate documentation' });
+    }
+  });
+
   return httpServer;
 }
 
