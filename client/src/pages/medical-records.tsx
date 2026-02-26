@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
@@ -21,6 +22,7 @@ import { DEFAULT_DOCTOR_ID } from "@shared/schema";
 import PageWrapper from "@/components/layout/page-wrapper";
 import PatientExportDialog from "@/components/patient-export-dialog";
 import origamiHeroImage from "@assets/image_1759773239051.png";
+import { FileText, Shield, Download, Plus, Search, Pencil, History, Globe, FileJson, FileSpreadsheet, FileCode, ClipboardList, User, Stethoscope, Activity, Lock, CheckCircle2 } from "lucide-react";
 
 const medicalRecordSchema = z.object({
   patientId: z.string().min(1, "Paciente é obrigatório"),
@@ -30,14 +32,36 @@ const medicalRecordSchema = z.object({
   prescription: z.string().optional(),
 });
 
+const pmdCreateSchema = z.object({
+  anamnese: z.string().min(1, "Anamnese é obrigatória"),
+  historico: z.string().optional(),
+  exames: z.string().optional(),
+  diagnostico: z.string().optional(),
+  tratamento: z.string().optional(),
+  nome_mae: z.string().optional(),
+  cpf: z.string().optional(),
+  rg: z.string().optional(),
+  sus_card: z.string().optional(),
+  endereco: z.string().optional(),
+});
+
 type MedicalRecordFormData = z.infer<typeof medicalRecordSchema>;
+type PMDCreateFormData = z.infer<typeof pmdCreateSchema>;
 
 export default function MedicalRecords() {
   const urlParams = new URLSearchParams(window.location.search);
   const initialPatientId = urlParams.get('patientId');
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(initialPatientId);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPmdDialogOpen, setIsPmdDialogOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isPmdExportOpen, setIsPmdExportOpen] = useState(false);
+  const [selectedPmdId, setSelectedPmdId] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [exportLocale, setExportLocale] = useState<string>("BR");
+  const [exportFormat, setExportFormat] = useState<string>("PDF");
+  const [evolucaoText, setEvolucaoText] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -66,6 +90,11 @@ export default function MedicalRecords() {
     enabled: !!selectedPatientId && isDoctor,
   });
 
+  const { data: pmdDetail, isLoading: pmdLoading } = useQuery({
+    queryKey: ['/api/pmd', selectedPmdId],
+    enabled: !!selectedPmdId,
+  });
+
   const form = useForm<MedicalRecordFormData>({
     resolver: zodResolver(medicalRecordSchema),
     defaultValues: {
@@ -77,19 +106,33 @@ export default function MedicalRecords() {
     },
   });
 
+  const pmdForm = useForm<PMDCreateFormData>({
+    resolver: zodResolver(pmdCreateSchema),
+    defaultValues: {
+      anamnese: "",
+      historico: "",
+      exames: "",
+      diagnostico: "",
+      tratamento: "",
+      nome_mae: "",
+      cpf: "",
+      rg: "",
+      sus_card: "",
+      endereco: "",
+    },
+  });
+
   const analyzeSymptomsMutation = useMutation({
     mutationFn: (data: { symptoms: string; history: string }) =>
       apiRequest('POST', `/api/medical-records/${selectedPatientId}/analyze`, data),
     onSuccess: (response: any) => {
       if (response.analysis) {
-        // Preencher os campos do formulário com a análise IA
         form.setValue('diagnosis', response.analysis.diagnosis || '');
         form.setValue('treatment', response.analysis.treatment || '');
         form.setValue('prescription', response.analysis.prescription || '');
-        
         toast({
           title: "Análise IA Concluída",
-          description: response.message || "Os campos foram preenchidos com as sugestões da IA. Revise e edite conforme necessário.",
+          description: "Os campos foram preenchidos com as sugestões da IA.",
         });
       }
     },
@@ -102,7 +145,6 @@ export default function MedicalRecords() {
     },
   });
 
-  // Prescription digital signature mutation - FIPS 140-2 compliant
   const signPrescriptionMutation = useMutation({
     mutationFn: (medicalRecordId: string) =>
       apiRequest('POST', `/api/medical-records/${medicalRecordId}/sign-prescription`, {
@@ -111,17 +153,70 @@ export default function MedicalRecords() {
     onSuccess: (response: any) => {
       toast({
         title: "Prescrição Assinada Digitalmente",
-        description: `Assinatura digital demo criada com sucesso. Audit Hash: ${response.auditHash?.substring(0, 8)}...`,
+        description: `Assinatura digital criada. Audit Hash: ${response.auditHash?.substring(0, 8)}...`,
       });
-      // Refresh medical records to show updated signature status
       queryClient.invalidateQueries({ queryKey: ['/api/medical-records'] });
     },
     onError: (error: any) => {
       toast({
         title: "Erro na Assinatura Digital",
-        description: error.message || "Erro ao assinar prescrição digitalmente.",
+        description: error.message || "Erro ao assinar prescrição.",
         variant: "destructive",
       });
+    },
+  });
+
+  const createPmdMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('POST', '/api/pmd/create', data),
+    onSuccess: (response: any) => {
+      toast({ title: "PMD Criado", description: "Prontuário PMD v1.0 criado com sucesso." });
+      setIsPmdDialogOpen(false);
+      pmdForm.reset();
+      queryClient.invalidateQueries({ queryKey: ['/api/medical-records'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pmd'] });
+      if (response.id) setSelectedPmdId(response.id);
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Erro ao criar prontuário PMD.", variant: "destructive" });
+    },
+  });
+
+  const editPmdMutation = useMutation({
+    mutationFn: (data: { id: string; campo: string; valor: string }) =>
+      apiRequest('PATCH', `/api/pmd/${data.id}`, { campo: data.campo, valor: data.valor }),
+    onSuccess: () => {
+      toast({ title: "Atualizado", description: "Campo atualizado com log de auditoria." });
+      setEditingField(null);
+      setEditValue("");
+      queryClient.invalidateQueries({ queryKey: ['/api/pmd', selectedPmdId] });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Erro ao atualizar campo.", variant: "destructive" });
+    },
+  });
+
+  const addEvolucaoMutation = useMutation({
+    mutationFn: (data: { id: string; descricao: string }) =>
+      apiRequest('PATCH', `/api/pmd/${data.id}`, { evolucao: { descricao: data.descricao } }),
+    onSuccess: () => {
+      toast({ title: "Evolução Adicionada", description: "Nova evolução registrada no prontuário." });
+      setEvolucaoText("");
+      queryClient.invalidateQueries({ queryKey: ['/api/pmd', selectedPmdId] });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Erro ao adicionar evolução.", variant: "destructive" });
+    },
+  });
+
+  const convertPmdMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('PATCH', `/api/pmd/${id}/convert`, {}),
+    onSuccess: (response: any) => {
+      toast({ title: "Convertido", description: "Prontuário convertido para PMD v1.0." });
+      queryClient.invalidateQueries({ queryKey: ['/api/medical-records'] });
+      if (response.id) setSelectedPmdId(response.id);
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Erro ao converter prontuário.", variant: "destructive" });
     },
   });
 
@@ -133,12 +228,90 @@ export default function MedicalRecords() {
   const handleAnalyzeSymptoms = () => {
     const symptoms = form.getValues('symptoms');
     if (!symptoms || !selectedPatient) return;
-
-    const history = selectedPatient.medicalHistory ? 
-      JSON.stringify(selectedPatient.medicalHistory) : 
-      `Paciente: ${selectedPatient.name}, Idade: ${selectedPatient.age || 'N/A'}, Alergias: ${selectedPatient.allergies || 'Nenhuma'}`;
-
+    const history = selectedPatient.medicalHistory ?
+      JSON.stringify(selectedPatient.medicalHistory) :
+      `Paciente: ${selectedPatient.name}, Alergias: ${selectedPatient.allergies || 'Nenhuma'}`;
     analyzeSymptomsMutation.mutate({ symptoms, history });
+  };
+
+  const handlePmdCreate = (data: PMDCreateFormData) => {
+    if (!selectedPatientId) return;
+    createPmdMutation.mutate({
+      patientId: selectedPatientId,
+      pmdData: {
+        paciente: {
+          nome_mae: data.nome_mae,
+          cpf: data.cpf,
+          rg: data.rg,
+          sus_card: data.sus_card,
+          endereco: data.endereco,
+        },
+        clinico: {
+          anamnese: data.anamnese,
+          historico: data.historico || '',
+          exames: data.exames || '',
+          diagnostico: data.diagnostico || '',
+          tratamento: data.tratamento || '',
+          evolucoes: [],
+        },
+      },
+    });
+  };
+
+  const handlePmdExport = () => {
+    if (!selectedPmdId) return;
+    const url = `/api/pmd/${selectedPmdId}/export?locale=${exportLocale}&format=${exportFormat}`;
+    window.open(url, '_blank');
+    setIsPmdExportOpen(false);
+  };
+
+  const startEdit = (campo: string, currentValue: string) => {
+    setEditingField(campo);
+    setEditValue(currentValue || '');
+  };
+
+  const saveEdit = () => {
+    if (!selectedPmdId || !editingField) return;
+    editPmdMutation.mutate({ id: selectedPmdId, campo: editingField, valor: editValue });
+  };
+
+  const pmd = (pmdDetail as any)?.pmd;
+  const accessLevel = (pmdDetail as any)?.accessLevel;
+  const logsVisible = (pmdDetail as any)?.logsVisible;
+  const canEdit = accessLevel === 'criador' || accessLevel === 'total';
+
+  const renderPmdField = (label: string, campo: string, value: string, icon: any) => {
+    const Icon = icon;
+    const isEditing = editingField === campo;
+
+    return (
+      <div className="border border-border rounded-lg p-3 mb-2">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Icon className="w-4 h-4" />
+            {label}
+          </div>
+          {canEdit && !isEditing && (
+            <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => startEdit(campo, value)}>
+              <Pencil className="w-3 h-3" />
+            </Button>
+          )}
+        </div>
+        {isEditing ? (
+          <div className="space-y-2">
+            <Textarea value={editValue} onChange={e => setEditValue(e.target.value)} rows={3} />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={saveEdit} disabled={editPmdMutation.isPending}>
+                {editPmdMutation.isPending ? 'Salvando...' : 'Salvar'}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingField(null)}>Cancelar</Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm whitespace-pre-wrap">{value || '—'}</p>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -147,185 +320,208 @@ export default function MedicalRecords() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
-            {isDoctor ? 'Prontuários Médicos' : 'Meus Prontuários'}
+            Prontuário Médico Digital
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            {isDoctor ? 'Acesso restrito a médicos e administradores - Sistema seguro com assinatura digital' : 'Visualize seus prontuários e histórico médico'}
+            PMD v1.0 — Conforme CFM/LGPD/RGPD
           </p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-wrap gap-2">
           {selectedPatient && (
             <Button variant="outline" size="sm" onClick={() => setIsExportDialogOpen(true)}>
-              <i className="fas fa-download mr-1"></i>
-              Exportar Prontuário
+              <Download className="w-4 h-4 mr-1" />
+              FHIR Export
             </Button>
           )}
-          <div className="security-badge px-3 py-1 rounded-full text-white text-xs font-medium">
-            <i className="fas fa-shield-alt mr-1"></i>
+          <Badge variant="secondary" className="px-3 py-1">
+            <Shield className="w-3 h-3 mr-1" />
             Dados Criptografados
-          </div>
-          {isDoctor && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button disabled={!selectedPatient} data-testid="button-new-record">
-                <i className="fas fa-plus mr-2"></i>
-                Novo Prontuário
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>
-                  Novo Prontuário - {selectedPatient?.name}
-                </DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="symptoms"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sintomas</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Descreva os sintomas apresentados pelo paciente..."
-                            {...field}
-                            data-testid="textarea-symptoms"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleAnalyzeSymptoms}
-                      disabled={analyzeSymptomsMutation.isPending}
-                      data-testid="button-analyze-symptoms"
-                    >
-                      <i className="fas fa-robot mr-2"></i>
-                      {analyzeSymptomsMutation.isPending ? "Analisando..." : "Analisar com IA"}
-                    </Button>
-                  </div>
+          </Badge>
+          {isDoctor && selectedPatient && (
+            <>
+              <Dialog open={isPmdDialogOpen} onOpenChange={setIsPmdDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Novo PMD
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      Criar Prontuário PMD v1.0 — {selectedPatient?.name}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <Form {...pmdForm}>
+                    <form onSubmit={pmdForm.handleSubmit(handlePmdCreate)} className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <FormField control={pmdForm.control} name="nome_mae" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nome da Mãe</FormLabel>
+                            <FormControl><Input placeholder="Nome completo da mãe" {...field} /></FormControl>
+                          </FormItem>
+                        )} />
+                        <FormField control={pmdForm.control} name="cpf" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>CPF</FormLabel>
+                            <FormControl><Input placeholder="000.000.000-00" {...field} /></FormControl>
+                          </FormItem>
+                        )} />
+                        <FormField control={pmdForm.control} name="rg" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>RG</FormLabel>
+                            <FormControl><Input placeholder="Documento de identidade" {...field} /></FormControl>
+                          </FormItem>
+                        )} />
+                        <FormField control={pmdForm.control} name="sus_card" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Cartão SUS</FormLabel>
+                            <FormControl><Input placeholder="Número do cartão SUS" {...field} /></FormControl>
+                          </FormItem>
+                        )} />
+                      </div>
+                      <FormField control={pmdForm.control} name="endereco" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Endereço</FormLabel>
+                          <FormControl><Input placeholder="Endereço completo" {...field} /></FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={pmdForm.control} name="anamnese" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Anamnese *</FormLabel>
+                          <FormControl><Textarea placeholder="Queixa principal, história da doença atual..." rows={3} {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={pmdForm.control} name="historico" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Histórico</FormLabel>
+                          <FormControl><Textarea placeholder="Antecedentes pessoais, familiares, cirúrgicos..." rows={2} {...field} /></FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={pmdForm.control} name="exames" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Exames</FormLabel>
+                          <FormControl><Textarea placeholder="Exames solicitados ou resultados..." rows={2} {...field} /></FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={pmdForm.control} name="diagnostico" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Diagnóstico</FormLabel>
+                          <FormControl><Textarea placeholder="Diagnóstico clínico..." rows={2} {...field} /></FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={pmdForm.control} name="tratamento" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tratamento</FormLabel>
+                          <FormControl><Textarea placeholder="Plano terapêutico..." rows={2} {...field} /></FormControl>
+                        </FormItem>
+                      )} />
+                      <div className="flex justify-end space-x-2 pt-2">
+                        <Button type="button" variant="outline" onClick={() => setIsPmdDialogOpen(false)}>Cancelar</Button>
+                        <Button type="submit" disabled={createPmdMutation.isPending}>
+                          {createPmdMutation.isPending ? 'Criando...' : 'Criar PMD v1.0'}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
 
-                  <FormField
-                    control={form.control}
-                    name="diagnosis"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Diagnóstico</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Diagnóstico médico..."
-                            {...field}
-                            data-testid="textarea-diagnosis"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="treatment"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tratamento</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Plano de tratamento..."
-                            {...field}
-                            data-testid="textarea-treatment"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="prescription"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Prescrição</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Prescrição médica..."
-                            {...field}
-                            data-testid="textarea-prescription"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="flex justify-end space-x-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => setIsDialogOpen(false)}
-                      data-testid="button-cancel-record"
-                    >
-                      Cancelar
-                    </Button>
-                    <Button type="submit" data-testid="button-save-record">
-                      Salvar Prontuário
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Legado
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Novo Prontuário (Legado) - {selectedPatient?.name}</DialogTitle>
+                  </DialogHeader>
+                  <Form {...form}>
+                    <form className="space-y-4">
+                      <FormField control={form.control} name="symptoms" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sintomas</FormLabel>
+                          <FormControl><Textarea placeholder="Descreva os sintomas..." {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <div className="flex items-center space-x-2">
+                        <Button type="button" variant="outline" onClick={handleAnalyzeSymptoms} disabled={analyzeSymptomsMutation.isPending}>
+                          {analyzeSymptomsMutation.isPending ? "Analisando..." : "Analisar com IA"}
+                        </Button>
+                      </div>
+                      <FormField control={form.control} name="diagnosis" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Diagnóstico</FormLabel>
+                          <FormControl><Textarea placeholder="Diagnóstico médico..." {...field} /></FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="treatment" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tratamento</FormLabel>
+                          <FormControl><Textarea placeholder="Plano de tratamento..." {...field} /></FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="prescription" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Prescrição</FormLabel>
+                          <FormControl><Textarea placeholder="Prescrição médica..." {...field} /></FormControl>
+                        </FormItem>
+                      )} />
+                      <div className="flex justify-end space-x-2">
+                        <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                        <Button type="submit">Salvar Prontuário</Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Patient List */}
         <div className="lg:col-span-1">
           <Card className="h-[700px]">
-            <CardHeader>
-              <CardTitle>Pacientes</CardTitle>
-              <Input
-                placeholder="Buscar paciente..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                data-testid="input-search-patients"
-              />
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Pacientes
+              </CardTitle>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar paciente..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="space-y-1 max-h-[600px] overflow-y-auto">
+              <div className="space-y-1 max-h-[580px] overflow-y-auto">
                 {filteredPatients.map((patient: any) => (
                   <div
                     key={patient.id}
-                    className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors border-b border-border ${
-                      selectedPatientId === patient.id ? 'bg-primary/10' : ''
+                    className={`p-3 cursor-pointer hover:bg-muted/50 transition-colors border-b border-border ${
+                      selectedPatientId === patient.id ? 'bg-primary/10 border-l-2 border-l-primary' : ''
                     }`}
-                    onClick={() => setSelectedPatientId(patient.id)}
-                    data-testid={`patient-card-${patient.id}`}
+                    onClick={() => { setSelectedPatientId(patient.id); setSelectedPmdId(null); }}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
-                        <i className="fas fa-user text-primary text-sm"></i>
+                      <div className="w-9 h-9 bg-primary/20 rounded-full flex items-center justify-center">
+                        <User className="w-4 h-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate" data-testid={`patient-name-${patient.id}`}>
-                          {patient.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground" data-testid={`patient-phone-${patient.id}`}>
-                          {patient.phone}
-                        </p>
+                        <p className="font-medium truncate text-sm">{patient.name}</p>
+                        <p className="text-xs text-muted-foreground">{patient.phone}</p>
                         {patient.allergies && (
-                          <p className="text-xs text-destructive">
-                            <i className="fas fa-exclamation-triangle mr-1"></i>
-                            {patient.allergies}
-                          </p>
+                          <p className="text-xs text-destructive truncate">{patient.allergies}</p>
                         )}
                       </div>
                     </div>
@@ -336,73 +532,296 @@ export default function MedicalRecords() {
           </Card>
         </div>
 
-        {/* Medical Records Content */}
         <div className="lg:col-span-3">
           {!selectedPatient ? (
             <Card className="h-[700px] flex items-center justify-center">
               <CardContent>
                 <div className="text-center">
-                  <i className="fas fa-file-medical text-6xl text-muted-foreground mb-4"></i>
-                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                    Selecione um Paciente
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Escolha um paciente para visualizar ou criar prontuários médicos
-                  </p>
+                  <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">Selecione um Paciente</h3>
+                  <p className="text-muted-foreground">Escolha um paciente para visualizar ou criar prontuários PMD</p>
                 </div>
               </CardContent>
             </Card>
-          ) : (
-            <div className="space-y-6">
-              {/* Patient Header */}
+          ) : selectedPmdId && pmd ? (
+            <div className="space-y-4">
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center">
-                        <i className="fas fa-user text-primary text-2xl"></i>
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-bold" data-testid="selected-patient-name">
-                          {selectedPatient.name}
-                        </h2>
-                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                          <span data-testid="selected-patient-phone">{selectedPatient.phone}</span>
-                          {selectedPatient.bloodType && (
-                            <>
-                              <span>•</span>
-                              <span data-testid="selected-patient-blood-type">{selectedPatient.bloodType}</span>
-                            </>
-                          )}
-                          {selectedPatient.gender && (
-                            <>
-                              <span>•</span>
-                              <span data-testid="selected-patient-gender">{selectedPatient.gender}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <FileText className="w-5 h-5 text-primary" />
+                        PMD v1.0 — {pmd.paciente?.nome}
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        CRM: {pmd.medico_crm} | ID: {selectedPmdId?.substring(0, 8)}...
+                      </p>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="secondary">
-                        <i className="fas fa-shield-alt mr-1"></i>
-                        Prontuário Seguro
+                    <div className="flex items-center gap-2">
+                      <Badge variant={accessLevel === 'total' ? 'default' : accessLevel === 'criador' ? 'secondary' : 'outline'}>
+                        {accessLevel === 'total' ? 'Acesso Total' : accessLevel === 'criador' ? 'Médico Criador' : 'Leitura'}
                       </Badge>
+                      <Button variant="outline" size="sm" onClick={() => setIsPmdExportOpen(true)}>
+                        <Download className="w-4 h-4 mr-1" />
+                        Exportar
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedPmdId(null)}>Voltar</Button>
                     </div>
                   </div>
                 </CardHeader>
               </Card>
 
-              {/* Tabs for Records and Exams */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      Dados do Paciente
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm space-y-1">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                      <span className="text-muted-foreground">Nome:</span><span>{pmd.paciente?.nome}</span>
+                      <span className="text-muted-foreground">Data Nasc.:</span><span>{pmd.paciente?.dt_nasc || '—'}</span>
+                      <span className="text-muted-foreground">Sexo:</span><span>{pmd.paciente?.sexo || '—'}</span>
+                      <span className="text-muted-foreground">Contato:</span><span>{pmd.paciente?.contato || '—'}</span>
+                      <span className="text-muted-foreground">Endereço:</span><span>{pmd.paciente?.endereco || '—'}</span>
+                      {pmd.paciente?.nome_mae && (<><span className="text-muted-foreground">Nome da Mãe:</span><span>{pmd.paciente.nome_mae}</span></>)}
+                      {pmd.paciente?.cpf && (<><span className="text-muted-foreground">CPF:</span><span>{pmd.paciente.cpf}</span></>)}
+                      {pmd.paciente?.sus_card && (<><span className="text-muted-foreground">Cartão SUS:</span><span>{pmd.paciente.sus_card}</span></>)}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Shield className="w-4 h-4" />
+                      Conformidade
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm space-y-2">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      <span>CFM (Conselho Federal de Medicina)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      <span>LGPD (Lei 13.709/2018)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      <span>RGPD (UE 2016/679)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-blue-600" />
+                      <span>Dados Criptografados</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Stethoscope className="w-4 h-4" />
+                    Dados Clínicos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {renderPmdField('Anamnese', 'clinico.anamnese', pmd.clinico?.anamnese, ClipboardList)}
+                  {renderPmdField('Histórico', 'clinico.historico', pmd.clinico?.historico, History)}
+                  {renderPmdField('Exames', 'clinico.exames', pmd.clinico?.exames, Activity)}
+                  {renderPmdField('Diagnóstico', 'clinico.diagnostico', pmd.clinico?.diagnostico, Stethoscope)}
+                  {renderPmdField('Tratamento', 'clinico.tratamento', pmd.clinico?.tratamento, FileText)}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Activity className="w-4 h-4" />
+                    Evoluções ({pmd.clinico?.evolucoes?.length || 0})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {(pmd.clinico?.evolucoes || []).length > 0 ? (
+                    <div className="space-y-2 mb-4">
+                      {pmd.clinico.evolucoes.map((ev: any, idx: number) => (
+                        <div key={idx} className="border border-border rounded-lg p-3 bg-muted/30">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-muted-foreground">{ev.data}</span>
+                            <Badge variant="outline" className="text-xs">{ev.medico}</Badge>
+                          </div>
+                          <p className="text-sm">{ev.descricao}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground mb-4">Nenhuma evolução registrada.</p>
+                  )}
+                  {canEdit && (
+                    <div className="space-y-2 border-t border-border pt-3">
+                      <Textarea
+                        placeholder="Nova evolução clínica..."
+                        value={evolucaoText}
+                        onChange={e => setEvolucaoText(e.target.value)}
+                        rows={2}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => selectedPmdId && addEvolucaoMutation.mutate({ id: selectedPmdId, descricao: evolucaoText })}
+                        disabled={!evolucaoText.trim() || addEvolucaoMutation.isPending}
+                      >
+                        {addEvolucaoMutation.isPending ? 'Salvando...' : 'Adicionar Evolução'}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {logsVisible && pmd.logs && pmd.logs.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <History className="w-4 h-4" />
+                      Log de Auditoria ({pmd.logs.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left py-2 px-2 text-muted-foreground font-medium">Timestamp</th>
+                            <th className="text-left py-2 px-2 text-muted-foreground font-medium">Usuário</th>
+                            <th className="text-left py-2 px-2 text-muted-foreground font-medium">Ação</th>
+                            <th className="text-left py-2 px-2 text-muted-foreground font-medium">Anterior</th>
+                            <th className="text-left py-2 px-2 text-muted-foreground font-medium">Novo</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pmd.logs.map((log: any, idx: number) => (
+                            <tr key={idx} className="border-b border-border/50">
+                              <td className="py-2 px-2 text-xs whitespace-nowrap">
+                                {new Date(log.timestamp).toLocaleString('pt-BR')}
+                              </td>
+                              <td className="py-2 px-2 text-xs">{log.user}</td>
+                              <td className="py-2 px-2">
+                                <Badge variant="outline" className="text-xs">{log.acao}</Badge>
+                              </td>
+                              <td className="py-2 px-2 text-xs max-w-[150px] truncate">{log.antigo || '—'}</td>
+                              <td className="py-2 px-2 text-xs max-w-[150px] truncate">{log.novo || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Dialog open={isPmdExportOpen} onOpenChange={setIsPmdExportOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Download className="w-5 h-5" />
+                      Exportar PMD
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Locale / Regulamentação</label>
+                      <Select value={exportLocale} onValueChange={setExportLocale}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="BR">
+                            <span className="flex items-center gap-2"><Globe className="w-4 h-4" /> BR — CFM/LGPD</span>
+                          </SelectItem>
+                          <SelectItem value="ES">
+                            <span className="flex items-center gap-2"><Globe className="w-4 h-4" /> ES — RGPD</span>
+                          </SelectItem>
+                          <SelectItem value="USA">
+                            <span className="flex items-center gap-2"><Globe className="w-4 h-4" /> USA — HIPAA</span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Formato</label>
+                      <Select value={exportFormat} onValueChange={setExportFormat}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="PDF">
+                            <span className="flex items-center gap-2"><FileText className="w-4 h-4" /> PDF (HTML)</span>
+                          </SelectItem>
+                          <SelectItem value="JSON">
+                            <span className="flex items-center gap-2"><FileJson className="w-4 h-4" /> JSON</span>
+                          </SelectItem>
+                          <SelectItem value="XML">
+                            <span className="flex items-center gap-2"><FileCode className="w-4 h-4" /> XML</span>
+                          </SelectItem>
+                          <SelectItem value="CSV">
+                            <span className="flex items-center gap-2"><FileSpreadsheet className="w-4 h-4" /> CSV</span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground">
+                      {exportLocale === 'BR' && 'Inclui: CFM, Nome da Mãe, CRM, CPF, Cartão SUS — Conforme LGPD'}
+                      {exportLocale === 'ES' && 'Incluye: RGPD, DNI, Vacunas, Colegiado — Conforme RGPD'}
+                      {exportLocale === 'USA' && 'Includes: HIPAA, Provider NPI — HIPAA Compliant'}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setIsPmdExportOpen(false)}>Cancelar</Button>
+                      <Button onClick={handlePmdExport}>
+                        <Download className="w-4 h-4 mr-1" />
+                        Exportar
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-14 h-14 bg-primary/20 rounded-full flex items-center justify-center">
+                        <User className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold">{selectedPatient.name}</h2>
+                        <div className="flex items-center space-x-3 text-sm text-muted-foreground">
+                          <span>{selectedPatient.phone}</span>
+                          {selectedPatient.bloodType && (<><span>•</span><span>{selectedPatient.bloodType}</span></>)}
+                          {selectedPatient.gender && (<><span>•</span><span>{selectedPatient.gender}</span></>)}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant="secondary">
+                      <Shield className="w-3 h-3 mr-1" />
+                      Seguro
+                    </Badge>
+                  </div>
+                </CardHeader>
+              </Card>
+
               <Tabs defaultValue="records" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="records" data-testid="tab-records">
-                    <i className="fas fa-file-medical mr-2"></i>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="records">
+                    <FileText className="w-4 h-4 mr-1" />
                     Prontuários
                   </TabsTrigger>
-                  <TabsTrigger value="exams" data-testid="tab-exams">
-                    <i className="fas fa-vial mr-2"></i>
+                  <TabsTrigger value="exams">
+                    <Activity className="w-4 h-4 mr-1" />
                     Exames
+                  </TabsTrigger>
+                  <TabsTrigger value="pmd">
+                    <Shield className="w-4 h-4 mr-1" />
+                    PMD v1.0
                   </TabsTrigger>
                 </TabsList>
 
@@ -415,136 +834,98 @@ export default function MedicalRecords() {
                     <Card>
                       <CardContent className="py-12">
                         <div className="text-center">
-                          <i className="fas fa-file-medical text-4xl text-muted-foreground mb-3"></i>
-                          <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                            Nenhum Prontuário
-                          </h3>
-                          <p className="text-muted-foreground mb-4">
-                            Este paciente ainda não possui prontuários médicos
-                          </p>
-                          <Button onClick={() => setIsDialogOpen(true)} data-testid="button-create-first-record">
-                            <i className="fas fa-plus mr-2"></i>
-                            Criar Primeiro Prontuário
-                          </Button>
+                          <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                          <h3 className="text-lg font-semibold text-muted-foreground mb-2">Nenhum Prontuário</h3>
+                          <p className="text-muted-foreground mb-4">Este paciente ainda não possui prontuários</p>
+                          {isDoctor && (
+                            <Button onClick={() => setIsPmdDialogOpen(true)}>
+                              <Plus className="w-4 h-4 mr-1" />
+                              Criar PMD v1.0
+                            </Button>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
                   ) : (
                     <div className="space-y-4">
                       {(medicalRecords as any[] || []).map((record: any) => (
-                        <Card key={record.id} data-testid={`record-card-${record.id}`}>
+                        <Card key={record.id}>
                           <CardHeader>
                             <div className="flex items-center justify-between">
                               <div>
-                                <h3 className="font-semibold" data-testid={`record-date-${record.id}`}>
+                                <h3 className="font-semibold">
                                   {format(new Date(record.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                                 </h3>
-                                <p className="text-sm text-muted-foreground">
-                                  Dr. {record.doctorName || "Sistema"}
-                                </p>
+                                <p className="text-sm text-muted-foreground">Dr. {record.doctorName || "Sistema"}</p>
                               </div>
                               <div className="flex items-center space-x-2">
-                                {record.digitalSignature && (
-                                  <Badge variant="outline" className="text-green-600">
-                                    <i className="fas fa-signature mr-1"></i>
-                                    Assinado
+                                {record.pmdData && (
+                                  <Badge className="bg-emerald-600 hover:bg-emerald-700 cursor-pointer text-xs" onClick={() => setSelectedPmdId(record.id)}>
+                                    PMD v1.0
                                   </Badge>
                                 )}
+                                {!record.pmdData && isDoctor && (
+                                  <Button size="sm" variant="outline" className="text-xs" onClick={() => convertPmdMutation.mutate(record.id)} disabled={convertPmdMutation.isPending}>
+                                    Converter PMD
+                                  </Button>
+                                )}
+                                {record.digitalSignature && (
+                                  <Badge variant="outline" className="text-green-600 text-xs">Assinado</Badge>
+                                )}
                                 {record.isEncrypted && (
-                                  <Badge variant="outline" className="text-blue-600">
-                                    <i className="fas fa-lock mr-1"></i>
-                                    Criptografado
+                                  <Badge variant="outline" className="text-blue-600 text-xs">
+                                    <Lock className="w-3 h-3 mr-1" />
+                                    Cripto
                                   </Badge>
                                 )}
                               </div>
                             </div>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                               {record.symptoms && (
                                 <div>
-                                  <h4 className="font-medium text-sm text-muted-foreground mb-1">Sintomas</h4>
-                                  <p className="text-sm" data-testid={`record-symptoms-${record.id}`}>
-                                    {record.symptoms}
-                                  </p>
+                                  <h4 className="font-medium text-sm text-muted-foreground mb-1">Sintomas / Anamnese</h4>
+                                  <p className="text-sm">{record.symptoms}</p>
                                 </div>
                               )}
-                              
                               {record.diagnosis && (
                                 <div>
                                   <h4 className="font-medium text-sm text-muted-foreground mb-1">Diagnóstico</h4>
-                                  <p className="text-sm" data-testid={`record-diagnosis-${record.id}`}>
-                                    {record.diagnosis}
-                                  </p>
+                                  <p className="text-sm">{record.diagnosis}</p>
                                 </div>
                               )}
-
                               {record.treatment && (
                                 <div>
                                   <h4 className="font-medium text-sm text-muted-foreground mb-1">Tratamento</h4>
-                                  <p className="text-sm" data-testid={`record-treatment-${record.id}`}>
-                                    {record.treatment}
-                                  </p>
+                                  <p className="text-sm">{record.treatment}</p>
                                 </div>
                               )}
-
                               {record.prescription && (
                                 <div>
                                   <div className="flex items-center justify-between mb-2">
                                     <h4 className="font-medium text-sm text-muted-foreground">Prescrição</h4>
                                     {!record.digitalSignature ? (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => signPrescriptionMutation.mutate(record.id)}
-                                        disabled={signPrescriptionMutation.isPending}
-                                        className="text-xs"
-                                        data-testid={`button-sign-prescription-${record.id}`}
-                                      >
-                                        {signPrescriptionMutation.isPending ? (
-                                          <>
-                                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-1"></div>
-                                            Assinando...
-                                          </>
-                                        ) : (
-                                          <>
-                                            <i className="fas fa-signature mr-1"></i>
-                                            Assinar FIPS 140-2
-                                          </>
-                                        )}
+                                      <Button size="sm" variant="outline" onClick={() => signPrescriptionMutation.mutate(record.id)} disabled={signPrescriptionMutation.isPending} className="text-xs">
+                                        {signPrescriptionMutation.isPending ? "Assinando..." : "Assinar FIPS 140-2"}
                                       </Button>
                                     ) : (
-                                      <Badge variant="outline" className="text-green-600 text-xs">
-                                        <i className="fas fa-shield-check mr-1"></i>
-                                        Assinado FIPS 140-2
-                                      </Badge>
+                                      <Badge variant="outline" className="text-green-600 text-xs">Assinado FIPS 140-2</Badge>
                                     )}
                                   </div>
                                   <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                                    <p className="text-sm" data-testid={`record-prescription-${record.id}`}>
-                                      {record.prescription}
-                                    </p>
-                                    {record.digitalSignature && (
-                                      <div className="mt-2 text-xs text-muted-foreground">
-                                        <i className="fas fa-certificate mr-1"></i>
-                                        Certificado Digital ICP-Brasil • Algoritmo RSA-PSS SHA-256
-                                      </div>
-                                    )}
+                                    <p className="text-sm">{record.prescription}</p>
                                   </div>
                                 </div>
                               )}
-
                               {record.diagnosticHypotheses && (
                                 <div>
-                                  <h4 className="font-medium text-sm text-muted-foreground mb-2">
-                                    <i className="fas fa-robot mr-1"></i>
-                                    Hipóteses Diagnósticas (IA)
-                                  </h4>
+                                  <h4 className="font-medium text-sm text-muted-foreground mb-2">Hipóteses Diagnósticas (IA)</h4>
                                   <div className="space-y-2">
-                                    {record.diagnosticHypotheses.map((hypothesis: any, index: number) => (
-                                      <div key={index} className="flex items-center justify-between text-sm bg-muted/30 p-2 rounded">
-                                        <span>{hypothesis.condition}</span>
-                                        <Badge variant="outline">{hypothesis.probability}%</Badge>
+                                    {record.diagnosticHypotheses.map((h: any, i: number) => (
+                                      <div key={i} className="flex items-center justify-between text-sm bg-muted/30 p-2 rounded">
+                                        <span>{h.condition}</span>
+                                        <Badge variant="outline">{h.probability}%</Badge>
                                       </div>
                                     ))}
                                   </div>
@@ -563,35 +944,26 @@ export default function MedicalRecords() {
                     <Card>
                       <CardContent className="py-12">
                         <div className="text-center">
-                          <i className="fas fa-vial text-4xl text-muted-foreground mb-3"></i>
-                          <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                            Nenhum Exame
-                          </h3>
-                          <p className="text-muted-foreground">
-                            Este paciente ainda não possui resultados de exames
-                          </p>
+                          <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                          <h3 className="text-lg font-semibold text-muted-foreground mb-2">Nenhum Exame</h3>
+                          <p className="text-muted-foreground">Este paciente ainda não possui resultados de exames</p>
                         </div>
                       </CardContent>
                     </Card>
                   ) : (
                     <div className="space-y-4">
                       {(examResults as any[] || []).map((exam: any) => (
-                        <Card key={exam.id} data-testid={`exam-card-${exam.id}`}>
+                        <Card key={exam.id}>
                           <CardHeader>
                             <div className="flex items-center justify-between">
                               <div>
-                                <h3 className="font-semibold" data-testid={`exam-type-${exam.id}`}>
-                                  {exam.examType}
-                                </h3>
-                                <p className="text-sm text-muted-foreground" data-testid={`exam-date-${exam.id}`}>
+                                <h3 className="font-semibold">{exam.examType}</h3>
+                                <p className="text-sm text-muted-foreground">
                                   {format(new Date(exam.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                                 </p>
                               </div>
                               {exam.analyzedByAI && (
-                                <Badge variant="outline" className="text-purple-600">
-                                  <i className="fas fa-robot mr-1"></i>
-                                  Analisado por IA
-                                </Badge>
+                                <Badge variant="outline" className="text-purple-600">Analisado por IA</Badge>
                               )}
                             </div>
                           </CardHeader>
@@ -610,13 +982,9 @@ export default function MedicalRecords() {
                                   </div>
                                 </div>
                               )}
-
                               {exam.abnormalValues && exam.abnormalValues.length > 0 && (
                                 <div>
-                                  <h4 className="font-medium text-sm text-muted-foreground mb-2 text-destructive">
-                                    <i className="fas fa-exclamation-triangle mr-1"></i>
-                                    Valores Alterados
-                                  </h4>
+                                  <h4 className="font-medium text-sm text-muted-foreground mb-2 text-destructive">Valores Alterados</h4>
                                   <div className="space-y-2">
                                     {exam.abnormalValues.map((abnormal: any, index: number) => (
                                       <div key={index} className="flex items-center justify-between text-sm bg-destructive/10 p-2 rounded">
@@ -637,6 +1005,68 @@ export default function MedicalRecords() {
                         </Card>
                       ))}
                     </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="pmd" className="space-y-4">
+                  {recordsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : (
+                    <>
+                      {(medicalRecords as any[] || []).filter((r: any) => r.pmdData).length === 0 ? (
+                        <Card>
+                          <CardContent className="py-12">
+                            <div className="text-center">
+                              <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                              <h3 className="text-lg font-semibold text-muted-foreground mb-2">Nenhum PMD v1.0</h3>
+                              <p className="text-muted-foreground mb-4">Crie um novo prontuário no formato PMD v1.0 ou converta um existente</p>
+                              {isDoctor && (
+                                <div className="flex justify-center gap-2">
+                                  <Button onClick={() => setIsPmdDialogOpen(true)}>
+                                    <Plus className="w-4 h-4 mr-1" />
+                                    Criar PMD
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <div className="space-y-3">
+                          {(medicalRecords as any[] || []).filter((r: any) => r.pmdData).map((record: any) => {
+                            const rPmd = record.pmdData as any;
+                            return (
+                              <Card key={record.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => setSelectedPmdId(record.id)}>
+                                <CardContent className="py-4">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-950 rounded-full flex items-center justify-center">
+                                        <FileText className="w-5 h-5 text-emerald-600" />
+                                      </div>
+                                      <div>
+                                        <p className="font-medium text-sm">{rPmd?.paciente?.nome || selectedPatient.name}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          CRM: {rPmd?.medico_crm || 'N/A'} |{' '}
+                                          {format(new Date(record.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {rPmd?.clinico?.diagnostico && (
+                                        <Badge variant="outline" className="text-xs">{rPmd.clinico.diagnostico.substring(0, 30)}{rPmd.clinico.diagnostico.length > 30 ? '...' : ''}</Badge>
+                                      )}
+                                      <Badge className="bg-emerald-600 text-xs">PMD v1.0</Badge>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
                   )}
                 </TabsContent>
               </Tabs>

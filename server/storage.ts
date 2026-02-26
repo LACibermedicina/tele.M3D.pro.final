@@ -79,6 +79,7 @@ export interface IStorage {
   // Medical Records
   getMedicalRecord(id: string): Promise<MedicalRecord | undefined>;
   getMedicalRecordsByPatient(patientId: string): Promise<MedicalRecord[]>;
+  getMedicalRecordsByDoctor(doctorId: string): Promise<MedicalRecord[]>;
   createMedicalRecord(record: InsertMedicalRecord): Promise<MedicalRecord>;
   updateMedicalRecord(id: string, record: Partial<InsertMedicalRecord>): Promise<MedicalRecord | undefined>;
 
@@ -472,6 +473,12 @@ export class DatabaseStorage implements IStorage {
   async getMedicalRecordsByPatient(patientId: string): Promise<MedicalRecord[]> {
     return await db.select().from(medicalRecords)
       .where(eq(medicalRecords.patientId, patientId))
+      .orderBy(desc(medicalRecords.createdAt));
+  }
+
+  async getMedicalRecordsByDoctor(doctorId: string): Promise<MedicalRecord[]> {
+    return await db.select().from(medicalRecords)
+      .where(eq(medicalRecords.doctorId, doctorId))
       .orderBy(desc(medicalRecords.createdAt));
   }
 

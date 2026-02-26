@@ -83,11 +83,14 @@ export const medicalRecords = pgTable("medical_records", {
   symptoms: text("symptoms"),
   treatment: text("treatment"),
   prescription: text("prescription"),
-  observations: text("observations"), // Clinical observations from doctor
-  diagnosticHypotheses: jsonb("diagnostic_hypotheses"), // AI generated hypotheses with probabilities
+  observations: text("observations"),
+  diagnosticHypotheses: jsonb("diagnostic_hypotheses"),
   audioTranscript: text("audio_transcript"),
   isEncrypted: boolean("is_encrypted").default(true),
   digitalSignature: text("digital_signature"),
+  pmdData: jsonb("pmd_data"),
+  pmdAuditLogs: jsonb("pmd_audit_logs").default(sql`'[]'::jsonb`),
+  pmdVersion: text("pmd_version").default("1.0"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

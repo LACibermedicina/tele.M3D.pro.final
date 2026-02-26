@@ -83,6 +83,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migrateMedicalTeamsTables();
   await migrateInterConsultationsTable();
   await migratePharmacyTables();
+  await migratePMDColumns();
   
   // Initialize default doctor if not exists and get the actual ID
   const actualDoctorId = await initializeDefaultDoctor();
@@ -6421,6 +6422,413 @@ Responda em português brasileiro, de forma estruturada e concisa, com linguagem
       next();
     };
   };
+
+  // ===== PMD v1.0 — Prontuário Médico Digital (CFM/LGPD/RGPD) =====
+
+  app.post('/api/pmd/create', requireAuth, requireRole(['doctor', 'admin']), async (req: any, res) => {
+    try {
+      const { patientId, pmdData } = req.body;
+      if (!patientId) {
+        return res.status(400).json({ message: 'patientId é obrigatório' });
+      }
+
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: 'Paciente não encontrado' });
+      }
+
+      const doctor = await storage.getUser(req.user.id);
+      const medicoCrm = doctor?.medicalLicense || 'N/A';
+
+      const initialPmd = {
+        id_paciente: patientId,
+        medico_crm: medicoCrm,
+        paciente: {
+          nome: pmdData?.paciente?.nome || patient.name,
+          dt_nasc: pmdData?.paciente?.dt_nasc || (patient.dateOfBirth ? new Date(patient.dateOfBirth).toISOString().split('T')[0] : ''),
+          sexo: pmdData?.paciente?.sexo || patient.gender || 'N/A',
+          endereco: pmdData?.paciente?.endereco || 'Não informado',
+          contato: pmdData?.paciente?.contato || patient.phone || patient.email || 'N/A',
+          nome_mae: pmdData?.paciente?.nome_mae || '',
+          cpf: pmdData?.paciente?.cpf || '',
+          rg: pmdData?.paciente?.rg || '',
+          sus_card: pmdData?.paciente?.sus_card || '',
+          dni: pmdData?.paciente?.dni || '',
+          vacinas: pmdData?.paciente?.vacinas || [],
+        },
+        clinico: {
+          anamnese: pmdData?.clinico?.anamnese || '',
+          historico: pmdData?.clinico?.historico || (patient.medicalHistory ? JSON.stringify(patient.medicalHistory) : ''),
+          exames: pmdData?.clinico?.exames || '',
+          diagnostico: pmdData?.clinico?.diagnostico || '',
+          tratamento: pmdData?.clinico?.tratamento || '',
+          evolucoes: pmdData?.clinico?.evolucoes || [],
+        },
+        logs: [],
+      };
+
+      const auditLog = {
+        timestamp: new Date().toISOString(),
+        user: `${doctor?.name} (CRM: ${medicoCrm})`,
+        acao: 'criação',
+        antigo: '',
+        novo: 'Prontuário PMD v1.0 criado',
+      };
+
+      const record = await storage.createMedicalRecord({
+        patientId,
+        doctorId: req.user.id,
+        diagnosis: initialPmd.clinico.diagnostico,
+        symptoms: initialPmd.clinico.anamnese,
+        treatment: initialPmd.clinico.tratamento,
+        observations: '',
+        pmdData: initialPmd,
+        pmdAuditLogs: [auditLog],
+        pmdVersion: '1.0',
+        isEncrypted: true,
+      });
+
+      res.status(201).json({
+        id: record.id,
+        pmd: initialPmd,
+        message: 'Prontuário PMD v1.0 criado com sucesso',
+      });
+    } catch (error) {
+      console.error('PMD create error:', error);
+      res.status(500).json({ message: 'Erro ao criar prontuário PMD' });
+    }
+  });
+
+  app.get('/api/pmd/list', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      let records: any[] = [];
+
+      if (user.role === 'admin') {
+        const allPatients = await db.select().from(patients);
+        for (const p of allPatients) {
+          const patientRecords = await storage.getMedicalRecordsByPatient(p.id);
+          records.push(...patientRecords);
+        }
+      } else if (user.role === 'doctor') {
+        records = await storage.getMedicalRecordsByDoctor(user.id);
+      } else if (user.role === 'patient') {
+        const patient = await storage.getPatientByUserId(user.id);
+        if (patient) {
+          const allRecords = await storage.getMedicalRecordsByPatient(patient.id);
+          records = allRecords.map(r => {
+            const copy = { ...r };
+            copy.pmdAuditLogs = null;
+            return copy;
+          });
+        }
+      } else {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+
+      const result = records.map(r => {
+        const pmd = r.pmdData as any;
+        return {
+          id: r.id,
+          patientId: r.patientId,
+          doctorId: r.doctorId,
+          paciente_nome: pmd?.paciente?.nome || 'N/A',
+          medico_crm: pmd?.medico_crm || 'N/A',
+          diagnostico: pmd?.clinico?.diagnostico || r.diagnosis || '',
+          pmd_version: r.pmdVersion || '1.0',
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+          hasPmd: !!pmd,
+        };
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error('PMD list error:', error);
+      res.status(500).json({ message: 'Erro ao listar prontuários PMD' });
+    }
+  });
+
+  app.get('/api/pmd/:id', requireAuth, async (req: any, res) => {
+    try {
+      const record = await storage.getMedicalRecord(req.params.id);
+      if (!record) {
+        return res.status(404).json({ message: 'Prontuário não encontrado' });
+      }
+
+      const user = req.user;
+      const isCreator = record.doctorId === user.id;
+      const isAdmin = user.role === 'admin';
+
+      if (user.role === 'patient') {
+        const patient = await storage.getPatientByUserId(user.id);
+        if (!patient || patient.id !== record.patientId) {
+          return res.status(403).json({ message: 'Acesso negado' });
+        }
+        const safePmd = record.pmdData ? { ...(record.pmdData as any) } : null;
+        if (safePmd) delete safePmd.logs;
+        return res.json({
+          id: record.id,
+          pmd: safePmd,
+          pmd_version: record.pmdVersion,
+          createdAt: record.createdAt,
+          updatedAt: record.updatedAt,
+          accessLevel: 'leitura_basica',
+        });
+      }
+
+      if (user.role === 'doctor' && !isCreator && !isAdmin) {
+        const patient = await storage.getPatient(record.patientId);
+        const isPrimaryDoctor = patient?.primaryDoctorId === user.id;
+        const doctorAppointments = await storage.getAppointmentsByDoctor(user.id);
+        const hasAppointment = doctorAppointments.some(apt => apt.patientId === record.patientId);
+        if (!isPrimaryDoctor && !hasAppointment) {
+          return res.status(403).json({ message: 'Acesso negado: sem vínculo com este paciente' });
+        }
+      } else if (!isCreator && !isAdmin) {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+
+      const { pmdExportService } = await import('./services/pmd-export-service');
+      const patient = await storage.getPatient(record.patientId);
+      const doctor = await storage.getUser(record.doctorId);
+      const pmd = pmdExportService.buildPMDFromRecord(record, patient, doctor);
+
+      const includeLogs = isCreator || isAdmin;
+
+      res.json({
+        id: record.id,
+        pmd: includeLogs ? pmd : { ...pmd, logs: [] },
+        pmd_version: record.pmdVersion,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+        accessLevel: isAdmin ? 'total' : isCreator ? 'criador' : 'leitura_basica',
+        logsVisible: includeLogs,
+      });
+    } catch (error) {
+      console.error('PMD show error:', error);
+      res.status(500).json({ message: 'Erro ao exibir prontuário PMD' });
+    }
+  });
+
+  app.patch('/api/pmd/:id', requireAuth, requireRole(['doctor', 'admin']), async (req: any, res) => {
+    try {
+      const record = await storage.getMedicalRecord(req.params.id);
+      if (!record) {
+        return res.status(404).json({ message: 'Prontuário não encontrado' });
+      }
+
+      const isCreator = record.doctorId === req.user.id;
+      const isAdmin = req.user.role === 'admin';
+
+      if (!isCreator && !isAdmin) {
+        return res.status(403).json({ message: 'Somente o médico criador ou admin pode editar este prontuário' });
+      }
+
+      const { campo, valor, evolucao } = req.body;
+      const doctor = await storage.getUser(req.user.id);
+      const medicoCrm = doctor?.medicalLicense || 'N/A';
+
+      const allowedFields = [
+        'clinico.anamnese', 'clinico.historico', 'clinico.exames',
+        'clinico.diagnostico', 'clinico.tratamento',
+        'paciente.endereco', 'paciente.contato', 'paciente.nome_mae',
+        'paciente.cpf', 'paciente.rg', 'paciente.sus_card', 'paciente.dni',
+      ];
+
+      if (campo && !allowedFields.includes(campo)) {
+        return res.status(400).json({ message: `Campo não permitido: ${campo}. Campos válidos: ${allowedFields.join(', ')}` });
+      }
+
+      const currentPmd = (record.pmdData || {}) as any;
+      const currentLogs = (record.pmdAuditLogs || []) as any[];
+
+      let oldValue = '';
+      let newValue = valor || '';
+      let fieldPath = campo || '';
+
+      if (evolucao) {
+        const newEv = {
+          data: evolucao.data || new Date().toISOString().split('T')[0],
+          medico: `${doctor?.name} (CRM: ${medicoCrm})`,
+          descricao: evolucao.descricao || '',
+        };
+        if (!currentPmd.clinico) currentPmd.clinico = {};
+        if (!currentPmd.clinico.evolucoes) currentPmd.clinico.evolucoes = [];
+        currentPmd.clinico.evolucoes.push(newEv);
+        fieldPath = 'clinico.evolucoes';
+        newValue = newEv.descricao;
+        oldValue = `${currentPmd.clinico.evolucoes.length - 1} evoluções`;
+      } else if (campo) {
+        const parts = campo.split('.');
+        let target: any = currentPmd;
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (!target[parts[i]]) target[parts[i]] = {};
+          target = target[parts[i]];
+        }
+        const lastKey = parts[parts.length - 1];
+        oldValue = target[lastKey] !== undefined ? String(target[lastKey]) : '';
+        target[lastKey] = valor;
+      } else {
+        return res.status(400).json({ message: 'campo ou evolucao é obrigatório' });
+      }
+
+      const auditEntry = {
+        timestamp: new Date().toISOString(),
+        user: `${doctor?.name} (CRM: ${medicoCrm})`,
+        acao: evolucao ? 'adição_evolução' : `edição: ${fieldPath}`,
+        antigo: oldValue.substring(0, 500),
+        novo: newValue.substring(0, 500),
+      };
+      currentLogs.push(auditEntry);
+
+      const updateFields: any = {
+        pmdData: currentPmd,
+        pmdAuditLogs: currentLogs,
+      };
+
+      if (campo === 'clinico.diagnostico') updateFields.diagnosis = valor;
+      if (campo === 'clinico.anamnese') updateFields.symptoms = valor;
+      if (campo === 'clinico.tratamento') updateFields.treatment = valor;
+
+      await storage.updateMedicalRecord(req.params.id, updateFields);
+
+      res.json({
+        message: 'Prontuário atualizado com sucesso',
+        auditLog: auditEntry,
+        pmd: currentPmd,
+      });
+    } catch (error) {
+      console.error('PMD edit error:', error);
+      res.status(500).json({ message: 'Erro ao editar prontuário PMD' });
+    }
+  });
+
+  app.get('/api/pmd/:id/export', requireAuth, async (req: any, res) => {
+    try {
+      const record = await storage.getMedicalRecord(req.params.id);
+      if (!record) {
+        return res.status(404).json({ message: 'Prontuário não encontrado' });
+      }
+
+      const user = req.user;
+      const isCreator = record.doctorId === user.id;
+      const isAdmin = user.role === 'admin';
+
+      if (user.role === 'patient') {
+        const patient = await storage.getPatientByUserId(user.id);
+        if (!patient || patient.id !== record.patientId) {
+          return res.status(403).json({ message: 'Acesso negado' });
+        }
+      } else if (user.role === 'doctor' && !isCreator && !isAdmin) {
+        const patient = await storage.getPatient(record.patientId);
+        const isPrimaryDoctor = patient?.primaryDoctorId === user.id;
+        const doctorAppointments = await storage.getAppointmentsByDoctor(user.id);
+        const hasAppointment = doctorAppointments.some(apt => apt.patientId === record.patientId);
+        if (!isPrimaryDoctor && !hasAppointment) {
+          return res.status(403).json({ message: 'Acesso negado: sem vínculo com este paciente' });
+        }
+      } else if (!isCreator && !isAdmin) {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+
+      const locale = ((req.query.locale || 'BR') as string).toUpperCase() as 'BR' | 'ES' | 'USA';
+      const format = ((req.query.format || 'PDF') as string).toUpperCase() as 'PDF' | 'JSON' | 'XML' | 'CSV';
+
+      const validLocales = ['BR', 'ES', 'USA'];
+      const validFormats = ['PDF', 'JSON', 'XML', 'CSV'];
+      if (!validLocales.includes(locale)) {
+        return res.status(400).json({ message: `Locale inválido. Use: ${validLocales.join(', ')}` });
+      }
+      if (!validFormats.includes(format)) {
+        return res.status(400).json({ message: `Formato inválido. Use: ${validFormats.join(', ')}` });
+      }
+
+      const { pmdExportService } = await import('./services/pmd-export-service');
+      const patient = await storage.getPatient(record.patientId);
+      const doctor = await storage.getUser(record.doctorId);
+      const pmd = pmdExportService.buildPMDFromRecord(record, patient, doctor);
+
+      const includeLogs = isCreator || isAdmin;
+      const patientName = pmd.paciente.nome.replace(/\s+/g, '_').substring(0, 30);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const baseFilename = `PMD_${patientName}_${locale}_${timestamp}`;
+
+      switch (format) {
+        case 'JSON': {
+          const content = pmdExportService.exportToJSON(pmd, locale, includeLogs);
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.json"`);
+          return res.send(content);
+        }
+        case 'XML': {
+          const content = pmdExportService.exportToXML(pmd, locale, includeLogs);
+          res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+          res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.xml"`);
+          return res.send(content);
+        }
+        case 'CSV': {
+          const content = pmdExportService.exportToCSV(pmd, locale, includeLogs);
+          res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+          res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.csv"`);
+          return res.send(content);
+        }
+        case 'PDF':
+        default: {
+          const content = pmdExportService.exportToPDFHtml(pmd, locale, includeLogs);
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.html"`);
+          return res.send(content);
+        }
+      }
+    } catch (error) {
+      console.error('PMD export error:', error);
+      res.status(500).json({ message: 'Erro ao exportar prontuário PMD' });
+    }
+  });
+
+  app.patch('/api/pmd/:id/convert', requireAuth, requireRole(['doctor', 'admin']), async (req: any, res) => {
+    try {
+      const record = await storage.getMedicalRecord(req.params.id);
+      if (!record) {
+        return res.status(404).json({ message: 'Prontuário não encontrado' });
+      }
+
+      if (record.pmdData) {
+        return res.json({ message: 'Prontuário já está no formato PMD', id: record.id });
+      }
+
+      const isCreator = record.doctorId === req.user.id;
+      const isAdmin = req.user.role === 'admin';
+      if (!isCreator && !isAdmin) {
+        return res.status(403).json({ message: 'Somente o médico criador ou admin pode converter este prontuário' });
+      }
+
+      const { pmdExportService } = await import('./services/pmd-export-service');
+      const patient = await storage.getPatient(record.patientId);
+      const doctor = await storage.getUser(record.doctorId);
+      const pmd = pmdExportService.buildPMDFromRecord(record, patient, doctor);
+
+      const auditLog = {
+        timestamp: new Date().toISOString(),
+        user: `${doctor?.name} (CRM: ${doctor?.medicalLicense || 'N/A'})`,
+        acao: 'conversão para PMD v1.0',
+        antigo: 'formato legado',
+        novo: 'PMD v1.0',
+      };
+
+      await storage.updateMedicalRecord(record.id, {
+        pmdData: pmd,
+        pmdAuditLogs: [auditLog],
+        pmdVersion: '1.0',
+      });
+
+      res.json({ message: 'Prontuário convertido para PMD v1.0', id: record.id, pmd });
+    } catch (error) {
+      console.error('PMD convert error:', error);
+      res.status(500).json({ message: 'Erro ao converter prontuário' });
+    }
+  });
 
   // ===== PHARMACY USER SYSTEM (Dispensing, Verification, Reports) =====
 
@@ -18258,6 +18666,23 @@ async function migratePharmacyTables() {
     console.log('✓ Pharmacy tables migrated successfully');
   } catch (error) {
     console.error('Failed to migrate pharmacy tables:', error);
+  }
+}
+
+async function migratePMDColumns() {
+  try {
+    await db.execute(sql`
+      ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS pmd_data JSONB
+    `);
+    await db.execute(sql`
+      ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS pmd_audit_logs JSONB DEFAULT '[]'::jsonb
+    `);
+    await db.execute(sql`
+      ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS pmd_version TEXT DEFAULT '1.0'
+    `);
+    console.log('✓ PMD columns migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate PMD columns:', error);
   }
 }
 
