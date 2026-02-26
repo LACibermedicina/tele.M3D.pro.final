@@ -81,14 +81,21 @@ export default function Header() {
     if (isDarkHeader) {
       return 'text-white';
     }
-    return 'text-gray-900 dark:text-white';
+    return 'text-slate-800 dark:text-white';
+  };
+
+  const getIconColor = () => {
+    if (isDarkHeader) {
+      return 'text-white';
+    }
+    return 'text-indigo-950 dark:text-white';
   };
 
   const getSubTextColor = () => {
     if (isDarkHeader) {
       return 'text-gray-200';
     }
-    return 'text-gray-600 dark:text-gray-300';
+    return 'text-slate-500 dark:text-gray-300';
   };
 
   const getShadowEffect = () => {
@@ -102,14 +109,14 @@ export default function Header() {
     if (isDarkHeader) {
       return 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))';
     }
-    return 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))';
+    return 'drop-shadow(0 1px 4px rgba(30,27,75,0.2))';
   };
 
   const getDividerColor = () => {
     if (isDarkHeader) {
       return 'bg-white/20';
     }
-    return 'bg-gray-300 dark:bg-white/20';
+    return 'bg-slate-300 dark:bg-white/20';
   };
 
   // Get only first and second name
@@ -482,11 +489,11 @@ export default function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`md:hidden w-10 h-10 hover:bg-primary/10 transition-colors duration-300 ${getTextColor()}`}
+                      className={`md:hidden w-10 h-10 hover:bg-primary/10 transition-colors duration-300 ${getIconColor()}`}
                       data-testid="button-hamburger"
                     >
                       <Menu 
-                        className={`h-5 w-5 transition-all duration-300 ${getTextColor()}`}
+                        className={`h-5 w-5 transition-all duration-300 ${getIconColor()}`}
                         style={{ filter: getIconFilter() }}
                       />
                     </Button>
@@ -758,14 +765,14 @@ export default function Header() {
                               variant="ghost"
                               size="icon"
                               className={`icon-link-primary group w-9 h-9 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg ${
-                                isActive ? "text-white shadow-md" : `${getTextColor()} hover:bg-primary/10`
+                                isActive ? "text-white shadow-md" : `${getIconColor()} hover:bg-primary/10`
                               }`}
                               style={{
                                 background: isActive ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" : "transparent"
                               }}
                             >
                               <IconComponent 
-                                className={`h-4.5 w-4.5 transition-all duration-300 ${isActive ? 'text-white' : getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
+                                className={`h-4.5 w-4.5 transition-all duration-300 ${isActive ? 'text-white' : getIconColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
                                 style={{ filter: getIconFilter() }}
                               />
                             </Button>
@@ -791,7 +798,7 @@ export default function Header() {
                             <Button
                               variant="ghost"
                               className={`icon-link-primary group h-9 px-2 rounded-lg transition-all duration-300 hover:scale-105 hover:shadow-lg ${
-                                groupHasActive ? "text-white shadow-md" : `${getTextColor()} hover:bg-primary/10`
+                                groupHasActive ? "text-white shadow-md" : `${getIconColor()} hover:bg-primary/10`
                               }`}
                               style={{
                                 background: groupHasActive ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" : "transparent"
@@ -801,11 +808,11 @@ export default function Header() {
                               <div className="relative flex items-center gap-0.5">
                                 {FirstIcon && (
                                   <FirstIcon 
-                                    className={`h-4.5 w-4.5 transition-all duration-300 ${groupHasActive ? 'text-white' : getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
+                                    className={`h-4.5 w-4.5 transition-all duration-300 ${groupHasActive ? 'text-white' : getIconColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
                                     style={{ filter: getIconFilter() }}
                                   />
                                 )}
-                                <ChevronDown className={`h-3 w-3 transition-all duration-300 ${groupHasActive ? 'text-white/70' : getTextColor()} opacity-60`} />
+                                <ChevronDown className={`h-3 w-3 transition-all duration-300 ${groupHasActive ? 'text-white/70' : getIconColor()} opacity-60`} />
                                 {groupHasBadge && (
                                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-md animate-pulse">
                                     {pendingPostCount > 9 ? '9+' : pendingPostCount}
@@ -862,11 +869,11 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className={`icon-link-primary group w-8 h-8 md:w-10 md:h-10 hover:bg-gradient-to-r hover:from-orange-500 hover:to-amber-500 transition-all duration-300 hover:scale-110 hover:shadow-xl ${getTextColor()}`}
+                      className={`icon-link-primary group w-8 h-8 md:w-10 md:h-10 hover:bg-gradient-to-r hover:from-orange-500 hover:to-amber-500 transition-all duration-300 hover:scale-110 hover:shadow-xl ${getIconColor()}`}
                       data-testid="button-quick-actions"
                     >
                       <Zap 
-                        className={`h-5 w-5 transition-all duration-300 ${getTextColor()} group-hover:text-white group-hover:drop-shadow-[0_2px_12px_rgba(251,191,36,1)]`}
+                        className={`h-5 w-5 transition-all duration-300 ${getIconColor()} group-hover:text-white group-hover:drop-shadow-[0_2px_12px_rgba(251,191,36,1)]`}
                         style={{ filter: getIconFilter() }}
                       />
                     </Button>
@@ -1028,9 +1035,9 @@ export default function Header() {
                   data-testid="button-quick-login"
                 >
                   {isLoggingIn ? (
-                    <Loader2 className={`h-3.5 w-3.5 animate-spin ${getTextColor()}`} />
+                    <Loader2 className={`h-3.5 w-3.5 animate-spin ${getIconColor()}`} />
                   ) : (
-                    <LogIn className={`h-3.5 w-3.5 ${getTextColor()}`} />
+                    <LogIn className={`h-3.5 w-3.5 ${getIconColor()}`} />
                   )}
                 </button>
               </form>
@@ -1146,7 +1153,7 @@ export default function Header() {
                       }}
                     >
                       <Shield 
-                        className={`h-5 w-5 ${getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(59,130,246,0.8)] transition-all duration-300`}
+                        className={`h-5 w-5 ${getIconColor()} group-hover:drop-shadow-[0_2px_12px_rgba(59,130,246,0.8)] transition-all duration-300`}
                         style={{ filter: getIconFilter() }}
                       />
                     </Button>
@@ -1173,7 +1180,7 @@ export default function Header() {
                       }}
                     >
                       <Ambulance 
-                        className={`h-5 w-5 ${getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)] transition-all duration-300`}
+                        className={`h-5 w-5 ${getIconColor()} group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)] transition-all duration-300`}
                         style={{ filter: getIconFilter() }}
                       />
                     </Button>
@@ -1193,7 +1200,7 @@ export default function Header() {
                       onClick={() => navigate('/register')}
                     >
                       <UserPlus 
-                        className={`h-5 w-5 ${getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300`}
+                        className={`h-5 w-5 ${getIconColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300`}
                         style={{ filter: getIconFilter() }}
                       />
                     </Button>

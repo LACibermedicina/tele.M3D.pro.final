@@ -121,7 +121,7 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
           variant="ghost" 
           size="sm" 
           className={`relative hover:bg-primary/10 transition-colors duration-300 ${
-            isScrolled ? 'text-white' : 'text-gray-900 dark:text-white'
+            isScrolled ? 'text-white' : 'text-indigo-950 dark:text-white'
           }`}
           data-testid="button-notification-center"
         >
@@ -129,13 +129,13 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
             <BellRing className={`h-5 w-5 transition-colors duration-300 ${
               isScrolled 
                 ? 'text-white' 
-                : 'text-gray-900 dark:text-white'
+                : 'text-indigo-950 dark:text-white'
             }`} />
           ) : (
             <Bell className={`h-5 w-5 transition-colors duration-300 ${
               isScrolled 
                 ? 'text-white' 
-                : 'text-gray-900 dark:text-white'
+                : 'text-indigo-950 dark:text-white'
             }`} />
           )}
           
