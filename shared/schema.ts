@@ -1650,6 +1650,157 @@ export const insertInterConsultationSchema = createInsertSchema(interConsultatio
 export type InterConsultation = typeof interConsultations.$inferSelect;
 export type InsertInterConsultation = z.infer<typeof insertInterConsultationSchema>;
 
+// Wallet Audit Log - comprehensive transaction auditing
+export const walletAuditLog = pgTable("wallet_audit_log", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  action: text("action").notNull(), // credit, debit, transfer_in, transfer_out, purchase, commission, refund, admin_adjustment
+  amount: integer("amount").notNull(),
+  balanceBefore: integer("balance_before").notNull(),
+  balanceAfter: integer("balance_after").notNull(),
+  actorId: uuid("actor_id").references(() => users.id), // Who performed the action (admin, system, self)
+  actorRole: text("actor_role"), // admin, system, doctor, patient
+  relatedTransactionId: uuid("related_transaction_id"),
+  description: text("description").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertWalletAuditLogSchema = createInsertSchema(walletAuditLog).omit({ id: true, createdAt: true });
+export type InsertWalletAuditLog = z.infer<typeof insertWalletAuditLogSchema>;
+export type WalletAuditLog = typeof walletAuditLog.$inferSelect;
+
+// Dynamic NFTs - anonymized medical data insights
+export const dynamicNfts = pgTable("dynamic_nfts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  nftType: text("nft_type").notNull(), // epidemiological_insight, clinical_pattern, research_dataset, diagnostic_model
+  dataCategory: text("data_category").notNull(), // symptoms, diagnoses, treatments, outcomes
+  anonymizedData: jsonb("anonymized_data").notNull(), // Statistical/aggregate data only, no PII
+  valueTmc: integer("value_tmc").notNull().default(0), // Current value in TMC
+  totalShares: integer("total_shares").notNull().default(100), // Total ownership shares
+  availableShares: integer("available_shares").notNull().default(100), // Shares available for sale
+  ownerId: uuid("owner_id").references(() => users.id).notNull(), // Current primary owner
+  creatorId: uuid("creator_id").references(() => users.id).notNull(), // Who created the NFT
+  consentRecords: jsonb("consent_records"), // LGPD consent tracking: [{patientId, consentDate, scope}]
+  dataSourceCount: integer("data_source_count").default(0), // How many records contributed
+  lastValueUpdate: timestamp("last_value_update"),
+  status: text("status").notNull().default("active"), // active, frozen, retired
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDynamicNftSchema = createInsertSchema(dynamicNfts).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDynamicNft = z.infer<typeof insertDynamicNftSchema>;
+export type DynamicNft = typeof dynamicNfts.$inferSelect;
+
+// NFT Ownership - track share ownership
+export const nftOwnership = pgTable("nft_ownership", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  nftId: uuid("nft_id").references(() => dynamicNfts.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  shares: integer("shares").notNull(),
+  purchasePrice: integer("purchase_price").notNull(), // Price per share in TMC when acquired
+  acquiredAt: timestamp("acquired_at").defaultNow().notNull(),
+});
+
+export const insertNftOwnershipSchema = createInsertSchema(nftOwnership).omit({ id: true, acquiredAt: true });
+export type InsertNftOwnership = z.infer<typeof insertNftOwnershipSchema>;
+export type NftOwnership = typeof nftOwnership.$inferSelect;
+
+// Broker Orders - buy/sell orders for NFTs and TM3D
+export const brokerOrders = pgTable("broker_orders", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  orderType: text("order_type").notNull(), // buy, sell
+  assetType: text("asset_type").notNull(), // nft_share, tm3d
+  nftId: uuid("nft_id").references(() => dynamicNfts.id), // For NFT trades
+  quantity: integer("quantity").notNull(),
+  pricePerUnit: integer("price_per_unit").notNull(), // In TMC
+  totalPrice: integer("total_price").notNull(),
+  filledQuantity: integer("filled_quantity").notNull().default(0),
+  status: text("status").notNull().default("open"), // open, partially_filled, filled, cancelled
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBrokerOrderSchema = createInsertSchema(brokerOrders).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertBrokerOrder = z.infer<typeof insertBrokerOrderSchema>;
+export type BrokerOrder = typeof brokerOrders.$inferSelect;
+
+// Broker Trades - completed trades
+export const brokerTrades = pgTable("broker_trades", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  buyOrderId: uuid("buy_order_id").references(() => brokerOrders.id).notNull(),
+  sellOrderId: uuid("sell_order_id").references(() => brokerOrders.id).notNull(),
+  buyerId: uuid("buyer_id").references(() => users.id).notNull(),
+  sellerId: uuid("seller_id").references(() => users.id).notNull(),
+  assetType: text("asset_type").notNull(), // nft_share, tm3d
+  nftId: uuid("nft_id").references(() => dynamicNfts.id),
+  quantity: integer("quantity").notNull(),
+  pricePerUnit: integer("price_per_unit").notNull(),
+  totalPrice: integer("total_price").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertBrokerTradeSchema = createInsertSchema(brokerTrades).omit({ id: true, createdAt: true });
+export type InsertBrokerTrade = z.infer<typeof insertBrokerTradeSchema>;
+export type BrokerTrade = typeof brokerTrades.$inferSelect;
+
+// TM3D Supply Control - track total supply and circulation
+export const tm3dSupply = pgTable("tm3d_supply", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  totalSupply: integer("total_supply").notNull().default(1000000), // Total TM3D ever created
+  circulatingSupply: integer("circulating_supply").notNull().default(0), // Currently in wallets
+  reserveSupply: integer("reserve_supply").notNull().default(1000000), // Held in reserve
+  lastMintAmount: integer("last_mint_amount").default(0),
+  lastBurnAmount: integer("last_burn_amount").default(0),
+  priceInUsd: text("price_in_usd").default("0.20"), // Reference price
+  updatedBy: uuid("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// External Wallet Links - connect to MetaMask/external wallets
+export const externalWallets = pgTable("external_wallets", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  walletAddress: text("wallet_address").notNull(), // MetaMask/external address
+  walletType: text("wallet_type").notNull().default("metamask"), // metamask, walletconnect, custom
+  network: text("network").notNull().default("tm3d"), // tm3d, ethereum, polygon
+  label: text("label"), // User-friendly label
+  isVerified: boolean("is_verified").default(false),
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertExternalWalletSchema = createInsertSchema(externalWallets).omit({ id: true, createdAt: true });
+export type InsertExternalWallet = z.infer<typeof insertExternalWalletSchema>;
+export type ExternalWallet = typeof externalWallets.$inferSelect;
+
+// Withdrawal Requests - track transfers to external wallets
+export const withdrawalRequests = pgTable("withdrawal_requests", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  externalWalletId: uuid("external_wallet_id").references(() => externalWallets.id).notNull(),
+  amount: integer("amount").notNull(), // In TMC
+  fee: integer("fee").notNull().default(0),
+  status: text("status").notNull().default("pending"), // pending, processing, completed, failed, cancelled
+  txHash: text("tx_hash"), // External transaction hash
+  processedAt: timestamp("processed_at"),
+  processedBy: uuid("processed_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertWithdrawalRequestSchema = createInsertSchema(withdrawalRequests).omit({ id: true, createdAt: true });
+export type InsertWithdrawalRequest = z.infer<typeof insertWithdrawalRequestSchema>;
+export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
+
 // TMC system types
 export interface TmcBalance {
   userId: string;

@@ -55,6 +55,9 @@ import ConsultationAccess from "@/pages/consultation-access";
 import Manual from "@/pages/manual";
 import FAQ from "@/pages/faq";
 import Installation from "@/pages/installation";
+import Broker from "@/pages/broker";
+import Reports from "@/pages/reports";
+import NftManagement from "@/pages/nft-management";
 import UrgentAlertOverlay from "@/components/notifications/urgent-alert-overlay";
 import Header from "@/components/layout/header";
 import FloatingChatbot from "@/components/ui/floating-chatbot";
@@ -234,6 +237,13 @@ function Router() {
             <AdminPage />
           </ProtectedRoute>
         </Route>
+
+        <Route path="/reports">
+          <ProtectedRoute requiredRoles={['doctor', 'admin']}>
+            <Header />
+            <Reports />
+          </ProtectedRoute>
+        </Route>
         
         <Route path="/consultation/video/:patientId">
           <ProtectedRoute requiredRoles={['doctor', 'admin']}>
@@ -396,6 +406,20 @@ function Router() {
           <ProtectedRoute requiredRoles={['doctor', 'admin']}>
             <Header />
             <IncompleteConsultations />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/nft-management">
+          <ProtectedRoute requiredRoles={['doctor', 'admin', 'researcher']}>
+            <Header />
+            <NftManagement />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/broker">
+          <ProtectedRoute>
+            <Header />
+            <Broker />
           </ProtectedRoute>
         </Route>
         

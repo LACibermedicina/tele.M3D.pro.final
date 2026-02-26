@@ -14,7 +14,8 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders } from "@shared/schema";
+import { creditService } from "./services/credit-service";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNotNull, inArray, gte, lte } from "drizzle-orm";
@@ -1612,7 +1613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/appointments/cancel-all', async (req, res) => {
     try {
-      const { doctorId, scope } = req.body;
+      const { doctorId, scope, appointmentType } = req.body;
       if (!doctorId || !scope) {
         return res.status(400).json({ message: 'doctorId and scope (today|future|all) are required' });
       }
@@ -1643,6 +1644,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           eq(appointments.doctorId, doctorId),
           or(eq(appointments.status, 'scheduled'), eq(appointments.status, 'in-progress')),
         ];
+      }
+
+      if (appointmentType && appointmentType !== 'all') {
+        conditions.push(eq(appointments.type, appointmentType));
       }
 
       const cancelled = await db.update(appointments)
@@ -2728,6 +2733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (patient.userId) {
+        const directLink = `/patient/video/${consultation.id}`;
         broadcastToUser(patient.userId, {
           type: 'consultation_invite',
           data: {
@@ -2736,7 +2742,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             priority: 'critical',
             consultationId: consultation.id,
             doctorName: req.user.name,
-            actionUrl: `/patient/video/${consultation.id}`
+            actionUrl: directLink,
+            directLink: directLink
           }
         });
 
@@ -2745,13 +2752,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId: patient.userId,
             type: 'consultation_invite',
             title: 'Convite para Teleconsulta',
-            message: `Dr(a). ${req.user.name} está chamando você para uma consulta por vídeo.`,
+            message: `Dr(a). ${req.user.name} está chamando você para uma consulta por vídeo. Acesse: ${directLink}`,
             priority: 'critical',
-            actionUrl: `/patient/video/${consultation.id}`,
+            actionUrl: directLink,
             senderId: doctorId,
             delivered: false,
             read: false,
-            metadata: { consultationId: consultation.id }
+            metadata: { consultationId: consultation.id, directLink }
           });
         } catch (notifErr) {
           console.error('Failed to store video invite notification:', notifErr);
@@ -16225,6 +16232,626 @@ ${combinedText.slice(0, 8000)}`;
       res.status(500).json({ message: 'Failed to analyze epidemiological data' });
     }
   });
+
+
+// ========== ADMIN CREDIT MANAGEMENT ==========
+
+  app.get('/api/admin/credits/users', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin' && user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+      const allUsers = await db.select({
+        id: users.id,
+        username: users.username,
+        name: users.name,
+        role: users.role,
+        email: users.email,
+        tmcCredits: users.tmcCredits,
+      }).from(users).orderBy(desc(users.tmcCredits));
+      res.json(allUsers);
+    } catch (error) {
+      console.error('Failed to list user credits:', error);
+      res.status(500).json({ message: 'Erro ao listar créditos' });
+    }
+  });
+
+  app.post('/api/admin/credits/send', requireAuth, async (req, res) => {
+    try {
+      const actor = req.user as User;
+      if (actor.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado: apenas admin' });
+      }
+      const { userId, amount, reason } = req.body;
+      if (!userId || !amount || amount <= 0) {
+        return res.status(400).json({ message: 'userId e amount positivo são obrigatórios' });
+      }
+      const targetUser = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!targetUser[0]) {
+        return res.status(404).json({ message: 'Usuário não encontrado' });
+      }
+      const balanceBefore = targetUser[0].tmcCredits || 0;
+      const balanceAfter = balanceBefore + amount;
+      await db.transaction(async (tx) => {
+        await tx.update(users).set({ tmcCredits: balanceAfter }).where(eq(users.id, userId));
+        await tx.insert(tmcTransactions).values({
+          userId,
+          type: 'credit',
+          amount,
+          reason: reason || 'Créditos enviados pelo admin',
+          balanceBefore,
+          balanceAfter,
+          metadata: { sentBy: actor.id, sentByName: actor.name },
+        });
+        await tx.insert(walletAuditLog).values({
+          userId,
+          action: 'admin_adjustment',
+          amount,
+          balanceBefore,
+          balanceAfter,
+          actorId: actor.id,
+          actorRole: 'admin',
+          description: reason || 'Créditos enviados pelo admin',
+          metadata: { sentByName: actor.name },
+        });
+      });
+      res.json({ success: true, newBalance: balanceAfter });
+    } catch (error) {
+      console.error('Failed to send credits:', error);
+      res.status(500).json({ message: 'Erro ao enviar créditos' });
+    }
+  });
+
+  // ========== WALLET AUDIT LOG ==========
+
+  app.get('/api/wallet/audit-log', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { userId, action, limit: limitParam } = req.query;
+      const queryLimit = Math.min(parseInt(limitParam as string) || 100, 500);
+      let conditions: any[] = [];
+      if (user.role === 'admin' && userId) {
+        conditions.push(eq(walletAuditLog.userId, userId as string));
+      } else if (user.role !== 'admin') {
+        conditions.push(eq(walletAuditLog.userId, user.id));
+      }
+      if (action) {
+        conditions.push(eq(walletAuditLog.action, action as string));
+      }
+      const logs = conditions.length > 0
+        ? await db.select().from(walletAuditLog).where(and(...conditions)).orderBy(desc(walletAuditLog.createdAt)).limit(queryLimit)
+        : await db.select().from(walletAuditLog).orderBy(desc(walletAuditLog.createdAt)).limit(queryLimit);
+      res.json(logs);
+    } catch (error) {
+      console.error('Failed to fetch audit log:', error);
+      res.status(500).json({ message: 'Erro ao buscar log de auditoria' });
+    }
+  });
+
+  app.get('/api/wallet/weekly-report', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const userId = user.role === 'admin' && req.query.userId ? req.query.userId as string : user.id;
+      const transactions = await db.select()
+        .from(tmcTransactions)
+        .where(and(eq(tmcTransactions.userId, userId), gte(tmcTransactions.createdAt, oneWeekAgo)))
+        .orderBy(desc(tmcTransactions.createdAt));
+      const totalCredits = transactions.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+      const totalDebits = transactions.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+      const currentBalance = await creditService.getUserBalance(userId);
+      res.json({
+        period: { from: oneWeekAgo.toISOString(), to: new Date().toISOString() },
+        summary: { totalCredits, totalDebits, netChange: totalCredits - totalDebits, currentBalance, transactionCount: transactions.length },
+        transactions,
+      });
+    } catch (error) {
+      console.error('Failed to generate weekly report:', error);
+      res.status(500).json({ message: 'Erro ao gerar relatório semanal' });
+    }
+  });
+
+  // ========== REPORTS ==========
+
+  app.get('/api/reports/:type', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin' && user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+      const { type } = req.params;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
+
+      if (type === 'consultations') {
+        const allAppts = await db.select()
+          .from(appointments)
+          .where(and(gte(appointments.createdAt, startDate), lte(appointments.createdAt, endDate)));
+        const byStatus: Record<string, number> = {};
+        const byType: Record<string, number> = {};
+        allAppts.forEach(a => {
+          byStatus[a.status] = (byStatus[a.status] || 0) + 1;
+          byType[a.type] = (byType[a.type] || 0) + 1;
+        });
+        res.json({ type: 'consultations', period: { start: startDate, end: endDate }, total: allAppts.length, byStatus, byType });
+      } else if (type === 'patients') {
+        const allPatients = await db.select().from(patients);
+        const byGender: Record<string, number> = {};
+        const ageGroups: Record<string, number> = { '0-18': 0, '19-30': 0, '31-50': 0, '51-70': 0, '71+': 0 };
+        allPatients.forEach(p => {
+          byGender[p.gender || 'não informado'] = (byGender[p.gender || 'não informado'] || 0) + 1;
+          if (p.dateOfBirth) {
+            const age = Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+            if (age <= 18) ageGroups['0-18']++;
+            else if (age <= 30) ageGroups['19-30']++;
+            else if (age <= 50) ageGroups['31-50']++;
+            else if (age <= 70) ageGroups['51-70']++;
+            else ageGroups['71+']++;
+          }
+        });
+        res.json({ type: 'patients', total: allPatients.length, byGender, ageGroups });
+      } else if (type === 'financial') {
+        const allTx = await db.select()
+          .from(tmcTransactions)
+          .where(and(gte(tmcTransactions.createdAt, startDate), lte(tmcTransactions.createdAt, endDate)));
+        const totalCredits = allTx.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+        const totalDebits = allTx.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+        const byType: Record<string, number> = {};
+        allTx.forEach(t => { byType[t.type] = (byType[t.type] || 0) + 1; });
+        res.json({ type: 'financial', period: { start: startDate, end: endDate }, totalTransactions: allTx.length, totalCredits, totalDebits, netFlow: totalCredits - totalDebits, byType });
+      } else if (type === 'doctors') {
+        const doctors = await db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(eq(users.role, 'doctor'));
+        const doctorStats = [];
+        for (const doc of doctors) {
+          const appts = await db.select().from(appointments)
+            .where(and(eq(appointments.doctorId, doc.id), gte(appointments.createdAt, startDate), lte(appointments.createdAt, endDate)));
+          const completed = appts.filter(a => a.status === 'completed').length;
+          const cancelled = appts.filter(a => a.status === 'cancelled').length;
+          const ratings = appts.filter(a => a.rating).map(a => a.rating!);
+          const avgRating = ratings.length > 0 ? ratings.reduce((s, r) => s + r, 0) / ratings.length : null;
+          doctorStats.push({ ...doc, totalAppointments: appts.length, completed, cancelled, avgRating: avgRating ? parseFloat(avgRating.toFixed(1)) : null });
+        }
+        res.json({ type: 'doctors', period: { start: startDate, end: endDate }, doctors: doctorStats });
+      } else {
+        res.status(400).json({ message: 'Tipo de relatório inválido. Use: consultations, patients, financial, doctors' });
+      }
+    } catch (error) {
+      console.error('Failed to generate report:', error);
+      res.status(500).json({ message: 'Erro ao gerar relatório' });
+    }
+  });
+
+  // ========== NFT MANAGEMENT ==========
+
+  app.get('/api/nfts', requireAuth, async (req, res) => {
+    try {
+      const allNfts = await db.select().from(dynamicNfts).orderBy(desc(dynamicNfts.createdAt));
+      res.json(allNfts);
+    } catch (error) {
+      console.error('Failed to fetch NFTs:', error);
+      res.status(500).json({ message: 'Erro ao buscar NFTs' });
+    }
+  });
+
+  app.get('/api/nfts/:id', requireAuth, async (req, res) => {
+    try {
+      const nft = await db.select().from(dynamicNfts).where(eq(dynamicNfts.id, req.params.id)).limit(1);
+      if (!nft[0]) return res.status(404).json({ message: 'NFT não encontrado' });
+      const owners = await db.select({
+        id: nftOwnership.id,
+        shares: nftOwnership.shares,
+        purchasePrice: nftOwnership.purchasePrice,
+        acquiredAt: nftOwnership.acquiredAt,
+        userName: users.name,
+        userId: users.id,
+      }).from(nftOwnership)
+        .leftJoin(users, eq(nftOwnership.userId, users.id))
+        .where(eq(nftOwnership.nftId, req.params.id));
+      res.json({ ...nft[0], owners });
+    } catch (error) {
+      console.error('Failed to fetch NFT:', error);
+      res.status(500).json({ message: 'Erro ao buscar NFT' });
+    }
+  });
+
+  app.post('/api/nfts', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin' && user.role !== 'doctor' && user.role !== 'researcher') {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+      const { title, description, nftType, dataCategory, anonymizedData, valueTmc, totalShares, consentRecords, dataSourceCount } = req.body;
+      if (!title || !nftType || !dataCategory || !anonymizedData) {
+        return res.status(400).json({ message: 'Campos obrigatórios: title, nftType, dataCategory, anonymizedData' });
+      }
+      const nft = await db.insert(dynamicNfts).values({
+        title,
+        description,
+        nftType,
+        dataCategory,
+        anonymizedData,
+        valueTmc: valueTmc || 0,
+        totalShares: totalShares || 100,
+        availableShares: totalShares || 100,
+        ownerId: user.id,
+        creatorId: user.id,
+        consentRecords,
+        dataSourceCount: dataSourceCount || 0,
+        status: 'active',
+      }).returning();
+      res.json(nft[0]);
+    } catch (error) {
+      console.error('Failed to create NFT:', error);
+      res.status(500).json({ message: 'Erro ao criar NFT' });
+    }
+  });
+
+  app.patch('/api/nfts/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const nft = await db.select().from(dynamicNfts).where(eq(dynamicNfts.id, req.params.id)).limit(1);
+      if (!nft[0]) return res.status(404).json({ message: 'NFT não encontrado' });
+      if (nft[0].ownerId !== user.id && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas o proprietário ou admin pode editar' });
+      }
+      const { title, description, valueTmc, status, anonymizedData, consentRecords } = req.body;
+      const updated = await db.update(dynamicNfts)
+        .set({ title, description, valueTmc, status, anonymizedData, consentRecords, updatedAt: new Date(), lastValueUpdate: valueTmc !== undefined ? new Date() : undefined })
+        .where(eq(dynamicNfts.id, req.params.id))
+        .returning();
+      res.json(updated[0]);
+    } catch (error) {
+      console.error('Failed to update NFT:', error);
+      res.status(500).json({ message: 'Erro ao atualizar NFT' });
+    }
+  });
+
+  app.get('/api/nfts/:id/ownership', requireAuth, async (req, res) => {
+    try {
+      const owners = await db.select({
+        id: nftOwnership.id,
+        shares: nftOwnership.shares,
+        purchasePrice: nftOwnership.purchasePrice,
+        acquiredAt: nftOwnership.acquiredAt,
+        userName: users.name,
+        userId: users.id,
+      }).from(nftOwnership)
+        .leftJoin(users, eq(nftOwnership.userId, users.id))
+        .where(eq(nftOwnership.nftId, req.params.id));
+      res.json(owners);
+    } catch (error) {
+      console.error('Failed to fetch NFT ownership:', error);
+      res.status(500).json({ message: 'Erro ao buscar propriedade do NFT' });
+    }
+  });
+
+  app.post('/api/nfts/:id/buy-shares', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { shares } = req.body;
+      if (!shares || shares <= 0) return res.status(400).json({ message: 'Número de shares inválido' });
+      const nft = await db.select().from(dynamicNfts).where(eq(dynamicNfts.id, req.params.id)).limit(1);
+      if (!nft[0]) return res.status(404).json({ message: 'NFT não encontrado' });
+      if (nft[0].availableShares < shares) return res.status(400).json({ message: 'Shares insuficientes disponíveis' });
+      const pricePerShare = Math.ceil(nft[0].valueTmc / nft[0].totalShares);
+      const totalCost = pricePerShare * shares;
+      const balance = await creditService.getUserBalance(user.id);
+      if (balance < totalCost) return res.status(400).json({ message: 'Créditos insuficientes', required: totalCost, available: balance });
+      await db.transaction(async (tx) => {
+        await creditService.debitCredits(user.id, totalCost, `Compra de ${shares} shares do NFT ${nft[0].title}`);
+        if (nft[0].ownerId !== user.id) {
+          await creditService.addCredits(nft[0].ownerId, totalCost, `Venda de ${shares} shares do NFT ${nft[0].title}`);
+        }
+        await tx.insert(nftOwnership).values({ nftId: req.params.id, userId: user.id, shares, purchasePrice: pricePerShare });
+        await tx.update(dynamicNfts).set({ availableShares: nft[0].availableShares - shares, updatedAt: new Date() }).where(eq(dynamicNfts.id, req.params.id));
+      });
+      res.json({ success: true, sharesAcquired: shares, totalCost });
+    } catch (error) {
+      console.error('Failed to buy NFT shares:', error);
+      res.status(500).json({ message: 'Erro ao comprar shares' });
+    }
+  });
+
+  // ========== BROKER ==========
+
+  app.get('/api/broker/orders', requireAuth, async (req, res) => {
+    try {
+      const { assetType, status } = req.query;
+      let conditions: any[] = [];
+      if (assetType) conditions.push(eq(brokerOrders.assetType, assetType as string));
+      if (status) conditions.push(eq(brokerOrders.status, status as string));
+      const orders = conditions.length > 0
+        ? await db.select({
+            id: brokerOrders.id, orderType: brokerOrders.orderType, assetType: brokerOrders.assetType,
+            nftId: brokerOrders.nftId, quantity: brokerOrders.quantity, pricePerUnit: brokerOrders.pricePerUnit,
+            totalPrice: brokerOrders.totalPrice, filledQuantity: brokerOrders.filledQuantity,
+            status: brokerOrders.status, createdAt: brokerOrders.createdAt, userName: users.name, userId: users.id,
+          }).from(brokerOrders).leftJoin(users, eq(brokerOrders.userId, users.id)).where(and(...conditions)).orderBy(desc(brokerOrders.createdAt))
+        : await db.select({
+            id: brokerOrders.id, orderType: brokerOrders.orderType, assetType: brokerOrders.assetType,
+            nftId: brokerOrders.nftId, quantity: brokerOrders.quantity, pricePerUnit: brokerOrders.pricePerUnit,
+            totalPrice: brokerOrders.totalPrice, filledQuantity: brokerOrders.filledQuantity,
+            status: brokerOrders.status, createdAt: brokerOrders.createdAt, userName: users.name, userId: users.id,
+          }).from(brokerOrders).leftJoin(users, eq(brokerOrders.userId, users.id)).orderBy(desc(brokerOrders.createdAt));
+      res.json(orders);
+    } catch (error) {
+      console.error('Failed to fetch broker orders:', error);
+      res.status(500).json({ message: 'Erro ao buscar ordens' });
+    }
+  });
+
+  app.post('/api/broker/orders', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { orderType, assetType, nftId, quantity, pricePerUnit } = req.body;
+      if (!orderType || !assetType || !quantity || !pricePerUnit) {
+        return res.status(400).json({ message: 'Campos obrigatórios: orderType, assetType, quantity, pricePerUnit' });
+      }
+      const totalPrice = quantity * pricePerUnit;
+      if (orderType === 'buy') {
+        const balance = await creditService.getUserBalance(user.id);
+        if (balance < totalPrice) return res.status(400).json({ message: 'Créditos insuficientes', required: totalPrice, available: balance });
+      }
+      const order = await db.insert(brokerOrders).values({
+        userId: user.id,
+        orderType,
+        assetType,
+        nftId: nftId || null,
+        quantity,
+        pricePerUnit,
+        totalPrice,
+        status: 'open',
+      }).returning();
+
+      // Try to match orders
+      const matchField = orderType === 'buy' ? 'sell' : 'buy';
+      const matchingOrders = await db.select().from(brokerOrders)
+        .where(and(
+          eq(brokerOrders.assetType, assetType),
+          eq(brokerOrders.orderType, matchField),
+          eq(brokerOrders.status, 'open'),
+          orderType === 'buy' ? lte(brokerOrders.pricePerUnit, pricePerUnit) : gte(brokerOrders.pricePerUnit, pricePerUnit),
+        ))
+        .orderBy(orderType === 'buy' ? brokerOrders.pricePerUnit : desc(brokerOrders.pricePerUnit));
+
+      for (const match of matchingOrders) {
+        if (order[0].filledQuantity >= order[0].quantity) break;
+        const remaining = order[0].quantity - order[0].filledQuantity;
+        const matchRemaining = match.quantity - match.filledQuantity;
+        const fillQty = Math.min(remaining, matchRemaining);
+        const fillPrice = match.pricePerUnit;
+        const fillTotal = fillQty * fillPrice;
+        const buyerId = orderType === 'buy' ? user.id : match.userId;
+        const sellerId = orderType === 'sell' ? user.id : match.userId;
+        await db.transaction(async (tx) => {
+          await creditService.debitCredits(buyerId, fillTotal, `Compra via broker: ${fillQty}x ${assetType}`);
+          await creditService.addCredits(sellerId, fillTotal, `Venda via broker: ${fillQty}x ${assetType}`);
+          await tx.insert(brokerTrades).values({
+            buyOrderId: orderType === 'buy' ? order[0].id : match.id,
+            sellOrderId: orderType === 'sell' ? order[0].id : match.id,
+            buyerId, sellerId, assetType, nftId: nftId || null, quantity: fillQty, pricePerUnit: fillPrice, totalPrice: fillTotal,
+          });
+          const newFilled = order[0].filledQuantity + fillQty;
+          await tx.update(brokerOrders).set({
+            filledQuantity: newFilled,
+            status: newFilled >= order[0].quantity ? 'filled' : 'partially_filled',
+            updatedAt: new Date(),
+          }).where(eq(brokerOrders.id, order[0].id));
+          order[0].filledQuantity = newFilled;
+          const matchNewFilled = match.filledQuantity + fillQty;
+          await tx.update(brokerOrders).set({
+            filledQuantity: matchNewFilled,
+            status: matchNewFilled >= match.quantity ? 'filled' : 'partially_filled',
+            updatedAt: new Date(),
+          }).where(eq(brokerOrders.id, match.id));
+        });
+      }
+
+      const updatedOrder = await db.select().from(brokerOrders).where(eq(brokerOrders.id, order[0].id)).limit(1);
+      res.json(updatedOrder[0]);
+    } catch (error) {
+      console.error('Failed to create broker order:', error);
+      res.status(500).json({ message: 'Erro ao criar ordem' });
+    }
+  });
+
+  app.delete('/api/broker/orders/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const order = await db.select().from(brokerOrders).where(eq(brokerOrders.id, req.params.id)).limit(1);
+      if (!order[0]) return res.status(404).json({ message: 'Ordem não encontrada' });
+      if (order[0].userId !== user.id && user.role !== 'admin') return res.status(403).json({ message: 'Sem permissão' });
+      if (order[0].status === 'filled') return res.status(400).json({ message: 'Ordem já executada' });
+      await db.update(brokerOrders).set({ status: 'cancelled', updatedAt: new Date() }).where(eq(brokerOrders.id, req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Failed to cancel broker order:', error);
+      res.status(500).json({ message: 'Erro ao cancelar ordem' });
+    }
+  });
+
+  app.get('/api/broker/trades', requireAuth, async (req, res) => {
+    try {
+      const trades = await db.select().from(brokerTrades).orderBy(desc(brokerTrades.createdAt)).limit(100);
+      res.json(trades);
+    } catch (error) {
+      console.error('Failed to fetch trades:', error);
+      res.status(500).json({ message: 'Erro ao buscar trades' });
+    }
+  });
+
+  app.get('/api/broker/tm3d-supply', requireAuth, async (req, res) => {
+    try {
+      let supply = await db.select().from(tm3dSupply).limit(1);
+      if (!supply[0]) {
+        supply = await db.insert(tm3dSupply).values({
+          totalSupply: 1000000,
+          circulatingSupply: 0,
+          reserveSupply: 1000000,
+          priceInUsd: '0.20',
+        }).returning();
+      }
+      res.json(supply[0]);
+    } catch (error) {
+      console.error('Failed to fetch TM3D supply:', error);
+      res.status(500).json({ message: 'Erro ao buscar supply TM3D' });
+    }
+  });
+
+  app.patch('/api/broker/tm3d-supply', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Apenas admin' });
+      const { totalSupply, circulatingSupply, reserveSupply, priceInUsd, lastMintAmount, lastBurnAmount } = req.body;
+      let existing = await db.select().from(tm3dSupply).limit(1);
+      if (!existing[0]) {
+        existing = await db.insert(tm3dSupply).values({ totalSupply: 1000000, circulatingSupply: 0, reserveSupply: 1000000, priceInUsd: '0.20' }).returning();
+      }
+      const updated = await db.update(tm3dSupply).set({
+        ...(totalSupply !== undefined && { totalSupply }),
+        ...(circulatingSupply !== undefined && { circulatingSupply }),
+        ...(reserveSupply !== undefined && { reserveSupply }),
+        ...(priceInUsd !== undefined && { priceInUsd }),
+        ...(lastMintAmount !== undefined && { lastMintAmount }),
+        ...(lastBurnAmount !== undefined && { lastBurnAmount }),
+        updatedBy: user.id,
+        updatedAt: new Date(),
+      }).where(eq(tm3dSupply.id, existing[0].id)).returning();
+      res.json(updated[0]);
+    } catch (error) {
+      console.error('Failed to update TM3D supply:', error);
+      res.status(500).json({ message: 'Erro ao atualizar supply TM3D' });
+    }
+  });
+
+  // ========== EXTERNAL WALLETS ==========
+
+  app.get('/api/external-wallets', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const wallets = await db.select().from(externalWallets).where(eq(externalWallets.userId, user.id)).orderBy(desc(externalWallets.createdAt));
+      res.json(wallets);
+    } catch (error) {
+      console.error('Failed to fetch external wallets:', error);
+      res.status(500).json({ message: 'Erro ao buscar carteiras externas' });
+    }
+  });
+
+  app.post('/api/external-wallets', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { walletAddress, walletType, network, label } = req.body;
+      if (!walletAddress) return res.status(400).json({ message: 'Endereço da carteira é obrigatório' });
+      const existing = await db.select().from(externalWallets)
+        .where(and(eq(externalWallets.userId, user.id), eq(externalWallets.walletAddress, walletAddress)))
+        .limit(1);
+      if (existing[0]) return res.status(409).json({ message: 'Carteira já vinculada' });
+      const isFirst = (await db.select().from(externalWallets).where(eq(externalWallets.userId, user.id))).length === 0;
+      const wallet = await db.insert(externalWallets).values({
+        userId: user.id,
+        walletAddress,
+        walletType: walletType || 'metamask',
+        network: network || 'tm3d',
+        label: label || null,
+        isDefault: isFirst,
+      }).returning();
+      res.json(wallet[0]);
+    } catch (error) {
+      console.error('Failed to link external wallet:', error);
+      res.status(500).json({ message: 'Erro ao vincular carteira externa' });
+    }
+  });
+
+  app.delete('/api/external-wallets/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const wallet = await db.select().from(externalWallets).where(eq(externalWallets.id, req.params.id)).limit(1);
+      if (!wallet[0]) return res.status(404).json({ message: 'Carteira não encontrada' });
+      if (wallet[0].userId !== user.id) return res.status(403).json({ message: 'Sem permissão' });
+      await db.delete(externalWallets).where(eq(externalWallets.id, req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Failed to remove external wallet:', error);
+      res.status(500).json({ message: 'Erro ao remover carteira externa' });
+    }
+  });
+
+  // ========== WITHDRAWAL REQUESTS ==========
+
+  app.get('/api/withdrawals', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const conditions = user.role === 'admin' ? [] : [eq(withdrawalRequests.userId, user.id)];
+      const requests = conditions.length > 0
+        ? await db.select().from(withdrawalRequests).where(and(...conditions)).orderBy(desc(withdrawalRequests.createdAt))
+        : await db.select().from(withdrawalRequests).orderBy(desc(withdrawalRequests.createdAt));
+      res.json(requests);
+    } catch (error) {
+      console.error('Failed to fetch withdrawals:', error);
+      res.status(500).json({ message: 'Erro ao buscar saques' });
+    }
+  });
+
+  app.post('/api/withdrawals', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { externalWalletId, amount } = req.body;
+      if (!externalWalletId || !amount || amount <= 0) return res.status(400).json({ message: 'Carteira e valor são obrigatórios' });
+      const wallet = await db.select().from(externalWallets).where(eq(externalWallets.id, externalWalletId)).limit(1);
+      if (!wallet[0] || wallet[0].userId !== user.id) return res.status(404).json({ message: 'Carteira não encontrada' });
+      const balance = await creditService.getUserBalance(user.id);
+      const fee = Math.ceil(amount * 0.02);
+      const totalDebit = amount + fee;
+      if (balance < totalDebit) return res.status(400).json({ message: 'Saldo insuficiente', required: totalDebit, available: balance });
+      await creditService.debitCredits(user.id, totalDebit, `Saque para carteira externa: ${wallet[0].walletAddress}`);
+      const withdrawal = await db.insert(withdrawalRequests).values({
+        userId: user.id,
+        externalWalletId,
+        amount,
+        fee,
+        status: 'pending',
+      }).returning();
+      await db.insert(walletAuditLog).values({
+        userId: user.id,
+        action: 'debit',
+        amount: totalDebit,
+        balanceBefore: balance,
+        balanceAfter: balance - totalDebit,
+        actorRole: 'system',
+        description: `Saque de ${amount} TMC + taxa ${fee} TMC para ${wallet[0].walletAddress}`,
+        relatedTransactionId: withdrawal[0].id,
+      });
+      res.json(withdrawal[0]);
+    } catch (error) {
+      console.error('Failed to create withdrawal:', error);
+      res.status(500).json({ message: 'Erro ao criar saque' });
+    }
+  });
+
+  app.patch('/api/withdrawals/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Apenas admin' });
+      const { status, txHash } = req.body;
+      const withdrawal = await db.select().from(withdrawalRequests).where(eq(withdrawalRequests.id, req.params.id)).limit(1);
+      if (!withdrawal[0]) return res.status(404).json({ message: 'Saque não encontrado' });
+      const updated = await db.update(withdrawalRequests).set({
+        status,
+        txHash,
+        processedAt: status === 'completed' || status === 'failed' ? new Date() : undefined,
+        processedBy: user.id,
+      }).where(eq(withdrawalRequests.id, req.params.id)).returning();
+      if (status === 'failed') {
+        await creditService.addCredits(withdrawal[0].userId, withdrawal[0].amount + withdrawal[0].fee, `Estorno de saque cancelado/falho`);
+      }
+      res.json(updated[0]);
+    } catch (error) {
+      console.error('Failed to update withdrawal:', error);
+      res.status(500).json({ message: 'Erro ao atualizar saque' });
+    }
+  });
+
 
   return httpServer;
 }

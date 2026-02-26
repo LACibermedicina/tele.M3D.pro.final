@@ -44,6 +44,7 @@ export default function Schedule() {
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const [cancelConfirmName, setCancelConfirmName] = useState<string>("");
   const [cancelAllScope, setCancelAllScope] = useState<'today' | 'future' | null>(null);
+  const [cancelAllAppointmentType, setCancelAllAppointmentType] = useState<string>('all');
   
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -66,7 +67,6 @@ export default function Schedule() {
   const { data: onlinePatients } = useQuery<any[]>({
     queryKey: ['/api/patients/online-status'],
     refetchInterval: 10000,
-    enabled: isInstantConsultOpen,
   });
 
   const { data: allPatientsForInstant } = useQuery<any[]>({
@@ -232,8 +232,8 @@ export default function Schedule() {
   });
 
   const cancelAllMutation = useMutation({
-    mutationFn: (scope: 'today' | 'future') =>
-      apiRequest('POST', '/api/appointments/cancel-all', { doctorId: DEFAULT_DOCTOR_ID, scope }),
+    mutationFn: ({ scope, appointmentType }: { scope: 'today' | 'future'; appointmentType: string }) =>
+      apiRequest('POST', '/api/appointments/cancel-all', { doctorId: DEFAULT_DOCTOR_ID, scope, appointmentType }),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
       toast({
@@ -241,11 +241,13 @@ export default function Schedule() {
         description: `${data.cancelled} consulta(s) cancelada(s) com sucesso.`,
       });
       setCancelAllScope(null);
+      setCancelAllAppointmentType('all');
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
       toast({ title: errorInfo.title, description: errorInfo.description, variant: "destructive" });
       setCancelAllScope(null);
+      setCancelAllAppointmentType('all');
     },
   });
 
@@ -852,16 +854,24 @@ export default function Schedule() {
                             </div>
 
                             <div className="flex items-center space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleStartConsultation(appointment)}
-                                disabled={false}
-                                data-testid={`button-start-consultation-${appointment.id}`}
-                              >
-                                <i className="fas fa-video mr-1"></i>
-                                Iniciar
-                              </Button>
+                              <div className="relative inline-flex items-center">
+                                {(() => {
+                                  const patientOnline = onlinePatients?.find((s: any) => s.patientId === appointment.patientId)?.isOnline;
+                                  return patientOnline !== undefined ? (
+                                    <span className={`absolute -top-1 -left-1 h-3 w-3 rounded-full border-2 border-white dark:border-gray-900 z-10 ${patientOnline ? 'bg-green-500' : 'bg-gray-400'}`} title={patientOnline ? 'Paciente online' : 'Paciente offline'} />
+                                  ) : null;
+                                })()}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleStartConsultation(appointment)}
+                                  disabled={false}
+                                  data-testid={`button-start-consultation-${appointment.id}`}
+                                >
+                                  <i className="fas fa-video mr-1"></i>
+                                  Iniciar
+                                </Button>
+                              </div>
                               
                               <Button
                                 variant="outline"
@@ -1608,7 +1618,7 @@ export default function Schedule() {
       </Dialog>
 
       {/* Cancel All Confirmation Dialog */}
-      <Dialog open={!!cancelAllScope} onOpenChange={(open) => { if (!open) setCancelAllScope(null); }}>
+      <Dialog open={!!cancelAllScope} onOpenChange={(open) => { if (!open) { setCancelAllScope(null); setCancelAllAppointmentType('all'); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
@@ -1617,23 +1627,37 @@ export default function Schedule() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">Tipo de Consulta</label>
+              <Select value={cancelAllAppointmentType} onValueChange={setCancelAllAppointmentType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="consultation">Consultas</SelectItem>
+                  <SelectItem value="followup">Retornos</SelectItem>
+                  <SelectItem value="emergency">Emergências</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
               <p className="text-sm text-red-800 dark:text-red-200">
                 {cancelAllScope === 'today'
-                  ? `Você está prestes a cancelar todas as ${(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').length} consulta(s) pendente(s) de hoje.`
-                  : `Você está prestes a cancelar todas as ${(futureAppointments || []).length} consulta(s) futura(s) agendada(s).`}
+                  ? `Você está prestes a cancelar ${cancelAllAppointmentType === 'all' ? 'todas as' : ''} ${(appointments || []).filter((a: any) => (a.status === 'scheduled' || a.status === 'in-progress') && (cancelAllAppointmentType === 'all' || a.type === cancelAllAppointmentType)).length} consulta(s) pendente(s) de hoje${cancelAllAppointmentType !== 'all' ? ` do tipo "${cancelAllAppointmentType === 'consultation' ? 'Consulta' : cancelAllAppointmentType === 'followup' ? 'Retorno' : 'Emergência'}"` : ''}.`
+                  : `Você está prestes a cancelar ${cancelAllAppointmentType === 'all' ? 'todas as' : ''} consulta(s) futura(s) agendada(s)${cancelAllAppointmentType !== 'all' ? ` do tipo "${cancelAllAppointmentType === 'consultation' ? 'Consulta' : cancelAllAppointmentType === 'followup' ? 'Retorno' : 'Emergência'}"` : ''}.`}
               </p>
             </div>
             <p className="text-sm text-muted-foreground">
               Todas as consultas serão marcadas como canceladas e movidas para o histórico. Os pacientes serão notificados. Esta ação não pode ser desfeita.
             </p>
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setCancelAllScope(null)}>
+              <Button variant="outline" onClick={() => { setCancelAllScope(null); setCancelAllAppointmentType('all'); }}>
                 Voltar
               </Button>
               <Button
                 variant="destructive"
-                onClick={() => cancelAllScope && cancelAllMutation.mutate(cancelAllScope)}
+                onClick={() => cancelAllScope && cancelAllMutation.mutate({ scope: cancelAllScope, appointmentType: cancelAllAppointmentType })}
                 disabled={cancelAllMutation.isPending}
               >
                 {cancelAllMutation.isPending ? 'Cancelando...' : 'Confirmar Cancelamento'}

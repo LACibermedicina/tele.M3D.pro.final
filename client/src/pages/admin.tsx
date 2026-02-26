@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database } from 'lucide-react';
+import { Shield, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings } from 'lucide-react';
 import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { formatErrorForToast } from '@/lib/error-handler';
@@ -402,6 +402,12 @@ export default function AdminPage() {
           <TabsTrigger value="security" data-testid="tab-security">Security</TabsTrigger>
           <TabsTrigger value="ai-references" data-testid="tab-ai-references">AI References</TabsTrigger>
           <TabsTrigger value="layout-theme" data-testid="tab-layout-theme">Layout & Tema</TabsTrigger>
+          <TabsTrigger value="financial" data-testid="tab-financial">
+            <div className="flex items-center space-x-2">
+              <DollarSign className="h-4 w-4" />
+              <span>Gestão Financeira</span>
+            </div>
+          </TabsTrigger>
           <TabsTrigger value="database-cleanup" data-testid="tab-database-cleanup">
             <div className="flex items-center space-x-2">
               <Database className="h-4 w-4" />
@@ -1501,6 +1507,9 @@ export default function AdminPage() {
           </Dialog>
         </TabsContent>
 
+        {/* Financial Management Tab */}
+        <FinancialManagementTab />
+
         {/* Database Cleanup Tab */}
         <DatabaseCleanupTab />
 
@@ -1994,6 +2003,456 @@ function SystemSettingsTab() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </TabsContent>
+  );
+}
+
+interface CreditUser {
+  id: string;
+  username: string;
+  name: string;
+  role: string;
+  tmcCredits: number;
+  email?: string;
+}
+
+interface TmcConfigItem {
+  id: string;
+  functionName: string;
+  costInCredits: number;
+  description: string | null;
+  category: string;
+  isActive: boolean;
+  minimumRole: string;
+  bonusForPatient: number;
+  commissionPercentage: number;
+}
+
+interface AuditLogEntry {
+  id: string;
+  userId: string;
+  username?: string;
+  action: string;
+  amount: number;
+  reason: string;
+  balanceBefore: number;
+  balanceAfter: number;
+  relatedUserId?: string;
+  createdAt: string;
+}
+
+function FinancialManagementTab() {
+  const { toast } = useToast();
+  const [creditSearch, setCreditSearch] = useState('');
+  const [sendCreditsOpen, setSendCreditsOpen] = useState(false);
+  const [sendUserId, setSendUserId] = useState('');
+  const [sendAmount, setSendAmount] = useState('');
+  const [sendReason, setSendReason] = useState('');
+  const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
+  const [editingCost, setEditingCost] = useState('');
+  const [auditFilter, setAuditFilter] = useState<string>('all');
+  const [auditLimit, setAuditLimit] = useState(50);
+
+  const { data: creditUsers = [], isLoading: loadingCreditUsers } = useQuery<CreditUser[]>({
+    queryKey: ['/api/admin/credits/users'],
+  });
+
+  const { data: tmcConfigs = [], isLoading: loadingConfigs } = useQuery<TmcConfigItem[]>({
+    queryKey: ['/api/tmc/config'],
+  });
+
+  const { data: auditLogs = [], isLoading: loadingAudit } = useQuery<AuditLogEntry[]>({
+    queryKey: ['/api/wallet/audit-log', { action: auditFilter !== 'all' ? auditFilter : undefined, limit: auditLimit }],
+  });
+
+  const sendCreditsMutation = useMutation({
+    mutationFn: (data: { userId: string; amount: number; reason: string }) =>
+      apiRequest('POST', '/api/admin/credits/send', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/credits/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/wallet/audit-log'] });
+      setSendCreditsOpen(false);
+      setSendUserId('');
+      setSendAmount('');
+      setSendReason('');
+      toast({ title: 'Sucesso', description: 'Créditos enviados com sucesso' });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: 'destructive' });
+    },
+  });
+
+  const updateConfigMutation = useMutation({
+    mutationFn: ({ id, costInCredits }: { id: string; costInCredits: number }) =>
+      apiRequest('PATCH', `/api/tmc/config/${id}`, { costInCredits }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tmc/config'] });
+      setEditingConfigId(null);
+      setEditingCost('');
+      toast({ title: 'Sucesso', description: 'Custo atualizado com sucesso' });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: 'destructive' });
+    },
+  });
+
+  const filteredUsers = (creditUsers as CreditUser[]).filter(
+    (u) =>
+      u.name.toLowerCase().includes(creditSearch.toLowerCase()) ||
+      u.username.toLowerCase().includes(creditSearch.toLowerCase()) ||
+      u.role.toLowerCase().includes(creditSearch.toLowerCase())
+  );
+
+  const configCategories = Array.from(new Set((tmcConfigs as TmcConfigItem[]).map((c) => c.category)));
+
+  return (
+    <TabsContent value="financial" className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center space-x-2">
+                <DollarSign className="h-5 w-5" />
+                <span>Saldos de Créditos dos Usuários</span>
+              </CardTitle>
+              <CardDescription>Visualize e gerencie os créditos TMC de todos os usuários</CardDescription>
+            </div>
+            <Dialog open={sendCreditsOpen} onOpenChange={setSendCreditsOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-send-credits">
+                  <Send className="h-4 w-4 mr-2" />
+                  Enviar Créditos
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Enviar Créditos TMC</DialogTitle>
+                  <DialogDescription>Envie créditos para um usuário do sistema</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Usuário</Label>
+                    <Select value={sendUserId} onValueChange={setSendUserId}>
+                      <SelectTrigger data-testid="select-send-user">
+                        <SelectValue placeholder="Selecione o usuário" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(creditUsers as CreditUser[]).map((u) => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.name} ({u.username}) - {u.role}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Quantidade (TMC)</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={sendAmount}
+                      onChange={(e) => setSendAmount(e.target.value)}
+                      placeholder="Ex: 100"
+                      data-testid="input-send-amount"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Motivo</Label>
+                    <Input
+                      value={sendReason}
+                      onChange={(e) => setSendReason(e.target.value)}
+                      placeholder="Ex: Bônus de boas-vindas"
+                      data-testid="input-send-reason"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    onClick={() => {
+                      if (!sendUserId || !sendAmount || !sendReason) {
+                        toast({ title: 'Erro', description: 'Preencha todos os campos', variant: 'destructive' });
+                        return;
+                      }
+                      sendCreditsMutation.mutate({
+                        userId: sendUserId,
+                        amount: parseInt(sendAmount),
+                        reason: sendReason,
+                      });
+                    }}
+                    disabled={sendCreditsMutation.isPending}
+                    data-testid="button-confirm-send-credits"
+                  >
+                    {sendCreditsMutation.isPending ? 'Enviando...' : 'Enviar Créditos'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, username ou role..."
+                value={creditSearch}
+                onChange={(e) => setCreditSearch(e.target.value)}
+                className="pl-10"
+                data-testid="input-credit-search"
+              />
+            </div>
+          </div>
+          {loadingCreditUsers ? (
+            <div className="text-center py-8">Carregando saldos...</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Usuário</TableHead>
+                    <TableHead>Username</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="text-right">Saldo TMC</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map((user) => (
+                    <TableRow key={user.id} data-testid={`credit-user-row-${user.id}`}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell className="font-mono text-sm">{user.username}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            user.role === 'admin'
+                              ? 'bg-red-100 text-red-800'
+                              : user.role === 'doctor'
+                              ? 'bg-blue-100 text-blue-800'
+                              : user.role === 'patient'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }
+                        >
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{user.email || '-'}</TableCell>
+                      <TableCell className="text-right font-mono font-bold">{user.tmcCredits || 0} TMC</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Settings className="h-5 w-5" />
+            <span>Custos das Funcionalidades</span>
+          </CardTitle>
+          <CardDescription>Configure os custos em créditos TMC para cada funcionalidade do sistema</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingConfigs ? (
+            <div className="text-center py-8">Carregando configurações...</div>
+          ) : (
+            <div className="space-y-6">
+              {configCategories.map((category) => (
+                <div key={category}>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    {category}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {(tmcConfigs as TmcConfigItem[])
+                      .filter((c) => c.category === category)
+                      .map((config) => (
+                        <Card key={config.id} className={`${!config.isActive ? 'opacity-60' : ''}`}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{config.description || config.functionName}</p>
+                                <p className="text-xs text-muted-foreground font-mono mt-1">{config.functionName}</p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <Badge variant="outline" className="text-xs">{config.minimumRole}</Badge>
+                                  {!config.isActive && <Badge variant="secondary" className="text-xs">Inativo</Badge>}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 ml-2">
+                                {editingConfigId === config.id ? (
+                                  <div className="flex items-center gap-1">
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      value={editingCost}
+                                      onChange={(e) => setEditingCost(e.target.value)}
+                                      className="w-20 h-8 text-sm"
+                                      data-testid={`input-config-cost-${config.id}`}
+                                    />
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 px-2"
+                                      onClick={() => {
+                                        updateConfigMutation.mutate({
+                                          id: config.id,
+                                          costInCredits: parseInt(editingCost),
+                                        });
+                                      }}
+                                      disabled={updateConfigMutation.isPending}
+                                    >
+                                      ✓
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 px-2"
+                                      onClick={() => {
+                                        setEditingConfigId(null);
+                                        setEditingCost('');
+                                      }}
+                                    >
+                                      ✕
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-mono font-bold text-lg">{config.costInCredits}</span>
+                                    <span className="text-xs text-muted-foreground">TMC</span>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 px-2"
+                                      onClick={() => {
+                                        setEditingConfigId(config.id);
+                                        setEditingCost(String(config.costInCredits));
+                                      }}
+                                      data-testid={`button-edit-config-${config.id}`}
+                                    >
+                                      <Edit3 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            {config.bonusForPatient > 0 && (
+                              <p className="text-xs text-green-600 mt-2">Bônus paciente: +{config.bonusForPatient} TMC</p>
+                            )}
+                            {config.commissionPercentage > 0 && (
+                              <p className="text-xs text-blue-600 mt-1">Comissão: {config.commissionPercentage}%</p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center space-x-2">
+                <FileText className="h-5 w-5" />
+                <span>Log de Auditoria da Carteira</span>
+              </CardTitle>
+              <CardDescription>Histórico de todas as transações TMC do sistema</CardDescription>
+            </div>
+            <div className="flex items-center gap-3">
+              <Select value={auditFilter} onValueChange={setAuditFilter}>
+                <SelectTrigger className="w-40" data-testid="select-audit-filter">
+                  <SelectValue placeholder="Filtrar ação" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="credit">Crédito</SelectItem>
+                  <SelectItem value="debit">Débito</SelectItem>
+                  <SelectItem value="recharge">Recarga</SelectItem>
+                  <SelectItem value="transfer">Transferência</SelectItem>
+                  <SelectItem value="commission">Comissão</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={String(auditLimit)} onValueChange={(v) => setAuditLimit(parseInt(v))}>
+                <SelectTrigger className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="200">200</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingAudit ? (
+            <div className="text-center py-8">Carregando log de auditoria...</div>
+          ) : (auditLogs as AuditLogEntry[]).length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">Nenhuma transação encontrada</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Usuário</TableHead>
+                    <TableHead>Motivo</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="text-right">Saldo Antes</TableHead>
+                    <TableHead className="text-right">Saldo Depois</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(auditLogs as AuditLogEntry[]).map((log) => (
+                    <TableRow key={log.id} data-testid={`audit-row-${log.id}`}>
+                      <TableCell className="text-xs">
+                        {format(new Date(log.createdAt), 'dd/MM/yyyy HH:mm')}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            log.action === 'credit' || log.action === 'recharge'
+                              ? 'default'
+                              : log.action === 'debit'
+                              ? 'destructive'
+                              : 'secondary'
+                          }
+                          className="capitalize"
+                        >
+                          {log.action}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">{log.username || log.userId}</TableCell>
+                      <TableCell className="text-sm max-w-[200px] truncate">{log.reason}</TableCell>
+                      <TableCell className={`text-right font-mono font-bold ${log.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {log.amount >= 0 ? '+' : ''}{log.amount} TMC
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm text-muted-foreground">
+                        {log.balanceBefore} TMC
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        {log.balanceAfter} TMC
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>

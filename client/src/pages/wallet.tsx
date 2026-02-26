@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import PayPalButton from "@/components/PayPalButton";
@@ -32,6 +34,11 @@ import {
   Star,
   Shield,
   Clock,
+  ExternalLink,
+  Plus,
+  Trash2,
+  FileText,
+  Filter,
 } from "lucide-react";
 
 function isCredit(type: string) {
@@ -79,6 +86,16 @@ export default function WalletPage() {
   const [transferReason, setTransferReason] = useState("");
   const [transferOpen, setTransferOpen] = useState(false);
 
+  const [linkWalletOpen, setLinkWalletOpen] = useState(false);
+  const [newWalletAddress, setNewWalletAddress] = useState("");
+  const [newWalletType, setNewWalletType] = useState("");
+  const [newWalletNetwork, setNewWalletNetwork] = useState("");
+  const [newWalletLabel, setNewWalletLabel] = useState("");
+  const [deleteWalletId, setDeleteWalletId] = useState<string | null>(null);
+  const [withdrawWalletId, setWithdrawWalletId] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [auditFilterType, setAuditFilterType] = useState("all");
+
   const { data: balance, isLoading: balanceLoading } = useQuery<{ balance: number; currency: string }>({
     queryKey: ["/api/tmc/balance"],
   });
@@ -89,6 +106,72 @@ export default function WalletPage() {
 
   const { data: transactions = [], isLoading: transactionsLoading } = useQuery<any[]>({
     queryKey: ["/api/tmc/transactions"],
+  });
+
+  const { data: externalWallets = [], isLoading: walletsLoading } = useQuery<any[]>({
+    queryKey: ["/api/external-wallets"],
+  });
+
+  const { data: withdrawals = [], isLoading: withdrawalsLoading } = useQuery<any[]>({
+    queryKey: ["/api/withdrawals"],
+  });
+
+  const { data: auditLog = [], isLoading: auditLoading } = useQuery<any[]>({
+    queryKey: ["/api/wallet/audit-log"],
+  });
+
+  const { data: weeklyReport, isLoading: weeklyReportLoading } = useQuery<any>({
+    queryKey: ["/api/wallet/weekly-report"],
+  });
+
+  const linkWalletMutation = useMutation({
+    mutationFn: async (data: { address: string; type: string; network: string; label?: string }) => {
+      const res = await apiRequest("POST", "/api/external-wallets", data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-wallets"] });
+      setLinkWalletOpen(false);
+      setNewWalletAddress("");
+      setNewWalletType("");
+      setNewWalletNetwork("");
+      setNewWalletLabel("");
+      toast({ title: "Carteira vinculada", description: "Carteira externa vinculada com sucesso!" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteWalletMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/external-wallets/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-wallets"] });
+      setDeleteWalletId(null);
+      toast({ title: "Carteira removida", description: "Carteira externa removida com sucesso!" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const withdrawMutation = useMutation({
+    mutationFn: async (data: { walletId: string; amount: number }) => {
+      const res = await apiRequest("POST", "/api/withdrawals", data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/withdrawals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tmc/balance"] });
+      setWithdrawWalletId("");
+      setWithdrawAmount("");
+      toast({ title: "Saque solicitado", description: "Sua solicitação de saque foi enviada!" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
   });
 
   const createOrderMutation = useMutation({
@@ -221,7 +304,7 @@ export default function WalletPage() {
       </div>
 
       <Tabs defaultValue="comprar" className="space-y-4">
-        <TabsList className="grid grid-cols-4 w-full max-w-lg">
+        <TabsList className="grid grid-cols-6 w-full max-w-3xl">
           <TabsTrigger value="comprar" className="flex items-center gap-1.5">
             <ShoppingCart className="h-4 w-4" />
             <span className="hidden sm:inline">Comprar</span>
@@ -237,6 +320,14 @@ export default function WalletPage() {
           <TabsTrigger value="custos" className="flex items-center gap-1.5">
             <Info className="h-4 w-4" />
             <span className="hidden sm:inline">Custos</span>
+          </TabsTrigger>
+          <TabsTrigger value="carteira-externa" className="flex items-center gap-1.5">
+            <ExternalLink className="h-4 w-4" />
+            <span className="hidden sm:inline">Externa</span>
+          </TabsTrigger>
+          <TabsTrigger value="auditoria" className="flex items-center gap-1.5">
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">Auditoria</span>
           </TabsTrigger>
         </TabsList>
 
@@ -529,6 +620,387 @@ export default function WalletPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="carteira-externa" className="space-y-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <ExternalLink className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Carteira Externa</h2>
+            </div>
+            <Dialog open={linkWalletOpen} onOpenChange={setLinkWalletOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Vincular Carteira
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Vincular Carteira Externa</DialogTitle>
+                  <DialogDescription>Adicione uma carteira externa para receber saques.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="wallet-address">Endereço da Carteira</Label>
+                    <Input
+                      id="wallet-address"
+                      value={newWalletAddress}
+                      onChange={(e) => setNewWalletAddress(e.target.value)}
+                      placeholder="0x..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Tipo</Label>
+                    <Select value={newWalletType} onValueChange={setNewWalletType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="metamask">MetaMask</SelectItem>
+                        <SelectItem value="walletconnect">WalletConnect</SelectItem>
+                        <SelectItem value="custom">Personalizada</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Rede</Label>
+                    <Select value={newWalletNetwork} onValueChange={setNewWalletNetwork}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a rede" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="tm3d">TM3D</SelectItem>
+                        <SelectItem value="ethereum">Ethereum</SelectItem>
+                        <SelectItem value="polygon">Polygon</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="wallet-label">Rótulo (opcional)</Label>
+                    <Input
+                      id="wallet-label"
+                      value={newWalletLabel}
+                      onChange={(e) => setNewWalletLabel(e.target.value)}
+                      placeholder="Ex: Minha carteira principal"
+                    />
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={() => linkWalletMutation.mutate({
+                      address: newWalletAddress,
+                      type: newWalletType,
+                      network: newWalletNetwork,
+                      label: newWalletLabel || undefined,
+                    })}
+                    disabled={linkWalletMutation.isPending || !newWalletAddress || !newWalletType || !newWalletNetwork}
+                  >
+                    {linkWalletMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+                    Vincular
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {walletsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : externalWallets.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <ExternalLink className="h-12 w-12 text-gray-300 mb-3" />
+                <p className="text-muted-foreground">Nenhuma carteira externa vinculada</p>
+                <p className="text-sm text-gray-400 mt-1">Vincule uma carteira para realizar saques.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {externalWallets.map((w: any) => (
+                <Card key={w.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-medium truncate">{w.label || "Carteira"}</p>
+                          {w.isDefault && <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs">Padrão</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground font-mono truncate">{w.address}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant="outline" className="text-xs capitalize">{w.type}</Badge>
+                          <Badge variant="secondary" className="text-xs capitalize">{w.network}</Badge>
+                        </div>
+                      </div>
+                      <Dialog open={deleteWalletId === w.id} onOpenChange={(open) => !open && setDeleteWalletId(null)}>
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700" onClick={() => setDeleteWalletId(w.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Remover Carteira</DialogTitle>
+                            <DialogDescription>Tem certeza que deseja remover esta carteira externa? Esta ação não pode ser desfeita.</DialogDescription>
+                          </DialogHeader>
+                          <div className="flex gap-2 justify-end">
+                            <Button variant="outline" onClick={() => setDeleteWalletId(null)}>Cancelar</Button>
+                            <Button
+                              variant="destructive"
+                              onClick={() => deleteWalletMutation.mutate(w.id)}
+                              disabled={deleteWalletMutation.isPending}
+                            >
+                              {deleteWalletMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                              Remover
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <ArrowUpCircle className="h-5 w-5" />
+                Solicitar Saque
+              </CardTitle>
+              <CardDescription>Solicite a transferência de créditos para sua carteira externa (taxa de 2%).</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Carteira de Destino</Label>
+                <Select value={withdrawWalletId} onValueChange={setWithdrawWalletId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a carteira" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {externalWallets.map((w: any) => (
+                      <SelectItem key={w.id} value={w.id}>{w.label || w.address?.slice(0, 16) + "..."} ({w.network})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="withdraw-amount">Valor (TMC)</Label>
+                <Input
+                  id="withdraw-amount"
+                  type="number"
+                  min={1}
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  placeholder="Ex: 100"
+                />
+              </div>
+              {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
+                <Card className="bg-muted/50">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="text-sm space-y-1">
+                      <div className="flex justify-between">
+                        <span>Valor solicitado:</span>
+                        <span className="font-medium">{parseFloat(withdrawAmount)} TMC</span>
+                      </div>
+                      <div className="flex justify-between text-orange-600">
+                        <span>Taxa (2%):</span>
+                        <span className="font-medium">-{(parseFloat(withdrawAmount) * 0.02).toFixed(2)} TMC</span>
+                      </div>
+                      <div className="border-t pt-1 flex justify-between font-semibold">
+                        <span>Valor líquido:</span>
+                        <span className="text-green-600">{(parseFloat(withdrawAmount) * 0.98).toFixed(2)} TMC</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              <Button
+                className="w-full"
+                onClick={() => withdrawMutation.mutate({ walletId: withdrawWalletId, amount: parseFloat(withdrawAmount) })}
+                disabled={withdrawMutation.isPending || !withdrawWalletId || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
+              >
+                {withdrawMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowUpCircle className="h-4 w-4 mr-1" />}
+                Solicitar Saque
+              </Button>
+            </CardContent>
+          </Card>
+
+          <div className="mt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <History className="h-5 w-5 text-primary" />
+              <h3 className="text-base font-semibold">Histórico de Saques</h3>
+            </div>
+            {withdrawalsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : withdrawals.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-8">
+                  <Clock className="h-10 w-10 text-gray-300 mb-2" />
+                  <p className="text-muted-foreground text-sm">Nenhum saque realizado</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Valor</TableHead>
+                        <TableHead>Taxa</TableHead>
+                        <TableHead>Líquido</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {withdrawals.map((w: any) => (
+                        <TableRow key={w.id}>
+                          <TableCell className="text-xs">
+                            {new Date(w.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                          </TableCell>
+                          <TableCell className="font-medium">{w.amount} TMC</TableCell>
+                          <TableCell className="text-orange-600 text-xs">{w.fee || (w.amount * 0.02).toFixed(2)} TMC</TableCell>
+                          <TableCell className="text-green-600 font-medium">{w.netAmount || (w.amount * 0.98).toFixed(2)} TMC</TableCell>
+                          <TableCell>
+                            <Badge className={
+                              w.status === "pending" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" :
+                              w.status === "processing" ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" :
+                              w.status === "completed" ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" :
+                              "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                            }>
+                              {w.status === "pending" ? "Pendente" :
+                               w.status === "processing" ? "Processando" :
+                               w.status === "completed" ? "Concluído" : "Falhou"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="auditoria" className="space-y-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Auditoria</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={auditFilterType} onValueChange={setAuditFilterType}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filtrar por tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="credit">Crédito</SelectItem>
+                  <SelectItem value="debit">Débito</SelectItem>
+                  <SelectItem value="transfer">Transferência</SelectItem>
+                  <SelectItem value="recharge">Recarga</SelectItem>
+                  <SelectItem value="purchase">Compra</SelectItem>
+                  <SelectItem value="commission">Comissão</SelectItem>
+                  <SelectItem value="bonus">Bônus</SelectItem>
+                  <SelectItem value="withdrawal">Saque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {!weeklyReportLoading && weeklyReport && (
+            <Card className="bg-gradient-to-br from-indigo-50 to-purple-100 dark:from-indigo-950 dark:to-purple-950 border-indigo-200 dark:border-indigo-800">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                  Resumo Semanal
+                </CardTitle>
+                <CardDescription>{weeklyReport.period || "Últimos 7 dias"}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Créditos</p>
+                    <p className="text-lg font-bold text-green-600">+{weeklyReport.totalCredits || 0} TMC</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Débitos</p>
+                    <p className="text-lg font-bold text-red-600">-{weeklyReport.totalDebits || 0} TMC</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Variação Líquida</p>
+                    <p className={`text-lg font-bold ${(weeklyReport.netChange || 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {(weeklyReport.netChange || 0) >= 0 ? "+" : ""}{weeklyReport.netChange || 0} TMC
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Saldo Atual</p>
+                    <p className="text-lg font-bold text-blue-600">{weeklyReport.currentBalance || 0} TMC</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {auditLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : auditLog.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <FileText className="h-12 w-12 text-gray-300 mb-3" />
+                <p className="text-muted-foreground">Nenhum registro de auditoria</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Ação</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Saldo Antes</TableHead>
+                      <TableHead>Saldo Depois</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Ator</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {auditLog
+                      .filter((entry: any) => auditFilterType === "all" || entry.actionType === auditFilterType || entry.type === auditFilterType)
+                      .map((entry: any, i: number) => (
+                        <TableRow key={entry.id || i}>
+                          <TableCell className="text-xs whitespace-nowrap">
+                            {new Date(entry.createdAt || entry.date).toLocaleDateString("pt-BR", {
+                              day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+                            })}
+                          </TableCell>
+                          <TableCell>
+                            <TransactionLabel type={entry.actionType || entry.type} />
+                          </TableCell>
+                          <TableCell className={`font-medium ${isCredit(entry.actionType || entry.type) ? "text-green-600" : "text-red-500"}`}>
+                            {isCredit(entry.actionType || entry.type) ? "+" : "-"}{Math.abs(entry.amount)} TMC
+                          </TableCell>
+                          <TableCell className="text-xs">{entry.balanceBefore ?? "—"} TMC</TableCell>
+                          <TableCell className="text-xs">{entry.balanceAfter ?? "—"} TMC</TableCell>
+                          <TableCell className="text-xs max-w-[200px] truncate">{entry.description || entry.reason || "—"}</TableCell>
+                          <TableCell className="text-xs">{entry.actor || entry.actorName || "Sistema"}</TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
