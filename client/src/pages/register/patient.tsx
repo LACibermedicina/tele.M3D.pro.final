@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -230,9 +231,11 @@ export default function PatientRegister() {
                         <FormItem>
                           <FormLabel>Data de Nascimento</FormLabel>
                           <FormControl>
-                            <Input
-                              {...field}
-                              type="date"
+                            <DateInput
+                              value={field.value}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              name={field.name}
                               data-testid="input-patient-dob"
                             />
                           </FormControl>

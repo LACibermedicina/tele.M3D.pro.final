@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -394,11 +395,12 @@ function RegisterFormSection({ defaultValues, onSubmit, isSubmitting, getRoleIco
                   <FormItem>
                     <FormLabel>Data de Nascimento</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        type="date"
+                      <DateInput
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
                         data-testid="input-register-dob"
-                        className="mobile-input-enhanced"
                       />
                     </FormControl>
                     <FormMessage />
