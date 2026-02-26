@@ -1678,7 +1678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/appointments/cancel-all', async (req, res) => {
     try {
-      if (!req.isAuthenticated() || !req.user) {
+      if (!req.user) {
         return res.status(401).json({ message: 'Authentication required' });
       }
       if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
@@ -1738,13 +1738,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 type: 'appointment_cancelled',
                 data: { appointmentId: apt.id, scheduledAt: apt.scheduledAt },
               });
-              await storage.createNotification({
-                userId: patient.userId,
-                type: 'appointment',
-                title: 'Consulta cancelada',
-                message: `Sua consulta agendada para ${new Date(apt.scheduledAt).toLocaleString('pt-BR')} foi cancelada pelo médico.`,
-                data: { appointmentId: apt.id },
-              });
             }
           } catch {}
         }
@@ -1789,13 +1782,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               broadcastToUser(otherDoctorId, {
                 type: 'interconsultation_cancelled',
-                data: { interConsultationId: ic.id },
-              });
-              await storage.createNotification({
-                userId: otherDoctorId,
-                type: 'interconsultation',
-                title: 'Interconsulta cancelada',
-                message: `A interconsulta com Dr(a). ${doctorName} foi cancelada. Motivo: limpeza de agenda.`,
                 data: { interConsultationId: ic.id },
               });
             } catch {}
