@@ -28,7 +28,9 @@ const medicalRecordSchema = z.object({
 type MedicalRecordFormData = z.infer<typeof medicalRecordSchema>;
 
 export default function MedicalRecords() {
-  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialPatientId = urlParams.get('patientId');
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(initialPatientId);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();

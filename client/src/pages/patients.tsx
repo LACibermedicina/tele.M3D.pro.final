@@ -530,7 +530,7 @@ export default function Patients() {
                     </div>
                   )}
                 </div>
-                <div className="flex space-x-2 mt-4">
+                <div className="flex flex-wrap gap-2 mt-4">
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -539,6 +539,15 @@ export default function Patients() {
                   >
                     <i className="fas fa-eye mr-2"></i>
                     Ver Detalhes
+                  </Button>
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    onClick={() => setLocation(`/records?patientId=${patient.id}`)}
+                    data-testid={`button-records-patient-${patient.id}`}
+                  >
+                    <i className="fas fa-file-medical mr-2"></i>
+                    Prontuário
                   </Button>
                   <Button 
                     variant="outline" 

@@ -276,7 +276,7 @@ export default function PatientProfile() {
                 <div className="text-center py-8">
                   <i className="fas fa-file-medical text-4xl text-muted-foreground mb-4"></i>
                   <p className="text-muted-foreground">Nenhum registro médico encontrado</p>
-                  <Button variant="outline" className="mt-4" data-testid="button-create-record">
+                  <Button variant="outline" className="mt-4" data-testid="button-create-record" onClick={() => navigate(`/records?patientId=${id}`)}>
                     Criar Primeiro Registro
                   </Button>
                 </div>
@@ -304,7 +304,7 @@ export default function PatientProfile() {
                       )}
                     </div>
                   ))}
-                  <Button variant="outline" className="w-full" data-testid="button-view-all-records">
+                  <Button variant="outline" className="w-full" data-testid="button-view-all-records" onClick={() => navigate(`/records?patientId=${id}`)}>
                     Ver Todos os Registros
                   </Button>
                 </div>
