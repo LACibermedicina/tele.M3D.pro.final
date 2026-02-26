@@ -327,6 +327,20 @@ else
     echo "[OK] PAYPAL_CLIENT_SECRET configurada"
 fi
 
+if [ -z "$SESSION_SECRET" ]; then
+    echo "[INFO] SESSION_SECRET não configurada (opcional)."
+    echo "  Recomendada para segurança de sessões em produção."
+else
+    echo "[OK] SESSION_SECRET configurada"
+fi
+
+if [ -z "$AI_INTEGRATIONS_OPENAI_API_KEY" ]; then
+    echo "[INFO] AI_INTEGRATIONS_OPENAI_API_KEY não configurada (opcional)."
+    echo "  Fallback de IA caso o Gemini não esteja disponível."
+else
+    echo "[OK] AI_INTEGRATIONS_OPENAI_API_KEY configurada"
+fi
+
 echo ""
 echo "============================================"
 echo "  Instalação concluída!"

@@ -83,22 +83,24 @@ export default function Header() {
   // Determine if we're on an authenticated page (not home/login)
   const isAuthenticatedPage = user !== null && location !== '/' && location !== '/login';
 
+  const useWhiteIcons = isScrolled || !isAuthenticatedPage;
+
   const getTextColor = () => {
-    if (isScrolled) {
+    if (useWhiteIcons) {
       return 'text-white';
     }
     return 'text-slate-800 dark:text-white';
   };
 
   const getIconColor = () => {
-    if (isScrolled) {
+    if (useWhiteIcons) {
       return 'text-white';
     }
     return 'text-indigo-950 dark:text-white';
   };
 
   const getSubTextColor = () => {
-    if (isScrolled) {
+    if (useWhiteIcons) {
       return 'text-gray-200';
     }
     return 'text-slate-500 dark:text-gray-300';
@@ -112,14 +114,14 @@ export default function Header() {
   };
 
   const getIconFilter = () => {
-    if (isScrolled) {
+    if (useWhiteIcons) {
       return 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))';
     }
     return 'drop-shadow(0 1px 4px rgba(30,27,75,0.2))';
   };
 
   const getDividerColor = () => {
-    if (isScrolled) {
+    if (useWhiteIcons) {
       return 'bg-white/20';
     }
     return 'bg-slate-300 dark:bg-white/20';
@@ -703,9 +705,9 @@ export default function Header() {
                   <img 
                     src={telemedLogo} 
                     alt="Tele<M3D> Logo" 
-                    className={`w-full h-full object-contain transition-all duration-300 group-hover:scale-110 ${!isScrolled ? 'dark:invert' : ''}`}
+                    className={`w-full h-full object-contain transition-all duration-300 group-hover:scale-110 ${!useWhiteIcons ? 'dark:invert' : ''}`}
                     style={{ 
-                      filter: isScrolled
+                      filter: useWhiteIcons
                         ? 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))'
                         : 'brightness(0) invert(0) drop-shadow(0 1px 3px rgba(0,0,0,0.15))'
                     }}
@@ -1020,7 +1022,7 @@ export default function Header() {
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   placeholder="Email"
-                  className={`w-32 px-2 py-1 bg-transparent text-xs focus:outline-none transition-all ${getTextColor()} ${isScrolled ? 'placeholder:text-white/40 focus:placeholder:text-white/60' : 'placeholder:text-gray-400 focus:placeholder:text-gray-500'}`}
+                  className={`w-32 px-2 py-1 bg-transparent text-xs focus:outline-none transition-all ${getTextColor()} ${useWhiteIcons ? 'placeholder:text-white/40 focus:placeholder:text-white/60' : 'placeholder:text-gray-400 focus:placeholder:text-gray-500'}`}
                   data-testid="input-quick-login-email"
                   disabled={isLoggingIn}
                 />
@@ -1030,7 +1032,7 @@ export default function Header() {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="Senha"
-                  className={`w-24 px-2 py-1 bg-transparent text-xs focus:outline-none transition-all ${getTextColor()} ${isScrolled ? 'placeholder:text-white/40 focus:placeholder:text-white/60' : 'placeholder:text-gray-400 focus:placeholder:text-gray-500'}`}
+                  className={`w-24 px-2 py-1 bg-transparent text-xs focus:outline-none transition-all ${getTextColor()} ${useWhiteIcons ? 'placeholder:text-white/40 focus:placeholder:text-white/60' : 'placeholder:text-gray-400 focus:placeholder:text-gray-500'}`}
                   data-testid="input-quick-login-password"
                   disabled={isLoggingIn}
                 />
