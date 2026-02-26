@@ -14,7 +14,8 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions } from "@shared/schema";
+import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
 import { z } from "zod";
@@ -85,6 +86,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migratePharmacyTables();
   await migratePMDColumns();
   await migrateDoctorPatientBlocks();
+  await migratePaymentTransactions();
+  await initStripeSync();
   
   // Initialize default doctor if not exists and get the actual ID
   const actualDoctorId = await initializeDefaultDoctor();
@@ -17275,6 +17278,521 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
+  // ===== STRIPE PAYMENT ROUTES =====
+
+  app.get('/api/stripe/publishable-key', async (_req: any, res) => {
+    try {
+      const key = await getStripePublishableKey();
+      res.json({ publishableKey: key });
+    } catch (error: any) {
+      console.error('Stripe publishable key error:', error.message);
+      res.status(500).json({ message: 'Failed to get Stripe config' });
+    }
+  });
+
+  app.post('/api/stripe/create-payment-intent', requireAuth, async (req: any, res) => {
+    try {
+      const { packageId, paymentMethod } = req.body;
+      if (!packageId) return res.status(400).json({ message: 'Package ID is required' });
+
+      const [pkg] = await db.select().from(tmcCreditPackages).where(eq(tmcCreditPackages.id, packageId));
+      if (!pkg) return res.status(404).json({ message: 'Package not found' });
+
+      const priceInCents = Math.round(parseFloat(pkg.price || '0') * 100);
+      if (priceInCents <= 0) return res.status(400).json({ message: 'Invalid package price' });
+
+      const stripe = await getUncachableStripeClient();
+
+      const paymentMethodTypes: string[] = ['card'];
+      if (paymentMethod === 'apple_pay') paymentMethodTypes.push('apple_pay' as any);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: priceInCents,
+        currency: (pkg.currency || 'usd').toLowerCase(),
+        payment_method_types: paymentMethodTypes,
+        metadata: {
+          userId: req.user.id,
+          packageId: pkg.id,
+          credits: String((pkg.credits || 0) + (pkg.bonusCredits || 0)),
+        },
+      });
+
+      const [txn] = await db.insert(paymentTransactions).values({
+        userId: req.user.id,
+        packageId: pkg.id,
+        provider: 'stripe',
+        providerOrderId: paymentIntent.id,
+        paymentMethod: paymentMethod || 'credit_card',
+        amount: pkg.price || '0',
+        currency: (pkg.currency || 'USD').toUpperCase(),
+        creditsAmount: (pkg.credits || 0) + (pkg.bonusCredits || 0),
+        status: 'pending',
+        stripePaymentIntentId: paymentIntent.id,
+        stripeClientSecret: paymentIntent.client_secret || '',
+        payerEmail: req.user.email,
+        payerName: req.user.name,
+      }).returning();
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        transactionId: txn.id,
+        amount: pkg.price,
+        currency: pkg.currency,
+        credits: (pkg.credits || 0) + (pkg.bonusCredits || 0),
+      });
+    } catch (error: any) {
+      console.error('Stripe payment intent error:', error);
+      res.status(500).json({ message: 'Failed to create payment: ' + (error.message || 'Internal error') });
+    }
+  });
+
+  app.post('/api/stripe/confirm-payment', requireAuth, async (req: any, res) => {
+    try {
+      const { paymentIntentId } = req.body;
+      if (!paymentIntentId) return res.status(400).json({ message: 'Payment intent ID required' });
+
+      const [txn] = await db.select().from(paymentTransactions)
+        .where(and(
+          eq(paymentTransactions.stripePaymentIntentId, paymentIntentId),
+          eq(paymentTransactions.userId, req.user.id)
+        ));
+
+      if (!txn) return res.status(404).json({ message: 'Transaction not found' });
+      if (txn.status === 'completed') return res.status(400).json({ message: 'Payment already processed' });
+
+      const stripe = await getUncachableStripeClient();
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      if (paymentIntent.metadata?.userId !== req.user.id) {
+        return res.status(403).json({ message: 'Unauthorized payment intent' });
+      }
+
+      if (paymentIntent.status !== 'succeeded') {
+        await db.update(paymentTransactions)
+          .set({ status: 'failed', errorMessage: `Status: ${paymentIntent.status}`, updatedAt: new Date() })
+          .where(eq(paymentTransactions.id, txn.id));
+        return res.status(400).json({ message: 'Payment not completed', status: paymentIntent.status });
+      }
+
+      const creditsToAdd = txn.creditsAmount;
+
+      const newBalance = await tmcCreditsService.creditUser(
+        txn.userId,
+        creditsToAdd,
+        'stripe_purchase',
+        {
+          functionUsed: 'credit_purchase',
+          paidAmount: parseFloat(txn.amount),
+          currency: txn.currency,
+          stripePaymentIntentId: paymentIntentId,
+        }
+      );
+
+      await tmcCreditsService.addCashboxRevenue(
+        creditsToAdd,
+        `Stripe purchase - ${txn.amount} ${txn.currency}`,
+        undefined,
+        txn.userId
+      );
+
+      await db.update(paymentTransactions)
+        .set({ status: 'completed', completedAt: new Date(), updatedAt: new Date() })
+        .where(eq(paymentTransactions.stripePaymentIntentId, paymentIntentId));
+
+      console.log(`✅ Stripe credits: ${creditsToAdd} credits for ${txn.amount} ${txn.currency}`);
+
+      res.json({
+        success: true,
+        newBalance,
+        creditsAdded: creditsToAdd,
+        message: `${creditsToAdd} créditos adicionados com sucesso!`
+      });
+    } catch (error: any) {
+      console.error('Stripe confirm error:', error);
+      res.status(500).json({ message: 'Failed to confirm payment: ' + (error.message || 'Internal error') });
+    }
+  });
+
+  // ===== PAGBANK PIX/BOLETO PAYMENT ROUTES =====
+
+  app.post('/api/pagbank/create-order', requireAuth, async (req: any, res) => {
+    try {
+      const { packageId, paymentMethod, document: payerDoc, name: payerName, email: payerEmail } = req.body;
+      if (!packageId || !paymentMethod) return res.status(400).json({ message: 'Package ID and payment method required' });
+
+      const [pkg] = await db.select().from(tmcCreditPackages).where(eq(tmcCreditPackages.id, packageId));
+      if (!pkg) return res.status(404).json({ message: 'Package not found' });
+
+      const priceInCents = Math.round(parseFloat(pkg.price || '0') * 100);
+      if (priceInCents <= 0) return res.status(400).json({ message: 'Invalid package price' });
+
+      const pagbankToken = process.env.PAGBANK_TOKEN;
+      const pagbankBaseUrl = process.env.PAGBANK_SANDBOX === 'true'
+        ? 'https://sandbox.api.pagseguro.com'
+        : 'https://api.pagseguro.com';
+
+      if (!pagbankToken) return res.status(500).json({ message: 'PagBank not configured' });
+
+      const referenceId = `tmc_${Date.now()}_${req.user.id.substring(0, 8)}`;
+      const creditsToAdd = (pkg.credits || 0) + (pkg.bonusCredits || 0);
+
+      let pagbankPaymentMethod: any = {};
+      if (paymentMethod === 'pix') {
+        pagbankPaymentMethod = {
+          type: 'PIX',
+          pix: {
+            expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 min
+          }
+        };
+      } else if (paymentMethod === 'boleto') {
+        if (!payerDoc || !payerName) return res.status(400).json({ message: 'CPF and name required for boleto' });
+        pagbankPaymentMethod = {
+          type: 'BOLETO',
+          boleto: {
+            due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 days
+            holder: {
+              name: payerName,
+              tax_id: payerDoc.replace(/\D/g, ''),
+              email: payerEmail || req.user.email,
+            }
+          }
+        };
+      } else if (paymentMethod === 'credit_card' || paymentMethod === 'debit_card') {
+        pagbankPaymentMethod = { type: 'CREDIT_CARD' };
+      } else {
+        return res.status(400).json({ message: 'Invalid payment method' });
+      }
+
+      const orderPayload = {
+        reference_id: referenceId,
+        customer: {
+          name: payerName || req.user.name || 'User',
+          email: payerEmail || req.user.email,
+          tax_id: payerDoc ? payerDoc.replace(/\D/g, '') : undefined,
+        },
+        items: [{
+          reference_id: pkg.id,
+          name: pkg.name || 'TMC Credits',
+          quantity: 1,
+          unit_amount: priceInCents,
+        }],
+        qr_codes: paymentMethod === 'pix' ? [{
+          amount: { value: priceInCents },
+          expiration_date: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        }] : undefined,
+        charges: paymentMethod !== 'pix' ? [{
+          reference_id: referenceId,
+          description: `TMC Credits - ${pkg.name}`,
+          amount: { value: priceInCents, currency: 'BRL' },
+          payment_method: pagbankPaymentMethod,
+        }] : undefined,
+        notification_urls: [`https://${(process.env.REPLIT_DOMAINS || '').split(',')[0]}/api/pagbank/webhook`],
+      };
+
+      const response = await fetch(`${pagbankBaseUrl}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${pagbankToken}`,
+        },
+        body: JSON.stringify(orderPayload),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('PagBank create order error:', errorBody);
+        return res.status(response.status).json({ message: 'PagBank order failed', details: errorBody });
+      }
+
+      const orderData = await response.json() as any;
+
+      let pixCode = null;
+      let pixQrUrl = null;
+      let boletoUrl = null;
+      let boletoBarcode = null;
+
+      if (paymentMethod === 'pix' && orderData.qr_codes?.length > 0) {
+        const qr = orderData.qr_codes[0];
+        pixCode = qr.text;
+        pixQrUrl = qr.links?.find((l: any) => l.media === 'image/png')?.href;
+      }
+
+      if (paymentMethod === 'boleto' && orderData.charges?.length > 0) {
+        const charge = orderData.charges[0];
+        const boletoLinks = charge.payment_method?.boleto?.links || [];
+        boletoUrl = boletoLinks.find((l: any) => l.media === 'application/pdf')?.href;
+        boletoBarcode = charge.payment_method?.boleto?.barcode;
+      }
+
+      const [txn] = await db.insert(paymentTransactions).values({
+        userId: req.user.id,
+        packageId: pkg.id,
+        provider: 'pagbank',
+        providerOrderId: orderData.id,
+        paymentMethod,
+        amount: pkg.price || '0',
+        currency: 'BRL',
+        creditsAmount: creditsToAdd,
+        status: 'pending',
+        payerEmail: payerEmail || req.user.email,
+        payerName: payerName || req.user.name,
+        payerDocument: payerDoc,
+        pixCode,
+        pixQrCodeUrl: pixQrUrl,
+        boletoUrl,
+        boletoBarcode,
+        expiresAt: paymentMethod === 'pix'
+          ? new Date(Date.now() + 30 * 60 * 1000)
+          : paymentMethod === 'boleto'
+            ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+            : null,
+        metadata: { referenceId, pagbankOrderId: orderData.id },
+      }).returning();
+
+      res.json({
+        transactionId: txn.id,
+        pagbankOrderId: orderData.id,
+        paymentMethod,
+        pixCode,
+        pixQrCodeUrl: pixQrUrl,
+        boletoUrl,
+        boletoBarcode,
+        amount: pkg.price,
+        currency: 'BRL',
+        credits: creditsToAdd,
+        expiresAt: txn.expiresAt,
+      });
+    } catch (error: any) {
+      console.error('PagBank create order error:', error);
+      res.status(500).json({ message: 'Failed to create PagBank order: ' + (error.message || 'Internal error') });
+    }
+  });
+
+  app.post('/api/pagbank/webhook', async (req: any, res) => {
+    try {
+      const notification = req.body;
+      const pagbankOrderId = notification?.id;
+      const referenceId = notification?.reference_id || notification?.charges?.[0]?.reference_id;
+      
+      if (!pagbankOrderId && !referenceId) {
+        return res.status(200).json({ received: true });
+      }
+
+      const chargeStatus = notification?.charges?.[0]?.status;
+      let newStatus = 'pending';
+      if (chargeStatus === 'PAID') newStatus = 'completed';
+      else if (chargeStatus === 'DECLINED' || chargeStatus === 'CANCELED') newStatus = 'failed';
+
+      let txnResult;
+      if (pagbankOrderId) {
+        txnResult = await db.select().from(paymentTransactions)
+          .where(eq(paymentTransactions.providerOrderId, pagbankOrderId));
+      }
+      if ((!txnResult || txnResult.length === 0) && referenceId) {
+        txnResult = await db.select().from(paymentTransactions)
+          .where(sql`metadata->>'referenceId' = ${referenceId}`);
+      }
+      const [txn] = txnResult || [];
+
+      if (txn && txn.status !== 'completed' && newStatus === 'completed') {
+        const creditsToAdd = txn.creditsAmount;
+
+        const newBalance = await tmcCreditsService.creditUser(
+          txn.userId,
+          creditsToAdd,
+          'pagbank_purchase',
+          {
+            functionUsed: 'credit_purchase',
+            paidAmount: parseFloat(txn.amount),
+            currency: 'BRL',
+            pagbankOrderId: pagbankOrderId || txn.providerOrderId,
+          }
+        );
+
+        await tmcCreditsService.addCashboxRevenue(
+          creditsToAdd,
+          `PagBank purchase - ${txn.amount} BRL`,
+          undefined,
+          txn.userId
+        );
+
+        await db.update(paymentTransactions)
+          .set({ status: 'completed', completedAt: new Date(), updatedAt: new Date() })
+          .where(eq(paymentTransactions.id, txn.id));
+
+        console.log(`✅ PagBank credits: ${creditsToAdd} credits for ${txn.amount} BRL (Order: ${pagbankOrderId || txn.providerOrderId})`);
+      } else if (txn && newStatus === 'failed') {
+        await db.update(paymentTransactions)
+          .set({ status: 'failed', errorMessage: chargeStatus, updatedAt: new Date() })
+          .where(eq(paymentTransactions.id, txn.id));
+      }
+
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error('PagBank webhook error:', error);
+      res.status(200).json({ received: true });
+    }
+  });
+
+  app.get('/api/pagbank/check-status/:transactionId', requireAuth, async (req: any, res) => {
+    try {
+      const { transactionId } = req.params;
+      const [txn] = await db.select().from(paymentTransactions)
+        .where(and(
+          eq(paymentTransactions.id, transactionId),
+          eq(paymentTransactions.userId, req.user.id)
+        ));
+
+      if (!txn) return res.status(404).json({ message: 'Transaction not found' });
+
+      if (txn.status === 'pending' && txn.providerOrderId) {
+        const pagbankToken = process.env.PAGBANK_TOKEN;
+        const pagbankBaseUrl = process.env.PAGBANK_SANDBOX === 'true'
+          ? 'https://sandbox.api.pagseguro.com'
+          : 'https://api.pagseguro.com';
+
+        if (pagbankToken) {
+          try {
+            const resp = await fetch(`${pagbankBaseUrl}/orders/${txn.providerOrderId}`, {
+              headers: { 'Authorization': `Bearer ${pagbankToken}` },
+            });
+            if (resp.ok) {
+              const orderData = await resp.json() as any;
+              const chargeStatus = orderData.charges?.[0]?.status;
+              if (chargeStatus === 'PAID' && txn.status !== 'completed') {
+                const creditsToAdd = txn.creditsAmount;
+                const newBalance = await tmcCreditsService.creditUser(
+                  txn.userId,
+                  creditsToAdd,
+                  'pagbank_purchase',
+                  {
+                    functionUsed: 'credit_purchase',
+                    paidAmount: parseFloat(txn.amount),
+                    currency: 'BRL',
+                    pagbankOrderId: txn.providerOrderId,
+                  }
+                );
+                await tmcCreditsService.addCashboxRevenue(
+                  creditsToAdd,
+                  `PagBank purchase - ${txn.amount} BRL`,
+                  undefined,
+                  txn.userId
+                );
+                await db.update(paymentTransactions)
+                  .set({ status: 'completed', completedAt: new Date(), updatedAt: new Date() })
+                  .where(eq(paymentTransactions.id, txn.id));
+                return res.json({ status: 'completed', creditsAdded: creditsToAdd, newBalance });
+              }
+            }
+          } catch (e) {
+            // PagBank check failed, return current status
+          }
+        }
+      }
+
+      res.json({
+        status: txn.status,
+        paymentMethod: txn.paymentMethod,
+        pixCode: txn.pixCode,
+        pixQrCodeUrl: txn.pixQrCodeUrl,
+        boletoUrl: txn.boletoUrl,
+        boletoBarcode: txn.boletoBarcode,
+        expiresAt: txn.expiresAt,
+      });
+    } catch (error: any) {
+      console.error('PagBank check status error:', error);
+      res.status(500).json({ message: 'Failed to check payment status' });
+    }
+  });
+
+  // ===== ADMIN PAYMENT MONITORING =====
+
+  app.get('/api/admin/payments', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') return res.status(403).json({ message: 'Admin access required' });
+
+      const { provider, status, startDate, endDate, limit: queryLimit } = req.query;
+      const lim = Math.min(parseInt(queryLimit as string) || 100, 500);
+
+      let query = db.select({
+        transaction: paymentTransactions,
+        userName: users.name,
+        userEmail: users.email,
+      })
+        .from(paymentTransactions)
+        .leftJoin(users, eq(paymentTransactions.userId, users.id))
+        .orderBy(desc(paymentTransactions.createdAt))
+        .limit(lim);
+
+      const conditions: any[] = [];
+      if (provider) conditions.push(eq(paymentTransactions.provider, provider as string));
+      if (status) conditions.push(eq(paymentTransactions.status, status as string));
+      if (startDate) conditions.push(gte(paymentTransactions.createdAt, new Date(startDate as string)));
+      if (endDate) conditions.push(lte(paymentTransactions.createdAt, new Date(endDate as string)));
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions)) as any;
+      }
+
+      const results = await query;
+
+      const totals = await db.select({
+        totalCount: sql<number>`count(*)`,
+        totalAmount: sql<string>`coalesce(sum(cast(amount as numeric)), 0)`,
+        completedCount: sql<number>`count(*) filter (where status = 'completed')`,
+        completedAmount: sql<string>`coalesce(sum(cast(amount as numeric)) filter (where status = 'completed'), 0)`,
+        pendingCount: sql<number>`count(*) filter (where status = 'pending')`,
+        failedCount: sql<number>`count(*) filter (where status = 'failed')`,
+      }).from(paymentTransactions);
+
+      const providerBreakdown = await db.select({
+        provider: paymentTransactions.provider,
+        count: sql<number>`count(*)`,
+        totalAmount: sql<string>`coalesce(sum(cast(amount as numeric)), 0)`,
+        completedCount: sql<number>`count(*) filter (where status = 'completed')`,
+      }).from(paymentTransactions).groupBy(paymentTransactions.provider);
+
+      res.json({
+        transactions: results.map(r => ({
+          ...r.transaction,
+          userName: r.userName,
+          userEmail: r.userEmail,
+        })),
+        summary: totals[0] || {},
+        providerBreakdown,
+      });
+    } catch (error: any) {
+      console.error('Admin payments error:', error);
+      res.status(500).json({ message: 'Failed to fetch payments' });
+    }
+  });
+
+  app.get('/api/admin/payments/:id', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') return res.status(403).json({ message: 'Admin access required' });
+
+      const [txn] = await db.select({
+        transaction: paymentTransactions,
+        userName: users.name,
+        userEmail: users.email,
+      })
+        .from(paymentTransactions)
+        .leftJoin(users, eq(paymentTransactions.userId, users.id))
+        .where(eq(paymentTransactions.id, req.params.id));
+
+      if (!txn) return res.status(404).json({ message: 'Transaction not found' });
+
+      res.json({
+        ...txn.transaction,
+        userName: txn.userName,
+        userEmail: txn.userEmail,
+      });
+    } catch (error: any) {
+      console.error('Admin payment detail error:', error);
+      res.status(500).json({ message: 'Failed to fetch payment details' });
+    }
+  });
+
   // Get user credit balance and transaction history
   app.get('/api/credits/balance', async (req: any, res) => {
     try {
@@ -19001,6 +19519,78 @@ async function migrateDoctorPatientBlocks() {
     console.log('✓ Doctor patient blocks table migrated successfully');
   } catch (error) {
     console.error('Failed to migrate doctor patient blocks:', error);
+  }
+}
+
+async function migratePaymentTransactions() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS payment_transactions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id),
+        package_id UUID REFERENCES tmc_credit_packages(id),
+        provider TEXT NOT NULL,
+        provider_order_id TEXT,
+        payment_method TEXT NOT NULL,
+        amount TEXT NOT NULL,
+        currency TEXT NOT NULL DEFAULT 'BRL',
+        credits_amount INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'pending',
+        payer_email TEXT,
+        payer_name TEXT,
+        payer_document TEXT,
+        pix_code TEXT,
+        pix_qr_code_url TEXT,
+        boleto_url TEXT,
+        boleto_barcode TEXT,
+        stripe_payment_intent_id TEXT,
+        stripe_client_secret TEXT,
+        error_message TEXT,
+        metadata JSONB,
+        completed_at TIMESTAMP,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    console.log('✓ Payment transactions table migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate payment transactions:', error);
+  }
+}
+
+async function initStripeSync() {
+  try {
+    const { runMigrations } = await import('stripe-replit-sync');
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      console.log('⚠ DATABASE_URL not set, skipping Stripe init');
+      return;
+    }
+
+    await runMigrations({ databaseUrl, schema: 'stripe' });
+    console.log('✓ Stripe schema ready');
+
+    const stripeSync = await getStripeSync();
+
+    const replitDomains = process.env.REPLIT_DOMAINS;
+    if (replitDomains) {
+      const webhookBaseUrl = `https://${replitDomains.split(',')[0]}`;
+      try {
+        const result = await stripeSync.findOrCreateManagedWebhook(
+          `${webhookBaseUrl}/api/stripe/webhook`
+        );
+        console.log(`✓ Stripe webhook configured: ${result?.webhook?.url || 'OK'}`);
+      } catch (whErr: any) {
+        console.log('⚠ Stripe webhook setup skipped:', whErr.message);
+      }
+    }
+
+    stripeSync.syncBackfill()
+      .then(() => console.log('✓ Stripe data synced'))
+      .catch((err: any) => console.error('Stripe sync error:', err));
+  } catch (error) {
+    console.error('Stripe init error (non-fatal):', error);
   }
 }
 

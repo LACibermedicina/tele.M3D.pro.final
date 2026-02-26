@@ -9,7 +9,7 @@ import LanguageSelector from "@/components/ui/language-selector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines, ChevronDown, CalendarX2 } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines, ChevronDown, CalendarX2, CreditCard } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { formatErrorForToast } from "@/lib/error-handler";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -452,6 +452,7 @@ export default function Header() {
       label: "Administração",
       items: [
         { path: "/admin", label: t("navigation.admin"), icon: Shield, faIcon: "fas fa-shield-alt", roles: ["admin"] },
+        { path: "/admin/payments", label: "Pagamentos", icon: CreditCard, faIcon: "fas fa-credit-card", roles: ["admin"] },
       ],
     },
   ];

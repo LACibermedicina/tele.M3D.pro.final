@@ -1868,6 +1868,39 @@ export const insertDoctorPatientBlockSchema = createInsertSchema(doctorPatientBl
 export type InsertDoctorPatientBlock = z.infer<typeof insertDoctorPatientBlockSchema>;
 export type DoctorPatientBlock = typeof doctorPatientBlocks.$inferSelect;
 
+// Unified Payment Transactions - tracks all payment methods (PayPal, Stripe, PagBank)
+export const paymentTransactions = pgTable("payment_transactions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  packageId: uuid("package_id").references(() => tmcCreditPackages.id),
+  provider: text("provider").notNull(), // paypal, stripe, pagbank
+  providerOrderId: text("provider_order_id"), // external order/payment ID
+  paymentMethod: text("payment_method").notNull(), // pix, credit_card, debit_card, boleto, apple_pay, paypal
+  amount: text("amount").notNull(),
+  currency: text("currency").notNull().default("BRL"),
+  creditsAmount: integer("credits_amount").notNull().default(0),
+  status: text("status").notNull().default("pending"), // pending, processing, completed, failed, cancelled, refunded
+  payerEmail: text("payer_email"),
+  payerName: text("payer_name"),
+  payerDocument: text("payer_document"), // CPF for PagBank
+  pixCode: text("pix_code"), // PIX copy-paste code
+  pixQrCodeUrl: text("pix_qr_code_url"), // PIX QR code image URL
+  boletoUrl: text("boleto_url"), // Boleto PDF URL
+  boletoBarcode: text("boleto_barcode"), // Boleto barcode
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeClientSecret: text("stripe_client_secret"),
+  errorMessage: text("error_message"),
+  metadata: jsonb("metadata"),
+  completedAt: timestamp("completed_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPaymentTransactionSchema = createInsertSchema(paymentTransactions).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertPaymentTransaction = z.infer<typeof insertPaymentTransactionSchema>;
+export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
+
 // TMC system types
 export interface TmcBalance {
   userId: string;

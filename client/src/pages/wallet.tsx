@@ -83,6 +83,13 @@ export default function WalletPage() {
   const { user } = useAuth();
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
   const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<string>("paypal");
+  const [checkoutStep, setCheckoutStep] = useState<"select" | "checkout">("select");
+  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
+  const [pagbankData, setPagbankData] = useState<any>(null);
+  const [pagbankDocument, setPagbankDocument] = useState("");
+  const [pagbankName, setPagbankName] = useState("");
+  const [pollingTxnId, setPollingTxnId] = useState<string | null>(null);
   const [transferAmount, setTransferAmount] = useState("");
   const [transferUserId, setTransferUserId] = useState("");
   const [transferReason, setTransferReason] = useState("");
@@ -188,11 +195,86 @@ export default function WalletPage() {
     onSuccess: (data) => {
       setPaypalOrderId(data.orderId);
       setSelectedPackage(data.package);
+      setCheckoutStep("checkout");
     },
     onError: (error: Error) => {
       toast({ title: "Erro", description: "Falha ao criar ordem: " + error.message, variant: "destructive" });
     },
   });
+
+  const stripePaymentMutation = useMutation({
+    mutationFn: async (packageId: string) => {
+      const res = await apiRequest("POST", "/api/stripe/create-payment-intent", { packageId, paymentMethod: paymentMethod === 'apple_pay' ? 'apple_pay' : 'credit_card' });
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      setStripeClientSecret(data.clientSecret);
+      setCheckoutStep("checkout");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro", description: "Falha ao criar pagamento Stripe: " + error.message, variant: "destructive" });
+    },
+  });
+
+  const pagbankPaymentMutation = useMutation({
+    mutationFn: async ({ packageId, method }: { packageId: string; method: string }) => {
+      const res = await apiRequest("POST", "/api/pagbank/create-order", {
+        packageId,
+        paymentMethod: method,
+        document: pagbankDocument,
+        name: pagbankName || user?.name,
+        email: user?.email,
+      });
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      setPagbankData(data);
+      setCheckoutStep("checkout");
+      if (data.transactionId) setPollingTxnId(data.transactionId);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro", description: "Falha ao criar pagamento PagBank: " + error.message, variant: "destructive" });
+    },
+  });
+
+  const stripeConfirmMutation = useMutation({
+    mutationFn: async (paymentIntentId: string) => {
+      const res = await apiRequest("POST", "/api/stripe/confirm-payment", { paymentIntentId });
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      resetCheckout();
+      queryClient.invalidateQueries({ queryKey: ["/api/tmc/balance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tmc/transactions"] });
+      toast({ title: "Créditos adicionados!", description: data.message || `${data.creditsAdded} créditos adicionados!` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  function resetCheckout() {
+    setSelectedPackage(null);
+    setPaypalOrderId(null);
+    setStripeClientSecret(null);
+    setPagbankData(null);
+    setPollingTxnId(null);
+    setCheckoutStep("select");
+    setPagbankDocument("");
+    setPagbankName("");
+  }
+
+  function handlePackageSelect(pkg: any) {
+    if (checkoutStep === "checkout") return;
+    setSelectedPackage(pkg);
+    if (paymentMethod === "paypal") {
+      createOrderMutation.mutate(pkg.id);
+    } else if (paymentMethod === "stripe" || paymentMethod === "apple_pay") {
+      stripePaymentMutation.mutate(pkg.id);
+    } else if (paymentMethod === "pix" || paymentMethod === "boleto") {
+      pagbankPaymentMutation.mutate({ packageId: pkg.id, method: paymentMethod });
+    }
+  }
 
   const transferMutation = useMutation({
     mutationFn: async (data: { toUserId: string; amount: number; reason: string }) => {
@@ -355,15 +437,68 @@ export default function WalletPage() {
             </Badge>
           </div>
 
+          {checkoutStep === "select" && (
+            <Card className="mb-4">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium">Método de Pagamento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {[
+                    { id: "paypal", label: "PayPal", icon: "💳" },
+                    { id: "stripe", label: "Cartão (Stripe)", icon: "💳" },
+                    { id: "pix", label: "PIX", icon: "⚡" },
+                    { id: "boleto", label: "Boleto", icon: "📄" },
+                    { id: "apple_pay", label: "Apple Pay", icon: "🍎" },
+                  ].map((pm) => (
+                    <Button
+                      key={pm.id}
+                      variant={paymentMethod === pm.id ? "default" : "outline"}
+                      size="sm"
+                      className="flex items-center gap-1.5 text-xs"
+                      onClick={() => setPaymentMethod(pm.id)}
+                    >
+                      <span>{pm.icon}</span>
+                      <span>{pm.label}</span>
+                    </Button>
+                  ))}
+                </div>
+                {(paymentMethod === "pix" || paymentMethod === "boleto") && (
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">CPF</Label>
+                      <Input
+                        placeholder="000.000.000-00"
+                        value={pagbankDocument}
+                        onChange={(e) => setPagbankDocument(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Nome completo</Label>
+                      <Input
+                        placeholder="Nome no documento"
+                        value={pagbankName}
+                        onChange={(e) => setPagbankName(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {packagesLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          ) : (
+          ) : checkoutStep === "select" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {packages.map((pkg: any) => {
                 const totalCredits = pkg.credits + (pkg.bonusCredits || 0);
                 const costPerCredit = (parseFloat(pkg.priceUsd) / totalCredits).toFixed(3);
+                const isProcessing = createOrderMutation.isPending || stripePaymentMutation.isPending || pagbankPaymentMutation.isPending;
                 return (
                   <Card
                     key={pkg.id}
@@ -374,7 +509,7 @@ export default function WalletPage() {
                         ? "ring-2 ring-primary shadow-lg"
                         : "hover:border-primary/50"
                     }`}
-                    onClick={() => !paypalOrderId && createOrderMutation.mutate(pkg.id)}
+                    onClick={() => !isProcessing && handlePackageSelect(pkg)}
                   >
                     {pkg.isPromotional && (
                       <div className="absolute -top-2 left-4 px-2 py-0.5 bg-amber-500 text-white text-xs font-bold rounded">
@@ -414,14 +549,19 @@ export default function WalletPage() {
                           className="w-full"
                           size="sm"
                           variant={pkg.isPromotional ? "default" : "outline"}
-                          disabled={createOrderMutation.isPending || !!paypalOrderId}
+                          disabled={isProcessing}
                         >
-                          {createOrderMutation.isPending ? (
+                          {isProcessing && selectedPackage?.id === pkg.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <>
                               <ShoppingCart className="h-4 w-4 mr-1" />
-                              Comprar via PayPal
+                              {paymentMethod === "paypal" ? "Comprar via PayPal" :
+                               paymentMethod === "stripe" ? "Comprar via Cartão" :
+                               paymentMethod === "pix" ? "Comprar via PIX" :
+                               paymentMethod === "boleto" ? "Comprar via Boleto" :
+                               paymentMethod === "apple_pay" ? "Comprar via Apple Pay" :
+                               "Comprar"}
                             </>
                           )}
                         </Button>
@@ -431,58 +571,176 @@ export default function WalletPage() {
                 );
               })}
             </div>
-          )}
+          ) : null}
 
-          {paypalOrderId && selectedPackage && (
+          {checkoutStep === "checkout" && selectedPackage && (
             <Card className="border-primary shadow-lg mt-4">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Finalizar Pagamento
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Finalizar Pagamento
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={resetCheckout}>
+                    Cancelar
+                  </Button>
+                </div>
                 <CardDescription>
-                  {selectedPackage.name} — {selectedPackage.credits} créditos por ${selectedPackage.priceUsd}
+                  {selectedPackage.name} — {selectedPackage.credits + (selectedPackage.bonusCredits || 0)} créditos por ${selectedPackage.priceUsd}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Complete o pagamento com PayPal para receber seus créditos instantaneamente.
-                </p>
-                <WalletPayPalCheckout
-                  amount={selectedPackage.priceUsd}
-                  currency="USD"
-                  orderId={paypalOrderId}
-                  onSuccess={(data) => {
-                    setPaypalOrderId(null);
-                    setSelectedPackage(null);
-                    queryClient.invalidateQueries({ queryKey: ["/api/tmc/balance"] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/tmc/transactions"] });
-                    toast({
-                      title: "Créditos adicionados!",
-                      description: data.message || "Seus créditos foram adicionados com sucesso.",
-                    });
-                  }}
-                  onError={(errorMsg) => {
-                    toast({
-                      title: "Erro no pagamento",
-                      description: errorMsg,
-                      variant: "destructive",
-                    });
-                  }}
-                  onCancel={() => {
-                    toast({
-                      title: "Pagamento cancelado",
-                      description: "O pagamento foi cancelado.",
-                    });
-                  }}
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setPaypalOrderId(null); setSelectedPackage(null); }}
-                >
-                  Cancelar
-                </Button>
+                {paymentMethod === "paypal" && paypalOrderId && (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Complete o pagamento com PayPal para receber seus créditos instantaneamente.
+                    </p>
+                    <WalletPayPalCheckout
+                      amount={selectedPackage.priceUsd}
+                      currency="USD"
+                      orderId={paypalOrderId}
+                      onSuccess={(data) => {
+                        resetCheckout();
+                        queryClient.invalidateQueries({ queryKey: ["/api/tmc/balance"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/tmc/transactions"] });
+                        toast({
+                          title: "Créditos adicionados!",
+                          description: data.message || "Seus créditos foram adicionados com sucesso.",
+                        });
+                      }}
+                      onError={(errorMsg) => {
+                        toast({ title: "Erro no pagamento", description: errorMsg, variant: "destructive" });
+                      }}
+                      onCancel={() => {
+                        toast({ title: "Pagamento cancelado", description: "O pagamento foi cancelado." });
+                      }}
+                    />
+                  </>
+                )}
+
+                {(paymentMethod === "stripe" || paymentMethod === "apple_pay") && stripeClientSecret && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      {paymentMethod === "apple_pay"
+                        ? "Confirme o pagamento com Apple Pay."
+                        : "Insira os dados do seu cartão para completar o pagamento."}
+                    </p>
+                    <div className="border rounded-lg p-4 bg-muted/30">
+                      <p className="text-sm font-medium mb-2">Pagamento via Stripe</p>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Seu pagamento será processado de forma segura pelo Stripe.
+                      </p>
+                      <Button
+                        className="w-full"
+                        disabled={stripeConfirmMutation.isPending}
+                        onClick={() => {
+                          const piId = stripeClientSecret.split('_secret_')[0];
+                          stripeConfirmMutation.mutate(piId);
+                        }}
+                      >
+                        {stripeConfirmMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Check className="h-4 w-4 mr-2" />
+                        )}
+                        Confirmar Pagamento
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {paymentMethod === "pix" && pagbankData && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Escaneie o QR Code ou copie o código PIX para efetuar o pagamento.
+                    </p>
+                    {pagbankData.pixQrCodeUrl && (
+                      <div className="flex justify-center">
+                        <img
+                          src={pagbankData.pixQrCodeUrl}
+                          alt="PIX QR Code"
+                          className="w-48 h-48 border rounded-lg"
+                        />
+                      </div>
+                    )}
+                    {pagbankData.pixCode && (
+                      <div className="space-y-2">
+                        <Label className="text-xs">Código PIX (Copia e Cola)</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            readOnly
+                            value={pagbankData.pixCode}
+                            className="text-xs font-mono"
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              navigator.clipboard.writeText(pagbankData.pixCode);
+                              toast({ title: "Copiado!", description: "Código PIX copiado." });
+                            }}
+                          >
+                            Copiar
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span>Expira em 30 minutos</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Seus créditos serão adicionados automaticamente após a confirmação do pagamento.
+                    </p>
+                  </div>
+                )}
+
+                {paymentMethod === "boleto" && pagbankData && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Use o boleto bancário para efetuar o pagamento. O prazo de compensação é de até 3 dias úteis.
+                    </p>
+                    {pagbankData.boletoBarcode && (
+                      <div className="space-y-2">
+                        <Label className="text-xs">Código de Barras</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            readOnly
+                            value={pagbankData.boletoBarcode}
+                            className="text-xs font-mono"
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              navigator.clipboard.writeText(pagbankData.boletoBarcode);
+                              toast({ title: "Copiado!", description: "Código de barras copiado." });
+                            }}
+                          >
+                            Copiar
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {pagbankData.boletoUrl && (
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => window.open(pagbankData.boletoUrl, '_blank')}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Abrir Boleto PDF
+                      </Button>
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span>Vencimento em 3 dias</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Seus créditos serão adicionados após a compensação bancária.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

@@ -19,6 +19,7 @@ import PatientRecords from "@/pages/patient-records";
 import Prescriptions from "@/pages/prescriptions";
 import Analytics from "@/pages/analytics";
 import AdminPage from "@/pages/admin";
+import AdminPaymentsPage from "@/pages/admin-payments";
 import Login from "@/pages/login";
 import PatientJoin from "@/pages/patient-join";
 import VideoConsultation from "@/pages/video-consultation";
@@ -255,6 +256,13 @@ function Router() {
           <ProtectedRoute requiredRoles={['admin']}>
             <Header />
             <AdminPage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/payments">
+          <ProtectedRoute requiredRoles={['admin']}>
+            <Header />
+            <AdminPaymentsPage />
           </ProtectedRoute>
         </Route>
 

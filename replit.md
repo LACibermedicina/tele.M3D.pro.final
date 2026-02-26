@@ -47,7 +47,8 @@ The application features an Express.js backend and a React frontend, with shared
 - **AI Medication List Generation:** Prescription form generates complete treatment plans from diagnosis, symptoms, and patient history, including clinical analysis, treatment approach, prioritized medication list, non-pharmacological measures, follow-up, and alerts.
 - **Digital Signature Verification:** Dual-path signature verification (RSA-PSS ICP-Brasil A3, RSA-SHA256 SignatureService) with public QR code-based verification endpoint. Includes OCSP checks and audit trail.
 - **Post-Consultation Diagnostic Classification:** AI extracts syndromic diagnostic hypotheses with CID-10/11 and DSM-5/TR codes, confidence levels, and suggested exams, for doctor review.
-- **Admin Financial Management:** Admin interface for user credit balances, feature costs, credit package CRUD, exchange rates, and wallet transaction auditing. PayPal integration for credit purchases.
+- **Admin Financial Management:** Admin interface for user credit balances, feature costs, credit package CRUD, exchange rates, and wallet transaction auditing. PayPal integration for credit purchases. Admin payments monitoring dashboard at `/admin/payments` with filters by provider/status/date, summary cards, and provider breakdown.
+- **Unified Payment Checkout:** Wallet purchase supports PayPal, Stripe (card/Apple Pay), and PagBank (PIX/Boleto). Payment method selection before package choice. `payment_transactions` table tracks all providers. Stripe webhook at `/api/stripe/webhook` (registered before `express.json()`). PagBank webhook at `/api/pagbank/webhook`. Stripe uses `stripe-replit-sync` for managed webhooks and schema sync.
 - **Reports Dashboard:** Dedicated page for doctors/admins with predefined reports on consultations, patients, financials, and doctor performance.
 - **Dynamic NFT Management:** Page for managing LGPD-compliant anonymized medical data insights as NFTs.
 - **Internal Broker:** Page for trading NFT shares and TM3D tokens with order book and trade history.
@@ -64,4 +65,4 @@ The application features an Express.js backend and a React frontend, with shared
 - **AI/ML:** Google Gemini API, Replit OpenAI AI Integrations
 - **Video Conferencing:** Agora
 - **PDF Generation:** jspdf
-- **Payment Processing:** PayPal
+- **Payment Processing:** PayPal, Stripe (Replit integration + stripe-replit-sync), PagBank (PIX/Boleto via REST API)
