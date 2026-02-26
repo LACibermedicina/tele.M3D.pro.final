@@ -17105,6 +17105,176 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
+  app.get('/api/credits/packages', requireAuth, async (req: any, res) => {
+    try {
+      const pkgs = await db.select().from(tmcCreditPackages)
+        .where(eq(tmcCreditPackages.isActive, true))
+        .orderBy(tmcCreditPackages.displayOrder);
+      res.json(pkgs);
+    } catch (error) {
+      console.error('Failed to fetch credit packages:', error);
+      res.status(500).json({ message: 'Erro ao buscar pacotes de créditos' });
+    }
+  });
+
+  app.post('/api/credits/purchase/create-order', requireAuth, async (req: any, res) => {
+    try {
+      const { packageId } = req.body;
+      if (!packageId) {
+        return res.status(400).json({ message: 'Package ID is required' });
+      }
+
+      const [pkg] = await db.select().from(tmcCreditPackages)
+        .where(and(eq(tmcCreditPackages.id, packageId), eq(tmcCreditPackages.isActive, true)));
+      
+      if (!pkg) {
+        return res.status(404).json({ message: 'Pacote não encontrado ou inativo' });
+      }
+
+      const { OrdersController, Client, Environment } = await import("@paypal/paypal-server-sdk");
+      const client = new Client({
+        clientCredentialsAuthCredentials: {
+          oAuthClientId: process.env.PAYPAL_CLIENT_ID!,
+          oAuthClientSecret: process.env.PAYPAL_CLIENT_SECRET!,
+        },
+        environment: process.env.NODE_ENV === "production" ? Environment.Production : Environment.Sandbox,
+      });
+      const ordersController = new OrdersController(client);
+
+      const orderResponse = await ordersController.createOrder({
+        body: {
+          intent: "CAPTURE",
+          purchaseUnits: [{
+            amount: {
+              currencyCode: "USD",
+              value: pkg.priceUsd,
+            },
+            description: `${pkg.name} - ${pkg.credits} créditos TMC${pkg.bonusCredits ? ` + ${pkg.bonusCredits} bônus` : ''}`,
+          }],
+        },
+      });
+
+      const orderData = JSON.parse(String(orderResponse.body));
+      
+      await db.insert(paypalOrders).values({
+        paypalOrderId: orderData.id,
+        userId: req.user.id,
+        packageId: pkg.id,
+        amount: pkg.priceUsd,
+        currency: 'USD',
+        creditsAmount: (pkg.credits || 0) + (pkg.bonusCredits || 0),
+        status: 'created',
+      });
+
+      res.json({
+        orderId: orderData.id,
+        package: pkg,
+      });
+    } catch (error: any) {
+      console.error('Create PayPal order error:', error);
+      res.status(500).json({ message: 'Falha ao criar ordem PayPal: ' + (error.message || 'Erro interno') });
+    }
+  });
+
+  app.post('/api/credits/purchase/capture', requireAuth, async (req: any, res) => {
+    try {
+      const { orderID } = req.body;
+      if (!orderID) {
+        return res.status(400).json({ message: 'Order ID is required' });
+      }
+
+      const { OrdersController, Client, Environment } = await import("@paypal/paypal-server-sdk");
+      const client = new Client({
+        clientCredentialsAuthCredentials: {
+          oAuthClientId: process.env.PAYPAL_CLIENT_ID!,
+          oAuthClientSecret: process.env.PAYPAL_CLIENT_SECRET!,
+        },
+        environment: process.env.NODE_ENV === "production" ? Environment.Production : Environment.Sandbox,
+      });
+      const ordersController = new OrdersController(client);
+
+      const captureResponse = await ordersController.captureOrder({ id: orderID });
+      const captureData = JSON.parse(String(captureResponse.body));
+
+      if (captureData.status !== 'COMPLETED') {
+        return res.status(400).json({ message: 'Pagamento não foi completado', status: captureData.status });
+      }
+
+      const existingTransaction = await db.select()
+        .from(tmcTransactions)
+        .where(sql`metadata->>'paypalOrderId' = ${orderID}`)
+        .limit(1);
+
+      if (existingTransaction.length > 0) {
+        return res.status(400).json({ message: 'Este pagamento já foi processado' });
+      }
+
+      const [paypalOrder] = await db.select().from(paypalOrders)
+        .where(eq(paypalOrders.paypalOrderId, orderID));
+
+      let creditsToAdd = 0;
+      if (paypalOrder?.packageId) {
+        const [pkg] = await db.select().from(tmcCreditPackages)
+          .where(eq(tmcCreditPackages.id, paypalOrder.packageId));
+        if (pkg) {
+          creditsToAdd = (pkg.credits || 0) + (pkg.bonusCredits || 0);
+        }
+      }
+      
+      if (creditsToAdd === 0) {
+        const purchaseUnit = captureData.purchase_units?.[0];
+        const paidAmount = parseFloat(purchaseUnit?.amount?.value || '0');
+        if (paidAmount >= 20) creditsToAdd = Math.floor((paidAmount / 20) * 350);
+        else if (paidAmount >= 10) creditsToAdd = Math.floor((paidAmount / 10) * 150);
+        else if (paidAmount >= 5) creditsToAdd = Math.floor((paidAmount / 5) * 60);
+        else creditsToAdd = Math.floor(paidAmount * 10);
+      }
+
+      const purchaseUnit = captureData.purchase_units?.[0];
+      const paidAmount = parseFloat(purchaseUnit?.amount?.value || '0');
+      const currency = purchaseUnit?.amount?.currency_code || 'USD';
+
+      const newBalance = await tmcCreditsService.creditUser(
+        req.user.id,
+        creditsToAdd,
+        'paypal_purchase',
+        {
+          functionUsed: 'credit_purchase',
+          paidAmount,
+          currency,
+          paypalOrderId: orderID,
+          paypalStatus: captureData.status,
+          paypalPayerId: captureData.payer?.payer_id
+        }
+      );
+
+      await tmcCreditsService.addCashboxRevenue(
+        creditsToAdd,
+        `PayPal purchase - ${paidAmount} ${currency}`,
+        undefined,
+        req.user.id
+      );
+
+      await db.update(paypalOrders)
+        .set({ status: 'completed' })
+        .where(eq(paypalOrders.paypalOrderId, orderID));
+
+      console.log(`✅ Credits purchased via wallet: ${creditsToAdd} credits for ${paidAmount} ${currency} (Order: ${orderID})`);
+
+      res.json({
+        success: true,
+        newBalance,
+        creditsAdded: creditsToAdd,
+        amountPaid: paidAmount,
+        currency,
+        message: `${creditsToAdd} créditos adicionados com sucesso!`
+      });
+    } catch (error: any) {
+      console.error('Credit capture error:', error);
+      res.status(500).json({ message: 'Falha ao processar pagamento: ' + (error.message || 'Erro interno') });
+    }
+  });
+
   // Get user credit balance and transaction history
   app.get('/api/credits/balance', async (req: any, res) => {
     try {

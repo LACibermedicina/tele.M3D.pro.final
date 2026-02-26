@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 
 interface WalletPayPalCheckoutProps {
@@ -21,7 +21,7 @@ export default function WalletPayPalCheckout({
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const initialized = useRef(false);
-  const buttonRef = useRef<HTMLDivElement>(null);
+  const checkoutRef = useRef<any>(null);
 
   useEffect(() => {
     if (initialized.current) return;
@@ -95,20 +95,7 @@ export default function WalletPayPalCheckout({
         },
       });
 
-      const walletButton = buttonRef.current?.querySelector("#wallet-paypal-btn");
-      if (walletButton) {
-        walletButton.addEventListener("click", async () => {
-          try {
-            await paypalCheckout.start(
-              { paymentFlow: "auto" },
-              Promise.resolve({ orderId })
-            );
-          } catch (e) {
-            console.error(e);
-          }
-        });
-      }
-
+      checkoutRef.current = paypalCheckout;
       setLoading(false);
     } catch (e) {
       console.error("PayPal init error:", e);
@@ -116,6 +103,18 @@ export default function WalletPayPalCheckout({
       setLoading(false);
     }
   };
+
+  const handleClick = useCallback(async () => {
+    if (!checkoutRef.current) return;
+    try {
+      await checkoutRef.current.start(
+        { paymentFlow: "auto" },
+        Promise.resolve({ orderId })
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  }, [orderId]);
 
   if (processing) {
     return (
@@ -127,7 +126,7 @@ export default function WalletPayPalCheckout({
   }
 
   return (
-    <div ref={buttonRef}>
+    <div>
       {loading ? (
         <div className="flex items-center justify-center py-4 gap-2">
           <Loader2 className="h-5 w-5 animate-spin" />
@@ -137,6 +136,7 @@ export default function WalletPayPalCheckout({
         <button
           id="wallet-paypal-btn"
           type="button"
+          onClick={handleClick}
           className="w-full bg-[#0070ba] hover:bg-[#003087] text-white font-medium py-3 px-4 rounded-md transition-colors flex items-center justify-center gap-2"
         >
           <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
