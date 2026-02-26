@@ -31,7 +31,8 @@ export default function WalletPayPalCheckout({
       try {
         if (!(window as any).paypal) {
           const script = document.createElement("script");
-          script.src = import.meta.env.PROD
+          const useProduction = import.meta.env.VITE_PAYPAL_MODE === 'production';
+          script.src = useProduction
             ? "https://www.paypal.com/web-sdk/v6/core"
             : "https://www.sandbox.paypal.com/web-sdk/v6/core";
           script.async = true;

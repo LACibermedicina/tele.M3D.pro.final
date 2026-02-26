@@ -16117,7 +16117,32 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
   // PayPal integration blueprint routes - DO NOT MODIFY
   
   app.get("/paypal/setup", async (req, res) => {
-    await loadPaypalDefault(req, res);
+    try {
+      await loadPaypalDefault(req, res);
+    } catch (blueprintErr) {
+      console.error('[PayPal] Blueprint setup failed, using PAYPAL_MODE fallback:', blueprintErr);
+      try {
+        const { Client: PayPalClient, Environment: PayPalEnv, OAuthAuthorizationController } = await import('@paypal/paypal-server-sdk');
+        const paypalMode = process.env.PAYPAL_MODE === 'production' ? PayPalEnv.Production : PayPalEnv.Sandbox;
+        const fallbackClient = new PayPalClient({
+          clientCredentialsAuthCredentials: {
+            oAuthClientId: process.env.PAYPAL_CLIENT_ID!,
+            oAuthClientSecret: process.env.PAYPAL_CLIENT_SECRET!,
+          },
+          environment: paypalMode,
+        });
+        const oauthController = new OAuthAuthorizationController(fallbackClient);
+        const auth = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString('base64');
+        const { result } = await oauthController.requestToken(
+          { authorization: `Basic ${auth}` },
+          { intent: 'sdk_init', response_type: 'client_token' }
+        );
+        res.json({ clientToken: result.accessToken });
+      } catch (fallbackErr) {
+        console.error('[PayPal] Fallback setup also failed:', fallbackErr);
+        res.status(500).json({ error: 'PayPal setup failed' });
+      }
+    }
   });
 
   app.post("/paypal/order", async (req, res) => {

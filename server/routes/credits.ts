@@ -42,12 +42,13 @@ router.post('/purchase/create-order', requireAuth, async (req, res) => {
       return res.status(404).json({ message: 'Pacote não encontrado' });
     }
 
+    const paypalEnv = process.env.PAYPAL_MODE === 'production' ? Environment.Production : Environment.Sandbox;
     const paypalClient = new Client({
       clientCredentialsAuthCredentials: {
         oAuthClientId: process.env.PAYPAL_CLIENT_ID!,
         oAuthClientSecret: process.env.PAYPAL_CLIENT_SECRET!,
       },
-      environment: process.env.NODE_ENV === 'production' ? Environment.Production : Environment.Sandbox,
+      environment: paypalEnv,
     });
     const paypalOrdersController = new OrdersController(paypalClient);
 
@@ -84,9 +85,13 @@ router.post('/purchase/create-order', requireAuth, async (req, res) => {
       package: pkg,
       order: order,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create credit purchase order:', error);
-    res.status(500).json({ message: 'Erro ao criar ordem de compra' });
+    console.error('PayPal error details:', error?.result || error?.body || error?.message || 'No details');
+    console.error('PAYPAL_CLIENT_ID set:', !!process.env.PAYPAL_CLIENT_ID);
+    console.error('PAYPAL_CLIENT_SECRET set:', !!process.env.PAYPAL_CLIENT_SECRET);
+    const errorMessage = error?.message || 'Erro ao criar ordem de compra';
+    res.status(500).json({ message: 'Erro ao criar ordem de compra', detail: errorMessage });
   }
 });
 
@@ -98,12 +103,13 @@ router.post('/purchase/capture', requireAuth, async (req, res) => {
       return res.status(400).json({ message: 'ID da ordem é obrigatório' });
     }
 
+    const captureEnv = process.env.PAYPAL_MODE === 'production' ? Environment.Production : Environment.Sandbox;
     const client = new Client({
       clientCredentialsAuthCredentials: {
         oAuthClientId: process.env.PAYPAL_CLIENT_ID!,
         oAuthClientSecret: process.env.PAYPAL_CLIENT_SECRET!,
       },
-      environment: process.env.NODE_ENV === 'production' ? Environment.Production : Environment.Sandbox,
+      environment: captureEnv,
     });
     const ordersController = new OrdersController(client);
 
