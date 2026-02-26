@@ -548,7 +548,7 @@ export const prescriptions = pgTable("prescriptions", {
 export const prescriptionItems = pgTable("prescription_items", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   prescriptionId: uuid("prescription_id").references(() => prescriptions.id).notNull(),
-  medicationId: uuid("medication_id").references(() => medications.id).notNull(),
+  medicationId: uuid("medication_id").references(() => medications.id),
   dosage: text("dosage").notNull(), // "500mg"
   frequency: text("frequency").notNull(), // "3 times daily", "every 8 hours"
   duration: text("duration").notNull(), // "7 days", "until finished"

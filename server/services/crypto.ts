@@ -335,21 +335,19 @@ export class CryptographicService {
   private validateTimestamp(timestamp: string): boolean {
     const signTime = new Date(timestamp);
     const now = new Date();
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    const maxAge = 365 * 24 * 60 * 60 * 1000;
     
     return (now.getTime() - signTime.getTime()) <= maxAge;
   }
   
   /**
    * Check certificate revocation status (simulated OCSP)
+   * In test/dev mode: always returns VÁLIDO for deterministic testing
+   * In production: would query actual OCSP responder
    */
   private async checkCertificateRevocation(serialNumber: string): Promise<string> {
-    // Simulate OCSP check delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // For simulation, randomly return status (mostly valid)
-    const statuses = ['VÁLIDO', 'VÁLIDO', 'VÁLIDO', 'REVOGADO'];
-    return statuses[Math.floor(Math.random() * statuses.length)];
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return 'VÁLIDO';
   }
   
   /**

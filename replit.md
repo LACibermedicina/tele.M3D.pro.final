@@ -12,59 +12,50 @@ Ask before making major changes.
 The application features an Express.js backend and a React frontend, with shared TypeScript schemas for consistency. PostgreSQL is used for the database, managed with Drizzle ORM. AI services primarily leverage Google Gemini API for advanced capabilities, with Replit OpenAI AI Integrations (`gpt-4o-mini`) as a fallback.
 
 **UI/UX Decisions:**
-- **Navigation Menu:** Desktop uses dropdown menus for multi-item groups (Clínico, Revisão, etc.) and direct icon links for single-item groups. Mobile uses slide-out sheet with category headers. All icons have consistent drop-shadow styling. Coffee room relocated from Quick Actions to Comunicação & IA group.
-- **Mobile Layout:** Side menu (hamburger, slides from left) available for ALL users (logged-in and visitors). Top bar on mobile keeps only: logo, hamburger, language selector, notifications, IAM3D toggle, quick actions, and user avatar. Visitor side menu shows Login, Cadastrar, Sobre o Sistema, and Emergência Médica options.
-- **Clear Schedule (Limpar Agenda):** Doctors can clear their entire schedule from Quick Actions dropdown (next to "Abrir Consultório"). Cancels all scheduled appointments and pending inter-consultations, notifying patients and inter-consultation doctors. Backend enforces authentication and role-based authorization.
-- **Admin Theme:** Distinctive dark indigo/slate gradient background with subtle dot grid pattern and radial glow effects, differentiating admin pages from the main origami theme.
-- **Voice Assistant Prompt:** On first login, users are prompted to enable the IAM3D voice assistant. When enabled, a full-screen overlay with the animated sphere stays active until the user says "fechar assistente" or similar voice commands. A floating mic toggle button persists for quick access.
+- **Navigation:** Desktop uses dropdown menus for multi-item groups and direct icon links for single-item groups. Mobile uses a slide-out sheet. Icons have consistent drop-shadow styling.
+- **Mobile Layout:** Side menu (hamburger) for all users. Top bar keeps essential elements.
+- **Admin Theme:** Distinctive dark indigo/slate gradient with subtle dot grid pattern and radial glow effects.
+- **Voice Assistant:** IAM3D voice assistant with full-screen overlay and floating mic toggle.
 - **Doctor Notes:** macOS Notes-style interface with folders, search, pinning, and color labels.
-- **Triage System:** Implements a 5-level Manchester Protocol (or WHO ETAT fallback) visual classification with color-coded badges and help dialogs.
-- **WhatsApp IA:** Messages display with role labels (Doctor, Patient, AI) and color-coded bubbles. Patient online status is shown in real-time.
-- **Documentation (v3.0):** Comprehensive role-based documentation system: Installation guide (Replit/Local/Docker with 61 tables, all env vars), technical documentation page with all features, user manual restructured with 4 role tabs (Visitantes/Pacientes/Médicos/Administradores), FAQ with 58+ items covering all features, and downloadable PDF documentation with SVG diagrams. All docs updated to reflect FHIR R4 export, inactivity detection, NFT/broker, post-consultation workflow, IAM3D, PayPal integration, and 61 database tables.
-- **Mobile Dashboards:** Rebuilt mobile patient and visitor dashboards with real API data, touch-friendly buttons, and IAM3D voice assistant integration.
+- **Triage System:** 5-level Manchester Protocol (or WHO ETAT fallback) visual classification with color-coded badges.
+- **WhatsApp IA:** Messages display with role labels and color-coded bubbles; patient online status shown.
+- **Documentation:** Comprehensive role-based documentation system including installation, technical, user manual, and FAQ, with PDF export.
+- **Mobile Dashboards:** Rebuilt mobile patient and visitor dashboards with real API data and IAM3D integration.
 
 **Technical Implementations:**
-- **Database:** PostgreSQL on Neon, with Drizzle ORM for schema management and migrations.
-- **AI Services:** Integrates Google Gemini API for chatbot, triage, video consultation support, medical records, and SOAP reports, with Replit OpenAI as fallback. AI prompts adhere to OMS (WHO), MS/Brasil, and DSM-5/DSM-5-TR guidelines.
-- **Video Consultations:** Utilizes Agora for real-time video, audio, screen sharing, chat, AI diagnostic queries, real-time audio transcription, and specialist invitations. Includes comprehensive end-call workflows with AI-driven medical record generation.
-- **Patient Features:** AI-powered symptom triage, waiting room for immediate consultations, prescription management, and access to medical records. Role-filtered navigation for patients.
-- **Consultation Access:** Doctors can generate QR codes and short access codes for patients to join consultations without login.
-- **Doctor Status:** Doctors in active video calls are visibly marked as "Em Atendimento" in the waiting room.
-- **Temporary Visitor Access:** Generatable temporary access links for visitors to the waiting room, with configurable expiry.
-- **Admin System Settings:** Configurable system parameters via an admin interface, including temporary link expiry, consultation token expiry, AI triage toggle, and financial settings.
-- **Doctor Notes:** A dedicated interface for doctors to manage clinical notes with flexible organization and auto-save.
-- **Incomplete Consultations:** Dashboard for doctors to manage and evaluate unfinished consultations, including real-time active call monitoring.
-- **Post-Consultation Workflow:** AI auto-generates prescriptions, exams, referrals, and follow-up items from clinical notes, requiring doctor review. Includes AI-powered drug interaction analysis.
-- **WhatsApp IA:** Intelligent messaging for doctors with message persistence, patient online status, and AI analysis of patient messages.
-- **Financial Management / Digital Wallet:** Comprehensive `/wallet` dashboard for managing balances, purchases, transfers, transaction history, external wallet linking, and withdrawal requests.
-- **Epidemiological Reports:** AI-powered analysis of clinical data for epidemiological insights (symptom frequency, triage levels, age groups) using MeSH and ICD codes.
-- **Medical Teams & Inter-Consultations:** Features for team collaboration, discussion rooms, and structured inter-consultation note-taking.
-- **Patient Consultation Request:** Two-path system: "Buscar por Especialidade" to browse doctors or "Triagem por Sintomas" for AI-guided doctor recommendations.
-- **Doctor Inter-Consultation:** Dedicated page for doctor-to-doctor scheduling with case descriptions and urgency levels.
-- **Doctor Schedule:** Three-tab schedule (Today, Future, History) with bulk cancellation options and instant consultation features.
-- **IAM3D Voice Assistant:** Full-screen Agora.io-style voice interface with animated sphere, session timer, bottom control bar (mic, mute, speaker, end call), and real-time on-duty doctor availability. Uses Web Speech API for STT/TTS. Unified with chatbot: `/api/chatbot/message` (auth) and `/api/chatbot/visitor-message` (visitors). Supports scheduling confirmation, urgent consultation with on-duty doctors (quick-call doctor cards), patient registration for visitors, profile navigation, and action buttons. Role-based capability badges (Triagem/Agendar/Urgente for patients, Diagnóstico/Protocolos/Plantão for doctors). Conversation persistence via conversationId.
-- **Doctor On-Duty Urgent Calls:** Doctors in plantão (24h on-duty) are visible to patients requesting urgent consultations via IAM3D voice assistant. Backend finds on-duty doctors, creates consultation requests with urgent status, and sends real-time notifications. Doctor availability page shows IAM3D urgent call indicator when on-duty.
-- **IAM3D Interconsulta:** Real-time AI diagnostic analysis during video consultations, triggered by doctor notes or transcription.
-- **Profile Photo Upload:** Functionality for users to upload profile pictures, stored statically.
-- **External Medication Search:** Prescription form integrates external medication databases (RxNorm/NIH, OpenFDA, ANVISA/RENAME with 50+ Brazilian meds). Locale-aware search (BR→ANVISA first, US→FDA first). Backend endpoint: `GET /api/medications/search-external?term=X&locale=BR&limit=20`. Service: `server/services/medication-search.ts`.
-- **Post-Consultation Diagnostic Classification:** AI extracts syndromic diagnostic hypotheses with CID-10/11 and DSM-5/TR codes, confidence levels, and suggested exams, requiring doctor review and authorization for clinical history compilation.
-- **Admin Financial Management:** Admin interface for managing user credit balances, feature costs, credit package CRUD (create/edit/activate/deactivate), configurable TMC/USD exchange rate, and auditing wallet transactions. PayPal checkout for credit purchases with 6 seeded packages and 15 feature costs.
-- **Reports Dashboard:** Dedicated page for doctors/admins with predefined reports on consultations, patients, financials, and doctor performance, with filtering and export options.
-- **Dynamic NFT Management:** Page for managing LGPD-compliant anonymized medical data insights as NFTs, allowing creation, detail viewing, share purchases, and consent record display.
-- **Internal Broker:** Dedicated page for trading NFT shares and TM3D tokens, featuring an order book, order management, and trade history.
-- **External Wallet Integration:** Tab in wallet for linking MetaMask/WalletConnect, viewing linked wallets, and managing withdrawal requests.
-- **Wallet Audit Log:** Comprehensive transaction auditing with action type filtering and weekly report summaries.
-- **Inactivity Detection & Auto-Logout:** Configurable inactivity timeout (default 30 min, stored in `systemSettings` as `inactivity_timeout_minutes`). After inactivity period, shows "Você ainda está online?" prompt with 3-minute countdown. Auto-logout if no response. Disconnects all Agora audio/video services and media streams on both auto-logout and manual logout. Public endpoint `/api/system-settings/public/inactivity-timeout` serves the setting to all logged-in users. Component: `client/src/components/inactivity-monitor.tsx`.
-- **Patient Data Export (HL7 FHIR R4):** Standardized patient data export compliant with multiple international healthcare standards. Export dialog (`client/src/components/patient-export-dialog.tsx`) available from both medical-records (doctors) and patient-records (patients, LGPD right). Backend service (`server/services/patient-export-service.ts`) aggregates all clinical data and generates FHIR R4 Bundles. API endpoint: `GET /api/patients/:patientId/export` with query params `standard` (fhir-br, fhir-us, fhir-eu, fhir-intl), `format` (json, pdf), `deidentify` (boolean). Supports Brazil/SUS (RNDS, RAC, SBIS, LGPD), USA (HIPAA, ONC, USCDI v3), Europe (GDPR), and International (ICD-11, SNOMED) standards. Includes HIPAA Safe Harbor de-identification option and LGPD/GDPR consent checkboxes.
-- **Pharmacy Integration System:** Comprehensive pharmacy module with pharmacist user role, prescription verification/dispensing, and LGPD-compliant reporting.
-  - **Pharmacist Registration:** `/register/pharmacist` with CRF number, pharmacy name, CNPJ fields. Page: `client/src/pages/register/pharmacist.tsx`.
-  - **Pharmacy Dashboard:** `/pharmacy` with prescription list, detail view, QR/digital signature verification, CRM verification (suspicion-based), dispensing form (batch, manufacturer, expiry), read confirmation. Page: `client/src/pages/pharmacy.tsx`.
-  - **Pharmacy Reports:** `/pharmacy/reports` with daily/weekly/monthly/custom reports, medication/doctor/pathology breakdowns, LGPD anonymization toggle. Page: `client/src/pages/pharmacy-reports.tsx`.
-  - **AI Dosage Suggestions:** `POST /api/prescriptions/ai-suggest` returns patient-specific dosage, frequency, duration, warnings (side effects, contraindications, drug interactions, risk level) using Gemini with OpenAI fallback. Integrated into `CreatePrescriptionForm` with "Sugestão IA" button.
-  - **Database Tables:** `pharmacy_dispensing` (batch tracking, verification method, signature/CRM verification), `pharmacy_reports` (LGPD-compliant aggregated data). Added `pharmacistId`/`pharmacistReadAt` to prescriptions.
-  - **PDF Enhancements:** Prescription PDFs include QR code verification, drug warnings/contraindications section, and pharmacy dispensing fields for pharmacist completion.
-  - **Backend Routes:** `GET/POST /api/pharmacy/prescriptions`, `/verify`, `/verify-crm`, `/dispense`, `/confirm-read`, `/reports`, `/reports/generate`. All restricted to pharmacist + admin roles.
-  - **Admin Integration:** Pharmacist user management, pharmacy system settings (dispensing toggle, signature/CRM verification requirements, prescription expiry, LGPD reports).
+- **Database:** PostgreSQL on Neon with Drizzle ORM.
+- **AI Services:** Google Gemini API (with Replit OpenAI fallback) for chatbot, triage, video consultation support, medical records, and SOAP reports, adhering to medical guidelines (OMS, MS/Brasil, DSM-5/DSM-5-TR).
+- **Video Consultations:** Agora for real-time video, audio, screen sharing, chat, AI diagnostic queries, transcription, and specialist invitations, with AI-driven medical record generation.
+- **Patient Features:** AI-powered symptom triage, waiting room, prescription management, and medical record access.
+- **Consultation Access:** QR codes and short access codes for patients to join consultations without login. Doctor status visible in the waiting room. Temporary visitor access links with configurable expiry.
+- **Admin System Settings:** Configurable system parameters via admin interface (e.g., link expiry, AI triage toggle, financial settings).
+- **Doctor Notes:** Dedicated interface for clinical notes with flexible organization and auto-save.
+- **Incomplete Consultations:** Dashboard for doctors to manage and monitor unfinished consultations.
+- **Post-Consultation Workflow:** AI auto-generates prescriptions, exams, referrals, and follow-up items from clinical notes, requiring doctor review and including drug interaction analysis.
+- **WhatsApp IA:** Intelligent messaging for doctors with persistence, online status, and AI analysis.
+- **Financial Management / Digital Wallet:** Comprehensive `/wallet` dashboard for balances, purchases, transfers, history, external wallet linking, and withdrawal requests.
+- **Epidemiological Reports:** AI-powered analysis of clinical data for epidemiological insights using MeSH and ICD codes.
+- **Medical Teams & Inter-Consultations:** Collaboration features, discussion rooms, and structured inter-consultation note-taking.
+- **Patient Consultation Request:** Two-path system: "Buscar por Especialidade" or "Triagem por Sintomas".
+- **Doctor Inter-Consultation:** Page for doctor-to-doctor scheduling with case descriptions and urgency.
+- **Doctor Schedule:** Three-tab schedule (Today, Future, History) with bulk cancellation and instant consultation features.
+- **IAM3D Voice Assistant:** Full-screen voice interface with animated sphere, session timer, and control bar. Uses Web Speech API for STT/TTS. Unified with chatbot API. Supports scheduling, urgent consultations, patient registration, profile navigation, and action buttons. Role-based capability badges.
+- **Doctor On-Duty Urgent Calls:** Doctors in plantão (24h on-duty) are visible for urgent consultations via IAM3D, with real-time notifications.
+- **IAM3D Interconsulta:** Real-time AI diagnostic analysis during video consultations.
+- **Profile Photo Upload:** User profile picture upload functionality.
+- **External Medication Search:** Prescription form integrates external medication databases (RxNorm/NIH, OpenFDA, ANVISA/RENAME) with locale-aware search.
+- **AI Medication List Generation:** Prescription form generates complete treatment plans from diagnosis, symptoms, and patient history, including clinical analysis, treatment approach, prioritized medication list, non-pharmacological measures, follow-up, and alerts.
+- **Digital Signature Verification:** Dual-path signature verification (RSA-PSS ICP-Brasil A3, RSA-SHA256 SignatureService) with public QR code-based verification endpoint. Includes OCSP checks and audit trail.
+- **Post-Consultation Diagnostic Classification:** AI extracts syndromic diagnostic hypotheses with CID-10/11 and DSM-5/TR codes, confidence levels, and suggested exams, for doctor review.
+- **Admin Financial Management:** Admin interface for user credit balances, feature costs, credit package CRUD, exchange rates, and wallet transaction auditing. PayPal integration for credit purchases.
+- **Reports Dashboard:** Dedicated page for doctors/admins with predefined reports on consultations, patients, financials, and doctor performance.
+- **Dynamic NFT Management:** Page for managing LGPD-compliant anonymized medical data insights as NFTs.
+- **Internal Broker:** Page for trading NFT shares and TM3D tokens with order book and trade history.
+- **External Wallet Integration:** Tab in wallet for linking MetaMask/WalletConnect and managing withdrawal requests.
+- **Wallet Audit Log:** Comprehensive transaction auditing with action type filtering and weekly reports.
+- **Inactivity Detection & Auto-Logout:** Configurable inactivity timeout with a prompt and auto-logout if no response, disconnecting Agora services.
+- **Patient Data Export (HL7 FHIR R4):** Standardized patient data export compliant with international healthcare standards (fhir-br, fhir-us, fhir-eu, fhir-intl) in JSON or PDF format, with de-identification options (HIPAA Safe Harbor, LGPD/GDPR consent).
+- **Pharmacy Integration System:** Comprehensive pharmacy module with pharmacist user role, prescription verification, dispensing, and LGPD-compliant reporting. Includes pharmacist registration, dashboard, reports, AI dosage suggestions, and database enhancements for tracking and verification.
 
 ## External Dependencies
 - **Database:** PostgreSQL (Neon)
@@ -72,14 +63,4 @@ The application features an Express.js backend and a React frontend, with shared
 - **AI/ML:** Google Gemini API, Replit OpenAI AI Integrations
 - **Video Conferencing:** Agora
 - **PDF Generation:** jspdf
-- **Payment Processing:** PayPal (recipient email configurable via admin system settings: `paypal_recipient_email`, default: `lucasmedicina86@icloud.com`)
-
-## PayPal Credit Purchase Flow
-1. User selects a credit package on `/wallet` → calls `POST /api/credits/purchase/create-order` with `packageId`
-2. Backend creates PayPal order via SDK, stores in `paypalOrders` table, returns PayPal order ID + package info
-3. `WalletPayPalCheckout` component starts PayPal checkout session using the existing order ID (no duplicate order)
-4. User approves on PayPal → `onApprove` callback fires
-5. Component calls `POST /api/credits/purchase/capture` with the order ID
-6. Backend captures via PayPal SDK, credits user via `creditService.captureAndCreditOrder`, records transaction
-7. Key files: `client/src/components/WalletPayPalCheckout.tsx`, `server/routes/credits.ts`, `server/services/credit-service.ts`
-8. CRITICAL: `server/paypal.ts` and `client/src/components/PayPalButton.tsx` must NOT be modified (integration blueprint code)
+- **Payment Processing:** PayPal

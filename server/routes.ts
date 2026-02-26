@@ -11691,6 +11691,7 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
           certificateInfo: {
             ...signatureResult.certificateInfo,
             publicKey: publicKey,
+            timestamp: signatureResult.timestamp,
             verificationResult,
             authenticatedAt: new Date().toISOString()
           },
@@ -11698,20 +11699,19 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
           signedAt: new Date(),
         });
       } else {
-        // Create new digital signature for mock document
-        // Get a patient ID for the mock document (use first available patient)
         const patients = await storage.getAllPatients();
         const patientId = patients[0]?.id || '550e8400-e29b-41d4-a716-446655440001';
         
         digitalSignature = await storage.createDigitalSignature({
           documentType: documentId.includes('prescription') ? 'prescription' : 'document',
-          documentId: crypto.randomUUID(), // Generate valid UUID for mock documents
+          documentId: crypto.randomUUID(),
           patientId,
           doctorId,
           signature: signatureResult.signature,
           certificateInfo: {
             ...signatureResult.certificateInfo,
             publicKey: publicKey,
+            timestamp: signatureResult.timestamp,
             verificationResult,
             authenticatedAt: new Date().toISOString()
           },
@@ -13704,12 +13704,8 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       
       const interactions = await checkDrugInteractions(medicationIds);
       
-      // TMC credit system integration
       try {
-        await storage.debitTMCCredits(req.user.id, 'prescription_creation', {
-          prescriptionId: prescriptionId,
-          itemCount: items.length
-        });
+        await storage.processDebit(req.user.id, 5, 'Criação de prescrição', 'prescription_creation');
       } catch (tmcError) {
         console.log('[TMC] TMC debit failed (continuing):', tmcError);
       }
@@ -14250,26 +14246,188 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         return res.status(404).json({ message: 'Digital signature not found' });
       }
 
-      // Get public key from certificate info
       const publicKey = signature.certificateInfo?.publicKey || '';
+      const signatureTimestamp = signature.certificateInfo?.timestamp || signature.signedAt?.toISOString() || '';
       
-      // Verify signature
-      const isValid = await cryptoService.verifySignature(
-        signature.documentHash,
+      let isValid = false;
+      
+      if (publicKey && signatureTimestamp) {
+        try {
+          const documentHash = signature.documentHash;
+          const signableContent = `${documentHash}|${signatureTimestamp}`;
+          
+          isValid = crypto
+            .createVerify('sha256')
+            .update(signableContent, 'utf8')
+            .verify({
+              key: publicKey,
+              padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+              saltLength: 32
+            }, signature.signature, 'base64');
+        } catch (verifyErr) {
+          try {
+            isValid = crypto
+              .createVerify('RSA-SHA256')
+              .update(signature.documentHash)
+              .verify(publicKey, signature.signature, 'hex');
+          } catch {
+            isValid = false;
+          }
+        }
+      }
+
+      const verificationResult = await cryptoService.performElectronicVerification(
         signature.signature,
-        publicKey
+        signature.documentHash,
+        signature.certificateInfo || {}
       );
 
+      try {
+        await db.insert(signatureVerifications).values({
+          signatureId: signature.id,
+          verificationMethod: 'platform_verification',
+          isValid,
+          validationDetails: { verificationResult, verifiedAt: new Date().toISOString() },
+        });
+      } catch (verLogErr) {
+        console.log('Could not log verification:', verLogErr);
+      }
+
+      const doctor = await db.select({
+        name: users.name,
+        medicalLicense: users.medicalLicense,
+        specialization: users.specialization,
+      }).from(users).where(eq(users.id, signature.doctorId)).limit(1);
+
       res.json({
-        isValid,
-        signature,
+        isValid: isValid && verificationResult.isValid,
+        cryptographicVerification: isValid,
+        electronicVerification: verificationResult,
+        signature: {
+          id: signature.id,
+          documentType: signature.documentType,
+          documentHash: signature.documentHash,
+          signedAt: signature.signedAt,
+          status: signature.status,
+          verificationCount: (signature.verificationCount || 0) + 1,
+        },
+        doctor: doctor[0] || null,
         prescriptionNumber: prescriptionData.prescriptionNumber,
-        signedAt: signature.signedAt,
-        certificateInfo: signature.certificateInfo
+        certificateInfo: {
+          certificateType: signature.certificateInfo?.certificateType || 'ICP-Brasil A3',
+          complianceLevel: signature.certificateInfo?.complianceLevel || 'ICP-Brasil A3',
+          algorithm: signature.certificateInfo?.algorithm || 'RSA-PSS + SHA-256',
+          legalValidity: 'Validade jurídica plena conforme MP 2.200-2/2001',
+        },
+        message: isValid
+          ? 'Assinatura digital válida - Documento íntegro e autêntico'
+          : 'Assinatura digital não pôde ser verificada criptograficamente',
       });
     } catch (error) {
       console.error('Verify prescription signature error:', error);
       res.status(500).json({ message: 'Failed to verify prescription signature' });
+    }
+  });
+
+  app.get('/api/signatures/:signatureId/verify', async (req, res) => {
+    try {
+      const { signatureId } = req.params;
+
+      const sig = await storage.getDigitalSignature(signatureId);
+      if (!sig) {
+        return res.status(404).json({ 
+          isValid: false, 
+          message: 'Assinatura digital não encontrada no sistema' 
+        });
+      }
+
+      const publicKey = (sig.certificateInfo as any)?.publicKey || '';
+      const signatureTimestamp = (sig.certificateInfo as any)?.timestamp || sig.signedAt?.toISOString() || '';
+      
+      let cryptoValid = false;
+      
+      if (publicKey && signatureTimestamp) {
+        try {
+          const signableContent = `${sig.documentHash}|${signatureTimestamp}`;
+          cryptoValid = crypto
+            .createVerify('sha256')
+            .update(signableContent, 'utf8')
+            .verify({
+              key: publicKey,
+              padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+              saltLength: 32
+            }, sig.signature, 'base64');
+        } catch {
+          try {
+            cryptoValid = crypto
+              .createVerify('RSA-SHA256')
+              .update(sig.documentHash)
+              .verify(publicKey, sig.signature, 'hex');
+          } catch {
+            cryptoValid = false;
+          }
+        }
+      }
+
+      const electronVerification = await cryptoService.performElectronicVerification(
+        sig.signature,
+        sig.documentHash,
+        sig.certificateInfo || {}
+      );
+
+      const doctor = await db.select({
+        name: users.name,
+        medicalLicense: users.medicalLicense,
+        specialization: users.specialization,
+      }).from(users).where(eq(users.id, sig.doctorId)).limit(1);
+
+      try {
+        await db.insert(signatureVerifications).values({
+          signatureId: sig.id,
+          verificationMethod: 'public_qr_verification',
+          isValid: cryptoValid,
+          validationDetails: { electronVerification, verifiedAt: new Date().toISOString() },
+          ipAddress: req.ip || undefined,
+          userAgent: req.headers['user-agent'] || undefined,
+        });
+        await db.update(digitalSignatures)
+          .set({ 
+            verificationCount: (sig.verificationCount || 0) + 1,
+            lastVerifiedAt: new Date(),
+          })
+          .where(eq(digitalSignatures.id, sig.id));
+      } catch {}
+
+      res.json({
+        isValid: cryptoValid && electronVerification.isValid,
+        cryptographicVerification: cryptoValid,
+        electronicVerification: electronVerification,
+        document: {
+          type: sig.documentType,
+          signedAt: sig.signedAt,
+          documentHash: sig.documentHash,
+        },
+        doctor: doctor[0] ? {
+          name: doctor[0].name,
+          crm: doctor[0].medicalLicense,
+          specialty: doctor[0].specialization,
+        } : null,
+        certificate: {
+          type: (sig.certificateInfo as any)?.certificateType || 'ICP-Brasil A3',
+          compliance: (sig.certificateInfo as any)?.complianceLevel || 'ICP-Brasil A3',
+          algorithm: (sig.certificateInfo as any)?.algorithm || 'RSA-PSS + SHA-256',
+        },
+        legalValidity: cryptoValid 
+          ? 'Validade jurídica plena conforme MP 2.200-2/2001' 
+          : 'Integridade criptográfica não confirmada',
+        verificationCount: (sig.verificationCount || 0) + 1,
+        message: cryptoValid 
+          ? 'Assinatura digital verificada com sucesso - Documento autêntico e íntegro'
+          : 'Não foi possível confirmar a autenticidade criptográfica desta assinatura',
+      });
+    } catch (error) {
+      console.error('Public signature verification error:', error);
+      res.status(500).json({ message: 'Falha na verificação da assinatura' });
     }
   });
 
@@ -18093,6 +18251,9 @@ async function migratePharmacyTables() {
     `);
     await db.execute(sql`
       ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS pharmacist_read_at TIMESTAMP
+    `);
+    await db.execute(sql`
+      ALTER TABLE prescription_items ALTER COLUMN medication_id DROP NOT NULL
     `);
     console.log('✓ Pharmacy tables migrated successfully');
   } catch (error) {
