@@ -363,7 +363,7 @@ export default function Header() {
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 sm:h-20 lg:h-24">
           <div className="flex items-center space-x-4">
-            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+            {user ? <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <SheetTrigger asChild>
@@ -507,7 +507,7 @@ export default function Header() {
                   </div>
                 )}
               </SheetContent>
-            </Sheet>
+            </Sheet> : null}
 
             <Link href="/" data-testid="link-logo">
               <div className="flex items-center space-x-3 cursor-pointer group">
