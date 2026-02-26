@@ -9,8 +9,8 @@ import LanguageSelector from "@/components/ui/language-selector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines, ChevronDown } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines, ChevronDown, CalendarX2 } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { formatErrorForToast } from "@/lib/error-handler";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import NotificationCenter from "@/components/notifications/notification-center";
@@ -31,6 +31,36 @@ export default function Header() {
   const [loginPassword, setLoginPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showClearScheduleConfirm, setShowClearScheduleConfirm] = useState(false);
+
+  const clearScheduleMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/appointments/cancel-all', {
+        doctorId: user?.id,
+        scope: 'all',
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      const totalCancelled = (data.cancelled || 0) + (data.cancelledInterConsultations || 0);
+      toast({
+        title: "Agenda Limpa",
+        description: totalCancelled > 0
+          ? `${data.cancelled} consulta(s) e ${data.cancelledInterConsultations || 0} interconsulta(s) canceladas. Todas as partes foram notificadas.`
+          : "Não havia consultas agendadas para cancelar.",
+      });
+      setShowClearScheduleConfirm(false);
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error, '/api/appointments/cancel-all', 'POST');
+      toast({
+        title: errorInfo.title,
+        description: errorInfo.description,
+        variant: "destructive",
+        errorCode: errorInfo.errorCode,
+      });
+    },
+  });
 
   // Handle scroll effect for header background
   useEffect(() => {
@@ -871,6 +901,21 @@ export default function Header() {
                         <p className="text-xs text-muted-foreground">Sala de atendimento</p>
                       </div>
                     </DropdownMenuItem>
+                    
+                    <DropdownMenuItem 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setShowClearScheduleConfirm(true);
+                      }}
+                      className="cursor-pointer hover:bg-red-500/10 py-3"
+                      data-testid="menu-clear-schedule"
+                    >
+                      <CalendarX2 className="mr-3 h-5 w-5 text-red-500" />
+                      <div>
+                        <p className="font-semibold text-red-600 dark:text-red-400">Limpar Agenda</p>
+                        <p className="text-xs text-muted-foreground">Cancelar todas as consultas</p>
+                      </div>
+                    </DropdownMenuItem>
                   </>
                 )}
                 
@@ -1103,6 +1148,58 @@ export default function Header() {
         onClose={() => setIsCommandPaletteOpen(false)}
         userRole={user?.role}
       />
+
+      {showClearScheduleConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowClearScheduleConfirm(false)}>
+          <div 
+            className="bg-background rounded-2xl shadow-2xl border border-destructive/20 p-6 max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <CalendarX2 className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Limpar Agenda</h3>
+                <p className="text-sm text-muted-foreground">Ação irreversível</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mb-2">
+              Esta ação irá cancelar <span className="font-semibold text-foreground">todas as consultas agendadas</span> e <span className="font-semibold text-foreground">interconsultas pendentes</span>.
+            </p>
+            <p className="text-sm text-muted-foreground mb-6">
+              Todos os pacientes e médicos envolvidos serão notificados sobre o cancelamento.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowClearScheduleConfirm(false)}
+                disabled={clearScheduleMutation.isPending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => clearScheduleMutation.mutate()}
+                disabled={clearScheduleMutation.isPending}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {clearScheduleMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Limpando...
+                  </>
+                ) : (
+                  <>
+                    <CalendarX2 className="mr-2 h-4 w-4" />
+                    Confirmar Limpeza
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

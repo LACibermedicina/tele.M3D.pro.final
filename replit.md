@@ -12,7 +12,8 @@ Ask before making major changes.
 The application features an Express.js backend and a React frontend, with shared TypeScript schemas for consistency. PostgreSQL is used for the database, managed with Drizzle ORM. AI services primarily leverage Google Gemini API for advanced capabilities, with Replit OpenAI AI Integrations (`gpt-4o-mini`) as a fallback.
 
 **UI/UX Decisions:**
-- **Navigation Menu:** Icons grouped by functional area (Principal, Clínico, Consultas, Revisão & Diagnóstico, Comunicação & IA, Financeiro & Blockchain, Relatórios & Analytics, Administração) with visual separators between groups on desktop and category headers on mobile.
+- **Navigation Menu:** Desktop uses dropdown menus for multi-item groups (Clínico, Revisão, etc.) and direct icon links for single-item groups. Mobile uses slide-out sheet with category headers. All icons have consistent drop-shadow styling. Coffee room relocated from Quick Actions to Comunicação & IA group.
+- **Clear Schedule (Limpar Agenda):** Doctors can clear their entire schedule from Quick Actions dropdown (next to "Abrir Consultório"). Cancels all scheduled appointments and pending inter-consultations, notifying patients and inter-consultation doctors. Backend enforces authentication and role-based authorization.
 - **Admin Theme:** Distinctive dark indigo/slate gradient background with subtle dot grid pattern and radial glow effects, differentiating admin pages from the main origami theme.
 - **Voice Assistant Prompt:** On first login, users are prompted to enable the IAM3D voice assistant. When enabled, a full-screen overlay with the animated sphere stays active until the user says "fechar assistente" or similar voice commands. A floating mic toggle button persists for quick access.
 - **Doctor Notes:** macOS Notes-style interface with folders, search, pinning, and color labels.

@@ -14,7 +14,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations } from "@shared/schema";
 import { creditService } from "./services/credit-service";
 import { z } from "zod";
 import { db } from "./db";
@@ -1675,9 +1675,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/appointments/cancel-all', async (req, res) => {
     try {
-      const { doctorId, scope, appointmentType } = req.body;
-      if (!doctorId || !scope) {
-        return res.status(400).json({ message: 'doctorId and scope (today|future|all) are required' });
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Only doctors and admins can cancel appointments' });
+      }
+      const { scope, appointmentType } = req.body;
+      const doctorId = req.user.role === 'admin' && req.body.doctorId ? req.body.doctorId : req.user.id;
+      if (!scope) {
+        return res.status(400).json({ message: 'scope (today|future|all) is required' });
       }
 
       const now = new Date();
@@ -1740,7 +1747,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ cancelled: cancelled.length, appointments: cancelled });
+      let cancelledInterConsultations = 0;
+      try {
+        const pendingIC = await db.select()
+          .from(interConsultations)
+          .where(and(
+            or(
+              eq(interConsultations.requestingDoctorId, doctorId),
+              eq(interConsultations.targetDoctorId, doctorId)
+            ),
+            or(
+              eq(interConsultations.status, 'pending'),
+              eq(interConsultations.status, 'accepted')
+            )
+          ));
+
+        if (pendingIC.length > 0) {
+          await db.update(interConsultations)
+            .set({ status: 'cancelled', updatedAt: new Date() })
+            .where(and(
+              or(
+                eq(interConsultations.requestingDoctorId, doctorId),
+                eq(interConsultations.targetDoctorId, doctorId)
+              ),
+              or(
+                eq(interConsultations.status, 'pending'),
+                eq(interConsultations.status, 'accepted')
+              )
+            ));
+
+          cancelledInterConsultations = pendingIC.length;
+
+          const doctor = await storage.getUser(doctorId);
+          const doctorName = doctor?.name || 'Médico';
+
+          for (const ic of pendingIC) {
+            const otherDoctorId = ic.requestingDoctorId === doctorId ? ic.targetDoctorId : ic.requestingDoctorId;
+            try {
+              broadcastToUser(otherDoctorId, {
+                type: 'interconsultation_cancelled',
+                data: { interConsultationId: ic.id },
+              });
+              await storage.createNotification({
+                userId: otherDoctorId,
+                type: 'interconsultation',
+                title: 'Interconsulta cancelada',
+                message: `A interconsulta com Dr(a). ${doctorName} foi cancelada. Motivo: limpeza de agenda.`,
+                data: { interConsultationId: ic.id },
+              });
+            } catch {}
+          }
+        }
+      } catch (icError) {
+        console.error('Error cancelling inter-consultations:', icError);
+      }
+
+      res.json({ cancelled: cancelled.length, cancelledInterConsultations, appointments: cancelled });
     } catch (error) {
       console.error('Batch cancel error:', error);
       res.status(500).json({ message: 'Failed to cancel appointments' });
