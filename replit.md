@@ -13,6 +13,7 @@ The application features an Express.js backend and a React frontend, with shared
 
 **UI/UX Decisions:**
 - **Navigation Menu:** Desktop uses dropdown menus for multi-item groups (Clínico, Revisão, etc.) and direct icon links for single-item groups. Mobile uses slide-out sheet with category headers. All icons have consistent drop-shadow styling. Coffee room relocated from Quick Actions to Comunicação & IA group.
+- **Mobile Layout:** Side menu (hamburger, slides from left) available for ALL users (logged-in and visitors). Top bar on mobile keeps only: logo, hamburger, language selector, notifications, IAM3D toggle, quick actions, and user avatar. Visitor side menu shows Login, Cadastrar, Sobre o Sistema, and Emergência Médica options.
 - **Clear Schedule (Limpar Agenda):** Doctors can clear their entire schedule from Quick Actions dropdown (next to "Abrir Consultório"). Cancels all scheduled appointments and pending inter-consultations, notifying patients and inter-consultation doctors. Backend enforces authentication and role-based authorization.
 - **Admin Theme:** Distinctive dark indigo/slate gradient background with subtle dot grid pattern and radial glow effects, differentiating admin pages from the main origami theme.
 - **Voice Assistant Prompt:** On first login, users are prompted to enable the IAM3D voice assistant. When enabled, a full-screen overlay with the animated sphere stays active until the user says "fechar assistente" or similar voice commands. A floating mic toggle button persists for quick access.

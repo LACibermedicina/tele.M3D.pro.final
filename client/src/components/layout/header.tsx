@@ -456,9 +456,9 @@ export default function Header() {
       data-testid="header-main"
     >
       <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 sm:h-20 lg:h-24">
+        <div className="flex justify-between items-center h-14 sm:h-20 lg:h-24">
           <div className="flex items-center space-x-4">
-            {user ? <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <SheetTrigger asChild>
@@ -480,8 +480,8 @@ export default function Header() {
                 </TooltipContent>
               </Tooltip>
               
-              <SheetContent side="right" className="w-80 px-0">
-                <SheetHeader className="px-6 pb-6 border-b">
+              <SheetContent side="left" className="w-80 px-0 overflow-y-auto">
+                <SheetHeader className="px-6 pb-4 border-b">
                   <SheetTitle className="text-left">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 flex items-center justify-center">
@@ -492,14 +492,19 @@ export default function Header() {
                           style={{ filter: 'brightness(0) invert(1)' }}
                         />
                       </div>
-                      {user && (
+                      {user ? (
                         <div>
                           <p className="text-sm font-semibold text-foreground">
-                            {t("greeting.hello")}, {user.name}!
+                            {t("greeting.hello")}, {getShortName(user.name)}!
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {getRoleDisplay(user.role)}
                           </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Tele&lt;M3D&gt;</p>
+                          <p className="text-xs text-muted-foreground">Telemedicina com IA</p>
                         </div>
                       )}
                     </div>
@@ -509,11 +514,11 @@ export default function Header() {
                   </SheetDescription>
                 </SheetHeader>
                 
-                <nav className="flex flex-col p-6 space-y-1">
-                  {filteredGroups.map((group, groupIdx) => (
+                <nav className="flex flex-col px-4 py-3 space-y-0.5 pb-32">
+                  {user && filteredGroups.map((group, groupIdx) => (
                     <div key={group.category}>
                       {groupIdx > 0 && <div className="my-2 border-t border-border/50" />}
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-4 mb-1">{group.label}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-1 mt-1">{group.label}</p>
                       {group.items.map((item) => {
                         const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
                         const mobileBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
@@ -525,7 +530,7 @@ export default function Header() {
                             onClick={() => setIsMobileMenuOpen(false)}
                           >
                             <div
-                              className={`flex items-center space-x-4 p-3 rounded-xl transition-all duration-200 ${
+                              className={`flex items-center space-x-3 p-2.5 rounded-xl transition-all duration-200 ${
                                 isActive
                                   ? "text-white shadow-lg"
                                   : "text-muted-foreground hover:text-primary hover:bg-primary/5"
@@ -536,19 +541,19 @@ export default function Header() {
                                   : "transparent"
                               }}
                             >
-                              <div className={`relative w-9 h-9 rounded-lg flex items-center justify-center ${
+                              <div className={`relative w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                                 isActive ? "bg-white/20" : "bg-muted"
                               }`}>
-                                <i className={`${item.faIcon} text-sm`}></i>
+                                <i className={`${item.faIcon} text-xs`}></i>
                                 {mobileBadge && (
-                                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5">
                                     {pendingPostCount > 9 ? '9+' : pendingPostCount}
                                   </span>
                                 )}
                               </div>
                               <span className="font-medium text-sm">{item.label}</span>
                               {mobileBadge && (
-                                <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                                <span className="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
                                   {pendingPostCount}
                                 </span>
                               )}
@@ -558,59 +563,102 @@ export default function Header() {
                       })}
                     </div>
                   ))}
+
+                  {!user && (
+                    <>
+                      <div className="my-2 border-t border-border/50" />
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-1 mt-1">Acesso</p>
+                      <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                        <div className="flex items-center space-x-3 p-2.5 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/5">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted shrink-0">
+                            <LogIn className="h-4 w-4" />
+                          </div>
+                          <span className="font-medium text-sm">{t("auth.login")}</span>
+                        </div>
+                      </Link>
+                      <Link href="/register" onClick={() => setIsMobileMenuOpen(false)}>
+                        <div className="flex items-center space-x-3 p-2.5 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/5">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted shrink-0">
+                            <UserPlus className="h-4 w-4" />
+                          </div>
+                          <span className="font-medium text-sm">Cadastrar</span>
+                        </div>
+                      </Link>
+                      <Link href="/features" onClick={() => setIsMobileMenuOpen(false)}>
+                        <div className="flex items-center space-x-3 p-2.5 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/5">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted shrink-0">
+                            <Shield className="h-4 w-4" />
+                          </div>
+                          <span className="font-medium text-sm">Sobre o Sistema</span>
+                        </div>
+                      </Link>
+                      <div 
+                        className="flex items-center space-x-3 p-2.5 rounded-xl text-muted-foreground hover:text-red-500 hover:bg-red-500/5 cursor-pointer"
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          toast({
+                            title: "Emergência Médica",
+                            description: "Em caso de emergência, ligue 192 (SAMU) ou 193 (Bombeiros)",
+                            variant: "destructive",
+                          });
+                          window.open('tel:192', '_blank');
+                        }}
+                      >
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-100 dark:bg-red-900/30 shrink-0">
+                          <Ambulance className="h-4 w-4 text-red-500" />
+                        </div>
+                        <span className="font-medium text-sm text-red-600 dark:text-red-400">Emergência Médica</span>
+                      </div>
+                    </>
+                  )}
                 </nav>
 
-                {/* Mobile User Info */}
                 {user ? (
-                  <div className="absolute bottom-6 left-6 right-6 p-4 bg-muted/50 rounded-xl">
+                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <Avatar className="w-12 h-12">
-                          <AvatarFallback className="text-white font-semibold" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
+                        <Avatar className="w-10 h-10">
+                          <AvatarFallback className="text-white font-semibold text-sm" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
                             {getUserInitials(user.name)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-semibold text-sm" data-testid="text-mobile-user-name">
-                            {user.name}
+                            {getShortName(user.name)}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {getRoleDisplay(user.role)}
                           </p>
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleLogout}
-                        className="text-muted-foreground hover:text-destructive"
-                        data-testid="button-mobile-logout"
-                      >
-                        <LogOut className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => { setIsMobileMenuOpen(false); navigate('/profile'); }}
+                          className="text-muted-foreground hover:text-primary"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleLogout}
+                          className="text-muted-foreground hover:text-destructive"
+                          data-testid="button-mobile-logout"
+                        >
+                          <LogOut className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  <div className="absolute bottom-6 left-6 right-6">
-                    <Button
-                      onClick={() => {
-                        setIsMobileMenuOpen(false);
-                        navigate('/login');
-                      }}
-                      className="w-full"
-                      data-testid="button-mobile-login"
-                    >
-                      <i className="fas fa-sign-in-alt mr-2"></i>
-                      {t("auth.login")}
-                    </Button>
-                  </div>
-                )}
+                ) : null}
               </SheetContent>
-            </Sheet> : null}
+            </Sheet>
 
             <Link href="/" data-testid="link-logo">
               <div className="flex items-center space-x-3 cursor-pointer group">
-                <div className="w-20 h-20 flex items-center justify-center">
+                <div className="w-12 h-12 md:w-20 md:h-20 flex items-center justify-center">
                   <img 
                     src={telemedLogo} 
                     alt="Tele<M3D> Logo" 
@@ -787,7 +835,7 @@ export default function Header() {
             </nav>
           </TooltipProvider>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-1 md:space-x-3">
             {/* Quick Actions Menu - only for logged-in users */}
             {user && <DropdownMenu>
               <Tooltip>
@@ -796,7 +844,7 @@ export default function Header() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className={`icon-link-primary group w-10 h-10 hover:bg-gradient-to-r hover:from-orange-500 hover:to-amber-500 transition-all duration-300 hover:scale-110 hover:shadow-xl ${getTextColor()}`}
+                      className={`icon-link-primary group w-8 h-8 md:w-10 md:h-10 hover:bg-gradient-to-r hover:from-orange-500 hover:to-amber-500 transition-all duration-300 hover:scale-110 hover:shadow-xl ${getTextColor()}`}
                       data-testid="button-quick-actions"
                     >
                       <Zap 
@@ -1011,7 +1059,7 @@ export default function Header() {
                           {getUserInitials(user.name)}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="hidden sm:block text-left">
+                      <div className="hidden md:block text-left">
                         <p 
                           className={`text-sm font-semibold transition-all duration-300 ${getTextColor()}`}
                           data-testid="text-user-name"
@@ -1063,7 +1111,7 @@ export default function Header() {
                 </DropdownMenu>
               </>
             ) : (
-              <>
+              <div className="hidden md:flex items-center space-x-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button 
@@ -1136,7 +1184,7 @@ export default function Header() {
                     <p className="text-white">Cadastrar</p>
                   </TooltipContent>
                 </Tooltip>
-              </>
+              </div>
             )}
           </div>
         </div>
