@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings } from 'lucide-react';
+import { Shield, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { formatErrorForToast } from '@/lib/error-handler';
@@ -2056,9 +2056,57 @@ function FinancialManagementTab() {
   const [editingCost, setEditingCost] = useState('');
   const [auditFilter, setAuditFilter] = useState<string>('all');
   const [auditLimit, setAuditLimit] = useState(50);
+  const [editingPkgId, setEditingPkgId] = useState<string | null>(null);
+  const [editingPkg, setEditingPkg] = useState<any>({});
 
   const { data: creditUsers = [], isLoading: loadingCreditUsers } = useQuery<CreditUser[]>({
     queryKey: ['/api/admin/credits/users'],
+  });
+
+  const { data: creditPackages = [], isLoading: loadingPackages } = useQuery<any[]>({
+    queryKey: ['/api/admin/credit-packages'],
+  });
+
+  const { data: exchangeRate } = useQuery<{ rate: number }>({
+    queryKey: ['/api/admin/exchange-rate'],
+  });
+
+  const updatePackageMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      apiRequest('PATCH', `/api/admin/credit-packages/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/credit-packages'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/credits/packages'] });
+      setEditingPkgId(null);
+      setEditingPkg({});
+      toast({ title: 'Sucesso', description: 'Pacote atualizado' });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: 'destructive' });
+    },
+  });
+
+  const togglePackageMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      apiRequest('PATCH', `/api/admin/credit-packages/${id}`, { isActive }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/credit-packages'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/credits/packages'] });
+      toast({ title: 'Sucesso', description: 'Status atualizado' });
+    },
+  });
+
+  const updateExchangeRateMutation = useMutation({
+    mutationFn: (rate: number) => apiRequest('PUT', '/api/admin/exchange-rate', { rate }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/exchange-rate'] });
+      toast({ title: 'Sucesso', description: 'Taxa de câmbio atualizada' });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: 'destructive' });
+    },
   });
 
   const { data: tmcConfigs = [], isLoading: loadingConfigs } = useQuery<TmcConfigItem[]>({
@@ -2355,6 +2403,168 @@ function FinancialManagementTab() {
                       ))}
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center space-x-2">
+                <CreditCard className="h-5 w-5" />
+                <span>Pacotes de Créditos & Taxa de Câmbio</span>
+              </CardTitle>
+              <CardDescription>Gerencie os pacotes disponíveis para compra e a taxa TMC/USD</CardDescription>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 border rounded-lg px-3 py-1.5">
+                <span className="text-sm text-muted-foreground">1 USD =</span>
+                <Input
+                  type="number"
+                  min="1"
+                  className="w-16 h-7 text-sm font-mono"
+                  defaultValue={exchangeRate?.rate || 5}
+                  onBlur={(e) => {
+                    const val = parseInt(e.target.value);
+                    if (val > 0 && val !== (exchangeRate?.rate || 5)) {
+                      updateExchangeRateMutation.mutate(val);
+                    }
+                  }}
+                />
+                <span className="text-sm font-medium">TMC</span>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingPackages ? (
+            <div className="text-center py-8">Carregando pacotes...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(creditPackages as any[]).map((pkg) => (
+                <Card key={pkg.id} className={`${!pkg.isActive ? 'opacity-50' : ''} ${pkg.isPromotional ? 'border-amber-400' : ''}`}>
+                  <CardContent className="p-4">
+                    {editingPkgId === pkg.id ? (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs">Nome</Label>
+                            <Input
+                              className="h-8 text-sm"
+                              value={editingPkg.name || ''}
+                              onChange={(e) => setEditingPkg({ ...editingPkg, name: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Preço (USD)</Label>
+                            <Input
+                              className="h-8 text-sm"
+                              value={editingPkg.priceUsd || ''}
+                              onChange={(e) => setEditingPkg({ ...editingPkg, priceUsd: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <Label className="text-xs">Créditos</Label>
+                            <Input
+                              type="number"
+                              className="h-8 text-sm"
+                              value={editingPkg.credits || 0}
+                              onChange={(e) => setEditingPkg({ ...editingPkg, credits: parseInt(e.target.value) })}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Bônus</Label>
+                            <Input
+                              type="number"
+                              className="h-8 text-sm"
+                              value={editingPkg.bonusCredits || 0}
+                              onChange={(e) => setEditingPkg({ ...editingPkg, bonusCredits: parseInt(e.target.value) })}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Preço (BRL)</Label>
+                            <Input
+                              className="h-8 text-sm"
+                              value={editingPkg.priceBrl || ''}
+                              onChange={(e) => setEditingPkg({ ...editingPkg, priceBrl: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-1 text-xs">
+                            <input
+                              type="checkbox"
+                              checked={editingPkg.isPromotional || false}
+                              onChange={(e) => setEditingPkg({ ...editingPkg, isPromotional: e.target.checked })}
+                            />
+                            Promocional
+                          </label>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => updatePackageMutation.mutate({ id: pkg.id, data: editingPkg })}
+                            disabled={updatePackageMutation.isPending}
+                          >
+                            Salvar
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => { setEditingPkgId(null); setEditingPkg({}); }}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="font-medium">{pkg.name}</p>
+                            <p className="text-xs text-muted-foreground">{pkg.description}</p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {pkg.isPromotional && <Badge className="bg-amber-500 text-white text-xs">Promo</Badge>}
+                            <Badge variant={pkg.isActive ? 'default' : 'secondary'} className="text-xs">
+                              {pkg.isActive ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-sm mb-2">
+                          <span className="font-mono font-bold text-lg">${pkg.priceUsd}</span>
+                          <span className="text-muted-foreground">{pkg.credits} + {pkg.bonusCredits || 0} créditos</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => {
+                              setEditingPkgId(pkg.id);
+                              setEditingPkg({
+                                name: pkg.name, credits: pkg.credits, priceUsd: pkg.priceUsd,
+                                priceBrl: pkg.priceBrl, bonusCredits: pkg.bonusCredits,
+                                description: pkg.description, isPromotional: pkg.isPromotional,
+                              });
+                            }}
+                          >
+                            <Edit3 className="h-3 w-3 mr-1" /> Editar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={pkg.isActive ? 'destructive' : 'default'}
+                            onClick={() => togglePackageMutation.mutate({ id: pkg.id, isActive: !pkg.isActive })}
+                          >
+                            {pkg.isActive ? 'Desativar' : 'Ativar'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}

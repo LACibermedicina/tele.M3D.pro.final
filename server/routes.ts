@@ -88,6 +88,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize default system settings
   await initializeDefaultSystemSettings();
   
+  // Seed credit packages and feature costs
+  await initializeCreditPackagesAndCosts();
+  
   // Initialize scheduling service
   const schedulingService = new SchedulingService(storage);
   
@@ -16295,6 +16298,96 @@ ${combinedText.slice(0, 8000)}`;
 
 // ========== ADMIN CREDIT MANAGEMENT ==========
 
+  app.get('/api/admin/credit-packages', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Apenas admin' });
+      const pkgs = await db.select().from(tmcCreditPackages).orderBy(tmcCreditPackages.displayOrder);
+      res.json(pkgs);
+    } catch (error) {
+      console.error('Failed to fetch credit packages:', error);
+      res.status(500).json({ message: 'Erro ao buscar pacotes' });
+    }
+  });
+
+  app.post('/api/admin/credit-packages', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Apenas admin' });
+      const { name, credits, priceUsd, priceBrl, bonusCredits, description, isActive, isPromotional, displayOrder } = req.body;
+      if (!name || !credits || !priceUsd) return res.status(400).json({ message: 'Nome, créditos e preço são obrigatórios' });
+      const pkg = await db.insert(tmcCreditPackages).values({
+        name, credits, priceUsd, priceBrl, bonusCredits: bonusCredits || 0,
+        description, isActive: isActive !== false, isPromotional: isPromotional || false,
+        displayOrder: displayOrder || 0,
+      }).returning();
+      res.json(pkg[0]);
+    } catch (error) {
+      console.error('Failed to create credit package:', error);
+      res.status(500).json({ message: 'Erro ao criar pacote' });
+    }
+  });
+
+  app.patch('/api/admin/credit-packages/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Apenas admin' });
+      const { name, credits, priceUsd, priceBrl, bonusCredits, description, isActive, isPromotional, displayOrder } = req.body;
+      const updated = await db.update(tmcCreditPackages).set({
+        ...(name !== undefined && { name }),
+        ...(credits !== undefined && { credits }),
+        ...(priceUsd !== undefined && { priceUsd }),
+        ...(priceBrl !== undefined && { priceBrl }),
+        ...(bonusCredits !== undefined && { bonusCredits }),
+        ...(description !== undefined && { description }),
+        ...(isActive !== undefined && { isActive }),
+        ...(isPromotional !== undefined && { isPromotional }),
+        ...(displayOrder !== undefined && { displayOrder }),
+        updatedAt: new Date(),
+      }).where(eq(tmcCreditPackages.id, req.params.id)).returning();
+      if (!updated[0]) return res.status(404).json({ message: 'Pacote não encontrado' });
+      res.json(updated[0]);
+    } catch (error) {
+      console.error('Failed to update credit package:', error);
+      res.status(500).json({ message: 'Erro ao atualizar pacote' });
+    }
+  });
+
+  app.delete('/api/admin/credit-packages/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Apenas admin' });
+      await db.update(tmcCreditPackages).set({ isActive: false, updatedAt: new Date() }).where(eq(tmcCreditPackages.id, req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Failed to deactivate credit package:', error);
+      res.status(500).json({ message: 'Erro ao desativar pacote' });
+    }
+  });
+
+  app.get('/api/admin/exchange-rate', async (req, res) => {
+    try {
+      const setting = await storage.getSystemSetting('tmc_exchange_rate');
+      res.json({ rate: parseInt(setting?.settingValue || '5'), description: setting?.description || 'Créditos TMC por 1 USD' });
+    } catch (error) {
+      res.status(500).json({ message: 'Erro ao buscar taxa de câmbio' });
+    }
+  });
+
+  app.put('/api/admin/exchange-rate', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Apenas admin' });
+      const { rate } = req.body;
+      if (!rate || rate <= 0) return res.status(400).json({ message: 'Taxa deve ser positiva' });
+      await storage.updateSystemSetting('tmc_exchange_rate', String(rate));
+      res.json({ success: true, rate });
+    } catch (error) {
+      console.error('Failed to update exchange rate:', error);
+      res.status(500).json({ message: 'Erro ao atualizar taxa de câmbio' });
+    }
+  });
+
   app.get('/api/admin/credits/users', requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
@@ -17070,6 +17163,14 @@ async function initializeDefaultSystemSettings() {
       category: 'financial',
       isEditable: true,
     },
+    {
+      settingKey: 'tmc_exchange_rate',
+      settingValue: '5',
+      settingType: 'number',
+      description: 'Taxa de câmbio: quantidade de créditos TMC por 1 USD (padrão: 5 TMC = 1 USD)',
+      category: 'financial',
+      isEditable: true,
+    },
   ];
 
   try {
@@ -17119,5 +17220,114 @@ async function initializeDefaultDoctor() {
   } catch (error) {
     console.error('Failed to initialize default doctor:', error);
     return null;
+  }
+}
+
+async function initializeCreditPackagesAndCosts() {
+  try {
+    const existingPkgs = await db.select().from(tmcCreditPackages).limit(1);
+    if (existingPkgs.length === 0) {
+      const defaultPackages = [
+        {
+          name: 'Início',
+          credits: 25,
+          priceUsd: '5.00',
+          priceBrl: '25.00',
+          bonusCredits: 0,
+          description: 'Ideal para experimentar o sistema. Permite ~5 consultas ou ~8 prescrições.',
+          isActive: true,
+          isPromotional: false,
+          displayOrder: 1,
+        },
+        {
+          name: 'Básico Mensal',
+          credits: 100,
+          priceUsd: '20.00',
+          priceBrl: '100.00',
+          bonusCredits: 10,
+          description: 'Para médicos com até 20 consultas/mês. Inclui consultas, prescrições, prontuários e IA diagnóstica.',
+          isActive: true,
+          isPromotional: false,
+          displayOrder: 2,
+        },
+        {
+          name: 'Profissional',
+          credits: 250,
+          priceUsd: '50.00',
+          priceBrl: '250.00',
+          bonusCredits: 35,
+          description: 'Para clínicas ativas (~50 consultas/mês). Inclui todos os recursos + relatórios epidemiológicos e interconsultas.',
+          isActive: true,
+          isPromotional: false,
+          displayOrder: 3,
+        },
+        {
+          name: 'Premium',
+          credits: 500,
+          priceUsd: '100.00',
+          priceBrl: '500.00',
+          bonusCredits: 100,
+          description: 'Para alto volume (~100 consultas/mês). Acesso total com bônus de 20%. Ideal para equipes médicas.',
+          isActive: true,
+          isPromotional: false,
+          displayOrder: 4,
+        },
+        {
+          name: 'Institucional',
+          credits: 1500,
+          priceUsd: '250.00',
+          priceBrl: '1250.00',
+          bonusCredits: 500,
+          description: 'Para hospitais e redes de clínicas. 2000 créditos totais para múltiplos médicos e departamentos.',
+          isActive: true,
+          isPromotional: false,
+          displayOrder: 5,
+        },
+        {
+          name: 'Promoção Boas-Vindas',
+          credits: 50,
+          priceUsd: '8.00',
+          priceBrl: '40.00',
+          bonusCredits: 15,
+          description: 'Oferta especial para novos usuários! 65 créditos pelo preço de 40. Válido na primeira compra.',
+          isActive: true,
+          isPromotional: true,
+          displayOrder: 0,
+        },
+      ];
+
+      for (const pkg of defaultPackages) {
+        await db.insert(tmcCreditPackages).values(pkg);
+      }
+      console.log('✓ Default credit packages seeded (6 packages)');
+    }
+
+    const existingConfigs = await db.select().from(tmcConfig).limit(1);
+    if (existingConfigs.length === 0) {
+      const defaultCosts = [
+        { functionName: 'video_consultation', costInCredits: 5, description: 'Consulta por vídeo (Agora)', category: 'consultation', minimumRole: 'doctor', bonusForPatient: 0, commissionPercentage: 10 },
+        { functionName: 'ai_triage', costInCredits: 1, description: 'Triagem por IA (Manchester Protocol)', category: 'consultation', minimumRole: 'patient', bonusForPatient: 0, commissionPercentage: 0 },
+        { functionName: 'ai_diagnostic', costInCredits: 3, description: 'Inferência diagnóstica por IA (CID-10/DSM-5)', category: 'consultation', minimumRole: 'doctor', bonusForPatient: 0, commissionPercentage: 10 },
+        { functionName: 'prescription_create', costInCredits: 2, description: 'Emissão de prescrição digital', category: 'prescription', minimumRole: 'doctor', bonusForPatient: 0, commissionPercentage: 5 },
+        { functionName: 'medical_record_create', costInCredits: 2, description: 'Criação de prontuário médico', category: 'data_access', minimumRole: 'doctor', bonusForPatient: 1, commissionPercentage: 5 },
+        { functionName: 'medical_record_view', costInCredits: 1, description: 'Consulta de prontuário', category: 'data_access', minimumRole: 'doctor', bonusForPatient: 0, commissionPercentage: 0 },
+        { functionName: 'ai_chat', costInCredits: 1, description: 'Consulta ao chatbot IA médico', category: 'consultation', minimumRole: 'patient', bonusForPatient: 0, commissionPercentage: 0 },
+        { functionName: 'whatsapp_ai_analysis', costInCredits: 2, description: 'Análise de mensagem WhatsApp por IA', category: 'consultation', minimumRole: 'doctor', bonusForPatient: 0, commissionPercentage: 5 },
+        { functionName: 'epidemiological_report', costInCredits: 5, description: 'Relatório epidemiológico com MeSH/CID', category: 'data_access', minimumRole: 'doctor', bonusForPatient: 0, commissionPercentage: 10 },
+        { functionName: 'post_consultation_review', costInCredits: 2, description: 'Revisão pós-consulta com geração de itens', category: 'consultation', minimumRole: 'doctor', bonusForPatient: 0, commissionPercentage: 5 },
+        { functionName: 'inter_consultation', costInCredits: 3, description: 'Interconsulta médica', category: 'consultation', minimumRole: 'doctor', bonusForPatient: 0, commissionPercentage: 10 },
+        { functionName: 'nft_creation', costInCredits: 10, description: 'Criação de NFT dinâmico de dados anonimizados', category: 'data_access', minimumRole: 'doctor', bonusForPatient: 2, commissionPercentage: 15 },
+        { functionName: 'drug_interaction_check', costInCredits: 1, description: 'Verificação de interação medicamentosa por IA', category: 'prescription', minimumRole: 'doctor', bonusForPatient: 0, commissionPercentage: 0 },
+        { functionName: 'soap_report', costInCredits: 2, description: 'Geração de relatório SOAP por IA', category: 'consultation', minimumRole: 'doctor', bonusForPatient: 0, commissionPercentage: 5 },
+        { functionName: 'lab_order', costInCredits: 1, description: 'Solicitação de exame laboratorial', category: 'prescription', minimumRole: 'doctor', bonusForPatient: 0, commissionPercentage: 0 },
+      ];
+
+      for (const cost of defaultCosts) {
+        await db.insert(tmcConfig).values(cost);
+      }
+      console.log('✓ Default feature costs seeded (15 functions)');
+    }
+  } catch (error) {
+    console.error('Failed to initialize credit packages/costs:', error);
   }
 }

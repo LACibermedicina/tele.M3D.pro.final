@@ -41,7 +41,7 @@ The application features an Express.js backend and a React frontend, with shared
 - **IAM3D Interconsulta:** Real-time AI diagnostic analysis during video consultations, triggered by doctor notes or transcription.
 - **Profile Photo Upload:** Functionality for users to upload profile pictures, stored statically.
 - **Post-Consultation Diagnostic Classification:** AI extracts syndromic diagnostic hypotheses with CID-10/11 and DSM-5/TR codes, confidence levels, and suggested exams, requiring doctor review and authorization for clinical history compilation.
-- **Admin Financial Management:** Admin interface for managing user credit balances, feature costs, and auditing wallet transactions.
+- **Admin Financial Management:** Admin interface for managing user credit balances, feature costs, credit package CRUD (create/edit/activate/deactivate), configurable TMC/USD exchange rate, and auditing wallet transactions. PayPal checkout for credit purchases with 6 seeded packages and 15 feature costs.
 - **Reports Dashboard:** Dedicated page for doctors/admins with predefined reports on consultations, patients, financials, and doctor performance, with filtering and export options.
 - **Dynamic NFT Management:** Page for managing LGPD-compliant anonymized medical data insights as NFTs, allowing creation, detail viewing, share purchases, and consent record display.
 - **Internal Broker:** Dedicated page for trading NFT shares and TM3D tokens, featuring an order book, order management, and trade history.

@@ -124,6 +124,10 @@ export default function WalletPage() {
     queryKey: ["/api/wallet/weekly-report"],
   });
 
+  const { data: exchangeRate } = useQuery<{ rate: number }>({
+    queryKey: ["/api/admin/exchange-rate"],
+  });
+
   const linkWalletMutation = useMutation({
     mutationFn: async (data: { address: string; type: string; network: string; label?: string }) => {
       const res = await apiRequest("POST", "/api/external-wallets", data);
@@ -332,9 +336,14 @@ export default function WalletPage() {
         </TabsList>
 
         <TabsContent value="comprar" className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <CreditCard className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Pacotes de Créditos</h2>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Pacotes de Créditos</h2>
+            </div>
+            <Badge variant="outline" className="text-xs">
+              Taxa: 1 USD = {exchangeRate?.rate || 5} TMC
+            </Badge>
           </div>
 
           {packagesLoading ? (
@@ -342,54 +351,76 @@ export default function WalletPage() {
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {packages.map((pkg: any) => (
-                <Card
-                  key={pkg.id}
-                  className={`cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] ${
-                    selectedPackage?.id === pkg.id
-                      ? "ring-2 ring-primary shadow-lg"
-                      : "hover:border-primary/50"
-                  }`}
-                  onClick={() => !paypalOrderId && createOrderMutation.mutate(pkg.id)}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{pkg.name}</CardTitle>
-                      {pkg.bonusCredits > 0 && (
-                        <Badge className="bg-amber-500 text-white">+{pkg.bonusCredits} bônus</Badge>
-                      )}
-                    </div>
-                    <CardDescription className="text-xs">{pkg.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-2xl font-bold text-primary">${pkg.priceUsd}</span>
-                        <span className="text-sm text-muted-foreground ml-2">R$ {pkg.priceBrl}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {packages.map((pkg: any) => {
+                const totalCredits = pkg.credits + (pkg.bonusCredits || 0);
+                const costPerCredit = (parseFloat(pkg.priceUsd) / totalCredits).toFixed(3);
+                return (
+                  <Card
+                    key={pkg.id}
+                    className={`cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] relative ${
+                      pkg.isPromotional ? "border-amber-400 dark:border-amber-600" : ""
+                    } ${
+                      selectedPackage?.id === pkg.id
+                        ? "ring-2 ring-primary shadow-lg"
+                        : "hover:border-primary/50"
+                    }`}
+                    onClick={() => !paypalOrderId && createOrderMutation.mutate(pkg.id)}
+                  >
+                    {pkg.isPromotional && (
+                      <div className="absolute -top-2 left-4 px-2 py-0.5 bg-amber-500 text-white text-xs font-bold rounded">
+                        PROMOÇÃO
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Coins className="h-4 w-4 text-amber-500" />
-                        <span className="font-medium">{pkg.credits} créditos</span>
-                      </div>
-                      <Button
-                        className="w-full"
-                        size="sm"
-                        disabled={createOrderMutation.isPending || !!paypalOrderId}
-                      >
-                        {createOrderMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <ShoppingCart className="h-4 w-4 mr-1" />
-                            Comprar
-                          </>
+                    )}
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">{pkg.name}</CardTitle>
+                        {pkg.bonusCredits > 0 && (
+                          <Badge className="bg-emerald-500 text-white">+{pkg.bonusCredits} bônus</Badge>
                         )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      </div>
+                      <CardDescription className="text-xs">{pkg.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-2xl font-bold text-primary">${pkg.priceUsd}</span>
+                          {pkg.priceBrl && (
+                            <span className="text-sm text-muted-foreground ml-2">R$ {pkg.priceBrl}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <Coins className="h-4 w-4 text-amber-500" />
+                            <span className="font-medium">{totalCredits} créditos</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">${costPerCredit}/crédito</span>
+                        </div>
+                        {pkg.bonusCredits > 0 && (
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                            {pkg.credits} base + {pkg.bonusCredits} bônus
+                          </p>
+                        )}
+                        <Button
+                          className="w-full"
+                          size="sm"
+                          variant={pkg.isPromotional ? "default" : "outline"}
+                          disabled={createOrderMutation.isPending || !!paypalOrderId}
+                        >
+                          {createOrderMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <ShoppingCart className="h-4 w-4 mr-1" />
+                              Comprar via PayPal
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
 
