@@ -17014,12 +17014,13 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
       // CRITICAL: Verify the PayPal order server-side before issuing credits
       const { body: orderBody } = await (async () => {
         const { OrdersController, Client, Environment } = await import("@paypal/paypal-server-sdk");
+        const useProduction = process.env.PAYPAL_ENV === 'production';
         const client = new Client({
           clientCredentialsAuthCredentials: {
             oAuthClientId: process.env.PAYPAL_CLIENT_ID!,
             oAuthClientSecret: process.env.PAYPAL_CLIENT_SECRET!,
           },
-          environment: process.env.NODE_ENV === "production" ? Environment.Production : Environment.Sandbox,
+          environment: useProduction ? Environment.Production : Environment.Sandbox,
         });
         const ordersController = new OrdersController(client);
         return await ordersController.showOrderDetails(paypalOrderId);
@@ -17135,12 +17136,13 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
       }
 
       const { OrdersController, Client, Environment } = await import("@paypal/paypal-server-sdk");
+      const useProduction = process.env.PAYPAL_ENV === 'production';
       const client = new Client({
         clientCredentialsAuthCredentials: {
           oAuthClientId: process.env.PAYPAL_CLIENT_ID!,
           oAuthClientSecret: process.env.PAYPAL_CLIENT_SECRET!,
         },
-        environment: process.env.NODE_ENV === "production" ? Environment.Production : Environment.Sandbox,
+        environment: useProduction ? Environment.Production : Environment.Sandbox,
       });
       const ordersController = new OrdersController(client);
 
@@ -17187,12 +17189,13 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
       }
 
       const { OrdersController, Client, Environment } = await import("@paypal/paypal-server-sdk");
+      const useProduction = process.env.PAYPAL_ENV === 'production';
       const client = new Client({
         clientCredentialsAuthCredentials: {
           oAuthClientId: process.env.PAYPAL_CLIENT_ID!,
           oAuthClientSecret: process.env.PAYPAL_CLIENT_SECRET!,
         },
-        environment: process.env.NODE_ENV === "production" ? Environment.Production : Environment.Sandbox,
+        environment: useProduction ? Environment.Production : Environment.Sandbox,
       });
       const ordersController = new OrdersController(client);
 
