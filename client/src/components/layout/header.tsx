@@ -75,26 +75,41 @@ export default function Header() {
   // Determine if we're on an authenticated page (not home/login)
   const isAuthenticatedPage = user !== null && location !== '/' && location !== '/login';
 
-  // Get text color based on page type and scroll state
+  const isDarkHeader = isScrolled || !isAuthenticatedPage;
+
   const getTextColor = () => {
-    if (isAuthenticatedPage) {
-      // Authenticated pages: dark when not scrolled (light mode), white in dark mode or when scrolled
-      return isScrolled ? 'text-white' : 'text-gray-800 dark:text-white';
-    } else {
-      // Home/Login: always white
+    if (isDarkHeader) {
       return 'text-white';
     }
+    return 'text-gray-900 dark:text-white';
   };
 
-  // Get shadow effect based on page type and scroll state
-  const getShadowEffect = () => {
-    if (isAuthenticatedPage) {
-      // No shadow on authenticated pages when not scrolled
-      return isScrolled ? 'none' : 'none';
-    } else {
-      // Shadow on home/login when not scrolled
-      return isScrolled ? 'none' : '0 4px 20px rgba(0,0,0,0.3), 0 2px 10px rgba(0,0,0,0.2)';
+  const getSubTextColor = () => {
+    if (isDarkHeader) {
+      return 'text-gray-200';
     }
+    return 'text-gray-600 dark:text-gray-300';
+  };
+
+  const getShadowEffect = () => {
+    if (!isAuthenticatedPage && !isScrolled) {
+      return '0 4px 20px rgba(0,0,0,0.3), 0 2px 10px rgba(0,0,0,0.2)';
+    }
+    return 'none';
+  };
+
+  const getIconFilter = () => {
+    if (isDarkHeader) {
+      return 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))';
+    }
+    return 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))';
+  };
+
+  const getDividerColor = () => {
+    if (isDarkHeader) {
+      return 'bg-white/20';
+    }
+    return 'bg-gray-300 dark:bg-white/20';
   };
 
   // Get only first and second name
@@ -451,7 +466,9 @@ export default function Header() {
       className={`border-b sticky top-0 z-50 transition-all duration-300 w-full ${
         isScrolled 
           ? 'bg-slate-900/80 backdrop-blur-md border-slate-700 shadow-lg' 
-          : 'bg-transparent border-transparent'
+          : isAuthenticatedPage
+            ? 'bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border-gray-200/50 dark:border-slate-700 shadow-sm'
+            : 'bg-transparent border-transparent'
       }`} 
       data-testid="header-main"
     >
@@ -470,7 +487,7 @@ export default function Header() {
                     >
                       <Menu 
                         className={`h-5 w-5 transition-all duration-300 ${getTextColor()}`}
-                        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+                        style={{ filter: getIconFilter() }}
                       />
                     </Button>
                   </SheetTrigger>
@@ -673,23 +690,13 @@ export default function Header() {
                   <img 
                     src={telemedLogo} 
                     alt="Tele<M3D> Logo" 
-                    className="w-full h-full object-contain transition-all duration-300 group-hover:scale-110"
+                    className={`w-full h-full object-contain transition-all duration-300 group-hover:scale-110 ${!isDarkHeader ? 'dark:invert' : ''}`}
                     style={{ 
-                      filter: isAuthenticatedPage 
-                        ? (isScrolled 
-                            ? 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))' 
-                            : 'brightness(0) invert(0) drop-shadow(0 2px 6px rgba(0,0,0,0.25))')
-                        : (isScrolled 
-                            ? 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))' 
-                            : 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))')
+                      filter: isDarkHeader
+                        ? 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))'
+                        : 'brightness(0) invert(0) drop-shadow(0 1px 3px rgba(0,0,0,0.15))'
                     }}
                   />
-                  {/* Dark mode override for authenticated pages when not scrolled */}
-                  <style>{`
-                    .dark img[alt="Tele<M3D> Logo"] {
-                      ${isAuthenticatedPage && !isScrolled ? 'filter: brightness(0) invert(1) !important;' : ''}
-                    }
-                  `}</style>
                 </div>
                 <span 
                   className={`hidden md:block text-xl font-bold group-hover:text-primary transition-all duration-300 ${getTextColor()}`}
@@ -715,9 +722,9 @@ export default function Header() {
                     {t("greeting.hello")}, {getShortName(user.name)}!
                   </p>
                   <p 
-                    className={`text-xs transition-all duration-300 ${isAuthenticatedPage && !isScrolled ? 'text-gray-600 dark:text-gray-300' : 'text-gray-200'}`}
+                    className={`text-xs transition-all duration-300 ${getSubTextColor()}`}
                     style={{
-                      textShadow: isAuthenticatedPage ? 'none' : getShadowEffect()
+                      textShadow: isDarkHeader && !isScrolled ? getShadowEffect() : 'none'
                     }}
                   >
                     {getRoleDisplay(user.role)}
@@ -742,7 +749,7 @@ export default function Header() {
                   return (
                     <div key={group.category} className="flex items-center">
                       {groupIdx > 0 && (
-                        <div className={`mx-1 h-6 w-px ${isAuthenticatedPage ? 'bg-border/50' : (isScrolled ? 'bg-white/20' : 'bg-white/15')}`} />
+                        <div className={`mx-1 h-6 w-px ${getDividerColor()}`} />
                       )}
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -759,7 +766,7 @@ export default function Header() {
                             >
                               <IconComponent 
                                 className={`h-4.5 w-4.5 transition-all duration-300 ${isActive ? 'text-white' : getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
-                                style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+                                style={{ filter: getIconFilter() }}
                               />
                             </Button>
                           </Link>
@@ -775,7 +782,7 @@ export default function Header() {
                 return (
                   <div key={group.category} className="flex items-center">
                     {groupIdx > 0 && (
-                      <div className={`mx-1 h-6 w-px ${isAuthenticatedPage ? 'bg-border/50' : (isScrolled ? 'bg-white/20' : 'bg-white/15')}`} />
+                      <div className={`mx-1 h-6 w-px ${getDividerColor()}`} />
                     )}
                     <DropdownMenu>
                       <Tooltip>
@@ -795,7 +802,7 @@ export default function Header() {
                                 {FirstIcon && (
                                   <FirstIcon 
                                     className={`h-4.5 w-4.5 transition-all duration-300 ${groupHasActive ? 'text-white' : getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
-                                    style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+                                    style={{ filter: getIconFilter() }}
                                   />
                                 )}
                                 <ChevronDown className={`h-3 w-3 transition-all duration-300 ${groupHasActive ? 'text-white/70' : getTextColor()} opacity-60`} />
@@ -828,7 +835,7 @@ export default function Header() {
                               className={`cursor-pointer py-2.5 px-3 transition-all ${isActive ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-primary/5'}`}
                               data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}
                             >
-                              <IconComponent className={`mr-3 h-4 w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))' }} />
+                              <IconComponent className={`mr-3 h-4 w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                               <span className="flex-1">{item.label}</span>
                               {hasBadge && (
                                 <span className="ml-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
@@ -860,7 +867,7 @@ export default function Header() {
                     >
                       <Zap 
                         className={`h-5 w-5 transition-all duration-300 ${getTextColor()} group-hover:text-white group-hover:drop-shadow-[0_2px_12px_rgba(251,191,36,1)]`}
-                        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+                        style={{ filter: getIconFilter() }}
                       />
                     </Button>
                   </DropdownMenuTrigger>
@@ -1000,17 +1007,17 @@ export default function Header() {
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   placeholder="Email"
-                  className="w-32 px-2 py-1 bg-transparent text-xs text-white placeholder:text-white/40 focus:outline-none focus:placeholder:text-white/60 transition-all drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]"
+                  className={`w-32 px-2 py-1 bg-transparent text-xs focus:outline-none transition-all ${getTextColor()} ${isDarkHeader ? 'placeholder:text-white/40 focus:placeholder:text-white/60' : 'placeholder:text-gray-400 focus:placeholder:text-gray-500'}`}
                   data-testid="input-quick-login-email"
                   disabled={isLoggingIn}
                 />
-                <div className="h-4 w-px bg-border/50" />
+                <div className={`h-4 w-px ${getDividerColor()}`} />
                 <input
                   type="password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="Senha"
-                  className="w-24 px-2 py-1 bg-transparent text-xs text-white placeholder:text-white/40 focus:outline-none focus:placeholder:text-white/60 transition-all drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]"
+                  className={`w-24 px-2 py-1 bg-transparent text-xs focus:outline-none transition-all ${getTextColor()} ${isDarkHeader ? 'placeholder:text-white/40 focus:placeholder:text-white/60' : 'placeholder:text-gray-400 focus:placeholder:text-gray-500'}`}
                   data-testid="input-quick-login-password"
                   disabled={isLoggingIn}
                 />
@@ -1021,9 +1028,9 @@ export default function Header() {
                   data-testid="button-quick-login"
                 >
                   {isLoggingIn ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
+                    <Loader2 className={`h-3.5 w-3.5 animate-spin ${getTextColor()}`} />
                   ) : (
-                    <LogIn className="h-3.5 w-3.5 text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]" />
+                    <LogIn className={`h-3.5 w-3.5 ${getTextColor()}`} />
                   )}
                 </button>
               </form>
@@ -1056,7 +1063,7 @@ export default function Header() {
             
             {user ? (
               <>
-                <NotificationCenter isScrolled={isScrolled} />
+                <NotificationCenter isScrolled={isDarkHeader} />
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -1081,9 +1088,9 @@ export default function Header() {
                           {user.name}
                         </p>
                         <p 
-                          className={`text-xs transition-all duration-300 ${isAuthenticatedPage && !isScrolled ? 'text-gray-600 dark:text-gray-300' : 'text-gray-200'}`}
+                          className={`text-xs transition-all duration-300 ${getSubTextColor()}`}
                           style={{
-                            textShadow: isAuthenticatedPage ? 'none' : getShadowEffect()
+                            textShadow: isDarkHeader && !isScrolled ? getShadowEffect() : 'none'
                           }}
                         >
                           {getRoleDisplay(user.role)}
@@ -1139,8 +1146,8 @@ export default function Header() {
                       }}
                     >
                       <Shield 
-                        className="h-5 w-5 text-white group-hover:drop-shadow-[0_2px_12px_rgba(59,130,246,0.8)] transition-all duration-300" 
-                        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+                        className={`h-5 w-5 ${getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(59,130,246,0.8)] transition-all duration-300`}
+                        style={{ filter: getIconFilter() }}
                       />
                     </Button>
                   </TooltipTrigger>
@@ -1166,8 +1173,8 @@ export default function Header() {
                       }}
                     >
                       <Ambulance 
-                        className="h-5 w-5 text-white group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)] transition-all duration-300" 
-                        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+                        className={`h-5 w-5 ${getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(239,68,68,0.8)] transition-all duration-300`}
+                        style={{ filter: getIconFilter() }}
                       />
                     </Button>
                   </TooltipTrigger>
@@ -1186,8 +1193,8 @@ export default function Header() {
                       onClick={() => navigate('/register')}
                     >
                       <UserPlus 
-                        className="h-5 w-5 text-white group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300" 
-                        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+                        className={`h-5 w-5 ${getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)] transition-all duration-300`}
+                        style={{ filter: getIconFilter() }}
                       />
                     </Button>
                   </TooltipTrigger>

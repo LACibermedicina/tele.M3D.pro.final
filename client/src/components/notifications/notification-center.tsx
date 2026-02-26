@@ -121,21 +121,21 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
           variant="ghost" 
           size="sm" 
           className={`relative hover:bg-primary/10 transition-colors duration-300 ${
-            isScrolled ? 'text-white' : 'text-gray-800 dark:text-gray-200'
+            isScrolled ? 'text-white' : 'text-gray-900 dark:text-white'
           }`}
           data-testid="button-notification-center"
         >
           {unreadCount > 0 ? (
             <BellRing className={`h-5 w-5 transition-colors duration-300 ${
               isScrolled 
-                ? 'text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]' 
-                : 'text-gray-800 dark:text-gray-200'
+                ? 'text-white' 
+                : 'text-gray-900 dark:text-white'
             }`} />
           ) : (
             <Bell className={`h-5 w-5 transition-colors duration-300 ${
               isScrolled 
-                ? 'text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]' 
-                : 'text-gray-800 dark:text-gray-200'
+                ? 'text-white' 
+                : 'text-gray-900 dark:text-white'
             }`} />
           )}
           
