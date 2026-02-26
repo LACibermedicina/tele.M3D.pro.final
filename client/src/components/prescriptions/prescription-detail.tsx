@@ -118,12 +118,18 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
 
   // Download PDF mutation
   const handleDownloadPDF = async () => {
-    try {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
       toast({
-        title: "Gerando PDF",
-        description: "Aguarde enquanto o PDF é gerado...",
+        title: "Erro ao Gerar PDF",
+        description: "Popup bloqueado pelo navegador. Permita popups para este site e tente novamente.",
+        variant: "destructive",
       });
-      
+      return;
+    }
+    printWindow.document.write('<html><body><p style="font-family:sans-serif;padding:40px;color:#666;">Gerando PDF, aguarde...</p></body></html>');
+
+    try {
       const response = await fetch(`/api/prescriptions/${prescriptionId}/pdf`, {
         method: 'GET',
         credentials: 'include',
@@ -133,27 +139,22 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
       
       const htmlContent = await response.text();
       
-      // Open HTML in new window for printing/saving as PDF
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-        
-        // Wait for content to load then trigger print dialog
-        printWindow.onload = () => {
-          setTimeout(() => {
-            printWindow.print();
-          }, 250);
-        };
-        
-        toast({
-          title: "PDF Pronto",
-          description: "Use a opção 'Salvar como PDF' na janela de impressão.",
-        });
-      } else {
-        throw new Error('Popup bloqueado. Permita popups para baixar o PDF.');
-      }
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 250);
+      };
+      
+      toast({
+        title: "PDF Pronto",
+        description: "Use a opção 'Salvar como PDF' na janela de impressão.",
+      });
     } catch (error) {
+      printWindow.close();
       toast({
         title: "Erro ao Gerar PDF",
         description: error instanceof Error ? error.message : "Não foi possível gerar o PDF da prescrição.",
