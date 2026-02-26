@@ -1147,9 +1147,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.user || (req.user.role !== 'doctor' && req.user.role !== 'admin')) {
         return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
       }
-      const patients = await storage.getAllPatients();
-      res.json(patients);
+
+      if (req.user.role === 'admin') {
+        const allPatients = await storage.getAllPatients();
+        return res.json(allPatients);
+      }
+
+      const doctorId = req.user.id;
+
+      const patientIdsFromAppointments = await db.select({ patientId: appointments.patientId })
+        .from(appointments)
+        .where(eq(appointments.doctorId, doctorId));
+
+      const patientIdsFromRequests = await db.select({ patientId: consultationRequests.patientId })
+        .from(consultationRequests)
+        .where(eq(consultationRequests.selectedDoctorId, doctorId));
+
+      const patientIdsFromVideoCalls = await db.select({ patientId: videoConsultations.patientId })
+        .from(videoConsultations)
+        .where(eq(videoConsultations.doctorId, doctorId));
+
+      const patientIdsFromTokens = await db.select({ patientId: consultationAccessTokens.patientId })
+        .from(consultationAccessTokens)
+        .where(eq(consultationAccessTokens.doctorId, doctorId));
+
+      const uniquePatientIds = new Set<string>();
+      for (const row of patientIdsFromAppointments) if (row.patientId) uniquePatientIds.add(row.patientId);
+      for (const row of patientIdsFromRequests) if (row.patientId) uniquePatientIds.add(row.patientId);
+      for (const row of patientIdsFromVideoCalls) if (row.patientId) uniquePatientIds.add(row.patientId);
+      for (const row of patientIdsFromTokens) if (row.patientId) uniquePatientIds.add(row.patientId);
+
+      if (uniquePatientIds.size === 0) {
+        return res.json([]);
+      }
+
+      const patientIdArray = Array.from(uniquePatientIds);
+      const doctorPatients = await db.select().from(patients)
+        .where(inArray(patients.id, patientIdArray));
+
+      res.json(doctorPatients);
     } catch (error) {
+      console.error('Failed to get patients:', error);
       res.status(500).json({ message: 'Failed to get patients' });
     }
   });
@@ -1163,6 +1201,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const ownPatient = await storage.getPatientByUserId(req.user.id);
         if (!ownPatient || ownPatient.id !== req.params.id) {
           return res.status(403).json({ message: 'Acesso negado. Você só pode visualizar seus próprios dados.' });
+        }
+      }
+      if (req.user.role === 'doctor') {
+        const patientId = req.params.id;
+        const doctorId = req.user.id;
+        const hasRelationship = await db.select({ id: appointments.id }).from(appointments)
+          .where(and(eq(appointments.doctorId, doctorId), eq(appointments.patientId, patientId))).limit(1);
+        if (hasRelationship.length === 0) {
+          const hasRequest = await db.select({ id: consultationRequests.id }).from(consultationRequests)
+            .where(and(eq(consultationRequests.selectedDoctorId, doctorId), eq(consultationRequests.patientId, patientId))).limit(1);
+          if (hasRequest.length === 0) {
+            const hasVideo = await db.select({ id: videoConsultations.id }).from(videoConsultations)
+              .where(and(eq(videoConsultations.doctorId, doctorId), eq(videoConsultations.patientId, patientId))).limit(1);
+            if (hasVideo.length === 0) {
+              const hasToken = await db.select({ id: consultationAccessTokens.id }).from(consultationAccessTokens)
+                .where(and(eq(consultationAccessTokens.doctorId, doctorId), eq(consultationAccessTokens.patientId, patientId))).limit(1);
+              if (hasToken.length === 0) {
+                return res.status(403).json({ message: 'Acesso negado. Você só pode visualizar pacientes vinculados a você.' });
+              }
+            }
+          }
         }
       }
       const patient = await storage.getPatient(req.params.id);
