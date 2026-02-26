@@ -50,8 +50,7 @@ export function VoiceAssistantPrompt() {
             </Button>
             <Button
               onClick={dismissPrompt}
-              variant="outline"
-              className="flex-1 border-white/20 text-white hover:bg-white/10 h-12"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white h-12"
             >
               <MicOff className="w-5 h-5 mr-2" />
               Não, obrigado
