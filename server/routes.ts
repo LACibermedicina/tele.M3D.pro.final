@@ -19,7 +19,7 @@ import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
 import { z } from "zod";
 import { db } from "./db";
-import { eq, desc, sql, and, or, isNotNull, inArray, gte, lte } from "drizzle-orm";
+import { eq, desc, sql, and, or, isNotNull, inArray, gte, lte, lt } from "drizzle-orm";
 import { generateAgoraToken, getAgoraAppId } from "./agora";
 
 // TMC Credit System Validation Schemas
@@ -8246,10 +8246,10 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         .from(appointments)
         .where(and(
           eq(appointments.doctorId, req.user.id),
-          gte(appointments.date, new Date()),
+          gte(appointments.scheduledAt, new Date()),
           eq(appointments.status, 'scheduled')
         ))
-        .orderBy(appointments.date)
+        .orderBy(appointments.scheduledAt)
         .limit(1);
 
       const rescheduledConsultations = [];
@@ -8260,7 +8260,7 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         let rescheduleReason: string;
 
         if (nextScheduled.length > 0) {
-          rescheduleTime = new Date(nextScheduled[0].date);
+          rescheduleTime = new Date(nextScheduled[0].scheduledAt);
           rescheduleReason = `Reagendada para horário programado: ${rescheduleTime.toLocaleDateString('pt-BR')} às ${rescheduleTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
         } else {
           // 30 minutes after doctor's next login (placeholder — set as "pending_reschedule")
@@ -9395,8 +9395,8 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         const [allAppointments, unprocessedMessages, patients] = await Promise.all([
           db.select().from(appointments).where(
             and(
-              gte(appointments.date, today.toISOString()),
-              lt(appointments.date, tomorrow.toISOString())
+              gte(appointments.scheduledAt, today),
+              lt(appointments.scheduledAt, tomorrow)
             )
           ),
           storage.getUnprocessedWhatsappMessages(),
