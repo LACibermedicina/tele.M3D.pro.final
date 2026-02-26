@@ -6871,22 +6871,9 @@ Responda APENAS com o JSON, sem texto adicional.`;
 
       let aiResponse: string | null = null;
       try {
-        const result = await geminiService.generateContent(prompt);
-        aiResponse = result;
+        aiResponse = await geminiService.generateText(prompt);
       } catch (err) {
-        console.log('[AI-SUGGEST] Gemini failed, trying OpenAI fallback');
-        try {
-          const OpenAI = (await import('openai')).default;
-          const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-          const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0.3,
-          });
-          aiResponse = completion.choices[0]?.message?.content || null;
-        } catch (err2) {
-          console.error('[AI-SUGGEST] All AI services failed:', err2);
-        }
+        console.error('[AI-SUGGEST] AI service failed:', err);
       }
 
       if (!aiResponse) {
@@ -7014,22 +7001,9 @@ IMPORTANTE:
 
       let aiResponse: string | null = null;
       try {
-        const result = await geminiService.generateContent(prompt);
-        aiResponse = result;
+        aiResponse = await geminiService.generateText(prompt);
       } catch (err) {
-        console.log('[AI-MED-LIST] Gemini failed, trying OpenAI fallback');
-        try {
-          const OpenAI = (await import('openai')).default;
-          const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-          const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0.3,
-          });
-          aiResponse = completion.choices[0]?.message?.content || null;
-        } catch (err2) {
-          console.error('[AI-MED-LIST] All AI services failed:', err2);
-        }
+        console.error('[AI-MED-LIST] AI service failed:', err);
       }
 
       if (!aiResponse) {
