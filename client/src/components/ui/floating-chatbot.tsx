@@ -295,14 +295,14 @@ export default function FloatingChatbot() {
           response: data.message?.content || data.response || 'Como posso ajudá-lo hoje?',
           isSchedulingRequest: data.type === 'appointment',
           isClinicalQuestion: data.type === 'clinical',
-          suggestedAction: data.metadata?.suggestedAppointment ? 'schedule' : undefined,
+          suggestedAction: data.metadata?.actionType || (data.metadata?.suggestedAppointment ? 'schedule' : undefined),
           suggestedAppointment: data.metadata?.suggestedAppointment,
           diagnosticHypotheses: data.metadata?.diagnosticHypotheses,
           interviewId: data.metadata?.interviewId,
           interviewStage: data.metadata?.interviewStage,
           urgencyLevel: data.metadata?.urgencyLevel,
           isComplete: data.metadata?.isComplete,
-          urgentFlag: data.metadata?.urgentFlag
+          urgentFlag: data.metadata?.urgentFlag || data.metadata?.actionType === 'urgent_consultation'
         };
       } else {
         // For visitors, simpler response structure (no advanced features)

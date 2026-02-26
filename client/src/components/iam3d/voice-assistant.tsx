@@ -1,10 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Keyboard, Send } from "lucide-react";
+import { X, Keyboard, Send, Phone, Calendar, UserPlus, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 type AssistantState = "idle" | "listening" | "speaking" | "processing";
+
+interface ActionButton {
+  label: string;
+  icon: typeof Phone;
+  action: () => void;
+  variant?: "default" | "destructive";
+}
 
 interface IAM3DVoiceAssistantProps {
   isOpen: boolean;
@@ -13,19 +23,21 @@ interface IAM3DVoiceAssistantProps {
 
 export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProps) {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [state, setState] = useState<AssistantState>("idle");
   const [transcript, setTranscript] = useState("");
-  const [response, setResponse] = useState("Olá! Sou o IAM3D, seu assistente de voz. Toque na esfera para começar.");
+  const [response, setResponse] = useState("Olá! Sou o IAM3D, seu assistente médico de voz. Posso ajudar com triagem, agendamento, consultas urgentes e mais. Toque na esfera para começar.");
   const [showInput, setShowInput] = useState(false);
   const [manualInput, setManualInput] = useState("");
-  const [conversationHistory, setConversationHistory] = useState<Array<{ role: string; content: string }>>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [actionButtons, setActionButtons] = useState<ActionButton[]>([]);
+  const [lastSymptoms, setLastSymptoms] = useState<string>("");
 
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -76,7 +88,6 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
       if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
       if (synthRef.current) synthRef.current.cancel();
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      if (audioContextRef.current) try { audioContextRef.current.close(); } catch {}
     };
   }, []);
 
@@ -241,32 +252,120 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
     synthRef.current.speak(utterance);
   };
 
+  const handleUrgentConsultation = async (symptoms: string) => {
+    try {
+      setState("processing");
+      const res = await apiRequest("POST", "/api/chatbot/urgent-consultation", {
+        symptoms: symptoms || "Sintomas relatados via assistente de voz",
+        urgencyLevel: "urgent",
+      });
+      const data = await res.json();
+      setResponse(data.message);
+      speakText(data.message);
+      setActionButtons([]);
+      if (data.success) {
+        toast({
+          title: "Consulta Urgente Solicitada",
+          description: `Médico de plantão notificado: ${data.selectedDoctor?.name || 'médico disponível'}`,
+        });
+      }
+    } catch {
+      const errMsg = "Não foi possível solicitar a consulta urgente. Tente novamente.";
+      setResponse(errMsg);
+      speakText(errMsg);
+    }
+  };
+
+  const handleNavigate = (path: string) => {
+    handleClose();
+    setLocation(path);
+  };
+
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
     setState("processing");
     setResponse("");
-
-    const newHistory = [...conversationHistory, { role: "user", content: text }];
-    setConversationHistory(newHistory);
+    setActionButtons([]);
+    setLastSymptoms(text);
 
     try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          message: text,
-          conversationHistory: newHistory.slice(-6),
-          context: `Você é o IAM3D (pronuncia-se "ia méd"), assistente médico virtual de voz da plataforma Tele<M3D>. Responda de forma clara, concisa e adequada para leitura em voz alta. Máximo 3 frases por resposta. Seja direto e natural.`,
-        }),
-      });
+      const endpoint = user ? "/api/chatbot/message" : "/api/chatbot/visitor-message";
+      const payload: any = { message: text };
+      if (user && conversationId) {
+        payload.conversationId = conversationId;
+      }
+      if (!user) {
+        payload.mode = "general";
+      }
 
-      if (!res.ok) throw new Error("API error");
+      const res = await apiRequest("POST", endpoint, payload);
       const data = await res.json();
-      const aiText = data.response || "Desculpe, não entendi. Pode repetir?";
+
+      let aiText: string;
+      let suggestedAppointment: any = null;
+      let actionType: string | null = null;
+
+      if (user) {
+        aiText = data.message?.content || data.response || "Desculpe, não entendi. Pode repetir?";
+        if (data.conversationId) setConversationId(data.conversationId);
+        suggestedAppointment = data.metadata?.suggestedAppointment;
+        actionType = data.metadata?.actionType;
+      } else {
+        aiText = data.response || "Desculpe, não entendi. Pode repetir?";
+      }
+
       setResponse(aiText);
-      setConversationHistory(prev => [...prev, { role: "assistant", content: aiText }]);
       speakText(aiText);
+
+      const buttons: ActionButton[] = [];
+
+      if (suggestedAppointment) {
+        buttons.push({
+          label: `Confirmar com Dr(a). ${suggestedAppointment.doctorName}`,
+          icon: Calendar,
+          action: async () => {
+            try {
+              setState("processing");
+              const confirmRes = await apiRequest("POST", "/api/chatbot/confirm-appointment", suggestedAppointment);
+              const confirmData = await confirmRes.json();
+              const confirmMsg = `Consulta confirmada com Dr(a). ${suggestedAppointment.doctorName}!`;
+              setResponse(confirmMsg);
+              speakText(confirmMsg);
+              setActionButtons([]);
+              toast({ title: "Consulta Confirmada", description: confirmMsg });
+            } catch {
+              speakText("Não foi possível confirmar. Tente novamente.");
+            }
+          },
+        });
+      }
+
+      if (actionType === "urgent_consultation" && user?.role === "patient") {
+        buttons.push({
+          label: "Solicitar Consulta Urgente",
+          icon: Phone,
+          variant: "destructive",
+          action: () => handleUrgentConsultation(text),
+        });
+      }
+
+      if (actionType === "register_update") {
+        buttons.push({
+          label: "Ir para Meu Perfil",
+          icon: UserPlus,
+          action: () => handleNavigate("/profile"),
+        });
+      }
+
+      if (data.type === "appointment" && !suggestedAppointment) {
+        buttons.push({
+          label: "Ver Agenda",
+          icon: Calendar,
+          action: () => handleNavigate("/schedule"),
+        });
+      }
+
+      setActionButtons(buttons);
     } catch {
       const errMsg = "Desculpe, houve um problema. Tente novamente.";
       setResponse(errMsg);
@@ -297,8 +396,8 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
     if (synthRef.current) synthRef.current.cancel();
     setState("idle");
     setTranscript("");
-    setResponse("Olá! Sou o IAM3D, seu assistente de voz. Toque na esfera para começar.");
-    setConversationHistory([]);
+    setResponse("Olá! Sou o IAM3D, seu assistente médico de voz. Posso ajudar com triagem, agendamento, consultas urgentes e mais. Toque na esfera para começar.");
+    setActionButtons([]);
     onClose();
   };
 
@@ -310,6 +409,12 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
     speaking: "Falando...",
     processing: "Processando...",
   };
+
+  const roleCapabilities = user?.role === "doctor" 
+    ? ["Diagnóstico", "Protocolos", "Plantão"]
+    : user?.role === "patient" 
+    ? ["Triagem", "Agendar", "Urgente"] 
+    : ["Sintomas", "Agendar", "Acesso"];
 
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gradient-to-b from-slate-900/95 via-slate-800/98 to-slate-900/95 backdrop-blur-xl">
@@ -323,6 +428,13 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
       <div className="absolute top-6 left-0 right-0 text-center">
         <h2 className="text-white/90 text-lg font-light tracking-widest">IAM3D</h2>
         <p className="text-white/50 text-xs mt-0.5">Assistente Médico de Voz</p>
+        <div className="flex items-center justify-center gap-2 mt-2">
+          {roleCapabilities.map((cap) => (
+            <span key={cap} className="px-2 py-0.5 rounded-full bg-white/10 text-white/60 text-[10px]">
+              {cap}
+            </span>
+          ))}
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center w-full max-w-sm px-6">
@@ -367,8 +479,29 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
         )}
 
         {response && state !== "listening" && (
-          <div className="w-full mb-4 px-4 py-3 rounded-2xl bg-white/5 border border-white/10 max-h-32 overflow-y-auto">
+          <div className="w-full mb-4 px-4 py-3 rounded-2xl bg-white/5 border border-white/10 max-h-40 overflow-y-auto">
             <p className="text-white/90 text-sm text-center leading-relaxed">{response}</p>
+          </div>
+        )}
+
+        {actionButtons.length > 0 && state !== "listening" && (
+          <div className="w-full mb-4 space-y-2">
+            {actionButtons.map((btn, idx) => (
+              <Button
+                key={idx}
+                onClick={btn.action}
+                variant={btn.variant === "destructive" ? "destructive" : "default"}
+                className={`w-full h-11 text-sm ${
+                  btn.variant === "destructive" 
+                    ? "bg-red-600 hover:bg-red-700 text-white" 
+                    : "bg-cyan-600 hover:bg-cyan-700 text-white"
+                }`}
+                disabled={state === "processing"}
+              >
+                <btn.icon className="w-4 h-4 mr-2" />
+                {btn.label}
+              </Button>
+            ))}
           </div>
         )}
 

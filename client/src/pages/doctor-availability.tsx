@@ -126,11 +126,12 @@ export default function DoctorAvailability() {
   const onDutyMutation = useMutation({
     mutationFn: async (activate: boolean) => {
       const res = await apiRequest('POST', '/api/doctors/on-duty', { activate });
-      return res.json();
+      const json = await res.json();
+      return { ...json, _activate: activate };
     },
     onSuccess: (data) => {
       toast({
-        title: activate ? "Plantão Ativado" : "Plantão Desativado",
+        title: data._activate ? "Plantão Ativado" : "Plantão Desativado",
         description: data.message,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/doctors'] });
@@ -304,10 +305,23 @@ export default function DoctorAvailability() {
           </div>
 
           {onDutyUntil && onDutyUntil > new Date() && (
-            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                ✓ Você está em plantão! Sempre que fizer login, estará automaticamente disponível para atendimentos imediatos até o término do plantão.
-              </p>
+            <div className="space-y-3">
+              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  ✓ Você está em plantão! Sempre que fizer login, estará automaticamente disponível para atendimentos imediatos até o término do plantão.
+                </p>
+              </div>
+              <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex items-start gap-3">
+                <span className="text-2xl mt-0.5">🎙️</span>
+                <div>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    Chamadas Urgentes via IAM3D
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                    Pacientes podem solicitar atendimento urgente pelo assistente de voz IAM3D. Você receberá notificações em tempo real para chamadas de plantão.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>

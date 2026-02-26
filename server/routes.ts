@@ -15276,6 +15276,104 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
+  // Request urgent consultation with on-duty doctor via voice assistant / chatbot
+  app.post('/api/chatbot/urgent-consultation', async (req: any, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Autenticação necessária' });
+      }
+
+      if (req.user.role !== 'patient') {
+        return res.status(403).json({ message: 'Apenas pacientes podem solicitar consultas urgentes' });
+      }
+
+      const { symptoms, urgencyLevel } = req.body;
+
+      if (!symptoms || !symptoms.trim()) {
+        return res.status(400).json({ message: 'Descrição dos sintomas é obrigatória' });
+      }
+
+      // Find on-duty doctors available for immediate consultation
+      const now = new Date();
+      const onDutyDoctors = await db.select({
+        id: users.id,
+        name: users.name,
+        specialization: users.specialization,
+        onDutyUntil: users.onDutyUntil,
+      })
+        .from(users)
+        .where(and(
+          eq(users.role, 'doctor'),
+          eq(users.isOnline, true),
+          eq(users.availableForImmediate, true),
+          sql`${users.onDutyUntil} > ${now.toISOString()}::timestamp`
+        ));
+
+      if (onDutyDoctors.length === 0) {
+        return res.json({
+          success: false,
+          message: 'Nenhum médico de plantão disponível no momento. Tente novamente em alguns minutos ou agende uma consulta regular.',
+          onDutyDoctors: [],
+        });
+      }
+
+      // Get patient record
+      const patientRecord = await db.select()
+        .from(patients)
+        .where(eq(patients.userId, req.user.id))
+        .limit(1);
+
+      const patientId = patientRecord.length > 0 ? patientRecord[0].id : req.user.id;
+
+      // Select best available doctor (first available on-duty)
+      const selectedDoctor = onDutyDoctors[0];
+
+      // Create consultation request with urgent status
+      const consultationRequest = await storage.createConsultationRequest({
+        patientId,
+        symptoms: symptoms,
+        urgencyLevel: urgencyLevel || 'urgent',
+        preferredDateTime: now,
+        selectedDoctorId: selectedDoctor.id,
+        status: 'pending'
+      });
+
+      // Create notification for the on-duty doctor
+      await storage.createNotification({
+        userId: selectedDoctor.id,
+        type: 'urgent_consultation',
+        title: '🚨 Consulta Urgente Solicitada',
+        message: `Paciente ${req.user.name} solicita atendimento urgente de plantão. Sintomas: ${symptoms.substring(0, 100)}...`,
+        data: {
+          consultationRequestId: consultationRequest.id,
+          patientId,
+          patientName: req.user.name,
+          symptoms,
+          urgencyLevel: urgencyLevel || 'urgent',
+        },
+      });
+
+      res.json({
+        success: true,
+        message: `Sua solicitação urgente foi enviada ao Dr(a). ${selectedDoctor.name} (${selectedDoctor.specialization || 'Clínica Geral'}), que está de plantão. Aguarde o aceite do médico.`,
+        consultationRequestId: consultationRequest.id,
+        selectedDoctor: {
+          id: selectedDoctor.id,
+          name: selectedDoctor.name,
+          specialization: selectedDoctor.specialization,
+        },
+        onDutyDoctors: onDutyDoctors.map(d => ({
+          id: d.id,
+          name: d.name,
+          specialization: d.specialization,
+        })),
+      });
+    } catch (error) {
+      console.error('Urgent consultation request error:', error);
+      res.status(500).json({ message: 'Erro ao solicitar consulta urgente' });
+    }
+  });
+
   // Schedule appointment via chatbot (legacy endpoint, kept for compatibility)
   app.post('/api/chatbot/schedule', async (req: Request, res: Response) => {
     try {
@@ -15655,20 +15753,28 @@ PERFIL DO USUÁRIO: Paciente da plataforma.
 
 SUAS CAPACIDADES PARA PACIENTES:
 - Orientações gerais sobre sintomas e condições de saúde
-- Triagem inicial e classificação de urgência de sintomas
+- Triagem inicial e classificação de urgência de sintomas (Protocolo de Manchester)
 - Informações sobre quando procurar atendimento médico
-- Ajuda com agendamento de consultas
+- Ajuda com agendamento de consultas (diga "quero agendar uma consulta")
+- Solicitação de CONSULTA URGENTE com médicos de plantão (diga "preciso de atendimento urgente")
 - Explicações sobre exames e procedimentos em linguagem acessível
 - Dicas de prevenção e autocuidado
+- Cadastro e atualização de informações pessoais
+
+AÇÕES ESPECIAIS (inclua estas tags quando detectar a intenção):
+- Se o paciente quer CONSULTA URGENTE/PLANTÃO: inclua [URGENT_CONSULTATION] no final da resposta
+- Se o paciente quer AGENDAR CONSULTA: o sistema detecta automaticamente
+- Se o paciente quer se CADASTRAR ou atualizar dados: inclua [REGISTER_UPDATE] no final da resposta
 
 REGRAS IMPORTANTES:
 1. Use linguagem simples e acessível, sem jargão médico complexo.
 2. REFERÊNCIAS MÉDICAS: Se disponíveis, baseie suas respostas nelas.
-3. OBJETIVIDADE: Respostas claras e acolhedoras (~30 palavras), exceto quando mais detalhes forem solicitados.
+3. OBJETIVIDADE: Respostas claras e acolhedoras (~50 palavras), exceto quando mais detalhes forem solicitados.
 4. NÃO REPETIR: Evite repetir informações já ditas. Sempre traga algo novo.
 5. NÃO DIAGNOSTICAR: Você NÃO faz diagnósticos. Sempre recomende consulta médica.
-6. EMERGÊNCIAS: Em casos de emergência, oriente a procurar atendimento imediato (SAMU 192, UPA, Pronto Socorro).
-7. NUNCA forneça apoio clínico técnico ou análise de casos — isso é para médicos.`;
+6. EMERGÊNCIAS: Em casos de emergência, oriente a procurar atendimento imediato (SAMU 192, UPA, Pronto Socorro) e sugira consulta urgente com médico de plantão.
+7. NUNCA forneça apoio clínico técnico ou análise de casos — isso é para médicos.
+8. Para respostas via assistente de voz: seja mais conciso e natural, máximo 3 frases.`;
       }
 
       // Add user message to conversation
@@ -15830,10 +15936,22 @@ REGRAS IMPORTANTES:
         referencesUsed = aiResult.referencesUsed;
       }
 
+      // Detect action tags in AI response
+      let actionType: string | null = null;
+      let cleanResponse = aiResponse;
+      
+      if (aiResponse.includes('[URGENT_CONSULTATION]')) {
+        actionType = 'urgent_consultation';
+        cleanResponse = aiResponse.replace('[URGENT_CONSULTATION]', '').trim();
+      } else if (aiResponse.includes('[REGISTER_UPDATE]')) {
+        actionType = 'register_update';
+        cleanResponse = aiResponse.replace('[REGISTER_UPDATE]', '').trim();
+      }
+
       // Add assistant response
       const assistantMessage = {
         role: 'assistant',
-        content: aiResponse,
+        content: cleanResponse,
         timestamp: new Date().toISOString(),
         referencesUsed: referencesUsed,
       };
@@ -15867,7 +15985,8 @@ REGRAS IMPORTANTES:
         message: assistantMessage,
         type: responseType,
         metadata: {
-          suggestedAppointment: suggestedAppointment
+          suggestedAppointment: suggestedAppointment,
+          actionType: actionType,
         }
       });
     } catch (error) {
