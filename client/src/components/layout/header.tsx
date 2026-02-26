@@ -347,6 +347,8 @@ export default function Header() {
         return t('roles.admin');
       case 'patient':
         return t('roles.patient');
+      case 'pharmacist':
+        return 'Farmacêutico';
       default:
         return role;
     }
@@ -434,6 +436,13 @@ export default function Header() {
         { path: "/epidemiological-reports", label: "Epidemiologia", icon: Activity, faIcon: "fas fa-chart-area", roles: ["admin", "doctor"] },
         { path: "/reports", label: "Relatórios", icon: FileBarChart, faIcon: "fas fa-file-chart-line", roles: ["admin", "doctor"] },
         { path: "/analytics", label: "Analytics", icon: BarChart3, faIcon: "fas fa-chart-bar", roles: ["admin"] },
+      ],
+    },
+    {
+      category: "farmacia",
+      label: "Farmácia",
+      items: [
+        { path: "/pharmacy", label: "Painel Farmácia", icon: Pill, faIcon: "fas fa-pills", roles: ["pharmacist", "admin"] },
       ],
     },
     {

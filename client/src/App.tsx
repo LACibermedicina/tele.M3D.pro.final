@@ -29,6 +29,9 @@ import RegisterSelect from "@/pages/register/index";
 import PatientRegister from "@/pages/register/patient";
 import DoctorRegister from "@/pages/register/doctor";
 import AdminRegister from "@/pages/register/admin";
+import PharmacistRegister from "@/pages/register/pharmacist";
+import PharmacyDashboard from "@/pages/pharmacy";
+import PharmacyReportsPage from "@/pages/pharmacy-reports";
 import PatientAgenda from "@/pages/patient-agenda";
 import MedicalAssistant from "@/pages/medical-assistant";
 import MedicalReferences from "@/pages/medical-references";
@@ -140,6 +143,10 @@ function Router() {
         <Route path="/register/admin">
           <Header />
           <AdminRegister />
+        </Route>
+        <Route path="/register/pharmacist">
+          <Header />
+          <PharmacistRegister />
         </Route>
         
         {/* Features page - public */}
@@ -419,6 +426,20 @@ function Router() {
           <ProtectedRoute requiredRoles={['doctor', 'admin', 'researcher']}>
             <Header />
             <NftManagement />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/pharmacy/reports">
+          <ProtectedRoute requiredRoles={['pharmacist', 'admin']}>
+            <Header />
+            <PharmacyReportsPage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/pharmacy">
+          <ProtectedRoute requiredRoles={['pharmacist', 'admin']}>
+            <Header />
+            <PharmacyDashboard />
           </ProtectedRoute>
         </Route>
 

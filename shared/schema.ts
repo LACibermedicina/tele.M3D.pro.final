@@ -11,7 +11,7 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").notNull().default("visitor"), // admin, patient, doctor, visitor, researcher
+  role: text("role").notNull().default("visitor"), // admin, patient, doctor, visitor, researcher, pharmacist
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
@@ -538,6 +538,8 @@ export const prescriptions = pgTable("prescriptions", {
   specialInstructions: text("special_instructions"),
   expiresAt: timestamp("expires_at"),
   dispensedAt: timestamp("dispensed_at"),
+  pharmacistId: uuid("pharmacist_id").references(() => users.id),
+  pharmacistReadAt: timestamp("pharmacist_read_at"),
   tmcCostPaid: integer("tmc_cost_paid").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -1800,6 +1802,55 @@ export const withdrawalRequests = pgTable("withdrawal_requests", {
 export const insertWithdrawalRequestSchema = createInsertSchema(withdrawalRequests).omit({ id: true, createdAt: true });
 export type InsertWithdrawalRequest = z.infer<typeof insertWithdrawalRequestSchema>;
 export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
+
+// Pharmacy Dispensing - tracks medication dispensing by pharmacists
+export const pharmacyDispensing = pgTable("pharmacy_dispensing", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  prescriptionId: uuid("prescription_id").references(() => prescriptions.id).notNull(),
+  prescriptionItemId: uuid("prescription_item_id").references(() => prescriptionItems.id),
+  pharmacistId: uuid("pharmacist_id").references(() => users.id).notNull(),
+  patientId: uuid("patient_id").references(() => patients.id).notNull(),
+  doctorId: uuid("doctor_id").references(() => users.id).notNull(),
+  medicationName: text("medication_name").notNull(),
+  dispensedQuantity: integer("dispensed_quantity").notNull(),
+  batchNumber: text("batch_number"),
+  manufacturer: text("manufacturer"),
+  expiryDate: timestamp("expiry_date"),
+  dispensingNotes: text("dispensing_notes"),
+  verificationMethod: text("verification_method").notNull().default("manual"), // qr_code, digital, manual
+  signatureVerified: boolean("signature_verified").default(false),
+  crmVerified: boolean("crm_verified").default(false),
+  crmVerificationNotes: text("crm_verification_notes"),
+  status: text("status").notNull().default("pending"), // pending, dispensed, partial, rejected
+  dispensedAt: timestamp("dispensed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPharmacyDispensingSchema = createInsertSchema(pharmacyDispensing).omit({ id: true, createdAt: true });
+export type InsertPharmacyDispensing = z.infer<typeof insertPharmacyDispensingSchema>;
+export type PharmacyDispensing = typeof pharmacyDispensing.$inferSelect;
+
+// Pharmacy Reports - LGPD-compliant reporting
+export const pharmacyReports = pgTable("pharmacy_reports", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  pharmacistId: uuid("pharmacist_id").references(() => users.id).notNull(),
+  reportType: text("report_type").notNull().default("daily"), // daily, weekly, monthly, custom
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  totalDispensed: integer("total_dispensed").default(0),
+  totalPrescriptions: integer("total_prescriptions").default(0),
+  medicationBreakdown: jsonb("medication_breakdown"),
+  doctorBreakdown: jsonb("doctor_breakdown"),
+  pathologyBreakdown: jsonb("pathology_breakdown"),
+  scheduleBreakdown: jsonb("schedule_breakdown"),
+  lgpdCompliant: boolean("lgpd_compliant").default(true),
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPharmacyReportSchema = createInsertSchema(pharmacyReports).omit({ id: true, createdAt: true, generatedAt: true });
+export type InsertPharmacyReport = z.infer<typeof insertPharmacyReportSchema>;
+export type PharmacyReport = typeof pharmacyReports.$inferSelect;
 
 // TMC system types
 export interface TmcBalance {

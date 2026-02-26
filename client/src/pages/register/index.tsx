@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/LogoOrigami_1759774106948.png";
 import telemedLogo from "@/assets/logo-fundo.png";
-import { Users, Stethoscope, Shield, Heart, CheckCircle } from "lucide-react";
+import { Users, Stethoscope, Shield, Heart, CheckCircle, Pill } from "lucide-react";
 
 export default function RegisterSelect() {
   return (
@@ -33,7 +33,7 @@ export default function RegisterSelect() {
         </div>
 
         {/* Registration Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           
           {/* Patient Card */}
           <Link href="/register/patient" className="block group">
@@ -74,6 +74,29 @@ export default function RegisterSelect() {
                 <Button 
                   className="w-full bg-medical-secondary hover:bg-medical-secondary/90 group-hover:shadow-lg transition-shadow" 
                   data-testid="button-register-doctor-select"
+                >
+                  Continuar
+                </Button>
+              </CardContent>
+            </Card>
+          </Link>
+
+          {/* Pharmacist Card */}
+          <Link href="/register/pharmacist" className="block group">
+            <Card className="shadow-lg border-0 bg-white/98 dark:bg-gray-900/98 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer h-full">
+              <CardContent className="p-8 flex flex-col items-center justify-center text-center space-y-6 h-full">
+                <div className="w-24 h-24 bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <Pill className="w-12 h-12 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-emerald-600 mb-2">Sou Farmacêutico</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Dispense prescrições com segurança
+                  </p>
+                </div>
+                <Button 
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 group-hover:shadow-lg transition-shadow" 
+                  data-testid="button-register-pharmacist-select"
                 >
                   Continuar
                 </Button>

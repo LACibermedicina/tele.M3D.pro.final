@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings, CreditCard } from 'lucide-react';
+import { Shield, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings, CreditCard, Pill } from 'lucide-react';
 import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { formatErrorForToast } from '@/lib/error-handler';
@@ -74,6 +74,9 @@ interface AdminUser {
   specialization?: string;
   tmcCredits?: number;
   createdAt: string;
+  crfNumber?: string;
+  pharmacyName?: string;
+  cnpj?: string;
 }
 
 interface ErrorLog {
@@ -116,6 +119,12 @@ export default function AdminPage() {
   const [selectedErrorLog, setSelectedErrorLog] = useState<ErrorLog | null>(null);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const [resolveNotes, setResolveNotes] = useState('');
+
+  // User management filters and edit dialog
+  const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
+  const [showEditUserDialog, setShowEditUserDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [editUserRole, setEditUserRole] = useState('');
 
   // WebSocket for real-time activity monitoring
   const { isConnected, messages } = useWebSocket();
@@ -423,7 +432,7 @@ export default function AdminPage() {
 
         {/* Users Tab */}
         <TabsContent value="users" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Total Users</CardTitle>
@@ -454,6 +463,23 @@ export default function AdminPage() {
 
             <Card>
               <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Pill className="h-4 w-4 text-purple-600" />
+                  Pharmacists
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600" data-testid="pharmacist-count">
+                  {(adminUsers as AdminUser[]).filter((u: AdminUser) => u.role === 'pharmacist').length}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Active: {(adminUsers as AdminUser[]).filter((u: AdminUser) => u.role === 'pharmacist' && !u.isBlocked).length}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
                 <CardTitle className="text-lg">Recent Activity</CardTitle>
               </CardHeader>
               <CardContent>
@@ -469,10 +495,28 @@ export default function AdminPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>User Management</CardTitle>
-              <CardDescription>
-                Manage system users, roles, and access permissions
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>User Management</CardTitle>
+                  <CardDescription>
+                    Manage system users, roles, and access permissions
+                  </CardDescription>
+                </div>
+                <Select value={userRoleFilter} onValueChange={setUserRoleFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Filter by role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="doctor">Doctor</SelectItem>
+                    <SelectItem value="patient">Patient</SelectItem>
+                    <SelectItem value="pharmacist">Pharmacist</SelectItem>
+                    <SelectItem value="researcher">Researcher</SelectItem>
+                    <SelectItem value="visitor">Visitor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
             <CardContent>
               {loadingUsers ? (
@@ -492,17 +536,29 @@ export default function AdminPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(adminUsers as AdminUser[]).map((user: AdminUser) => (
+                    {(adminUsers as AdminUser[])
+                      .filter((u: AdminUser) => userRoleFilter === 'all' || u.role === userRoleFilter)
+                      .map((user: AdminUser) => (
                       <TableRow key={user.id} data-testid={`user-row-${user.id}`}>
                         <TableCell className="font-medium">{user.username}</TableCell>
-                        <TableCell>{user.name}</TableCell>
+                        <TableCell>
+                          <div>
+                            <span>{user.name}</span>
+                            {user.role === 'pharmacist' && user.medicalLicense && (
+                              <span className="block text-xs text-muted-foreground">CRF: {user.medicalLicense}</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={
                             user.role === 'admin' ? 'bg-red-100 text-red-800' :
                             user.role === 'doctor' ? 'bg-blue-100 text-blue-800' :
                             user.role === 'patient' ? 'bg-green-100 text-green-800' :
+                            user.role === 'pharmacist' ? 'bg-purple-100 text-purple-800' :
+                            user.role === 'researcher' ? 'bg-yellow-100 text-yellow-800' :
                             'bg-gray-100 text-gray-800'
                           }>
+                            {user.role === 'pharmacist' && <Pill className="h-3 w-3 mr-1 inline" />}
                             {user.role}
                           </Badge>
                         </TableCell>
@@ -547,6 +603,11 @@ export default function AdminPage() {
                               variant="ghost"
                               size="sm"
                               data-testid={`button-edit-${user.id}`}
+                              onClick={() => {
+                                setEditingUser(user);
+                                setEditUserRole(user.role);
+                                setShowEditUserDialog(true);
+                              }}
                             >
                               <Edit3 className="h-4 w-4" />
                             </Button>
@@ -560,6 +621,67 @@ export default function AdminPage() {
               )}
             </CardContent>
           </Card>
+
+          <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit User: {editingUser?.name}</DialogTitle>
+                <DialogDescription>
+                  Update user role and permissions. Username: {editingUser?.username}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <Select value={editUserRole} onValueChange={setEditUserRole}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="doctor">Doctor</SelectItem>
+                      <SelectItem value="patient">Patient</SelectItem>
+                      <SelectItem value="pharmacist">Pharmacist</SelectItem>
+                      <SelectItem value="researcher">Researcher</SelectItem>
+                      <SelectItem value="visitor">Visitor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {editingUser && (
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>Email: {editingUser.email || 'N/A'}</p>
+                    <p>Phone: {editingUser.phone || 'N/A'}</p>
+                    <p>Created: {format(new Date(editingUser.createdAt), 'MMM dd, yyyy')}</p>
+                    {editingUser.role === 'pharmacist' && editingUser.medicalLicense && (
+                      <p>CRF: {editingUser.medicalLicense}</p>
+                    )}
+                    {editingUser.role === 'pharmacist' && editingUser.specialization && (
+                      <p>Pharmacy: {editingUser.specialization}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowEditUserDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (editingUser) {
+                      updateUserMutation.mutate({
+                        userId: editingUser.id,
+                        data: { role: editUserRole }
+                      });
+                      setShowEditUserDialog(false);
+                    }
+                  }}
+                  disabled={updateUserMutation.isPending}
+                >
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Live Activity Tab */}
@@ -1840,6 +1962,7 @@ const categoryLabels: Record<string, string> = {
   prescriptions: "Prescrições",
   financial: "Financeiro",
   general: "Geral",
+  pharmacy: "Farmácia",
 };
 
 function SystemSettingsTab() {

@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Plus, Trash2, AlertTriangle, Activity, TrendingUp, Loader2, Database, Globe } from 'lucide-react';
+import { Search, Plus, Trash2, AlertTriangle, Activity, TrendingUp, Loader2, Database, Globe, Sparkles, ShieldAlert, Info, CheckCircle2 } from 'lucide-react';
 import { formatErrorForToast } from '@/lib/error-handler';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
@@ -76,6 +76,21 @@ interface CreatePrescriptionFormProps {
   onSuccess: () => void;
 }
 
+interface AISuggestion {
+  dosage: string;
+  frequency: string;
+  duration: string;
+  observations: string;
+  specialInstructions: string;
+  warnings: {
+    sideEffects: string[];
+    contraindications: string[];
+    adverseEffects: string[];
+    drugInteractions: string[];
+    riskLevel: string;
+  };
+}
+
 interface DrugInteractionAnalysis {
   drugName: string;
   activeIngredient: string;
@@ -110,6 +125,10 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
   const [externalSources, setExternalSources] = useState<string[]>([]);
   const [isSearchingExternal, setIsSearchingExternal] = useState(false);
   const [searchLocale, setSearchLocale] = useState('BR');
+  const [showAISuggestionDialog, setShowAISuggestionDialog] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
+  const [aiSuggestionIndex, setAiSuggestionIndex] = useState<number>(0);
+  const [isLoadingAISuggestion, setIsLoadingAISuggestion] = useState(false);
 
   const form = useForm<PrescriptionFormData>({
     resolver: zodResolver(prescriptionFormSchema),
@@ -270,6 +289,90 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
       });
     } finally {
       setIsCheckingInteractions(false);
+    }
+  };
+
+  const fetchAISuggestion = async (index: number) => {
+    const patientId = form.getValues('patientId');
+    const items = form.getValues('items');
+    const item = items[index];
+
+    if (!patientId) {
+      toast({
+        title: 'Selecione um paciente',
+        description: 'É necessário selecionar um paciente para obter sugestões da IA.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const medicationName = item.customMedication || 
+      medications.find(m => m.id === item.medicationId)?.name || '';
+
+    if (!medicationName && !item.medicationId) {
+      toast({
+        title: 'Selecione um medicamento',
+        description: 'É necessário selecionar ou buscar um medicamento primeiro.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoadingAISuggestion(true);
+    setAiSuggestionIndex(index);
+    try {
+      const response = await apiRequest('POST', '/api/prescriptions/ai-suggest', {
+        patientId,
+        medicationName,
+        medicationId: item.medicationId || undefined,
+      });
+      const data = await response.json();
+      setAiSuggestion(data);
+      setShowAISuggestionDialog(true);
+    } catch (error) {
+      console.error('Error fetching AI suggestion:', error);
+      toast({
+        title: 'Erro ao obter sugestão da IA',
+        description: 'Não foi possível obter sugestões. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingAISuggestion(false);
+    }
+  };
+
+  const applyAISuggestion = () => {
+    if (!aiSuggestion) return;
+    const idx = aiSuggestionIndex;
+    if (aiSuggestion.dosage) form.setValue(`items.${idx}.dosage`, aiSuggestion.dosage);
+    if (aiSuggestion.frequency) form.setValue(`items.${idx}.frequency`, aiSuggestion.frequency);
+    if (aiSuggestion.duration) form.setValue(`items.${idx}.duration`, aiSuggestion.duration);
+    if (aiSuggestion.specialInstructions) form.setValue(`items.${idx}.instructions`, aiSuggestion.specialInstructions);
+    if (aiSuggestion.observations) {
+      const currentNotes = form.getValues(`items.${idx}.notes`) || '';
+      form.setValue(`items.${idx}.notes`, currentNotes ? `${currentNotes}\n${aiSuggestion.observations}` : aiSuggestion.observations);
+    }
+    setShowAISuggestionDialog(false);
+    toast({
+      title: 'Sugestão aplicada',
+      description: 'Os campos foram preenchidos com as sugestões da IA. Revise antes de salvar.',
+    });
+  };
+
+  const getRiskLevelColor = (riskLevel: string) => {
+    switch (riskLevel?.toLowerCase()) {
+      case 'alto':
+      case 'high':
+        return 'destructive';
+      case 'moderado':
+      case 'medio':
+      case 'medium':
+        return 'default';
+      case 'baixo':
+      case 'low':
+        return 'secondary';
+      default:
+        return 'outline';
     }
   };
 
@@ -467,17 +570,40 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="font-medium">Medicamento {index + 1}</h4>
-                    {form.watch('items').length > 1 && (
+                    <div className="flex items-center gap-2">
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        onClick={() => removeMedicationItem(index)}
-                        data-testid={`button-remove-medication-${index}`}
+                        onClick={() => fetchAISuggestion(index)}
+                        disabled={isLoadingAISuggestion && aiSuggestionIndex === index}
+                        className="text-purple-600 border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950"
+                        data-testid={`button-ai-suggest-${index}`}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {isLoadingAISuggestion && aiSuggestionIndex === index ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                            Analisando...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-1.5" />
+                            Sugestão IA
+                          </>
+                        )}
                       </Button>
-                    )}
+                      {form.watch('items').length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeMedicationItem(index)}
+                          data-testid={`button-remove-medication-${index}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -713,6 +839,164 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
           </Button>
         </div>
       </form>
+
+      {/* AI Suggestion Dialog */}
+      <Dialog open={showAISuggestionDialog} onOpenChange={setShowAISuggestionDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-ai-suggestion">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              Sugestão da IA
+            </DialogTitle>
+            <DialogDescription>
+              Sugestões baseadas no perfil do paciente e protocolos OMS/MS-Brasil. Revise antes de aplicar.
+            </DialogDescription>
+          </DialogHeader>
+
+          {aiSuggestion && (
+            <div className="space-y-4 mt-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-sm">Nível de Risco</h4>
+                <Badge variant={getRiskLevelColor(aiSuggestion.warnings?.riskLevel || '')} className="text-sm px-3 py-1">
+                  <ShieldAlert className="h-3.5 w-3.5 mr-1.5" />
+                  {aiSuggestion.warnings?.riskLevel || 'Não avaliado'}
+                </Badge>
+              </div>
+
+              <Separator />
+
+              <Card className="border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30">
+                <CardContent className="p-4 space-y-3">
+                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-purple-600" />
+                    Posologia Sugerida
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="bg-white dark:bg-gray-900 rounded-md p-3 border">
+                      <p className="text-xs text-muted-foreground mb-1">Dosagem</p>
+                      <p className="font-medium text-sm">{aiSuggestion.dosage || '—'}</p>
+                    </div>
+                    <div className="bg-white dark:bg-gray-900 rounded-md p-3 border">
+                      <p className="text-xs text-muted-foreground mb-1">Frequência</p>
+                      <p className="font-medium text-sm">{aiSuggestion.frequency || '—'}</p>
+                    </div>
+                    <div className="bg-white dark:bg-gray-900 rounded-md p-3 border">
+                      <p className="text-xs text-muted-foreground mb-1">Duração</p>
+                      <p className="font-medium text-sm">{aiSuggestion.duration || '—'}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {aiSuggestion.observations && (
+                <Card>
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
+                      <Info className="h-4 w-4 text-blue-600" />
+                      Observações
+                    </h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">{aiSuggestion.observations}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {aiSuggestion.specialInstructions && (
+                <Card>
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
+                      <Activity className="h-4 w-4 text-green-600" />
+                      Instruções Especiais
+                    </h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">{aiSuggestion.specialInstructions}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {aiSuggestion.warnings && (
+                <Card className="border-orange-200 dark:border-orange-800">
+                  <CardContent className="p-4 space-y-4">
+                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-orange-600" />
+                      Alertas e Avisos
+                    </h4>
+
+                    {aiSuggestion.warnings.sideEffects?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-2">Efeitos Colaterais</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {aiSuggestion.warnings.sideEffects.map((effect, idx) => (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {effect}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {aiSuggestion.warnings.contraindications?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-red-600 mb-2">Contraindicações</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {aiSuggestion.warnings.contraindications.map((ci, idx) => (
+                            <Badge key={idx} variant="destructive" className="text-xs">
+                              {ci}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {aiSuggestion.warnings.adverseEffects?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-orange-600 mb-2">Efeitos Adversos</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {aiSuggestion.warnings.adverseEffects.map((ae, idx) => (
+                            <Badge key={idx} variant="outline" className="text-xs border-orange-300 text-orange-700">
+                              {ae}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {aiSuggestion.warnings.drugInteractions?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-yellow-600 mb-2">Interações Medicamentosas</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {aiSuggestion.warnings.drugInteractions.map((di, idx) => (
+                            <Badge key={idx} variant="outline" className="text-xs border-yellow-300 text-yellow-700">
+                              {di}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowAISuggestionDialog(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={applyAISuggestion}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  data-testid="button-apply-ai-suggestion"
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                  Aplicar Sugestão
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Drug Interaction Analysis Dialog */}
       <Dialog open={showInteractionDialog} onOpenChange={setShowInteractionDialog}>

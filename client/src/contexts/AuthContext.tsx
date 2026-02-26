@@ -6,7 +6,7 @@ import { disconnectAllMediaServices } from '@/components/inactivity-monitor';
 interface User {
   id: string;
   username: string;
-  role: 'doctor' | 'admin' | 'patient' | 'visitor' | 'researcher';
+  role: 'doctor' | 'admin' | 'patient' | 'visitor' | 'researcher' | 'pharmacist';
   name: string;
   email?: string;
   phone?: string;
@@ -31,7 +31,7 @@ interface AuthContextType {
 interface RegisterData {
   username: string;
   password: string;
-  role: 'doctor' | 'admin' | 'patient' | 'researcher';
+  role: 'doctor' | 'admin' | 'patient' | 'researcher' | 'pharmacist';
   name: string;
   email?: string;
   phone?: string;

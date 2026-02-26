@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRoles?: Array<'doctor' | 'admin' | 'patient'>;
+  requiredRoles?: Array<'doctor' | 'admin' | 'patient' | 'pharmacist' | 'researcher' | 'visitor'>;
   fallback?: ReactNode;
 }
 

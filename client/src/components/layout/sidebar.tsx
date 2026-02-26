@@ -125,6 +125,13 @@ function SidebarContent() {
       description: "Canal público para médicos - suporte e socialização",
       roles: ['doctor', 'admin'],
     },
+    {
+      path: "/pharmacy",
+      label: "Painel Farmácia",
+      icon: Pill,
+      description: "Gestão de prescrições e dispensação",
+      roles: ['pharmacist', 'admin'],
+    },
   ];
 
   const navItems = allNavItems.filter(item => !user?.role || item.roles.includes(user.role));

@@ -1,6 +1,20 @@
 import fs from 'fs';
 import path from 'path';
 
+export interface MedicationWarning {
+  name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+  sideEffects?: string;
+  contraindications?: string;
+  adverseEffects?: string;
+  interactions?: string;
+  route?: string;
+  pregnancyCategory?: string;
+}
+
 export interface PrescriptionData {
   patientName: string;
   patientAge: number;
@@ -9,12 +23,16 @@ export interface PrescriptionData {
   doctorCRM: string;
   doctorCRMState: string;
   prescriptionText: string;
+  prescriptionNumber?: string;
   date: string;
   digitalSignature?: {
     signature: string;
     certificateInfo: any;
     timestamp: string;
+    qrCodeData?: string;
+    documentHash?: string;
   };
+  medications?: MedicationWarning[];
 }
 
 export class PDFGeneratorService {
@@ -223,7 +241,12 @@ export class PDFGeneratorService {
       </head>
       <body>
         <div class="qr-code-section">
-          <div class="qr-placeholder">QR Code<br/>Verificação</div>
+          ${data.digitalSignature?.qrCodeData ? `
+            <img src="${data.digitalSignature.qrCodeData}" alt="QR Code Verificação" style="width: 100px; height: 100px;" />
+            <div style="font-size: 7pt; color: #666; margin-top: 4px;">Escaneie para verificar</div>
+          ` : `
+            <div class="qr-placeholder">QR Code<br/>Verificação</div>
+          `}
         </div>
         
         <div class="prescription-header">
@@ -252,7 +275,53 @@ export class PDFGeneratorService {
         
         <div class="prescription-content">
           <div class="prescription-label">RECEITUÁRIO MÉDICO</div>
+          ${data.prescriptionNumber ? `<div style="font-size: 10pt; color: #666; margin-bottom: 10px;">Nº ${data.prescriptionNumber}</div>` : ''}
           <div class="prescription-text">${data.prescriptionText}</div>
+        </div>
+
+        ${data.medications && data.medications.length > 0 ? `
+        <div style="margin-bottom: 30px; padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fefce8;">
+          <div style="font-weight: bold; font-size: 12pt; color: #92400e; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+            ⚠ ADVERTÊNCIAS E INFORMAÇÕES FARMACÊUTICAS
+          </div>
+          ${data.medications.map((med, i) => `
+            <div style="margin-bottom: 12px; padding: 10px; background: white; border-radius: 6px; border-left: 3px solid #f59e0b;">
+              <div style="font-weight: bold; font-size: 11pt; margin-bottom: 5px;">${i + 1}. ${med.name}</div>
+              <div style="font-size: 10pt; line-height: 1.5;">
+                <strong>Posologia:</strong> ${med.dosage} - ${med.frequency} por ${med.duration}<br/>
+                ${med.route ? `<strong>Via:</strong> ${med.route}<br/>` : ''}
+                <strong>Instruções:</strong> ${med.instructions}
+                ${med.sideEffects ? `<br/><strong>Efeitos Colaterais:</strong> <span style="color: #b45309;">${med.sideEffects}</span>` : ''}
+                ${med.contraindications ? `<br/><strong>Contraindicações:</strong> <span style="color: #dc2626;">${med.contraindications}</span>` : ''}
+                ${med.adverseEffects ? `<br/><strong>Efeitos Adversos:</strong> <span style="color: #dc2626;">${med.adverseEffects}</span>` : ''}
+                ${med.interactions ? `<br/><strong>Interações:</strong> <span style="color: #9333ea;">${med.interactions}</span>` : ''}
+                ${med.pregnancyCategory ? `<br/><strong>Categoria na Gravidez:</strong> ${med.pregnancyCategory}` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
+
+        <div style="margin-bottom: 30px; padding: 15px; border: 2px dashed #94a3b8; border-radius: 8px; background: #f8fafc;">
+          <div style="font-weight: bold; font-size: 12pt; color: #475569; margin-bottom: 10px; text-transform: uppercase;">
+            SEÇÃO DA FARMÁCIA (Preenchimento pelo Farmacêutico)
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 10pt;">
+            <div><strong>Farmacêutico(a):</strong> ___________________________</div>
+            <div><strong>CRF:</strong> ___________________________</div>
+            <div><strong>Data da Dispensação:</strong> ____/____/________</div>
+            <div><strong>Lote:</strong> ___________________________</div>
+            <div><strong>Fabricante:</strong> ___________________________</div>
+            <div><strong>Validade:</strong> ____/____/________</div>
+          </div>
+          <div style="margin-top: 10px; font-size: 10pt;">
+            <strong>Observações:</strong> _______________________________________________
+          </div>
+          <div style="margin-top: 15px; text-align: center;">
+            <div style="border-top: 1px solid #94a3b8; width: 250px; margin: 0 auto; padding-top: 5px; font-size: 10pt;">
+              Assinatura e Carimbo do Farmacêutico
+            </div>
+          </div>
         </div>
         
         <div class="signature-section">

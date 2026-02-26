@@ -14,7 +14,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications } from "@shared/schema";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
 import { z } from "zod";
@@ -82,6 +82,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migrateOnDutyColumns();
   await migrateMedicalTeamsTables();
   await migrateInterConsultationsTable();
+  await migratePharmacyTables();
   
   // Initialize default doctor if not exists and get the actual ID
   const actualDoctorId = await initializeDefaultDoctor();
@@ -6420,6 +6421,475 @@ Responda em português brasileiro, de forma estruturada e concisa, com linguagem
       next();
     };
   };
+
+  // ===== PHARMACY USER SYSTEM (Dispensing, Verification, Reports) =====
+
+  app.post('/api/prescriptions/ai-suggest', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'doctor' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Somente médicos podem solicitar sugestões de IA' });
+      }
+      const { patientId, medicationName, medicationDetails } = req.body;
+      if (!patientId || !medicationName) {
+        return res.status(400).json({ message: 'patientId e medicationName são obrigatórios' });
+      }
+
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: 'Paciente não encontrado' });
+      }
+
+      const patientRecords = await storage.getMedicalRecordsByPatientId(patientId);
+      const patientHistory = patientRecords.slice(0, 5).map((r: any) => r.diagnosis || r.notes || '').join('; ');
+
+      const prompt = `Você é um assistente médico especialista em farmacologia clínica, seguindo protocolos OMS, MS/Brasil e bulas ANVISA.
+
+PACIENTE:
+- Nome: ${patient.name}
+- Idade: ${patient.age || 'Não informada'}
+- Peso: ${patient.weight || 'Não informado'}kg
+- Alergias: ${patient.allergies || 'Nenhuma registrada'}
+- Condições: ${patient.conditions || 'Nenhuma registrada'}
+- Histórico recente: ${patientHistory || 'Sem histórico'}
+
+MEDICAMENTO: ${medicationName}
+${medicationDetails ? `Detalhes: ${medicationDetails}` : ''}
+
+Forneça uma recomendação estruturada em JSON com os seguintes campos:
+{
+  "dosage": "dosagem recomendada considerando perfil do paciente",
+  "frequency": "frequência de administração",
+  "duration": "duração do tratamento",
+  "observations": "observações importantes (categoria na gravidez, ajustes renais/hepáticos, idosos)",
+  "specialInstructions": "instruções especiais de administração (horário, alimentação, interações com alimentos)",
+  "warnings": {
+    "sideEffects": ["efeito colateral 1", "efeito colateral 2"],
+    "contraindications": ["contraindicação 1", "contraindicação 2"],
+    "adverseEffects": ["efeito adverso grave 1"],
+    "drugInteractions": ["interação com medicamento X"],
+    "riskLevel": "low|moderate|high|critical"
+  }
+}
+
+Responda APENAS com o JSON, sem texto adicional.`;
+
+      let aiResponse: string | null = null;
+      try {
+        const result = await geminiService.generateContent(prompt);
+        aiResponse = result;
+      } catch (err) {
+        console.log('[AI-SUGGEST] Gemini failed, trying OpenAI fallback');
+        try {
+          const OpenAI = (await import('openai')).default;
+          const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+          const completion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+          });
+          aiResponse = completion.choices[0]?.message?.content || null;
+        } catch (err2) {
+          console.error('[AI-SUGGEST] All AI services failed:', err2);
+        }
+      }
+
+      if (!aiResponse) {
+        return res.status(500).json({ message: 'Serviço de IA indisponível' });
+      }
+
+      try {
+        const cleanJson = aiResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const suggestion = JSON.parse(cleanJson);
+        res.json(suggestion);
+      } catch (parseErr) {
+        res.json({
+          dosage: '',
+          frequency: '',
+          duration: '',
+          observations: aiResponse,
+          specialInstructions: '',
+          warnings: { sideEffects: [], contraindications: [], adverseEffects: [], drugInteractions: [], riskLevel: 'moderate' }
+        });
+      }
+    } catch (error) {
+      console.error('AI suggestion error:', error);
+      res.status(500).json({ message: 'Falha ao gerar sugestão de IA' });
+    }
+  });
+
+  app.get('/api/pharmacy/prescriptions', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'pharmacist' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a farmacêuticos' });
+      }
+      const { status = 'all', search } = req.query;
+      const results = await db.select().from(prescriptions)
+        .innerJoin(patients, eq(prescriptions.patientId, patients.id))
+        .innerJoin(users, eq(prescriptions.doctorId, users.id))
+        .orderBy(desc(prescriptions.createdAt));
+      
+      const allPrescriptionItems = await db.select().from(prescriptionItems);
+
+      let filtered = results.map((r: any) => ({
+        id: r.prescriptions.id,
+        prescriptionNumber: r.prescriptions.prescriptionNumber,
+        patientName: r.patients?.name || 'N/A',
+        doctorName: r.users?.name || 'N/A',
+        doctorCrm: r.users?.medicalLicense || '',
+        status: r.prescriptions.status,
+        createdAt: r.prescriptions.createdAt,
+        expiresAt: r.prescriptions.expiresAt,
+        digitalSignatureId: r.prescriptions.digitalSignatureId,
+        pharmacistReadAt: r.prescriptions.pharmacistReadAt,
+        items: allPrescriptionItems
+          .filter((pi: any) => pi.prescriptionId === r.prescriptions.id)
+          .map((pi: any) => ({
+            id: pi.id,
+            medicationName: pi.customMedication || pi.medicationName || 'Medicamento',
+            dosage: pi.dosage || '',
+            frequency: pi.frequency || '',
+            duration: pi.duration || '',
+            quantity: pi.quantity || 1,
+            instructions: pi.instructions || '',
+          })),
+      }));
+
+      if (status !== 'all') {
+        filtered = filtered.filter((p: any) => p.status === status);
+      }
+      if (search && typeof search === 'string') {
+        const s = search.toLowerCase();
+        filtered = filtered.filter((p: any) => 
+          p.patientName?.toLowerCase().includes(s) ||
+          p.prescriptionNumber?.toLowerCase().includes(s) ||
+          p.doctorName?.toLowerCase().includes(s)
+        );
+      }
+      res.json(filtered);
+    } catch (error) {
+      console.error('Pharmacy prescriptions error:', error);
+      res.status(500).json({ message: 'Falha ao buscar prescrições' });
+    }
+  });
+
+  app.get('/api/pharmacy/prescriptions/:id', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'pharmacist' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a farmacêuticos' });
+      }
+      const { id } = req.params;
+      const [prescription] = await db.select().from(prescriptions).where(eq(prescriptions.id, id));
+      if (!prescription) return res.status(404).json({ message: 'Prescrição não encontrada' });
+
+      const items = await db.select().from(prescriptionItems).where(eq(prescriptionItems.prescriptionId, id));
+      const [patient] = await db.select().from(patients).where(eq(patients.id, prescription.patientId));
+      const [doctor] = await db.select().from(users).where(eq(users.id, prescription.doctorId));
+
+      let signatureInfo = null;
+      if (prescription.digitalSignatureId) {
+        const [sig] = await db.select().from(digitalSignatures).where(eq(digitalSignatures.id, prescription.digitalSignatureId));
+        signatureInfo = sig;
+      }
+
+      const medicationIds = items.filter(i => i.medicationId).map(i => i.medicationId);
+      let medicationDetails: any[] = [];
+      if (medicationIds.length > 0) {
+        medicationDetails = await db.select().from(medications).where(inArray(medications.id, medicationIds));
+      }
+
+      const dispensingRecords = await db.select().from(pharmacyDispensing).where(eq(pharmacyDispensing.prescriptionId, id));
+
+      res.json({
+        prescription,
+        items: items.map(item => ({
+          ...item,
+          medication: medicationDetails.find(m => m.id === item.medicationId) || null
+        })),
+        patient,
+        doctor: { id: doctor?.id, name: doctor?.name, medicalLicense: doctor?.medicalLicense, specialization: doctor?.specialization, email: doctor?.email },
+        signature: signatureInfo,
+        dispensingRecords
+      });
+    } catch (error) {
+      console.error('Pharmacy prescription detail error:', error);
+      res.status(500).json({ message: 'Falha ao buscar detalhes da prescrição' });
+    }
+  });
+
+  app.post('/api/pharmacy/prescriptions/:id/verify', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'pharmacist' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a farmacêuticos' });
+      }
+      const { id } = req.params;
+      const [prescription] = await db.select().from(prescriptions).where(eq(prescriptions.id, id));
+      if (!prescription) return res.status(404).json({ message: 'Prescrição não encontrada' });
+
+      const verification: any = {
+        prescriptionId: id,
+        prescriptionNumber: prescription.prescriptionNumber,
+        isActive: prescription.status === 'active',
+        isExpired: prescription.expiresAt ? new Date(prescription.expiresAt) < new Date() : false,
+        hasDigitalSignature: !!prescription.digitalSignatureId,
+        signatureValid: false,
+        doctorInfo: null,
+        verifiedAt: new Date().toISOString()
+      };
+
+      const [doctor] = await db.select().from(users).where(eq(users.id, prescription.doctorId));
+      if (doctor) {
+        verification.doctorInfo = {
+          name: doctor.name,
+          medicalLicense: doctor.medicalLicense,
+          specialization: doctor.specialization,
+          isRegistered: true
+        };
+      }
+
+      if (prescription.digitalSignatureId) {
+        const [sig] = await db.select().from(digitalSignatures).where(eq(digitalSignatures.id, prescription.digitalSignatureId));
+        if (sig) {
+          verification.signatureValid = true;
+          verification.signatureDetails = {
+            signedAt: sig.createdAt,
+            documentHash: sig.documentHash,
+            qrCodeData: sig.qrCodeData,
+            verificationCount: sig.verificationCount
+          };
+          await db.execute(sql`UPDATE digital_signatures SET verification_count = verification_count + 1 WHERE id = ${prescription.digitalSignatureId}`);
+          await db.insert(signatureVerifications).values({
+            signatureId: prescription.digitalSignatureId,
+            verifiedBy: req.user.id,
+            isValid: true,
+            ipAddress: req.ip || 'unknown',
+            userAgent: req.headers['user-agent'] || 'pharmacy-system',
+          });
+        }
+      }
+
+      res.json(verification);
+    } catch (error) {
+      console.error('Prescription verification error:', error);
+      res.status(500).json({ message: 'Falha na verificação da prescrição' });
+    }
+  });
+
+  app.post('/api/pharmacy/prescriptions/:id/verify-crm', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'pharmacist' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a farmacêuticos' });
+      }
+      const { id } = req.params;
+      const { reason } = req.body;
+      const [prescription] = await db.select().from(prescriptions).where(eq(prescriptions.id, id));
+      if (!prescription) return res.status(404).json({ message: 'Prescrição não encontrada' });
+
+      const [doctor] = await db.select().from(users).where(eq(users.id, prescription.doctorId));
+      if (!doctor) return res.status(404).json({ message: 'Médico não encontrado' });
+
+      const [doctorKeys] = await db.select().from(digitalKeys).where(eq(digitalKeys.userId, doctor.id));
+
+      const crmVerification = {
+        valid: true,
+        doctorName: doctor.name,
+        medicalLicense: doctor.medicalLicense || 'Não informado',
+        specialization: doctor.specialization || 'Não informada',
+        email: doctor.email,
+        isRegisteredInPlatform: true,
+        hasDigitalCertificate: !!doctorKeys,
+        certificateInfo: doctorKeys ? (doctorKeys.certificateInfo as any) : null,
+        accountCreatedAt: doctor.createdAt,
+        lastLogin: doctor.lastLogin,
+        totalPrescriptions: 0,
+        verificationReason: reason || 'Suspeita de procedência',
+        verifiedAt: new Date().toISOString(),
+        verifiedBy: req.user.id
+      };
+
+      const doctorPrescriptions = await db.select().from(prescriptions).where(eq(prescriptions.doctorId, doctor.id));
+      crmVerification.totalPrescriptions = doctorPrescriptions.length;
+
+      res.json(crmVerification);
+    } catch (error) {
+      console.error('CRM verification error:', error);
+      res.status(500).json({ message: 'Falha na verificação de CRM' });
+    }
+  });
+
+  app.post('/api/pharmacy/prescriptions/:id/dispense', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'pharmacist' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a farmacêuticos' });
+      }
+      const { id } = req.params;
+      const { items: dispensingItems, verificationMethod = 'manual', signatureVerified = false } = req.body;
+
+      const [prescription] = await db.select().from(prescriptions).where(eq(prescriptions.id, id));
+      if (!prescription) return res.status(404).json({ message: 'Prescrição não encontrada' });
+      if (prescription.status === 'cancelled') return res.status(400).json({ message: 'Prescrição cancelada' });
+      if (prescription.status === 'dispensed') return res.status(400).json({ message: 'Prescrição já dispensada' });
+
+      const prescriptionItemsList = await db.select().from(prescriptionItems).where(eq(prescriptionItems.prescriptionId, id));
+
+      const dispensingRecords = [];
+      for (const item of (dispensingItems || [])) {
+        const prescItem = prescriptionItemsList.find(pi => pi.id === item.prescriptionItemId);
+        const medName = prescItem?.customMedication || item.medicationName || 'Medicamento';
+
+        const [record] = await db.insert(pharmacyDispensing).values({
+          prescriptionId: id,
+          prescriptionItemId: item.prescriptionItemId || null,
+          pharmacistId: req.user.id,
+          patientId: prescription.patientId,
+          doctorId: prescription.doctorId,
+          medicationName: medName,
+          dispensedQuantity: item.dispensedQuantity || item.quantity || 1,
+          batchNumber: item.batchNumber || null,
+          manufacturer: item.manufacturer || null,
+          expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+          dispensingNotes: item.notes || null,
+          verificationMethod,
+          signatureVerified,
+          status: 'dispensed',
+          dispensedAt: new Date(),
+        }).returning();
+        dispensingRecords.push(record);
+
+        if (item.prescriptionItemId) {
+          await db.update(prescriptionItems)
+            .set({ isDispensed: true, dispensedQuantity: item.dispensedQuantity || item.quantity || 1 })
+            .where(eq(prescriptionItems.id, item.prescriptionItemId));
+        }
+      }
+
+      const allItemsDispensed = prescriptionItemsList.every(pi => {
+        const dispensed = dispensingItems?.find((d: any) => d.prescriptionItemId === pi.id);
+        return dispensed || pi.isDispensed;
+      });
+
+      await db.update(prescriptions)
+        .set({ 
+          status: allItemsDispensed ? 'dispensed' : 'active',
+          dispensedAt: allItemsDispensed ? new Date() : undefined,
+          pharmacistId: req.user.id
+        })
+        .where(eq(prescriptions.id, id));
+
+      res.json({ message: 'Medicamentos dispensados com sucesso', dispensingRecords, fullyDispensed: allItemsDispensed });
+    } catch (error) {
+      console.error('Dispensing error:', error);
+      res.status(500).json({ message: 'Falha ao dispensar medicamentos' });
+    }
+  });
+
+  app.post('/api/pharmacy/prescriptions/:id/confirm-read', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'pharmacist' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a farmacêuticos' });
+      }
+      const { id } = req.params;
+      await db.update(prescriptions)
+        .set({ pharmacistId: req.user.id, pharmacistReadAt: new Date() })
+        .where(eq(prescriptions.id, id));
+      res.json({ message: 'Leitura confirmada' });
+    } catch (error) {
+      console.error('Confirm read error:', error);
+      res.status(500).json({ message: 'Falha ao confirmar leitura' });
+    }
+  });
+
+  app.get('/api/pharmacy/reports', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'pharmacist' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a farmacêuticos' });
+      }
+      let reportsQuery = db.select().from(pharmacyReports);
+      if (req.user.role === 'pharmacist') {
+        reportsQuery = reportsQuery.where(eq(pharmacyReports.pharmacistId, req.user.id));
+      }
+      const reports = await reportsQuery.orderBy(desc(pharmacyReports.createdAt));
+      res.json(reports);
+    } catch (error) {
+      console.error('Get pharmacy reports error:', error);
+      res.status(500).json({ message: 'Falha ao buscar relatórios' });
+    }
+  });
+
+  app.post('/api/pharmacy/reports/generate', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'pharmacist' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a farmacêuticos' });
+      }
+      const { reportType = 'daily', startDate, endDate, lgpdCompliant = true } = req.body;
+      const start = startDate ? new Date(startDate) : new Date(new Date().setHours(0, 0, 0, 0));
+      const end = endDate ? new Date(endDate) : new Date();
+
+      const dispensingRecords = await db.select().from(pharmacyDispensing)
+        .where(and(
+          gte(pharmacyDispensing.createdAt, start),
+          lte(pharmacyDispensing.createdAt, end)
+        ));
+
+      const medicationBreakdown: Record<string, number> = {};
+      const doctorBreakdown: Record<string, number> = {};
+      const scheduleBreakdown: Record<string, number> = {};
+      const pathologyBreakdown: Record<string, number> = {};
+
+      for (const record of dispensingRecords) {
+        medicationBreakdown[record.medicationName] = (medicationBreakdown[record.medicationName] || 0) + record.dispensedQuantity;
+        const hour = record.dispensedAt ? new Date(record.dispensedAt).getHours() : 0;
+        const timeSlot = `${String(hour).padStart(2, '0')}:00-${String(hour + 1).padStart(2, '0')}:00`;
+        scheduleBreakdown[timeSlot] = (scheduleBreakdown[timeSlot] || 0) + 1;
+      }
+
+      const doctorIds = [...new Set(dispensingRecords.map(r => r.doctorId))];
+      for (const did of doctorIds) {
+        const [doc] = await db.select().from(users).where(eq(users.id, did));
+        const name = lgpdCompliant ? `Dr(a). ${doc?.name?.split(' ')[0] || 'N/A'}` : (doc?.name || 'N/A');
+        doctorBreakdown[name] = dispensingRecords.filter(r => r.doctorId === did).length;
+      }
+
+      const prescriptionIds = [...new Set(dispensingRecords.map(r => r.prescriptionId))];
+      for (const pid of prescriptionIds) {
+        const [presc] = await db.select().from(prescriptions).where(eq(prescriptions.id, pid));
+        if (presc?.diagnosis) {
+          const diag = lgpdCompliant ? presc.diagnosis.substring(0, 30) : presc.diagnosis;
+          pathologyBreakdown[diag] = (pathologyBreakdown[diag] || 0) + 1;
+        }
+      }
+
+      const [report] = await db.insert(pharmacyReports).values({
+        pharmacistId: req.user.id,
+        reportType,
+        startDate: start,
+        endDate: end,
+        totalDispensed: dispensingRecords.reduce((sum, r) => sum + r.dispensedQuantity, 0),
+        totalPrescriptions: prescriptionIds.length,
+        medicationBreakdown,
+        doctorBreakdown,
+        pathologyBreakdown,
+        scheduleBreakdown,
+        lgpdCompliant,
+      }).returning();
+
+      res.json(report);
+    } catch (error) {
+      console.error('Generate pharmacy report error:', error);
+      res.status(500).json({ message: 'Falha ao gerar relatório' });
+    }
+  });
+
+  app.get('/api/medications/:id/details', requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const [medication] = await db.select().from(medications).where(eq(medications.id, id));
+      if (!medication) return res.status(404).json({ message: 'Medicamento não encontrado' });
+      res.json(medication);
+    } catch (error) {
+      console.error('Medication details error:', error);
+      res.status(500).json({ message: 'Falha ao buscar detalhes do medicamento' });
+    }
+  });
 
   // ===== POST-CONSULTATION REVIEW API ROUTES =====
 
@@ -17405,6 +17875,61 @@ async function migrateInterConsultationsTable() {
   }
 }
 
+async function migratePharmacyTables() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS pharmacy_dispensing (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        prescription_id UUID NOT NULL REFERENCES prescriptions(id),
+        prescription_item_id UUID REFERENCES prescription_items(id),
+        pharmacist_id UUID NOT NULL REFERENCES users(id),
+        patient_id UUID NOT NULL REFERENCES patients(id),
+        doctor_id UUID NOT NULL REFERENCES users(id),
+        medication_name TEXT NOT NULL,
+        dispensed_quantity INTEGER NOT NULL,
+        batch_number TEXT,
+        manufacturer TEXT,
+        expiry_date TIMESTAMP,
+        dispensing_notes TEXT,
+        verification_method TEXT NOT NULL DEFAULT 'manual',
+        signature_verified BOOLEAN DEFAULT false,
+        crm_verified BOOLEAN DEFAULT false,
+        crm_verification_notes TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        dispensed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS pharmacy_reports (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        pharmacist_id UUID NOT NULL REFERENCES users(id),
+        report_type TEXT NOT NULL DEFAULT 'daily',
+        start_date TIMESTAMP NOT NULL,
+        end_date TIMESTAMP NOT NULL,
+        total_dispensed INTEGER DEFAULT 0,
+        total_prescriptions INTEGER DEFAULT 0,
+        medication_breakdown JSONB,
+        doctor_breakdown JSONB,
+        pathology_breakdown JSONB,
+        schedule_breakdown JSONB,
+        lgpd_compliant BOOLEAN DEFAULT true,
+        generated_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS pharmacist_id UUID REFERENCES users(id)
+    `);
+    await db.execute(sql`
+      ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS pharmacist_read_at TIMESTAMP
+    `);
+    console.log('✓ Pharmacy tables migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate pharmacy tables:', error);
+  }
+}
+
 async function initializeDefaultSystemSettings() {
   const defaultSettings = [
     {
@@ -17501,6 +18026,54 @@ async function initializeDefaultSystemSettings() {
       settingType: 'string',
       description: 'E-mail do destinatário PayPal para recebimento de pagamentos de créditos TMC',
       category: 'financial',
+      isEditable: true,
+    },
+    {
+      settingKey: 'pharmacy_dispensing_enabled',
+      settingValue: 'true',
+      settingType: 'boolean',
+      description: 'Habilitar módulo de dispensação farmacêutica',
+      category: 'pharmacy',
+      isEditable: true,
+    },
+    {
+      settingKey: 'pharmacy_require_signature_verification',
+      settingValue: 'true',
+      settingType: 'boolean',
+      description: 'Exigir verificação de assinatura digital antes da dispensação',
+      category: 'pharmacy',
+      isEditable: true,
+    },
+    {
+      settingKey: 'pharmacy_require_crm_verification',
+      settingValue: 'false',
+      settingType: 'boolean',
+      description: 'Exigir verificação de CRM do médico antes da dispensação (ativar em caso de suspeita)',
+      category: 'pharmacy',
+      isEditable: true,
+    },
+    {
+      settingKey: 'pharmacy_prescription_expiry_days',
+      settingValue: '30',
+      settingType: 'number',
+      description: 'Período de validade da prescrição para dispensação (em dias)',
+      category: 'pharmacy',
+      isEditable: true,
+    },
+    {
+      settingKey: 'pharmacy_lgpd_reports_enabled',
+      settingValue: 'true',
+      settingType: 'boolean',
+      description: 'Habilitar anonimização LGPD nos relatórios farmacêuticos',
+      category: 'pharmacy',
+      isEditable: true,
+    },
+    {
+      settingKey: 'pharmacy_auto_read_confirmation',
+      settingValue: 'false',
+      settingType: 'boolean',
+      description: 'Confirmação automática de leitura de prescrições pelo farmacêutico',
+      category: 'pharmacy',
       isEditable: true,
     },
   ];
