@@ -308,41 +308,99 @@ export default function Header() {
 
   const hasRecords = (patientRecords && patientRecords.length > 0);
 
-  const allNavItems = [
-    { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, faIcon: "fas fa-chart-line", roles: ["admin", "doctor", "patient"] },
-    { path: "/patients", label: "Pacientes", icon: Users, faIcon: "fas fa-users", roles: ["admin", "doctor"] },
-    { path: "/schedule", label: "Agenda", icon: CalendarClock, faIcon: "fas fa-calendar-alt", roles: ["admin", "doctor"] },
-    { path: "/whatsapp", label: "WhatsApp IA", icon: MessageCircle, faIcon: "fab fa-whatsapp", roles: ["admin", "doctor"] },
-    { path: "/records", label: "Prontuários", icon: FileText, faIcon: "fas fa-file-medical", roles: ["admin", "doctor"] },
-    { path: "/prescriptions", label: "Prescrições", icon: ClipboardList, faIcon: "fas fa-prescription-bottle-alt", roles: ["admin", "doctor"] },
-    { path: "/consultation-request", label: "Solicitar Consulta", icon: Stethoscope, faIcon: "fas fa-stethoscope", roles: ["patient"] },
-    { path: "/immediate-consultation", label: "Sala de Espera", icon: Video, faIcon: "fas fa-hospital", roles: ["patient"] },
-    { path: "/my-consultations", label: "Minhas Consultas", icon: CalendarClock, faIcon: "fas fa-calendar-check", roles: ["patient"] },
-    { path: "/incomplete-consultations", label: "Pendências", icon: AlertCircle, faIcon: "fas fa-exclamation-circle", roles: ["doctor"] },
-    { path: "/post-consultation-review", label: "Revisão Pós-Consulta", icon: ClipboardList, faIcon: "fas fa-clipboard-check", roles: ["doctor"] },
-    { path: "/diagnostic-review", label: "Inferências Diagnósticas", icon: Microscope, faIcon: "fas fa-microscope", roles: ["doctor"] },
-    { path: "/wallet", label: "Carteira Digital", icon: Wallet, faIcon: "fas fa-wallet", roles: ["doctor", "patient", "admin", "researcher"] },
-    { path: "/inter-consultation", label: "Interconsulta", icon: Stethoscope, faIcon: "fas fa-user-md", roles: ["doctor"] },
-    { path: "/doctor-notes", label: "Anotações", icon: StickyNote, faIcon: "fas fa-sticky-note", roles: ["doctor"] },
-    { path: "/assistant", label: "Assistente IA", icon: BrainCircuit, faIcon: "fas fa-robot", roles: ["admin", "doctor", "patient"] },
-    { path: "/medical-references", label: "Referências Médicas", icon: BookOpenCheck, faIcon: "fas fa-file-pdf", roles: ["admin", "doctor"] },
-    { path: "/epidemiological-reports", label: "Epidemiologia", icon: Activity, faIcon: "fas fa-chart-area", roles: ["admin", "doctor"] },
-    { path: "/reports", label: "Relatórios", icon: FileBarChart, faIcon: "fas fa-file-chart-line", roles: ["admin", "doctor"] },
-    { path: "/nft-management", label: "NFTs Dinâmicos", icon: Gem, faIcon: "fas fa-gem", roles: ["admin", "doctor", "researcher"] },
-    { path: "/broker", label: "Broker", icon: TrendingUp, faIcon: "fas fa-exchange-alt", roles: ["admin", "doctor", "patient", "researcher"] },
-    { path: "/analytics", label: "Analytics", icon: BarChart3, faIcon: "fas fa-chart-bar", roles: ["admin"] },
-    { path: "/admin", label: t("navigation.admin"), icon: Shield, faIcon: "fas fa-shield-alt", roles: ["admin"] },
+  const navGroups = [
+    {
+      category: "principal",
+      label: "Principal",
+      items: [
+        { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, faIcon: "fas fa-chart-line", roles: ["admin", "doctor", "patient"] },
+        { path: "/assistant", label: "Assistente IA", icon: BrainCircuit, faIcon: "fas fa-robot", roles: ["admin", "doctor", "patient"] },
+      ],
+    },
+    {
+      category: "clinico",
+      label: "Clínico",
+      items: [
+        { path: "/patients", label: "Pacientes", icon: Users, faIcon: "fas fa-users", roles: ["admin", "doctor"] },
+        { path: "/schedule", label: "Agenda", icon: CalendarClock, faIcon: "fas fa-calendar-alt", roles: ["admin", "doctor"] },
+        { path: "/records", label: "Prontuários", icon: FileText, faIcon: "fas fa-file-medical", roles: ["admin", "doctor"] },
+        { path: "/prescriptions", label: "Prescrições", icon: ClipboardList, faIcon: "fas fa-prescription-bottle-alt", roles: ["admin", "doctor"] },
+        { path: "/inter-consultation", label: "Interconsulta", icon: Stethoscope, faIcon: "fas fa-user-md", roles: ["doctor"] },
+        { path: "/doctor-notes", label: "Anotações", icon: StickyNote, faIcon: "fas fa-sticky-note", roles: ["doctor"] },
+      ],
+    },
+    {
+      category: "paciente",
+      label: "Consultas",
+      items: [
+        { path: "/consultation-request", label: "Solicitar Consulta", icon: Stethoscope, faIcon: "fas fa-stethoscope", roles: ["patient"] },
+        { path: "/immediate-consultation", label: "Sala de Espera", icon: Video, faIcon: "fas fa-hospital", roles: ["patient"] },
+        { path: "/my-consultations", label: "Minhas Consultas", icon: CalendarClock, faIcon: "fas fa-calendar-check", roles: ["patient"] },
+      ],
+    },
+    {
+      category: "revisao",
+      label: "Revisão & Diagnóstico",
+      items: [
+        { path: "/incomplete-consultations", label: "Pendências", icon: AlertCircle, faIcon: "fas fa-exclamation-circle", roles: ["doctor"] },
+        { path: "/post-consultation-review", label: "Revisão Pós-Consulta", icon: ClipboardList, faIcon: "fas fa-clipboard-check", roles: ["doctor"] },
+        { path: "/diagnostic-review", label: "Inferências Diagnósticas", icon: Microscope, faIcon: "fas fa-microscope", roles: ["doctor"] },
+      ],
+    },
+    {
+      category: "comunicacao",
+      label: "Comunicação & IA",
+      items: [
+        { path: "/whatsapp", label: "WhatsApp IA", icon: MessageCircle, faIcon: "fab fa-whatsapp", roles: ["admin", "doctor"] },
+        { path: "/medical-references", label: "Referências Médicas", icon: BookOpenCheck, faIcon: "fas fa-file-pdf", roles: ["admin", "doctor"] },
+      ],
+    },
+    {
+      category: "financeiro",
+      label: "Financeiro & Blockchain",
+      items: [
+        { path: "/wallet", label: "Carteira Digital", icon: Wallet, faIcon: "fas fa-wallet", roles: ["doctor", "patient", "admin", "researcher"] },
+        { path: "/nft-management", label: "NFTs Dinâmicos", icon: Gem, faIcon: "fas fa-gem", roles: ["admin", "doctor", "researcher"] },
+        { path: "/broker", label: "Broker", icon: TrendingUp, faIcon: "fas fa-exchange-alt", roles: ["admin", "doctor", "patient", "researcher"] },
+      ],
+    },
+    {
+      category: "relatorios",
+      label: "Relatórios & Analytics",
+      items: [
+        { path: "/epidemiological-reports", label: "Epidemiologia", icon: Activity, faIcon: "fas fa-chart-area", roles: ["admin", "doctor"] },
+        { path: "/reports", label: "Relatórios", icon: FileBarChart, faIcon: "fas fa-file-chart-line", roles: ["admin", "doctor"] },
+        { path: "/analytics", label: "Analytics", icon: BarChart3, faIcon: "fas fa-chart-bar", roles: ["admin"] },
+      ],
+    },
+    {
+      category: "admin",
+      label: "Administração",
+      items: [
+        { path: "/admin", label: t("navigation.admin"), icon: Shield, faIcon: "fas fa-shield-alt", roles: ["admin"] },
+      ],
+    },
   ];
 
-  // For patients: conditionally add prescriptions and records nav items
   if (user?.role === 'patient' && hasActivePrescriptions) {
-    allNavItems.push({ path: "/prescriptions", label: "Minhas Prescrições", icon: Pill, faIcon: "fas fa-pills", roles: ["patient"] });
+    const patientGroup = navGroups.find(g => g.category === 'paciente');
+    if (patientGroup) patientGroup.items.push({ path: "/prescriptions", label: "Minhas Prescrições", icon: Pill, faIcon: "fas fa-pills", roles: ["patient"] });
   }
   if (user?.role === 'patient') {
-    allNavItems.push({ path: "/records", label: hasRecords ? "Meu Prontuário" : "Minhas Solicitações", icon: hasRecords ? FileText : ClipboardList, faIcon: hasRecords ? "fas fa-file-medical" : "fas fa-clipboard-list", roles: ["patient"] });
+    const patientGroup = navGroups.find(g => g.category === 'paciente');
+    if (patientGroup) patientGroup.items.push({ path: "/records", label: hasRecords ? "Meu Prontuário" : "Minhas Solicitações", icon: hasRecords ? FileText : ClipboardList, faIcon: hasRecords ? "fas fa-file-medical" : "fas fa-clipboard-list", roles: ["patient"] });
   }
 
-  // Filter navigation items based on user role (visitors see items with 'visitor' role)
+  const allNavItems = navGroups.flatMap(g => g.items);
+
+  const filteredGroups = navGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => {
+      if (user?.role) return item.roles.includes(user.role);
+      return item.roles.includes('visitor');
+    }),
+  })).filter(group => group.items.length > 0);
+
   const navItems = allNavItems.filter(item => {
     if (user?.role) return item.roles.includes(user.role);
     return item.roles.includes('visitor');
@@ -420,49 +478,55 @@ export default function Header() {
                   </SheetDescription>
                 </SheetHeader>
                 
-                <nav className="flex flex-col p-6 space-y-2">
-                  {navItems.map((item) => {
-                    const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
-                    const mobileBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
-                    return (
-                      <Link
-                        key={item.path}
-                        href={item.path}
-                        data-testid={`link-mobile-nav-${item.path.slice(1) || 'dashboard'}`}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        <div
-                          className={`flex items-center space-x-4 p-4 rounded-xl transition-all duration-200 ${
-                            isActive
-                              ? "text-white shadow-lg"
-                              : "text-muted-foreground hover:text-primary hover:bg-primary/5"
-                          }`}
-                          style={{
-                            background: isActive
-                              ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)"
-                              : "transparent"
-                          }}
-                        >
-                          <div className={`relative w-10 h-10 rounded-lg flex items-center justify-center ${
-                            isActive ? "bg-white/20" : "bg-muted"
-                          }`}>
-                            <i className={`${item.faIcon} text-white`}></i>
-                            {mobileBadge && (
-                              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                                {pendingPostCount > 9 ? '9+' : pendingPostCount}
-                              </span>
-                            )}
-                          </div>
-                          <span className="font-medium">{item.label}</span>
-                          {mobileBadge && (
-                            <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
-                              {pendingPostCount}
-                            </span>
-                          )}
-                        </div>
-                      </Link>
-                    );
-                  })}
+                <nav className="flex flex-col p-6 space-y-1">
+                  {filteredGroups.map((group, groupIdx) => (
+                    <div key={group.category}>
+                      {groupIdx > 0 && <div className="my-2 border-t border-border/50" />}
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-4 mb-1">{group.label}</p>
+                      {group.items.map((item) => {
+                        const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                        const mobileBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
+                        return (
+                          <Link
+                            key={item.path}
+                            href={item.path}
+                            data-testid={`link-mobile-nav-${item.path.slice(1) || 'dashboard'}`}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                          >
+                            <div
+                              className={`flex items-center space-x-4 p-3 rounded-xl transition-all duration-200 ${
+                                isActive
+                                  ? "text-white shadow-lg"
+                                  : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                              }`}
+                              style={{
+                                background: isActive
+                                  ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)"
+                                  : "transparent"
+                              }}
+                            >
+                              <div className={`relative w-9 h-9 rounded-lg flex items-center justify-center ${
+                                isActive ? "bg-white/20" : "bg-muted"
+                              }`}>
+                                <i className={`${item.faIcon} text-sm`}></i>
+                                {mobileBadge && (
+                                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                    {pendingPostCount > 9 ? '9+' : pendingPostCount}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-medium text-sm">{item.label}</span>
+                              {mobileBadge && (
+                                <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                                  {pendingPostCount}
+                                </span>
+                              )}
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </nav>
 
                 {/* Mobile User Info */}
@@ -573,60 +637,68 @@ export default function Header() {
             )}
           </div>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation - Grouped by functional area */}
           <TooltipProvider>
-            <nav className="hidden md:flex items-center space-x-2" data-testid="nav-main">
-              {navItems.map((item) => {
-                const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
-                const IconComponent = item.icon;
-                
-                const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
-                
-                return (
-                  <Tooltip key={item.path}>
-                    <TooltipTrigger asChild>
-                      <Link
-                        href={item.path}
-                        data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}
-                      >
-                        <div className="relative">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className={`icon-link-primary group w-10 h-10 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg ${
-                              isActive
-                                ? "text-white shadow-md"
-                                : `${getTextColor()} hover:bg-primary/10`
-                            }`}
-                            style={{
-                              background: isActive
-                                ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)"
-                                : "transparent"
-                            }}
-                          >
-                            <IconComponent 
-                              className={`h-5 w-5 transition-all duration-300 ${isActive ? 'text-white' : getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
-                              style={{
-                                filter: isActive 
-                                  ? 'drop-shadow(0 2px 8px rgba(255,255,255,0.3))'
-                                  : (isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'))
-                              }}
-                            />
-                          </Button>
-                          {hasBadge && (
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-md animate-pulse">
-                              {pendingPostCount > 9 ? '9+' : pendingPostCount}
-                            </span>
-                          )}
-                        </div>
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
-                      <p className="text-white">{item.label}{hasBadge ? ` (${pendingPostCount})` : ''}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })}
+            <nav className="hidden md:flex items-center space-x-1" data-testid="nav-main">
+              {filteredGroups.map((group, groupIdx) => (
+                <div key={group.category} className="flex items-center">
+                  {groupIdx > 0 && (
+                    <div className={`mx-1 h-6 w-px ${isAuthenticatedPage ? 'bg-border/50' : (isScrolled ? 'bg-white/20' : 'bg-white/15')}`} />
+                  )}
+                  <div className="flex items-center space-x-1">
+                    {group.items.map((item) => {
+                      const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                      const IconComponent = item.icon;
+                      const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
+                      
+                      return (
+                        <Tooltip key={item.path}>
+                          <TooltipTrigger asChild>
+                            <Link
+                              href={item.path}
+                              data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}
+                            >
+                              <div className="relative">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`icon-link-primary group w-9 h-9 rounded-lg transition-all duration-300 hover:scale-110 hover:shadow-lg ${
+                                    isActive
+                                      ? "text-white shadow-md"
+                                      : `${getTextColor()} hover:bg-primary/10`
+                                  }`}
+                                  style={{
+                                    background: isActive
+                                      ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)"
+                                      : "transparent"
+                                  }}
+                                >
+                                  <IconComponent 
+                                    className={`h-4.5 w-4.5 transition-all duration-300 ${isActive ? 'text-white' : getTextColor()} group-hover:drop-shadow-[0_2px_12px_rgba(234,120,54,0.8)]`}
+                                    style={{
+                                      filter: isActive 
+                                        ? 'drop-shadow(0 2px 8px rgba(255,255,255,0.3))'
+                                        : (isAuthenticatedPage ? 'none' : (isScrolled ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'))
+                                    }}
+                                  />
+                                </Button>
+                                {hasBadge && (
+                                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-md animate-pulse">
+                                    {pendingPostCount > 9 ? '9+' : pendingPostCount}
+                                  </span>
+                                )}
+                              </div>
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
+                            <p className="text-white">{item.label}{hasBadge ? ` (${pendingPostCount})` : ''}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </nav>
           </TooltipProvider>
 

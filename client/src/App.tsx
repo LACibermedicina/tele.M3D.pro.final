@@ -63,6 +63,9 @@ import Header from "@/components/layout/header";
 import FloatingChatbot from "@/components/ui/floating-chatbot";
 import CommandPalette from "@/components/command-palette";
 import QuickActionsBar from "@/components/quick-actions-bar";
+import { VoiceAssistantProvider } from "@/contexts/VoiceAssistantContext";
+import { VoiceAssistantPrompt } from "@/components/voice-assistant-prompt";
+import { VoiceAssistantOverlay, VoiceAssistantToggle } from "@/components/voice-assistant-overlay";
 
 // Responsive Dashboard Components
 import { ResponsiveDashboard } from "@/components/responsive-dashboard";
@@ -459,6 +462,15 @@ function Router() {
       
       {/* Quick Actions Bar - Available for authenticated users */}
       {user && <QuickActionsBar userRole={user.role} />}
+
+      {/* Voice Assistant Prompt - Shown on first visit */}
+      <VoiceAssistantPrompt />
+      
+      {/* Voice Assistant Overlay - Full screen when active */}
+      <VoiceAssistantOverlay />
+      
+      {/* Voice Assistant Toggle Button */}
+      {user && <VoiceAssistantToggle />}
     </div>
   );
 }
@@ -468,10 +480,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <NavigationProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
+          <VoiceAssistantProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </VoiceAssistantProvider>
         </NavigationProvider>
       </AuthProvider>
     </QueryClientProvider>

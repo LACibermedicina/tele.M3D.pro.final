@@ -46,6 +46,13 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
         }
         setTranscript(final || interim);
         if (final) {
+          const lower = final.toLowerCase().trim();
+          const closeCommands = ["fechar assistente", "encerrar assistente", "fechar o assistente", "encerrar o assistente", "desligar assistente", "parar assistente", "sair do assistente", "tchau assistente", "finalizar assistente"];
+          if (closeCommands.some(cmd => lower.includes(cmd))) {
+            speakText("Até logo! Estou aqui quando precisar.");
+            setTimeout(() => handleClose(), 2000);
+            return;
+          }
           handleSendMessage(final);
         }
       };

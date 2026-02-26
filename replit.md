@@ -12,6 +12,9 @@ Ask before making major changes.
 The application features an Express.js backend and a React frontend, with shared TypeScript schemas for consistency. PostgreSQL is used for the database, managed with Drizzle ORM. AI services primarily leverage Google Gemini API for advanced capabilities, with Replit OpenAI AI Integrations (`gpt-4o-mini`) as a fallback.
 
 **UI/UX Decisions:**
+- **Navigation Menu:** Icons grouped by functional area (Principal, Clínico, Consultas, Revisão & Diagnóstico, Comunicação & IA, Financeiro & Blockchain, Relatórios & Analytics, Administração) with visual separators between groups on desktop and category headers on mobile.
+- **Admin Theme:** Distinctive dark indigo/slate gradient background with subtle dot grid pattern and radial glow effects, differentiating admin pages from the main origami theme.
+- **Voice Assistant Prompt:** On first login, users are prompted to enable the IAM3D voice assistant. When enabled, a full-screen overlay with the animated sphere stays active until the user says "fechar assistente" or similar voice commands. A floating mic toggle button persists for quick access.
 - **Doctor Notes:** macOS Notes-style interface with folders, search, pinning, and color labels.
 - **Triage System:** Implements a 5-level Manchester Protocol (or WHO ETAT fallback) visual classification with color-coded badges and help dialogs.
 - **WhatsApp IA:** Messages display with role labels (Doctor, Patient, AI) and color-coded bubbles. Patient online status is shown in real-time.
