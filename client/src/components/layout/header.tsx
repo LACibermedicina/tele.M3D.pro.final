@@ -1000,7 +1000,7 @@ export default function Header() {
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   placeholder="Email"
-                  className="w-32 px-2 py-1 bg-transparent text-xs text-white placeholder:text-white/40 focus:outline-none focus:placeholder:text-white/60 transition-all"
+                  className="w-32 px-2 py-1 bg-transparent text-xs text-white placeholder:text-white/40 focus:outline-none focus:placeholder:text-white/60 transition-all drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]"
                   data-testid="input-quick-login-email"
                   disabled={isLoggingIn}
                 />
@@ -1010,7 +1010,7 @@ export default function Header() {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="Senha"
-                  className="w-24 px-2 py-1 bg-transparent text-xs text-white placeholder:text-white/40 focus:outline-none focus:placeholder:text-white/60 transition-all"
+                  className="w-24 px-2 py-1 bg-transparent text-xs text-white placeholder:text-white/40 focus:outline-none focus:placeholder:text-white/60 transition-all drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]"
                   data-testid="input-quick-login-password"
                   disabled={isLoggingIn}
                 />
