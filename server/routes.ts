@@ -13128,6 +13128,63 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     }
   });
 
+  app.get('/api/patients/:patientId/export', requireAuth, async (req: any, res) => {
+    try {
+      const { patientId } = req.params;
+      const { standard = 'fhir-br', format = 'json', deidentify = 'false' } = req.query;
+
+      if (req.user.role === 'patient') {
+        const patientRecord = await db.select().from(patients).where(eq(patients.userId, req.user.id)).limit(1);
+        if (!patientRecord.length || patientRecord[0].id !== patientId) {
+          return res.status(403).json({ message: 'Acesso negado: você só pode exportar seus próprios dados' });
+        }
+      } else if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+
+      const validStandards = ['fhir-br', 'fhir-us', 'fhir-eu', 'fhir-intl'];
+      if (!validStandards.includes(standard as string)) {
+        return res.status(400).json({ message: `Padrão inválido. Use: ${validStandards.join(', ')}` });
+      }
+
+      const { patientExportService } = await import('./services/patient-export-service');
+
+      const result = await patientExportService.exportPatientData(patientId, {
+        standard: standard as any,
+        format: format as any,
+        deidentify: deidentify === 'true',
+        includeConsent: true,
+      });
+
+      try {
+        await db.insert(walletAuditLog).values({
+          userId: req.user.id,
+          action: 'patient_data_export',
+          details: `Exported patient ${patientId} data in ${standard} ${format} format`,
+          ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+        });
+      } catch (auditErr) {
+        console.error('Audit log error (non-blocking):', auditErr);
+      }
+
+      if (format === 'pdf') {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="prontuario-${patientId}-${standard}.html"`);
+        return res.send(result.html);
+      }
+
+      res.setHeader('Content-Type', 'application/fhir+json');
+      res.setHeader('Content-Disposition', `attachment; filename="fhir-bundle-${patientId}-${standard}.json"`);
+      res.json(result.bundle);
+    } catch (error: any) {
+      console.error('Patient export error:', error);
+      if (error.message === 'Patient not found') {
+        return res.status(404).json({ message: 'Paciente não encontrado' });
+      }
+      res.status(500).json({ message: 'Falha ao exportar dados do paciente' });
+    }
+  });
+
   // Get recent prescriptions (for dashboard or general view)
   app.get('/api/prescriptions/recent', requireAuth, async (req, res) => {
     try {

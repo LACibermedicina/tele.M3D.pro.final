@@ -19,6 +19,7 @@ import { ptBR } from "date-fns/locale";
 import { z } from "zod";
 import { DEFAULT_DOCTOR_ID } from "@shared/schema";
 import PageWrapper from "@/components/layout/page-wrapper";
+import PatientExportDialog from "@/components/patient-export-dialog";
 import origamiHeroImage from "@assets/image_1759773239051.png";
 
 const medicalRecordSchema = z.object({
@@ -36,6 +37,7 @@ export default function MedicalRecords() {
   const initialPatientId = urlParams.get('patientId');
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(initialPatientId);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -152,6 +154,12 @@ export default function MedicalRecords() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          {selectedPatient && (
+            <Button variant="outline" size="sm" onClick={() => setIsExportDialogOpen(true)}>
+              <i className="fas fa-download mr-1"></i>
+              Exportar Prontuário
+            </Button>
+          )}
           <div className="security-badge px-3 py-1 rounded-full text-white text-xs font-medium">
             <i className="fas fa-shield-alt mr-1"></i>
             Dados Criptografados
@@ -637,6 +645,14 @@ export default function MedicalRecords() {
         </div>
       </div>
     </div>
+      {selectedPatient && (
+        <PatientExportDialog
+          open={isExportDialogOpen}
+          onOpenChange={setIsExportDialogOpen}
+          patientId={selectedPatient.id}
+          patientName={selectedPatient.name}
+        />
+      )}
     </PageWrapper>
   );
 }

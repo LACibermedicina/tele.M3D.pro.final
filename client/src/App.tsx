@@ -112,9 +112,11 @@ function Router() {
           <Login />
         </Route>
         <Route path="/acesso/:code">
+          <Header />
           <ConsultationAccess />
         </Route>
         <Route path="/acesso">
+          <Header />
           <ConsultationAccess />
         </Route>
         <Route path="/join/:token">

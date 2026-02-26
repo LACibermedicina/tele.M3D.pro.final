@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { TriageBadge } from "@/components/triage/triage-badge";
+import PatientExportDialog from "@/components/patient-export-dialog";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
 import {
@@ -57,6 +59,12 @@ interface MyConsultations {
 export default function PatientRecords() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+
+  const { data: patientProfile } = useQuery<any>({
+    queryKey: ['/api/patients/me'],
+    enabled: !!user && user.role === 'patient',
+  });
 
   const { data: myRecords, isLoading: recordsLoading } = useQuery<any[]>({
     queryKey: ['/api/medical-records/my'],
@@ -151,10 +159,18 @@ export default function PatientRecords() {
     <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
     <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-5xl">
       <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
-          <FileText className="w-7 h-7 text-primary" />
-          {hasRecords ? 'Meu Prontuário' : 'Minhas Solicitações'}
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
+            <FileText className="w-7 h-7 text-primary" />
+            {hasRecords ? 'Meu Prontuário' : 'Minhas Solicitações'}
+          </h1>
+          {patientProfile && (
+            <Button variant="outline" size="sm" onClick={() => setIsExportDialogOpen(true)}>
+              <i className="fas fa-download mr-1"></i>
+              Exportar Meus Dados
+            </Button>
+          )}
+        </div>
         <p className="text-muted-foreground">
           {hasRecords
             ? 'Acompanhe seu histórico médico, prontuários e solicitações de consulta'
@@ -321,6 +337,14 @@ export default function PatientRecords() {
         </div>
       )}
     </div>
+      {patientProfile && (
+        <PatientExportDialog
+          open={isExportDialogOpen}
+          onOpenChange={setIsExportDialogOpen}
+          patientId={patientProfile.id}
+          patientName={patientProfile.name || user?.name || 'Paciente'}
+        />
+      )}
     </PageWrapper>
   );
 }
