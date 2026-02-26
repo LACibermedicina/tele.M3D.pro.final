@@ -62,37 +62,43 @@ export default function Header() {
     },
   });
 
-  // Handle scroll effect for header background
+  // Handle scroll effect for header background (Safari-compatible)
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 0);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   // Determine if we're on an authenticated page (not home/login)
   const isAuthenticatedPage = user !== null && location !== '/' && location !== '/login';
 
-  const isDarkHeader = isScrolled || !isAuthenticatedPage;
-
   const getTextColor = () => {
-    if (isDarkHeader) {
+    if (isScrolled) {
       return 'text-white';
     }
     return 'text-slate-800 dark:text-white';
   };
 
   const getIconColor = () => {
-    if (isDarkHeader) {
+    if (isScrolled) {
       return 'text-white';
     }
     return 'text-indigo-950 dark:text-white';
   };
 
   const getSubTextColor = () => {
-    if (isDarkHeader) {
+    if (isScrolled) {
       return 'text-gray-200';
     }
     return 'text-slate-500 dark:text-gray-300';
@@ -106,14 +112,14 @@ export default function Header() {
   };
 
   const getIconFilter = () => {
-    if (isDarkHeader) {
+    if (isScrolled) {
       return 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))';
     }
     return 'drop-shadow(0 1px 4px rgba(30,27,75,0.2))';
   };
 
   const getDividerColor = () => {
-    if (isDarkHeader) {
+    if (isScrolled) {
       return 'bg-white/20';
     }
     return 'bg-slate-300 dark:bg-white/20';
@@ -473,9 +479,7 @@ export default function Header() {
       className={`border-b sticky top-0 z-50 transition-all duration-300 w-full ${
         isScrolled 
           ? 'bg-slate-900/80 backdrop-blur-md border-slate-700 shadow-lg' 
-          : isAuthenticatedPage
-            ? 'bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border-gray-200/50 dark:border-slate-700 shadow-sm'
-            : 'bg-transparent border-transparent'
+          : 'bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border-gray-200/50 dark:border-slate-700 shadow-sm'
       }`} 
       data-testid="header-main"
     >
@@ -697,9 +701,9 @@ export default function Header() {
                   <img 
                     src={telemedLogo} 
                     alt="Tele<M3D> Logo" 
-                    className={`w-full h-full object-contain transition-all duration-300 group-hover:scale-110 ${!isDarkHeader ? 'dark:invert' : ''}`}
+                    className={`w-full h-full object-contain transition-all duration-300 group-hover:scale-110 ${!isScrolled ? 'dark:invert' : ''}`}
                     style={{ 
-                      filter: isDarkHeader
+                      filter: isScrolled
                         ? 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))'
                         : 'brightness(0) invert(0) drop-shadow(0 1px 3px rgba(0,0,0,0.15))'
                     }}
@@ -731,7 +735,7 @@ export default function Header() {
                   <p 
                     className={`text-xs transition-all duration-300 ${getSubTextColor()}`}
                     style={{
-                      textShadow: isDarkHeader && !isScrolled ? getShadowEffect() : 'none'
+                      textShadow: 'none'
                     }}
                   >
                     {getRoleDisplay(user.role)}
@@ -1014,7 +1018,7 @@ export default function Header() {
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   placeholder="Email"
-                  className={`w-32 px-2 py-1 bg-transparent text-xs focus:outline-none transition-all ${getTextColor()} ${isDarkHeader ? 'placeholder:text-white/40 focus:placeholder:text-white/60' : 'placeholder:text-gray-400 focus:placeholder:text-gray-500'}`}
+                  className={`w-32 px-2 py-1 bg-transparent text-xs focus:outline-none transition-all ${getTextColor()} ${isScrolled ? 'placeholder:text-white/40 focus:placeholder:text-white/60' : 'placeholder:text-gray-400 focus:placeholder:text-gray-500'}`}
                   data-testid="input-quick-login-email"
                   disabled={isLoggingIn}
                 />
@@ -1024,7 +1028,7 @@ export default function Header() {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="Senha"
-                  className={`w-24 px-2 py-1 bg-transparent text-xs focus:outline-none transition-all ${getTextColor()} ${isDarkHeader ? 'placeholder:text-white/40 focus:placeholder:text-white/60' : 'placeholder:text-gray-400 focus:placeholder:text-gray-500'}`}
+                  className={`w-24 px-2 py-1 bg-transparent text-xs focus:outline-none transition-all ${getTextColor()} ${isScrolled ? 'placeholder:text-white/40 focus:placeholder:text-white/60' : 'placeholder:text-gray-400 focus:placeholder:text-gray-500'}`}
                   data-testid="input-quick-login-password"
                   disabled={isLoggingIn}
                 />
@@ -1070,7 +1074,7 @@ export default function Header() {
             
             {user ? (
               <>
-                <NotificationCenter isScrolled={isDarkHeader} />
+                <NotificationCenter isScrolled={isScrolled} />
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -1097,7 +1101,7 @@ export default function Header() {
                         <p 
                           className={`text-xs transition-all duration-300 ${getSubTextColor()}`}
                           style={{
-                            textShadow: isDarkHeader && !isScrolled ? getShadowEffect() : 'none'
+                            textShadow: 'none'
                           }}
                         >
                           {getRoleDisplay(user.role)}
