@@ -6429,7 +6429,7 @@ Responda em português brasileiro, de forma estruturada e concisa, com linguagem
       if (req.user?.role !== 'doctor' && req.user?.role !== 'admin') {
         return res.status(403).json({ message: 'Somente médicos podem solicitar sugestões de IA' });
       }
-      const { patientId, medicationName, medicationDetails } = req.body;
+      const { patientId, medicationName, medicationDetails, diagnosis, symptoms } = req.body;
       if (!patientId || !medicationName) {
         return res.status(400).json({ message: 'patientId e medicationName são obrigatórios' });
       }
@@ -6451,16 +6451,18 @@ PACIENTE:
 - Alergias: ${patient.allergies || 'Nenhuma registrada'}
 - Condições: ${patient.conditions || 'Nenhuma registrada'}
 - Histórico recente: ${patientHistory || 'Sem histórico'}
+${diagnosis ? `\nDIAGNÓSTICO ATUAL: ${diagnosis}` : ''}
+${symptoms ? `SINTOMAS DESCRITOS: ${symptoms}` : ''}
 
-MEDICAMENTO: ${medicationName}
+MEDICAMENTO SOLICITADO: ${medicationName}
 ${medicationDetails ? `Detalhes: ${medicationDetails}` : ''}
 
-Forneça uma recomendação estruturada em JSON com os seguintes campos:
+Com base no diagnóstico, sintomas e histórico do paciente, forneça uma recomendação estruturada em JSON com os seguintes campos:
 {
-  "dosage": "dosagem recomendada considerando perfil do paciente",
+  "dosage": "dosagem recomendada considerando perfil do paciente e diagnóstico",
   "frequency": "frequência de administração",
-  "duration": "duração do tratamento",
-  "observations": "observações importantes (categoria na gravidez, ajustes renais/hepáticos, idosos)",
+  "duration": "duração do tratamento baseada no diagnóstico",
+  "observations": "observações importantes (categoria na gravidez, ajustes renais/hepáticos, idosos, relação com o diagnóstico)",
   "specialInstructions": "instruções especiais de administração (horário, alimentação, interações com alimentos)",
   "warnings": {
     "sideEffects": ["efeito colateral 1", "efeito colateral 2"],
@@ -6514,6 +6516,149 @@ Responda APENAS com o JSON, sem texto adicional.`;
     } catch (error) {
       console.error('AI suggestion error:', error);
       res.status(500).json({ message: 'Falha ao gerar sugestão de IA' });
+    }
+  });
+
+  app.post('/api/prescriptions/ai-suggest-medications', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'doctor' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Somente médicos podem solicitar sugestões de IA' });
+      }
+      const { patientId, diagnosis, symptoms, notes } = req.body;
+      if (!patientId) {
+        return res.status(400).json({ message: 'patientId é obrigatório' });
+      }
+      if (!diagnosis && !symptoms) {
+        return res.status(400).json({ message: 'Diagnóstico ou sintomas são obrigatórios' });
+      }
+
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: 'Paciente não encontrado' });
+      }
+
+      const patientRecords = await storage.getMedicalRecordsByPatientId(patientId);
+      const patientHistory = patientRecords.slice(0, 10).map((r: any) => {
+        const parts = [];
+        if (r.diagnosis) parts.push(`Diagnóstico: ${r.diagnosis}`);
+        if (r.symptoms) parts.push(`Sintomas: ${r.symptoms}`);
+        if (r.notes) parts.push(`Notas: ${r.notes.substring(0, 200)}`);
+        if (r.createdAt) parts.push(`Data: ${new Date(r.createdAt).toLocaleDateString('pt-BR')}`);
+        return parts.join(' | ');
+      }).join('\n');
+
+      const existingPrescriptions = await db.select().from(prescriptions)
+        .where(eq(prescriptions.patientId, patientId))
+        .orderBy(desc(prescriptions.createdAt))
+        .limit(5);
+
+      let prescriptionHistory = '';
+      if (existingPrescriptions.length > 0) {
+        const prescIds = existingPrescriptions.map(p => p.id);
+        const allItems = await db.select().from(prescriptionItems)
+          .where(inArray(prescriptionItems.prescriptionId, prescIds));
+        prescriptionHistory = allItems.map((pi: any) => 
+          `${pi.customMedication || pi.medicationName || 'Med'} - ${pi.dosage} - ${pi.frequency}`
+        ).join('; ');
+      }
+
+      const prompt = `Você é um assistente médico especialista em farmacologia clínica, seguindo rigorosamente protocolos OMS (WHO), Ministério da Saúde do Brasil, RENAME/ANVISA e diretrizes DSM-5/DSM-5-TR quando aplicável.
+
+PACIENTE:
+- Nome: ${patient.name}
+- Idade: ${patient.age || 'Não informada'}
+- Peso: ${patient.weight || 'Não informado'}kg
+- Alergias: ${patient.allergies || 'Nenhuma registrada'}
+- Condições crônicas: ${patient.conditions || 'Nenhuma registrada'}
+${patientHistory ? `\nHISTÓRICO CLÍNICO:\n${patientHistory}` : ''}
+${prescriptionHistory ? `\nPRESCRIÇÕES ANTERIORES: ${prescriptionHistory}` : ''}
+
+QUADRO CLÍNICO ATUAL:
+- Diagnóstico: ${diagnosis || 'Não especificado'}
+- Sintomas: ${symptoms || 'Não descritos'}
+${notes ? `- Observações: ${notes}` : ''}
+
+Com base no diagnóstico, sintomas e todo o histórico do paciente (incluindo alergias, condições crônicas e prescrições anteriores), sugira uma lista completa de medicamentos para o tratamento. Para cada medicamento, forneça informações detalhadas.
+
+Responda APENAS com um JSON válido no seguinte formato:
+{
+  "clinicalAnalysis": "Breve análise clínica do caso, correlacionando sintomas ao diagnóstico e histórico",
+  "treatmentApproach": "Abordagem terapêutica recomendada (ex: tratamento sintomático + etiológico)",
+  "medications": [
+    {
+      "name": "nome do medicamento",
+      "genericName": "nome genérico / princípio ativo",
+      "category": "categoria terapêutica (ex: AINE, Antibiótico, Ansiolítico)",
+      "indication": "indicação específica para este caso/diagnóstico",
+      "dosage": "dosagem recomendada para este paciente",
+      "frequency": "frequência de administração",
+      "duration": "duração do tratamento",
+      "route": "via de administração (oral, IV, IM, tópica)",
+      "instructions": "instruções de uso (horário, com/sem alimento, etc)",
+      "priority": "essential|recommended|optional",
+      "reasoning": "justificativa clínica para esta escolha",
+      "warnings": {
+        "sideEffects": ["efeito colateral 1", "efeito colateral 2"],
+        "contraindications": ["contraindicação 1"],
+        "drugInteractions": ["interação 1"],
+        "riskLevel": "low|moderate|high"
+      }
+    }
+  ],
+  "nonPharmacological": ["recomendação não-farmacológica 1", "recomendação 2"],
+  "followUp": "recomendação de acompanhamento",
+  "alerts": ["alerta importante 1 baseado no perfil do paciente"]
+}
+
+IMPORTANTE:
+- Considere TODAS as alergias e condições do paciente
+- Evite medicamentos que interajam com prescrições anteriores
+- Ordene por prioridade (essenciais primeiro)
+- Inclua pelo menos tratamento principal + suporte sintomático
+- Indique se há opção genérica disponível no Brasil (RENAME)
+- Responda APENAS com o JSON, sem texto adicional`;
+
+      let aiResponse: string | null = null;
+      try {
+        const result = await geminiService.generateContent(prompt);
+        aiResponse = result;
+      } catch (err) {
+        console.log('[AI-MED-LIST] Gemini failed, trying OpenAI fallback');
+        try {
+          const OpenAI = (await import('openai')).default;
+          const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+          const completion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+          });
+          aiResponse = completion.choices[0]?.message?.content || null;
+        } catch (err2) {
+          console.error('[AI-MED-LIST] All AI services failed:', err2);
+        }
+      }
+
+      if (!aiResponse) {
+        return res.status(500).json({ message: 'Serviço de IA indisponível' });
+      }
+
+      try {
+        const cleanJson = aiResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const suggestion = JSON.parse(cleanJson);
+        res.json(suggestion);
+      } catch (parseErr) {
+        res.json({
+          clinicalAnalysis: aiResponse,
+          treatmentApproach: '',
+          medications: [],
+          nonPharmacological: [],
+          followUp: '',
+          alerts: ['Não foi possível estruturar a resposta da IA. Veja a análise clínica.']
+        });
+      }
+    } catch (error) {
+      console.error('AI medication list error:', error);
+      res.status(500).json({ message: 'Falha ao gerar lista de medicamentos' });
     }
   });
 

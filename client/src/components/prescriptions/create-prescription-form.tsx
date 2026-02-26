@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Plus, Trash2, AlertTriangle, Activity, TrendingUp, Loader2, Database, Globe, Sparkles, ShieldAlert, Info, CheckCircle2 } from 'lucide-react';
+import { Search, Plus, Trash2, AlertTriangle, Activity, TrendingUp, Loader2, Database, Globe, Sparkles, ShieldAlert, Info, CheckCircle2, Brain, Stethoscope, HeartPulse, CalendarCheck } from 'lucide-react';
 import { formatErrorForToast } from '@/lib/error-handler';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
@@ -91,6 +91,35 @@ interface AISuggestion {
   };
 }
 
+interface AIMedicationItem {
+  name: string;
+  genericName: string;
+  category: string;
+  indication: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  route: string;
+  instructions: string;
+  priority: string;
+  reasoning: string;
+  warnings: {
+    sideEffects: string[];
+    contraindications: string[];
+    drugInteractions: string[];
+    riskLevel: string;
+  };
+}
+
+interface AIMedicationList {
+  clinicalAnalysis: string;
+  treatmentApproach: string;
+  medications: AIMedicationItem[];
+  nonPharmacological: string[];
+  followUp: string;
+  alerts: string[];
+}
+
 interface DrugInteractionAnalysis {
   drugName: string;
   activeIngredient: string;
@@ -129,6 +158,10 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [aiSuggestionIndex, setAiSuggestionIndex] = useState<number>(0);
   const [isLoadingAISuggestion, setIsLoadingAISuggestion] = useState(false);
+  const [showAIMedListDialog, setShowAIMedListDialog] = useState(false);
+  const [aiMedList, setAiMedList] = useState<AIMedicationList | null>(null);
+  const [isLoadingAIMedList, setIsLoadingAIMedList] = useState(false);
+  const [symptomsField, setSymptomsField] = useState('');
 
   const form = useForm<PrescriptionFormData>({
     resolver: zodResolver(prescriptionFormSchema),
@@ -321,10 +354,13 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
     setIsLoadingAISuggestion(true);
     setAiSuggestionIndex(index);
     try {
+      const diagnosis = form.getValues('diagnosis') || '';
       const response = await apiRequest('POST', '/api/prescriptions/ai-suggest', {
         patientId,
         medicationName,
         medicationId: item.medicationId || undefined,
+        diagnosis,
+        symptoms: symptomsField,
       });
       const data = await response.json();
       setAiSuggestion(data);
@@ -373,6 +409,122 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
         return 'secondary';
       default:
         return 'outline';
+    }
+  };
+
+  const fetchAIMedicationList = async () => {
+    const patientId = form.getValues('patientId');
+    const diagnosis = form.getValues('diagnosis');
+    const notes = form.getValues('notes');
+
+    if (!patientId) {
+      toast({
+        title: 'Selecione um paciente',
+        description: 'É necessário selecionar um paciente para gerar sugestões.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!diagnosis && !symptomsField) {
+      toast({
+        title: 'Preencha o diagnóstico ou sintomas',
+        description: 'É necessário informar o diagnóstico ou os sintomas para gerar a lista de medicamentos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoadingAIMedList(true);
+    try {
+      const response = await apiRequest('POST', '/api/prescriptions/ai-suggest-medications', {
+        patientId,
+        diagnosis,
+        symptoms: symptomsField,
+        notes,
+      });
+      const data = await response.json();
+      setAiMedList(data);
+      setShowAIMedListDialog(true);
+    } catch (error) {
+      console.error('Error fetching AI medication list:', error);
+      toast({
+        title: 'Erro ao gerar lista de medicamentos',
+        description: 'Não foi possível gerar sugestões. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingAIMedList(false);
+    }
+  };
+
+  const addAIMedToForm = (med: AIMedicationItem) => {
+    const currentItems = form.getValues('items');
+    const emptyFirst = currentItems.length === 1 && !currentItems[0].medicationId && !currentItems[0].customMedication && !currentItems[0].dosage;
+
+    if (emptyFirst) {
+      form.setValue('items.0.customMedication', `${med.name}${med.genericName ? ` (${med.genericName})` : ''}`);
+      form.setValue('items.0.dosage', med.dosage || '');
+      form.setValue('items.0.frequency', med.frequency || '');
+      form.setValue('items.0.duration', med.duration || '');
+      form.setValue('items.0.instructions', med.instructions || '');
+      form.setValue('items.0.notes', `${med.category || ''} | ${med.indication || ''} | Via: ${med.route || 'oral'}`);
+    } else {
+      const newItems = [...currentItems, {
+        medicationId: '',
+        customMedication: `${med.name}${med.genericName ? ` (${med.genericName})` : ''}`,
+        dosage: med.dosage || '',
+        frequency: med.frequency || '',
+        duration: med.duration || '',
+        quantity: 1,
+        instructions: med.instructions || '',
+        isGenericAllowed: true,
+        notes: `${med.category || ''} | ${med.indication || ''} | Via: ${med.route || 'oral'}`,
+      }];
+      form.setValue('items', newItems);
+    }
+
+    toast({
+      title: 'Medicamento adicionado',
+      description: `${med.name} foi adicionado à prescrição. Revise os campos.`,
+    });
+  };
+
+  const addAllAIMedsToForm = () => {
+    if (!aiMedList?.medications?.length) return;
+    const currentItems = form.getValues('items');
+    const emptyFirst = currentItems.length === 1 && !currentItems[0].medicationId && !currentItems[0].customMedication && !currentItems[0].dosage;
+
+    const newMeds = aiMedList.medications.map(med => ({
+      medicationId: '',
+      customMedication: `${med.name}${med.genericName ? ` (${med.genericName})` : ''}`,
+      dosage: med.dosage || '',
+      frequency: med.frequency || '',
+      duration: med.duration || '',
+      quantity: 1,
+      instructions: med.instructions || '',
+      isGenericAllowed: true,
+      notes: `${med.category || ''} | ${med.indication || ''} | Via: ${med.route || 'oral'}`,
+    }));
+
+    form.setValue('items', emptyFirst ? newMeds : [...currentItems, ...newMeds]);
+    setShowAIMedListDialog(false);
+    toast({
+      title: 'Lista de medicamentos aplicada',
+      description: `${newMeds.length} medicamento(s) adicionado(s) à prescrição. Revise os campos antes de salvar.`,
+    });
+  };
+
+  const getPriorityBadge = (priority: string) => {
+    switch (priority?.toLowerCase()) {
+      case 'essential':
+        return <Badge className="bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400">Essencial</Badge>;
+      case 'recommended':
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400">Recomendado</Badge>;
+      case 'optional':
+        return <Badge className="bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400">Opcional</Badge>;
+      default:
+        return <Badge variant="outline">{priority || 'N/A'}</Badge>;
     }
   };
 
@@ -469,6 +621,56 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
                 </FormItem>
               )}
             />
+
+            <div>
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Sintomas
+              </label>
+              <Textarea
+                placeholder="Descreva os sintomas do paciente (febre, dor de cabeça, tosse, etc.)..."
+                value={symptomsField}
+                onChange={(e) => setSymptomsField(e.target.value)}
+                className="mt-1.5"
+                data-testid="textarea-symptoms"
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={fetchAIMedicationList}
+                disabled={isLoadingAIMedList}
+                className="text-purple-600 border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950"
+                data-testid="button-ai-generate-med-list"
+              >
+                {isLoadingAIMedList ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Gerando lista...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Gerar Lista de Medicamentos (IA)
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (aiMedList) setShowAIMedListDialog(true);
+                  else fetchAIMedicationList();
+                }}
+                disabled={isLoadingAIMedList}
+                className="text-purple-500 hover:text-purple-700"
+              >
+                <TrendingUp className="h-4 w-4 mr-1.5" />
+                {aiMedList ? 'Ver Sugestões Anteriores' : 'Visualizar Sugestões'}
+              </Button>
+            </div>
 
             <FormField
               control={form.control}
@@ -991,6 +1193,232 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
                 >
                   <CheckCircle2 className="h-4 w-4 mr-1.5" />
                   Aplicar Sugestão
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Medication List Dialog */}
+      <Dialog open={showAIMedListDialog} onOpenChange={setShowAIMedListDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="dialog-ai-med-list">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              Lista de Medicamentos Sugeridos pela IA
+            </DialogTitle>
+            <DialogDescription>
+              Baseada no diagnóstico, sintomas e histórico do paciente. Revise antes de adicionar.
+            </DialogDescription>
+          </DialogHeader>
+
+          {aiMedList && (
+            <div className="space-y-4 mt-2">
+              {aiMedList.alerts?.length > 0 && (
+                <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30">
+                  <CardContent className="p-3">
+                    <h4 className="font-semibold text-sm flex items-center gap-2 text-red-700 dark:text-red-400 mb-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      Alertas Importantes
+                    </h4>
+                    <ul className="text-sm text-red-600 dark:text-red-400 space-y-1">
+                      {aiMedList.alerts.map((alert, idx) => (
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
+                          {alert}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {aiMedList.clinicalAnalysis && (
+                <Card>
+                  <CardContent className="p-3">
+                    <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
+                      <Brain className="h-4 w-4 text-purple-600" />
+                      Análise Clínica
+                    </h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">{aiMedList.clinicalAnalysis}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {aiMedList.treatmentApproach && (
+                <Card>
+                  <CardContent className="p-3">
+                    <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
+                      <Stethoscope className="h-4 w-4 text-blue-600" />
+                      Abordagem Terapêutica
+                    </h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">{aiMedList.treatmentApproach}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-sm">Medicamentos Sugeridos ({aiMedList.medications?.length || 0})</h4>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={addAllAIMedsToForm}
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                    Adicionar Todos
+                  </Button>
+                </div>
+
+                {aiMedList.medications?.map((med, idx) => (
+                  <Card key={idx} className="border-l-4" style={{
+                    borderLeftColor: med.priority === 'essential' ? '#ef4444' : med.priority === 'recommended' ? '#3b82f6' : '#9ca3af'
+                  }}>
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="font-medium text-sm">{med.name}</span>
+                          {med.genericName && (
+                            <span className="text-xs text-muted-foreground ml-1.5">({med.genericName})</span>
+                          )}
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {getPriorityBadge(med.priority)}
+                            {med.category && (
+                              <Badge variant="outline" className="text-xs">{med.category}</Badge>
+                            )}
+                            {med.route && (
+                              <Badge variant="outline" className="text-xs">Via: {med.route}</Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => addAIMedToForm(med)}
+                          className="shrink-0 text-purple-600 border-purple-300 hover:bg-purple-50"
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          Adicionar
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <span className="font-medium text-muted-foreground">Dose:</span>
+                          <p>{med.dosage || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-muted-foreground">Frequência:</span>
+                          <p>{med.frequency || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-muted-foreground">Duração:</span>
+                          <p>{med.duration || '-'}</p>
+                        </div>
+                      </div>
+
+                      {med.indication && (
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-medium">Indicação:</span> {med.indication}
+                        </p>
+                      )}
+
+                      {med.reasoning && (
+                        <p className="text-xs text-blue-600 dark:text-blue-400">
+                          <span className="font-medium">Justificativa:</span> {med.reasoning}
+                        </p>
+                      )}
+
+                      {med.warnings && (med.warnings.sideEffects?.length > 0 || med.warnings.contraindications?.length > 0 || med.warnings.drugInteractions?.length > 0) && (
+                        <div className="pt-1 border-t space-y-1.5">
+                          {med.warnings.sideEffects?.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              <span className="text-xs font-medium text-orange-600">Efeitos:</span>
+                              {med.warnings.sideEffects.slice(0, 4).map((e, i) => (
+                                <Badge key={i} variant="outline" className="text-xs py-0">{e}</Badge>
+                              ))}
+                              {med.warnings.sideEffects.length > 4 && (
+                                <Badge variant="outline" className="text-xs py-0">+{med.warnings.sideEffects.length - 4}</Badge>
+                              )}
+                            </div>
+                          )}
+                          {med.warnings.contraindications?.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              <span className="text-xs font-medium text-red-600">Contraindicações:</span>
+                              {med.warnings.contraindications.slice(0, 3).map((c, i) => (
+                                <Badge key={i} variant="destructive" className="text-xs py-0">{c}</Badge>
+                              ))}
+                            </div>
+                          )}
+                          {med.warnings.drugInteractions?.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              <span className="text-xs font-medium text-amber-600">Interações:</span>
+                              {med.warnings.drugInteractions.slice(0, 3).map((d, i) => (
+                                <Badge key={i} variant="outline" className="text-xs py-0 border-amber-300 text-amber-700">{d}</Badge>
+                              ))}
+                            </div>
+                          )}
+                          {med.warnings.riskLevel && (
+                            <Badge variant={getRiskLevelColor(med.warnings.riskLevel)} className="text-xs">
+                              Risco: {med.warnings.riskLevel}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {aiMedList.nonPharmacological?.length > 0 && (
+                <Card className="border-green-200 dark:border-green-800">
+                  <CardContent className="p-3">
+                    <h4 className="font-semibold text-sm flex items-center gap-2 mb-2 text-green-700 dark:text-green-400">
+                      <HeartPulse className="h-4 w-4" />
+                      Medidas Não Farmacológicas
+                    </h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      {aiMedList.nonPharmacological.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 text-green-600 shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {aiMedList.followUp && (
+                <Card>
+                  <CardContent className="p-3">
+                    <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
+                      <CalendarCheck className="h-4 w-4 text-indigo-600" />
+                      Acompanhamento
+                    </h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">{aiMedList.followUp}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowAIMedListDialog(false)}
+                >
+                  Fechar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={addAllAIMedsToForm}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                  Adicionar Todos à Prescrição
                 </Button>
               </div>
             </div>
