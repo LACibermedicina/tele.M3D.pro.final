@@ -9,7 +9,7 @@ import LanguageSelector from "@/components/ui/language-selector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { formatErrorForToast } from "@/lib/error-handler";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -17,6 +17,7 @@ import NotificationCenter from "@/components/notifications/notification-center";
 import CommandPalette from "@/components/command-palette";
 import telemedLogo from "@/assets/logo-fundo.png";
 import userIcon from "@/assets/user-icon.png";
+import { useVoiceAssistant } from "@/contexts/VoiceAssistantContext";
 
 export default function Header() {
   const [location, navigate] = useLocation();
@@ -25,6 +26,7 @@ export default function Header() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const { user, logout } = useAuth();
   const { toast } = useToast();
+  const { voiceMode, setVoiceMode, hasDecided } = useVoiceAssistant();
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -884,6 +886,29 @@ export default function Header() {
               </form>
             )}
             
+            {hasDecided && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setVoiceMode(!voiceMode)}
+                    className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      voiceMode 
+                        ? "bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30" 
+                        : "bg-slate-200/80 dark:bg-slate-700/80 text-slate-400 dark:text-slate-500 hover:bg-slate-300 dark:hover:bg-slate-600 hover:text-slate-600 dark:hover:text-slate-300"
+                    }`}
+                  >
+                    <AudioLines className="w-4 h-4" />
+                    {voiceMode && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white dark:border-slate-900 animate-pulse" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{voiceMode ? "Desativar IAM3D" : "Ativar IAM3D"}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+
             <LanguageSelector />
             
             {user ? (

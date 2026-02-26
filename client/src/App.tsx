@@ -65,7 +65,7 @@ import CommandPalette from "@/components/command-palette";
 import QuickActionsBar from "@/components/quick-actions-bar";
 import { VoiceAssistantProvider } from "@/contexts/VoiceAssistantContext";
 import { VoiceAssistantPrompt } from "@/components/voice-assistant-prompt";
-import { VoiceAssistantOverlay, VoiceAssistantToggle } from "@/components/voice-assistant-overlay";
+import { VoiceAssistantOverlay } from "@/components/voice-assistant-overlay";
 
 // Responsive Dashboard Components
 import { ResponsiveDashboard } from "@/components/responsive-dashboard";
@@ -469,8 +469,6 @@ function Router() {
       {/* Voice Assistant Overlay - Full screen when active */}
       <VoiceAssistantOverlay />
       
-      {/* Voice Assistant Toggle Button */}
-      {user && <VoiceAssistantToggle />}
     </div>
   );
 }
