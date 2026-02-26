@@ -1626,6 +1626,30 @@ export const insertConsultationAccessTokenSchema = createInsertSchema(consultati
 export type InsertConsultationAccessToken = z.infer<typeof insertConsultationAccessTokenSchema>;
 export type ConsultationAccessToken = typeof consultationAccessTokens.$inferSelect;
 
+export const interConsultations = pgTable("inter_consultations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  requestingDoctorId: uuid("requesting_doctor_id").references(() => users.id).notNull(),
+  targetDoctorId: uuid("target_doctor_id").references(() => users.id).notNull(),
+  patientId: uuid("patient_id").references(() => patients.id),
+  specialty: text("specialty"),
+  clinicalCase: text("clinical_case").notNull(),
+  urgency: text("urgency").notNull().default("standard"), // emergency, urgent, standard, elective
+  status: text("status").notNull().default("pending"), // pending, accepted, rejected, completed, cancelled
+  responseNotes: text("response_notes"),
+  respondedAt: timestamp("responded_at"),
+  scheduledAt: timestamp("scheduled_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertInterConsultationSchema = createInsertSchema(interConsultations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InterConsultation = typeof interConsultations.$inferSelect;
+export type InsertInterConsultation = z.infer<typeof insertInterConsultationSchema>;
+
 // TMC system types
 export interface TmcBalance {
   userId: string;

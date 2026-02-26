@@ -44,6 +44,7 @@ import TeamRoom from "@/pages/team-room";
 import MedicalCafe from "@/pages/medical-cafe";
 import DoctorOffice from "@/pages/doctor-office";
 import CoffeeRoom from "@/pages/coffee-room";
+import InterConsultationRequest from "@/pages/inter-consultation-request";
 import PatientVideoConsultation from "@/pages/patient-video-consultation";
 import EpidemiologicalReports from "@/pages/epidemiological-reports";
 import IncompleteConsultations from "@/pages/incomplete-consultations";
@@ -374,6 +375,13 @@ function Router() {
           <ProtectedRoute requiredRoles={['doctor']}>
             <Header />
             <CoffeeRoom />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/inter-consultation">
+          <ProtectedRoute requiredRoles={['doctor']}>
+            <Header />
+            <InterConsultationRequest />
           </ProtectedRoute>
         </Route>
 

@@ -79,6 +79,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Migrate database schema for new features
   await migrateOnDutyColumns();
   await migrateMedicalTeamsTables();
+  await migrateInterConsultationsTable();
   
   // Initialize default doctor if not exists and get the actual ID
   const actualDoctorId = await initializeDefaultDoctor();
@@ -14793,6 +14794,39 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
+  app.get('/api/doctors/by-specialty', async (req: Request, res: Response) => {
+    try {
+      const doctors = await db.select({
+        id: users.id,
+        name: users.name,
+        specialization: users.specialization,
+        medicalLicense: users.medicalLicense,
+        profilePicture: users.profilePicture,
+        isOnline: users.isOnline,
+        availableForImmediate: users.availableForImmediate,
+      })
+        .from(users)
+        .where(eq(users.role, 'doctor'));
+
+      const grouped: Record<string, typeof doctors> = {};
+      for (const doc of doctors) {
+        const spec = doc.specialization || 'Clínico Geral';
+        if (!grouped[spec]) grouped[spec] = [];
+        grouped[spec].push(doc);
+      }
+
+      const result = Object.entries(grouped).map(([specialty, doctors]) => ({
+        specialty,
+        doctors,
+      }));
+
+      res.json(result);
+    } catch (error) {
+      console.error('Get doctors by specialty error:', error);
+      res.status(500).json({ message: 'Erro ao listar médicos por especialidade' });
+    }
+  });
+
   // Get all doctors
   app.get('/api/doctors', async (req: Request, res: Response) => {
     try {
@@ -15928,6 +15962,111 @@ Quando o visitante fornecer dados para acesso temporário, inclua na resposta a 
   app.use('/api/signatures', signaturesRouter);
   app.use('/api/medical-teams', requireAuth, medicalTeamsRouter);
 
+  app.post('/api/inter-consultations', requireAuth, async (req: any, res) => {
+    try {
+      if (!req.user || req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Apenas médicos podem solicitar interconsultas' });
+      }
+
+      const { targetDoctorId, patientId, specialty, clinicalCase, urgency } = req.body;
+
+      if (!targetDoctorId || !clinicalCase) {
+        return res.status(400).json({ message: 'Médico alvo e descrição do caso clínico são obrigatórios' });
+      }
+
+      const targetDoctor = await db.select().from(users).where(and(eq(users.id, targetDoctorId), eq(users.role, 'doctor'))).limit(1);
+      if (targetDoctor.length === 0) {
+        return res.status(404).json({ message: 'Médico alvo não encontrado' });
+      }
+
+      if (targetDoctorId === req.user.id) {
+        return res.status(400).json({ message: 'Não é possível solicitar interconsulta para si mesmo' });
+      }
+
+      const { interConsultations } = await import('@shared/schema');
+      const [newInterConsultation] = await db.insert(interConsultations).values({
+        requestingDoctorId: req.user.id,
+        targetDoctorId,
+        patientId: patientId || null,
+        specialty: specialty || targetDoctor[0].specialization || null,
+        clinicalCase,
+        urgency: urgency || 'standard',
+        status: 'pending',
+      }).returning();
+
+      try {
+        const { pendingNotifications } = await import('@shared/schema');
+        await db.insert(pendingNotifications).values({
+          userId: targetDoctorId,
+          type: 'inter_consultation',
+          title: 'Nova Solicitação de Interconsulta',
+          message: `Dr(a). ${req.user.name} solicita interconsulta: ${clinicalCase.substring(0, 100)}...`,
+          priority: urgency === 'emergency' ? 'critical' : urgency === 'urgent' ? 'high' : 'medium',
+          actionUrl: '/inter-consultation',
+          senderId: req.user.id,
+        });
+      } catch (notifErr) {
+        console.error('Failed to create notification for inter-consultation:', notifErr);
+      }
+
+      res.status(201).json(newInterConsultation);
+    } catch (error) {
+      console.error('Create inter-consultation error:', error);
+      res.status(500).json({ message: 'Erro ao criar solicitação de interconsulta' });
+    }
+  });
+
+  app.get('/api/inter-consultations', requireAuth, async (req: any, res) => {
+    try {
+      if (!req.user || req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Apenas médicos podem acessar interconsultas' });
+      }
+
+      const { interConsultations } = await import('@shared/schema');
+      const results = await db.select({
+        id: interConsultations.id,
+        requestingDoctorId: interConsultations.requestingDoctorId,
+        targetDoctorId: interConsultations.targetDoctorId,
+        patientId: interConsultations.patientId,
+        specialty: interConsultations.specialty,
+        clinicalCase: interConsultations.clinicalCase,
+        urgency: interConsultations.urgency,
+        status: interConsultations.status,
+        responseNotes: interConsultations.responseNotes,
+        respondedAt: interConsultations.respondedAt,
+        scheduledAt: interConsultations.scheduledAt,
+        createdAt: interConsultations.createdAt,
+        updatedAt: interConsultations.updatedAt,
+      }).from(interConsultations)
+        .where(or(
+          eq(interConsultations.requestingDoctorId, req.user.id),
+          eq(interConsultations.targetDoctorId, req.user.id)
+        ))
+        .orderBy(desc(interConsultations.createdAt));
+
+      const enriched = await Promise.all(results.map(async (ic) => {
+        const reqDoc = await db.select({ id: users.id, name: users.name, specialization: users.specialization, profilePicture: users.profilePicture }).from(users).where(eq(users.id, ic.requestingDoctorId)).limit(1);
+        const tgtDoc = await db.select({ id: users.id, name: users.name, specialization: users.specialization, profilePicture: users.profilePicture }).from(users).where(eq(users.id, ic.targetDoctorId)).limit(1);
+        let patientInfo = null;
+        if (ic.patientId) {
+          const p = await db.select({ id: patients.id, name: patients.name }).from(patients).where(eq(patients.id, ic.patientId)).limit(1);
+          patientInfo = p[0] || null;
+        }
+        return {
+          ...ic,
+          requestingDoctor: reqDoc[0] || null,
+          targetDoctor: tgtDoc[0] || null,
+          patient: patientInfo,
+        };
+      }));
+
+      res.json(enriched);
+    } catch (error) {
+      console.error('Get inter-consultations error:', error);
+      res.status(500).json({ message: 'Erro ao listar interconsultas' });
+    }
+  });
+
   app.get('/api/epidemiological-reports', requireAuth, async (req: any, res) => {
     try {
       const periodDays = parseInt(req.query.period as string) || 30;
@@ -16135,6 +16274,31 @@ async function migrateMedicalTeamsTables() {
     console.log('✓ Medical teams tables migrated successfully');
   } catch (error) {
     console.error('Failed to migrate medical teams tables:', error);
+  }
+}
+
+async function migrateInterConsultationsTable() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS inter_consultations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        requesting_doctor_id UUID NOT NULL REFERENCES users(id),
+        target_doctor_id UUID NOT NULL REFERENCES users(id),
+        patient_id UUID REFERENCES patients(id),
+        specialty TEXT,
+        clinical_case TEXT NOT NULL,
+        urgency TEXT NOT NULL DEFAULT 'standard',
+        status TEXT NOT NULL DEFAULT 'pending',
+        response_notes TEXT,
+        responded_at TIMESTAMP,
+        scheduled_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    console.log('✓ Inter-consultations table migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate inter-consultations table:', error);
   }
 }
 

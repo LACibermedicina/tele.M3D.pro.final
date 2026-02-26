@@ -105,6 +105,13 @@ function SidebarContent() {
       roles: ['doctor', 'admin', 'researcher'],
     },
     {
+      path: "/inter-consultation",
+      label: "Interconsulta",
+      icon: Ambulance,
+      description: "Solicitar parecer de outro especialista",
+      roles: ['doctor'],
+    },
+    {
       path: "/medical-teams",
       label: "Equipes Médicas",
       icon: Users,
