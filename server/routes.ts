@@ -14,7 +14,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks } from "@shared/schema";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
 import { z } from "zod";
@@ -84,6 +84,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migrateInterConsultationsTable();
   await migratePharmacyTables();
   await migratePMDColumns();
+  await migrateDoctorPatientBlocks();
   
   // Initialize default doctor if not exists and get the actual ID
   const actualDoctorId = await initializeDefaultDoctor();
@@ -1632,6 +1633,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scheduledAt: req.body.scheduledAt ? new Date(req.body.scheduledAt) : undefined,
       };
       
+      // Check if patient is blocked by this doctor
+      if (requestData.patientId && requestData.doctorId) {
+        const blockCheck = await db.select().from(doctorPatientBlocks)
+          .where(and(eq(doctorPatientBlocks.doctorId, requestData.doctorId), eq(doctorPatientBlocks.patientId, requestData.patientId)));
+        if (blockCheck.length > 0) {
+          return res.status(403).json({ message: 'Este médico bloqueou agendamentos deste paciente.' });
+        }
+      }
+
       const validatedData = insertAppointmentSchema.parse(requestData);
       const appointment = await storage.createAppointment(validatedData);
       
@@ -6409,6 +6419,148 @@ Responda em português brasileiro, de forma estruturada e concisa, com linguagem
     };
   };
 
+  // ===== Doctor Appointment Delete & Patient Blocking =====
+
+  // Doctor deletes an appointment (removes from DB)
+  app.delete('/api/appointments/:id', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'doctor' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas médicos e administradores podem excluir agendamentos' });
+      }
+      const { id } = req.params;
+      const [apt] = await db.select().from(appointments).where(eq(appointments.id, id));
+      if (!apt) {
+        return res.status(404).json({ message: 'Agendamento não encontrado' });
+      }
+      if (req.user.role === 'doctor' && apt.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Você só pode excluir seus próprios agendamentos' });
+      }
+
+      if (apt.patientId) {
+        try {
+          const patient = await storage.getPatient(apt.patientId);
+          if (patient?.userId) {
+            broadcastToUser(patient.userId, {
+              type: 'appointment_deleted',
+              data: { appointmentId: apt.id, scheduledAt: apt.scheduledAt, message: 'Seu agendamento foi cancelado e removido pelo médico.' },
+            });
+            await db.insert(pendingNotifications).values({
+              userId: patient.userId,
+              type: 'appointment',
+              title: 'Agendamento Removido',
+              message: `Seu agendamento de ${new Date(apt.scheduledAt).toLocaleDateString('pt-BR')} foi cancelado e removido pelo médico.`,
+              priority: 'medium',
+              actionUrl: '/my-consultations',
+              delivered: false,
+              read: false,
+            });
+          }
+        } catch {}
+      }
+
+      await db.delete(appointments).where(eq(appointments.id, id));
+      res.json({ success: true, message: 'Agendamento excluído com sucesso' });
+    } catch (error) {
+      console.error('Delete appointment error:', error);
+      res.status(500).json({ message: 'Falha ao excluir agendamento' });
+    }
+  });
+
+  // Doctor blocks a patient from booking appointments/consultations
+  app.post('/api/doctor/block-patient', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'doctor' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas médicos podem bloquear pacientes' });
+      }
+      const { patientId, reason } = req.body;
+      if (!patientId) {
+        return res.status(400).json({ message: 'patientId é obrigatório' });
+      }
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: 'Paciente não encontrado' });
+      }
+      const doctorId = req.user.id;
+
+      const existing = await db.select().from(doctorPatientBlocks)
+        .where(and(eq(doctorPatientBlocks.doctorId, doctorId), eq(doctorPatientBlocks.patientId, patientId)));
+      if (existing.length > 0) {
+        return res.status(409).json({ message: 'Paciente já está bloqueado' });
+      }
+
+      const [block] = await db.insert(doctorPatientBlocks).values({
+        doctorId,
+        patientId,
+        reason: reason || null,
+      }).returning();
+
+      if (patient.userId) {
+        broadcastToUser(patient.userId, {
+          type: 'patient_blocked',
+          data: { doctorId, message: 'Você foi bloqueado por um médico. Não é mais possível agendar consultas com este profissional.' },
+        });
+      }
+
+      res.json({ success: true, block });
+    } catch (error) {
+      console.error('Block patient error:', error);
+      res.status(500).json({ message: 'Falha ao bloquear paciente' });
+    }
+  });
+
+  // Doctor unblocks a patient
+  app.delete('/api/doctor/block-patient/:patientId', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'doctor' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas médicos podem desbloquear pacientes' });
+      }
+      const doctorId = req.user.id;
+      const { patientId } = req.params;
+
+      const deleted = await db.delete(doctorPatientBlocks)
+        .where(and(eq(doctorPatientBlocks.doctorId, doctorId), eq(doctorPatientBlocks.patientId, patientId)))
+        .returning();
+
+      if (deleted.length === 0) {
+        return res.status(404).json({ message: 'Bloqueio não encontrado' });
+      }
+
+      res.json({ success: true, message: 'Paciente desbloqueado' });
+    } catch (error) {
+      console.error('Unblock patient error:', error);
+      res.status(500).json({ message: 'Falha ao desbloquear paciente' });
+    }
+  });
+
+  // List doctor's blocked patients
+  app.get('/api/doctor/blocked-patients', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user?.role !== 'doctor' && req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito' });
+      }
+      const doctorId = req.user.id;
+
+      const blocks = await db.select({
+        id: doctorPatientBlocks.id,
+        patientId: doctorPatientBlocks.patientId,
+        reason: doctorPatientBlocks.reason,
+        blockedAt: doctorPatientBlocks.blockedAt,
+        patientName: patients.name,
+        patientEmail: patients.email,
+        patientPhone: patients.phone,
+      })
+        .from(doctorPatientBlocks)
+        .innerJoin(patients, eq(doctorPatientBlocks.patientId, patients.id))
+        .where(eq(doctorPatientBlocks.doctorId, doctorId))
+        .orderBy(desc(doctorPatientBlocks.blockedAt));
+
+      res.json(blocks);
+    } catch (error) {
+      console.error('List blocked patients error:', error);
+      res.status(500).json({ message: 'Falha ao listar pacientes bloqueados' });
+    }
+  });
+
   // ===== PMD v1.0 — Prontuário Médico Digital (CFM/LGPD/RGPD) =====
 
   app.post('/api/pmd/create', requireAuth, requireRole(['doctor', 'admin']), async (req: any, res) => {
@@ -9974,7 +10126,17 @@ Format your response as valid JSON with this structure:
       }
 
       const patientId = patient.id;
-      const { symptoms, whatsappOptIn } = req.body;
+      const { symptoms, whatsappOptIn, selectedDoctorId: preSelectedDoctorId } = req.body;
+
+      // Check if the patient is blocked by the pre-selected doctor
+      if (preSelectedDoctorId) {
+        const blockCheck = await db.select().from(doctorPatientBlocks)
+          .where(and(eq(doctorPatientBlocks.doctorId, preSelectedDoctorId), eq(doctorPatientBlocks.patientId, patientId)));
+        if (blockCheck.length > 0) {
+          return res.status(403).json({ message: 'Este médico bloqueou suas solicitações de consulta. Escolha outro profissional.' });
+        }
+      }
+
       if (!symptoms || typeof symptoms !== 'string' || symptoms.trim().length === 0) {
         return res.status(400).json({ message: 'Descreva seus sintomas para continuar.' });
       }
@@ -10273,6 +10435,15 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
       const patient = await storage.getPatientByUserId(req.user!.id);
       if (!patient || patient.id !== request.patientId) {
         return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      // Check if doctor has blocked this patient
+      if (selectedDoctorId && patient) {
+        const blockCheck = await db.select().from(doctorPatientBlocks)
+          .where(and(eq(doctorPatientBlocks.doctorId, selectedDoctorId), eq(doctorPatientBlocks.patientId, patient.id)));
+        if (blockCheck.length > 0) {
+          return res.status(403).json({ message: 'Este médico bloqueou suas solicitações. Escolha outro profissional.' });
+        }
       }
 
       // Update with selected doctor
@@ -18643,6 +18814,23 @@ async function migratePMDColumns() {
     console.log('✓ PMD columns migrated successfully');
   } catch (error) {
     console.error('Failed to migrate PMD columns:', error);
+  }
+}
+
+async function migrateDoctorPatientBlocks() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS doctor_patient_blocks (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        doctor_id UUID NOT NULL REFERENCES users(id),
+        patient_id UUID NOT NULL REFERENCES patients(id),
+        reason TEXT,
+        blocked_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    console.log('✓ Doctor patient blocks table migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate doctor patient blocks:', error);
   }
 }
 

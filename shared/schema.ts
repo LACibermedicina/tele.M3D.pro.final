@@ -1855,6 +1855,19 @@ export const insertPharmacyReportSchema = createInsertSchema(pharmacyReports).om
 export type InsertPharmacyReport = z.infer<typeof insertPharmacyReportSchema>;
 export type PharmacyReport = typeof pharmacyReports.$inferSelect;
 
+// Doctor Patient Blocks — doctors can block specific patients from booking
+export const doctorPatientBlocks = pgTable("doctor_patient_blocks", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  doctorId: uuid("doctor_id").references(() => users.id).notNull(),
+  patientId: uuid("patient_id").references(() => patients.id).notNull(),
+  reason: text("reason"),
+  blockedAt: timestamp("blocked_at").defaultNow().notNull(),
+});
+
+export const insertDoctorPatientBlockSchema = createInsertSchema(doctorPatientBlocks).omit({ id: true, blockedAt: true });
+export type InsertDoctorPatientBlock = z.infer<typeof insertDoctorPatientBlockSchema>;
+export type DoctorPatientBlock = typeof doctorPatientBlocks.$inferSelect;
+
 // TMC system types
 export interface TmcBalance {
   userId: string;

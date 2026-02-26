@@ -38,7 +38,7 @@ The application features an Express.js backend and a React frontend, with shared
 - **Medical Teams & Inter-Consultations:** Collaboration features, discussion rooms, and structured inter-consultation note-taking.
 - **Patient Consultation Request:** Two-path system: "Buscar por Especialidade" or "Triagem por Sintomas".
 - **Doctor Inter-Consultation:** Page for doctor-to-doctor scheduling with case descriptions and urgency.
-- **Doctor Schedule:** Three-tab schedule (Today, Future, History) with bulk cancellation and instant consultation features.
+- **Doctor Schedule:** Three-tab schedule (Today, Future, History) with bulk cancellation, instant consultation, individual appointment deletion, and patient blocking features.
 - **IAM3D Voice Assistant:** Full-screen voice interface with animated sphere, session timer, and control bar. Uses Web Speech API for STT/TTS. Unified with chatbot API. Supports scheduling, urgent consultations, patient registration, profile navigation, and action buttons. Role-based capability badges.
 - **Doctor On-Duty Urgent Calls:** Doctors in plantão (24h on-duty) are visible for urgent consultations via IAM3D, with real-time notifications.
 - **IAM3D Interconsulta:** Real-time AI diagnostic analysis during video consultations.

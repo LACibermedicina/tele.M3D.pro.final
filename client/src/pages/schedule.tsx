@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, startOfDay, endOfDay, isToday, addMinutes, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2, Video, Plus, MoreHorizontal, Download, Upload, History, PhoneCall, Wifi, XCircle, Trash2, RotateCcw, FileCheck, MessageSquare, QrCode } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, Users, AlertCircle, Bell, CheckCircle2, Video, Plus, MoreHorizontal, Download, Upload, History, PhoneCall, Wifi, XCircle, Trash2, RotateCcw, FileCheck, MessageSquare, QrCode, Ban, ShieldBan, UserX } from "lucide-react";
 import ConsultationAccessGenerator from "@/components/consultation-access-generator";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +45,12 @@ export default function Schedule() {
   const [cancelConfirmName, setCancelConfirmName] = useState<string>("");
   const [cancelAllScope, setCancelAllScope] = useState<'today' | 'future' | null>(null);
   const [cancelAllAppointmentType, setCancelAllAppointmentType] = useState<string>('all');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState<string>("");
+  const [blockPatientId, setBlockPatientId] = useState<string | null>(null);
+  const [blockPatientName, setBlockPatientName] = useState<string>("");
+  const [blockReason, setBlockReason] = useState<string>("");
+  const [showBlockedList, setShowBlockedList] = useState(false);
   
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -251,9 +257,75 @@ export default function Schedule() {
     },
   });
 
+  const deleteAppointmentMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/appointments/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
+      toast({
+        title: "Agendamento excluído",
+        description: "O agendamento foi removido permanentemente.",
+      });
+      setDeleteConfirmId(null);
+      setDeleteConfirmName("");
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: "destructive" });
+    },
+  });
+
+  const blockPatientMutation = useMutation({
+    mutationFn: ({ patientId, reason }: { patientId: string; reason: string }) =>
+      apiRequest('POST', '/api/doctor/block-patient', { patientId, reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/doctor/blocked-patients'] });
+      toast({
+        title: "Paciente bloqueado",
+        description: `${blockPatientName} foi bloqueado. Este paciente não poderá mais agendar consultas com você.`,
+      });
+      setBlockPatientId(null);
+      setBlockPatientName("");
+      setBlockReason("");
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: "destructive" });
+    },
+  });
+
+  const unblockPatientMutation = useMutation({
+    mutationFn: (patientId: string) => apiRequest('DELETE', `/api/doctor/block-patient/${patientId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/doctor/blocked-patients'] });
+      toast({ title: "Paciente desbloqueado", description: "O paciente pode agendar consultas novamente." });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: "destructive" });
+    },
+  });
+
+  const { data: blockedPatients } = useQuery<any[]>({
+    queryKey: ['/api/doctor/blocked-patients'],
+    enabled: showBlockedList,
+  });
+
   const handleCancelAppointment = (appointment: any) => {
     setCancelConfirmId(appointment.id);
     setCancelConfirmName(appointment.patientName || 'Paciente não identificado');
+  };
+
+  const handleDeleteAppointment = (appointment: any) => {
+    setDeleteConfirmId(appointment.id);
+    setDeleteConfirmName(appointment.patientName || 'Paciente não identificado');
+  };
+
+  const handleBlockPatient = (appointment: any) => {
+    if (appointment.patientId) {
+      setBlockPatientId(appointment.patientId);
+      setBlockPatientName(appointment.patientName || 'Paciente não identificado');
+      setBlockReason("");
+    }
   };
 
   const handleStartConsultation = async (appointment: any) => {
@@ -720,14 +792,25 @@ export default function Schedule() {
                     Histórico
                   </TabsTrigger>
                 </TabsList>
-                <Button 
-                  onClick={() => setIsInstantConsultOpen(true)}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
-                  size="sm"
-                >
-                  <PhoneCall className="h-4 w-4 mr-2" />
-                  Consulta Instantânea
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-orange-200"
+                    onClick={() => setShowBlockedList(true)}
+                  >
+                    <UserX className="h-4 w-4 mr-2" />
+                    Bloqueados
+                  </Button>
+                  <Button 
+                    onClick={() => setIsInstantConsultOpen(true)}
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                    size="sm"
+                  >
+                    <PhoneCall className="h-4 w-4 mr-2" />
+                    Consulta Instantânea
+                  </Button>
+                </div>
               </div>
 
               <TabsContent value="today">
@@ -917,6 +1000,27 @@ export default function Schedule() {
                                 <XCircle className="h-4 w-4 mr-1" />
                                 Cancelar
                               </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-700 hover:text-red-800 hover:bg-red-100 dark:hover:bg-red-950/30 border-red-300 dark:border-red-700"
+                                onClick={() => handleDeleteAppointment(appointment)}
+                                disabled={deleteAppointmentMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Excluir
+                              </Button>
+                              {appointment.patientId && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950/20 border-orange-200 dark:border-orange-800"
+                                  onClick={() => handleBlockPatient(appointment)}
+                                >
+                                  <Ban className="h-4 w-4 mr-1" />
+                                  Bloquear
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -1036,6 +1140,27 @@ export default function Schedule() {
                                     <XCircle className="h-4 w-4 mr-1" />
                                     Cancelar
                                   </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-700 hover:text-red-800 hover:bg-red-100 dark:hover:bg-red-950/30 border-red-300 dark:border-red-700"
+                                    onClick={() => handleDeleteAppointment(appointment)}
+                                    disabled={deleteAppointmentMutation.isPending}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-1" />
+                                    Excluir
+                                  </Button>
+                                  {appointment.patientId && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950/20 border-orange-200 dark:border-orange-800"
+                                      onClick={() => handleBlockPatient(appointment)}
+                                    >
+                                      <Ban className="h-4 w-4 mr-1" />
+                                      Bloquear
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -1663,6 +1788,131 @@ export default function Schedule() {
                 {cancelAllMutation.isPending ? 'Cancelando...' : 'Confirmar Cancelamento'}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteConfirmId} onOpenChange={(open) => { if (!open) { setDeleteConfirmId(null); setDeleteConfirmName(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-700">
+              <Trash2 className="h-5 w-5" />
+              Excluir Agendamento
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+              <p className="text-sm text-red-800 dark:text-red-200">
+                Tem certeza que deseja <strong>excluir permanentemente</strong> o agendamento com <strong>{deleteConfirmName}</strong>?
+              </p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              O agendamento será removido do sistema e o paciente será notificado. Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => { setDeleteConfirmId(null); setDeleteConfirmName(""); }}>
+                Voltar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => deleteConfirmId && deleteAppointmentMutation.mutate(deleteConfirmId)}
+                disabled={deleteAppointmentMutation.isPending}
+              >
+                {deleteAppointmentMutation.isPending ? 'Excluindo...' : 'Excluir Permanentemente'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Block Patient Dialog */}
+      <Dialog open={!!blockPatientId} onOpenChange={(open) => { if (!open) { setBlockPatientId(null); setBlockPatientName(""); setBlockReason(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-600">
+              <Ban className="h-5 w-5" />
+              Bloquear Paciente
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
+              <p className="text-sm text-orange-800 dark:text-orange-200">
+                Ao bloquear <strong>{blockPatientName}</strong>, este paciente não poderá mais:
+              </p>
+              <ul className="text-sm text-orange-700 dark:text-orange-300 mt-2 space-y-1 list-disc list-inside">
+                <li>Agendar consultas com você</li>
+                <li>Solicitar consultas por triagem direcionadas a você</li>
+                <li>Enviar solicitações de atendimento</li>
+              </ul>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">
+                Motivo do bloqueio (opcional)
+              </label>
+              <Textarea
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder="Ex: Comportamento inadequado, não comparecimentos repetidos..."
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => { setBlockPatientId(null); setBlockPatientName(""); setBlockReason(""); }}>
+                Voltar
+              </Button>
+              <Button
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+                onClick={() => blockPatientId && blockPatientMutation.mutate({ patientId: blockPatientId, reason: blockReason })}
+                disabled={blockPatientMutation.isPending}
+              >
+                {blockPatientMutation.isPending ? 'Bloqueando...' : 'Confirmar Bloqueio'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Blocked Patients List Dialog */}
+      <Dialog open={showBlockedList} onOpenChange={setShowBlockedList}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserX className="h-5 w-5 text-orange-600" />
+              Pacientes Bloqueados
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {!blockedPatients || blockedPatients.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                Nenhum paciente bloqueado.
+              </p>
+            ) : (
+              <ScrollArea className="max-h-[400px]">
+                <div className="space-y-3">
+                  {blockedPatients.map((block: any) => (
+                    <div key={block.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{block.patientName}</p>
+                        {block.reason && <p className="text-xs text-muted-foreground mt-1">Motivo: {block.reason}</p>}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Bloqueado em {new Date(block.blockedAt).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => unblockPatientMutation.mutate(block.patientId)}
+                        disabled={unblockPatientMutation.isPending}
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+                      >
+                        Desbloquear
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
           </div>
         </DialogContent>
       </Dialog>
