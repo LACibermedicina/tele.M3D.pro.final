@@ -70,6 +70,10 @@ export default function Schedule() {
     enabled: scheduleTab === 'history',
   });
 
+  const { data: consultationRequests, isLoading: requestsLoading } = useQuery<any[]>({
+    queryKey: ['/api/consultation-requests'],
+  });
+
   const { data: onlinePatients } = useQuery<any[]>({
     queryKey: ['/api/patients/online-status'],
     refetchInterval: 10000,
@@ -267,6 +271,43 @@ export default function Schedule() {
       });
       setDeleteConfirmId(null);
       setDeleteConfirmName("");
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: "destructive" });
+    },
+  });
+
+  const acceptRequestMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('PATCH', `/api/consultation-requests/${id}/accept`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/consultation-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
+      toast({ title: "Solicitação aceita", description: "A solicitação de consulta foi aceita." });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: "destructive" });
+    },
+  });
+
+  const declineRequestMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('PATCH', `/api/consultation-requests/${id}/decline`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/consultation-requests'] });
+      toast({ title: "Solicitação recusada", description: "A solicitação de consulta foi recusada." });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: "destructive" });
+    },
+  });
+
+  const cancelRequestMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('PATCH', `/api/consultation-requests/${id}/cancel`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/consultation-requests'] });
+      toast({ title: "Solicitação cancelada", description: "A solicitação de consulta foi cancelada." });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -768,6 +809,111 @@ export default function Schedule() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Pending Consultation Requests from Patients */}
+          {(() => {
+            const pendingRequests = (consultationRequests || []).filter(
+              (r: any) => r.status === 'pending' || r.status === 'accepted'
+            );
+            if (pendingRequests.length === 0) return null;
+            return (
+              <div className="lg:col-span-3 mb-4">
+                <Card className="backdrop-blur-xl bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800 shadow-xl">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+                          <Bell className="h-4 w-4" />
+                        </div>
+                        <span>Solicitações de Pacientes</span>
+                        <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                          {pendingRequests.length}
+                        </Badge>
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {pendingRequests.map((req: any) => (
+                        <div
+                          key={req.id}
+                          className="flex items-center justify-between p-4 rounded-xl bg-white/60 dark:bg-black/20 border border-amber-100 dark:border-amber-900"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold text-sm truncate">{req.patientName || 'Paciente'}</h4>
+                              <Badge className={
+                                req.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              }>
+                                {req.status === 'pending' ? 'Pendente' : 'Aceita'}
+                              </Badge>
+                              {req.urgencyLevel && (
+                                <Badge variant="outline" className={
+                                  req.urgencyLevel === 'emergency' ? 'border-red-500 text-red-600' :
+                                  req.urgencyLevel === 'urgent' ? 'border-orange-500 text-orange-600' :
+                                  'border-blue-500 text-blue-600'
+                                }>
+                                  {req.urgencyLevel === 'emergency' ? 'Emergência' :
+                                   req.urgencyLevel === 'urgent' ? 'Urgente' : 'Normal'}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground space-y-0.5">
+                              {req.specialty && <span>Especialidade: {req.specialty}</span>}
+                              {req.symptoms && <p className="truncate">Sintomas: {req.symptoms}</p>}
+                              {req.preferredDate && (
+                                <span> | Data preferida: {new Date(req.preferredDate).toLocaleDateString('pt-BR')}</span>
+                              )}
+                              <span className="block">Criado em: {new Date(req.createdAt).toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                            {req.status === 'pending' && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20 border-green-200"
+                                  onClick={() => acceptRequestMutation.mutate(req.id)}
+                                  disabled={acceptRequestMutation.isPending}
+                                >
+                                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                                  Aceitar
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200"
+                                  onClick={() => declineRequestMutation.mutate(req.id)}
+                                  disabled={declineRequestMutation.isPending}
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" />
+                                  Recusar
+                                </Button>
+                              </>
+                            )}
+                            {req.status === 'accepted' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200"
+                                onClick={() => cancelRequestMutation.mutate(req.id)}
+                                disabled={cancelRequestMutation.isPending}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Cancelar
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
 
           {/* Appointments Area with Tabs */}
           <div className="lg:col-span-3">
