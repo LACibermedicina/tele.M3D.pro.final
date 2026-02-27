@@ -373,9 +373,18 @@ export default function TodaySchedule() {
                 )}
               </Button>
             )}
-            <Button onClick={handleOpenNewAppointment} data-testid="button-new-appointment">
+            <Button
+              onClick={() => {
+                if (user?.role === 'patient') {
+                  navigate('/consultation-request');
+                } else {
+                  handleOpenNewAppointment();
+                }
+              }}
+              data-testid="button-new-appointment"
+            >
               <Plus className="h-4 w-4 mr-2" />
-              Nova Consulta
+              {user?.role === 'patient' ? 'Solicitar Consulta' : 'Nova Consulta'}
             </Button>
           </div>
         </div>
