@@ -2341,6 +2341,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/medical-records/:patientId/unified', async (req, res) => {
+    try {
+      const patientId = req.params.patientId;
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      const user = req.user;
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient not found' });
+      }
+
+      if (user.role === 'patient') {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+      if (user.role === 'doctor') {
+        const isPrimaryDoctor = patient.primaryDoctorId === user.id;
+        const doctorAppointments = await storage.getAppointmentsByDoctor(user.id);
+        const hasAppointment = doctorAppointments.some(apt => apt.patientId === patientId);
+        if (!isPrimaryDoctor && !hasAppointment) {
+          return res.status(403).json({ message: 'Acesso negado' });
+        }
+      } else if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+
+      const records = await storage.getMedicalRecordsByPatient(patientId);
+      const patientAppointments = await db.select().from(appointments)
+        .where(eq(appointments.patientId, patientId))
+        .orderBy(desc(appointments.scheduledAt));
+      const prescriptionsList = await db.select().from(prescriptions)
+        .where(eq(prescriptions.patientId, patientId))
+        .orderBy(desc(prescriptions.createdAt));
+      const exams = await storage.getExamResultsByPatient(patientId);
+
+      const dayMap: Record<string, {
+        date: string;
+        consultations: any[];
+        records: any[];
+        prescriptions: any[];
+        exams: any[];
+      }> = {};
+
+      const getDay = (dateStr: string | Date) => {
+        const d = new Date(dateStr);
+        return d.toISOString().split('T')[0];
+      };
+
+      const ensureDay = (day: string) => {
+        if (!dayMap[day]) {
+          dayMap[day] = { date: day, consultations: [], records: [], prescriptions: [], exams: [] };
+        }
+      };
+
+      const doctorCache: Record<string, any> = {};
+      const getDoctor = async (id: string) => {
+        if (!doctorCache[id]) doctorCache[id] = await storage.getUser(id);
+        return doctorCache[id];
+      };
+
+      for (const apt of patientAppointments) {
+        const day = getDay(apt.scheduledAt);
+        ensureDay(day);
+        const doctor = await getDoctor(apt.doctorId);
+        dayMap[day].consultations.push({
+          id: apt.id,
+          type: apt.type,
+          status: apt.status,
+          scheduledAt: apt.scheduledAt,
+          doctorName: doctor?.name || 'N/A',
+          doctorCRM: doctor?.medicalLicense || '',
+          notes: apt.notes,
+        });
+      }
+
+      for (const rec of records) {
+        const day = getDay(rec.createdAt);
+        ensureDay(day);
+        const doctor = await getDoctor(rec.doctorId);
+        const pmd = rec.pmdData as any;
+        dayMap[day].records.push({
+          id: rec.id,
+          appointmentId: rec.appointmentId,
+          doctorName: doctor?.name || 'Sistema',
+          doctorCRM: doctor?.medicalLicense || '',
+          symptoms: pmd?.clinico?.anamnese || rec.symptoms,
+          diagnosis: pmd?.clinico?.diagnostico || rec.diagnosis,
+          treatment: pmd?.clinico?.tratamento || rec.treatment,
+          prescription: rec.prescription,
+          observations: rec.observations,
+          historico: pmd?.clinico?.historico,
+          exames: pmd?.clinico?.exames,
+          evolucoes: pmd?.clinico?.evolucoes || [],
+          diagnosticHypotheses: rec.diagnosticHypotheses,
+          hasPmd: !!pmd,
+          pmdVersion: rec.pmdVersion,
+          isEncrypted: rec.isEncrypted,
+          digitalSignature: !!rec.digitalSignature,
+          createdAt: rec.createdAt,
+        });
+      }
+
+      for (const rx of prescriptionsList) {
+        const day = getDay(rx.createdAt);
+        ensureDay(day);
+        dayMap[day].prescriptions.push({
+          id: rx.id,
+          diagnosis: rx.diagnosis,
+          status: rx.status,
+          createdAt: rx.createdAt,
+        });
+      }
+
+      for (const exam of exams) {
+        const day = getDay(exam.createdAt);
+        ensureDay(day);
+        dayMap[day].exams.push({
+          id: exam.id,
+          examType: exam.examType,
+          results: exam.results,
+          abnormalValues: exam.abnormalValues,
+          analyzedByAI: exam.analyzedByAI,
+          createdAt: exam.createdAt,
+        });
+      }
+
+      const timeline = Object.values(dayMap).sort((a, b) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+      const patientInfo = {
+        id: patient.id,
+        name: patient.name,
+        phone: patient.phone,
+        dateOfBirth: patient.dateOfBirth,
+        gender: patient.gender,
+        bloodType: patient.bloodType,
+        allergies: patient.allergies,
+      };
+
+      res.json({
+        patient: patientInfo,
+        timeline,
+        summary: {
+          totalRecords: records.length,
+          totalConsultations: patientAppointments.length,
+          totalPrescriptions: prescriptionsList.length,
+          totalExams: exams.length,
+          totalDays: timeline.length,
+        },
+      });
+    } catch (error) {
+      console.error('Unified medical records error:', error);
+      res.status(500).json({ message: 'Erro ao gerar prontuário unificado' });
+    }
+  });
+
   app.post('/api/appointments/:appointmentId/transcribe', async (req, res) => {
     try {
       // Validate input

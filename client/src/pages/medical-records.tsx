@@ -90,6 +90,11 @@ export default function MedicalRecords() {
     enabled: !!selectedPatientId && isDoctor,
   });
 
+  const { data: unifiedData, isLoading: unifiedLoading } = useQuery<any>({
+    queryKey: ['/api/medical-records', selectedPatientId, 'unified'],
+    enabled: !!selectedPatientId && isDoctor,
+  });
+
   const { data: pmdDetail, isLoading: pmdLoading } = useQuery({
     queryKey: ['/api/pmd', selectedPmdId],
     enabled: !!selectedPmdId,
@@ -809,8 +814,12 @@ export default function MedicalRecords() {
                 </CardHeader>
               </Card>
 
-              <Tabs defaultValue="records" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+              <Tabs defaultValue="unified" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="unified">
+                    <History className="w-4 h-4 mr-1" />
+                    Unificado
+                  </TabsTrigger>
                   <TabsTrigger value="records">
                     <FileText className="w-4 h-4 mr-1" />
                     Prontuários
@@ -824,6 +833,262 @@ export default function MedicalRecords() {
                     PMD v1.0
                   </TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="unified" className="space-y-4">
+                  {unifiedLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : !unifiedData?.timeline?.length ? (
+                    <Card>
+                      <CardContent className="py-12">
+                        <div className="text-center">
+                          <History className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                          <h3 className="text-lg font-semibold text-muted-foreground mb-2">Nenhum Registro</h3>
+                          <p className="text-muted-foreground">Este paciente ainda não possui registros médicos</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="space-y-2">
+                      <Card className="bg-primary/5 border-primary/20">
+                        <CardContent className="py-3">
+                          <div className="flex items-center justify-between flex-wrap gap-3">
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="flex items-center gap-1.5">
+                                <Stethoscope className="w-4 h-4 text-blue-600" />
+                                <strong>{unifiedData.summary.totalConsultations}</strong> consultas
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <FileText className="w-4 h-4 text-emerald-600" />
+                                <strong>{unifiedData.summary.totalRecords}</strong> prontuários
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <Activity className="w-4 h-4 text-purple-600" />
+                                <strong>{unifiedData.summary.totalExams}</strong> exames
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <ClipboardList className="w-4 h-4 text-amber-600" />
+                                <strong>{unifiedData.summary.totalPrescriptions}</strong> prescrições
+                              </span>
+                            </div>
+                            <Badge variant="secondary">{unifiedData.summary.totalDays} dias com registros</Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <div className="relative">
+                        <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border" />
+
+                        {unifiedData.timeline.map((day: any) => {
+                          const dayDate = new Date(day.date + 'T12:00:00');
+                          return (
+                            <div key={day.date} className="relative pl-14 pb-6">
+                              <div className="absolute left-4 w-5 h-5 rounded-full bg-primary border-2 border-background flex items-center justify-center z-10">
+                                <div className="w-2 h-2 rounded-full bg-background" />
+                              </div>
+
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-3 pt-0.5">
+                                  <h3 className="font-bold text-base">
+                                    {format(dayDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                                  </h3>
+                                  <span className="text-xs text-muted-foreground">
+                                    {format(dayDate, "EEEE", { locale: ptBR })}
+                                  </span>
+                                  <div className="flex gap-1.5">
+                                    {day.consultations.length > 0 && (
+                                      <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
+                                        {day.consultations.length} consulta{day.consultations.length > 1 ? 's' : ''}
+                                      </Badge>
+                                    )}
+                                    {day.records.length > 0 && (
+                                      <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-200">
+                                        {day.records.length} registro{day.records.length > 1 ? 's' : ''}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {day.consultations.map((consult: any) => (
+                                  <Card key={consult.id} className="border-l-4 border-l-blue-500 bg-blue-50/30 dark:bg-blue-950/10">
+                                    <CardContent className="py-3 px-4">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <Stethoscope className="w-4 h-4 text-blue-600" />
+                                          <span className="font-medium text-sm">Consulta</span>
+                                          <Badge variant="secondary" className="text-xs">
+                                            {consult.type === 'consultation' ? 'Consulta' :
+                                             consult.type === 'followup' ? 'Retorno' :
+                                             consult.type === 'emergency' ? 'Emergência' : consult.type}
+                                          </Badge>
+                                          <Badge className={`text-xs ${
+                                            consult.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                            consult.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                            'bg-yellow-100 text-yellow-800'
+                                          }`}>
+                                            {consult.status === 'completed' ? 'Concluída' :
+                                             consult.status === 'cancelled' ? 'Cancelada' :
+                                             consult.status === 'scheduled' ? 'Agendada' :
+                                             consult.status === 'in-progress' ? 'Em andamento' : consult.status}
+                                          </Badge>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">
+                                          {format(new Date(consult.scheduledAt), "HH:mm")}
+                                        </span>
+                                      </div>
+                                      <div className="text-sm text-muted-foreground">
+                                        <span>Dr. {consult.doctorName}</span>
+                                        {consult.doctorCRM && <span className="ml-1">(CRM: {consult.doctorCRM})</span>}
+                                      </div>
+                                      {consult.notes && <p className="text-sm mt-1">{consult.notes}</p>}
+                                    </CardContent>
+                                  </Card>
+                                ))}
+
+                                {day.records.map((rec: any) => (
+                                  <Card key={rec.id} className="border-l-4 border-l-emerald-500">
+                                    <CardContent className="py-3 px-4">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <FileText className="w-4 h-4 text-emerald-600" />
+                                          <span className="font-medium text-sm">Prontuário</span>
+                                          {rec.hasPmd && (
+                                            <Badge className="bg-emerald-600 text-xs cursor-pointer" onClick={() => setSelectedPmdId(rec.id)}>
+                                              PMD v1.0
+                                            </Badge>
+                                          )}
+                                          {rec.digitalSignature && (
+                                            <Badge variant="outline" className="text-green-600 text-xs">Assinado</Badge>
+                                          )}
+                                          {rec.isEncrypted && (
+                                            <Badge variant="outline" className="text-blue-600 text-xs">
+                                              <Lock className="w-3 h-3 mr-0.5" />
+                                              Cripto
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">
+                                          Dr. {rec.doctorName}
+                                          {rec.doctorCRM && ` (CRM: ${rec.doctorCRM})`}
+                                        </span>
+                                      </div>
+                                      <div className="space-y-2 text-sm">
+                                        {rec.symptoms && (
+                                          <div>
+                                            <span className="font-medium text-xs text-muted-foreground">Anamnese / Sintomas:</span>
+                                            <p className="mt-0.5">{rec.symptoms}</p>
+                                          </div>
+                                        )}
+                                        {rec.diagnosis && (
+                                          <div>
+                                            <span className="font-medium text-xs text-muted-foreground">Diagnóstico:</span>
+                                            <p className="mt-0.5">{rec.diagnosis}</p>
+                                          </div>
+                                        )}
+                                        {rec.treatment && (
+                                          <div>
+                                            <span className="font-medium text-xs text-muted-foreground">Tratamento:</span>
+                                            <p className="mt-0.5">{rec.treatment}</p>
+                                          </div>
+                                        )}
+                                        {rec.historico && (
+                                          <div>
+                                            <span className="font-medium text-xs text-muted-foreground">Histórico:</span>
+                                            <p className="mt-0.5">{rec.historico}</p>
+                                          </div>
+                                        )}
+                                        {rec.prescription && (
+                                          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2 mt-1">
+                                            <span className="font-medium text-xs text-muted-foreground">Prescrição:</span>
+                                            <p className="mt-0.5">{rec.prescription}</p>
+                                          </div>
+                                        )}
+                                        {rec.evolucoes && rec.evolucoes.length > 0 && (
+                                          <div className="mt-2 border-t border-border pt-2">
+                                            <span className="font-medium text-xs text-muted-foreground flex items-center gap-1">
+                                              <Activity className="w-3 h-3" />
+                                              Evoluções ({rec.evolucoes.length}):
+                                            </span>
+                                            <div className="space-y-1.5 mt-1.5">
+                                              {rec.evolucoes.map((ev: any, idx: number) => (
+                                                <div key={idx} className="bg-muted/30 rounded p-2 text-xs">
+                                                  <div className="flex justify-between mb-0.5">
+                                                    <span className="text-muted-foreground">{ev.data}</span>
+                                                    <Badge variant="outline" className="text-[10px] h-4">{ev.medico}</Badge>
+                                                  </div>
+                                                  <p>{ev.descricao}</p>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                        {rec.diagnosticHypotheses && rec.diagnosticHypotheses.length > 0 && (
+                                          <div className="mt-2">
+                                            <span className="font-medium text-xs text-muted-foreground">Hipóteses Diagnósticas (IA):</span>
+                                            <div className="flex flex-wrap gap-1.5 mt-1">
+                                              {rec.diagnosticHypotheses.map((h: any, i: number) => (
+                                                <Badge key={i} variant="outline" className="text-xs">
+                                                  {h.condition} ({h.probability}%)
+                                                </Badge>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                ))}
+
+                                {day.prescriptions.map((rx: any) => (
+                                  <Card key={rx.id} className="border-l-4 border-l-amber-500 bg-amber-50/30 dark:bg-amber-950/10">
+                                    <CardContent className="py-3 px-4">
+                                      <div className="flex items-center gap-2">
+                                        <ClipboardList className="w-4 h-4 text-amber-600" />
+                                        <span className="font-medium text-sm">Prescrição</span>
+                                        <Badge className={`text-xs ${
+                                          rx.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                        }`}>
+                                          {rx.status === 'active' ? 'Ativa' : rx.status}
+                                        </Badge>
+                                      </div>
+                                      {rx.diagnosis && <p className="text-sm mt-1 text-muted-foreground">{rx.diagnosis}</p>}
+                                    </CardContent>
+                                  </Card>
+                                ))}
+
+                                {day.exams.map((exam: any) => (
+                                  <Card key={exam.id} className="border-l-4 border-l-purple-500 bg-purple-50/30 dark:bg-purple-950/10">
+                                    <CardContent className="py-3 px-4">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <Activity className="w-4 h-4 text-purple-600" />
+                                          <span className="font-medium text-sm">{exam.examType}</span>
+                                          {exam.analyzedByAI && (
+                                            <Badge variant="outline" className="text-purple-600 text-xs">IA</Badge>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {exam.abnormalValues && exam.abnormalValues.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1.5">
+                                          {exam.abnormalValues.map((av: any, i: number) => (
+                                            <Badge key={i} variant="destructive" className="text-xs">
+                                              {av.parameter}: {av.value} {av.status === 'high' ? '↑' : '↓'}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </CardContent>
+                                  </Card>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
 
                 <TabsContent value="records" className="space-y-4">
                   {recordsLoading ? (
