@@ -709,24 +709,24 @@ export default function Login() {
           <p className="text-center text-sm text-muted-foreground">
             Não tem uma conta? Cadastre-se como:
           </p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <Link href="/register/patient">
               <Button 
                 variant="outline" 
-                className="w-full"
+                className="w-full h-12 text-sm"
                 data-testid="link-register-patient"
               >
-                <User className="w-4 h-4 mr-2" />
+                <User className="w-4 h-4 mr-1.5 flex-shrink-0" />
                 Paciente
               </Button>
             </Link>
             <Link href="/register/doctor">
               <Button 
                 variant="outline" 
-                className="w-full"
+                className="w-full h-12 text-sm"
                 data-testid="link-register-doctor"
               >
-                <Stethoscope className="w-4 h-4 mr-2" />
+                <Stethoscope className="w-4 h-4 mr-1.5 flex-shrink-0" />
                 Médico
               </Button>
             </Link>
@@ -735,8 +735,7 @@ export default function Login() {
 
         <div className="text-center mt-6 text-sm text-muted-foreground">
           <p>
-            {t("ui.demo_text")}<br />
-            <strong>{t("ui.demo_user")}</strong> doctor | <strong>{t("ui.demo_password")}</strong> doctor123
+            {t("ui.app_subtitle")}
           </p>
         </div>
       </div>

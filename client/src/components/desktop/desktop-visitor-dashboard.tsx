@@ -118,7 +118,7 @@ export function DesktopVisitorDashboard() {
                 </div>
                 <h1 className="text-4xl font-bold mb-4 drop-shadow-lg">Conexão que cuida, cuidados que conectam</h1>
                 <p className="text-xl text-blue-100 mb-6 drop-shadow-md">
-                  
+                  Plataforma completa de telemedicina com IA avançada
                 </p>
                 <div className="flex space-x-4">
                   <Link href="/register">
