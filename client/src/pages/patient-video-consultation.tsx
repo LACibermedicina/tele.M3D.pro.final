@@ -43,7 +43,7 @@ type ConsultationNote = {
   id: string;
   consultationId: string;
   userId: string;
-  type: 'chat' | 'ai_query' | 'ai_response' | 'doctor_note' | 'annotation';
+  type: 'chat' | 'ai_query' | 'ai_response' | 'doctor_note' | 'annotation' | 'transcription' | 'iam3d_diagnostic';
   content: string;
   metadata?: any;
   timestamp: string;
@@ -205,6 +205,22 @@ export default function PatientVideoConsultation() {
     const interval = setInterval(flushTranscriptBuffer, 15000);
     return () => clearInterval(interval);
   }, [joined, consultationId, flushTranscriptBuffer]);
+
+  useEffect(() => {
+    if (!joined) return;
+    const timer = setTimeout(() => {
+      if (localVideoTrack && localVideoRef.current) {
+        localVideoTrack.play(localVideoRef.current);
+      }
+      if (remoteUsers.length > 0 && remoteVideoRef.current) {
+        const remoteUser = remoteUsers[0];
+        if (remoteUser.videoTrack) {
+          remoteUser.videoTrack.play(remoteVideoRef.current);
+        }
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [videoSwapped, joined, localVideoTrack, remoteUsers]);
 
   useEffect(() => {
     const agoraClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
