@@ -32,6 +32,7 @@ interface PrescriptionItem {
 
 interface PharmacyPrescription {
   id: string;
+  prescriptionNumber?: string;
   patientName: string;
   doctorName: string;
   doctorCrm: string;
@@ -248,126 +249,113 @@ export default function PharmacyDashboard() {
           </Card>
         </div>
 
-        <Tabs defaultValue="prescriptions" className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por paciente, médico ou ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+
+        <Tabs defaultValue="active" className="space-y-4" onValueChange={(v) => setStatusFilter(v)}>
           <TabsList>
-            <TabsTrigger value="prescriptions">Prescrições</TabsTrigger>
-            <TabsTrigger value="dispensing">Dispensação</TabsTrigger>
+            <TabsTrigger value="active">Pendentes</TabsTrigger>
+            <TabsTrigger value="dispensed">Dispensadas</TabsTrigger>
+            <TabsTrigger value="all">Todas</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="prescriptions" className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por paciente, médico ou ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md text-sm"
-              >
-                <option value="all">Todos os Status</option>
-                <option value="active">Pendentes</option>
-                <option value="dispensed">Dispensados</option>
-                <option value="partial">Parcial</option>
-                <option value="rejected">Rejeitados</option>
-              </select>
-            </div>
-
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : filteredPrescriptions.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">Nenhuma prescrição encontrada</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {filteredPrescriptions.map((prescription: PharmacyPrescription) => (
-                  <Card key={prescription.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            {getStatusBadge(prescription.status)}
-                            {prescription.pharmacistReadAt && (
-                              <Badge variant="outline" className="text-emerald-600 border-emerald-300">
-                                <Eye className="w-3 h-3 mr-1" /> Lido
-                              </Badge>
+          {["active", "dispensed", "all"].map((tab) => (
+            <TabsContent key={tab} value={tab} className="space-y-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredPrescriptions.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">Nenhuma prescrição encontrada</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {filteredPrescriptions.map((prescription: PharmacyPrescription) => (
+                    <Card key={prescription.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              {prescription.prescriptionNumber && (
+                                <span className="text-xs font-mono text-muted-foreground">#{prescription.prescriptionNumber}</span>
+                              )}
+                              {getStatusBadge(prescription.status)}
+                              {prescription.pharmacistReadAt && (
+                                <Badge variant="outline" className="text-emerald-600 border-emerald-300">
+                                  <Eye className="w-3 h-3 mr-1" /> Lido
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+                              <div className="flex items-center space-x-2">
+                                <User className="w-4 h-4 text-muted-foreground" />
+                                <span><strong>Paciente:</strong> {prescription.patientName || 'N/A'}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Building2 className="w-4 h-4 text-muted-foreground" />
+                                <span><strong>Médico:</strong> {prescription.doctorName || 'N/A'}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Calendar className="w-4 h-4 text-muted-foreground" />
+                                <span><strong>Data:</strong> {prescription.createdAt ? new Date(prescription.createdAt).toLocaleDateString('pt-BR') : 'N/A'}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 mt-1 text-sm">
+                              <Shield className="w-4 h-4 text-muted-foreground" />
+                              <span><strong>CRM:</strong> {prescription.doctorCrm || 'N/A'}</span>
+                            </div>
+                            {prescription.items && prescription.items.length > 0 && (
+                              <div className="mt-2 text-sm text-muted-foreground">
+                                <strong>{prescription.items.length}</strong> medicamento(s):
+                                {prescription.items.slice(0, 3).map((item: PrescriptionItem, i: number) => (
+                                  <span key={i}> {item.medicationName}{i < Math.min(prescription.items.length, 3) - 1 ? ',' : ''}</span>
+                                ))}
+                                {prescription.items.length > 3 && <span> e mais {prescription.items.length - 3}...</span>}
+                              </div>
                             )}
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
-                            <div className="flex items-center space-x-2">
-                              <User className="w-4 h-4 text-muted-foreground" />
-                              <span><strong>Paciente:</strong> {prescription.patientName || 'N/A'}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Building2 className="w-4 h-4 text-muted-foreground" />
-                              <span><strong>Médico:</strong> {prescription.doctorName || 'N/A'}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Calendar className="w-4 h-4 text-muted-foreground" />
-                              <span><strong>Data:</strong> {prescription.createdAt ? new Date(prescription.createdAt).toLocaleDateString('pt-BR') : 'N/A'}</span>
-                            </div>
-                          </div>
-                          {prescription.items && prescription.items.length > 0 && (
-                            <div className="mt-2 text-sm text-muted-foreground">
-                              <strong>{prescription.items.length}</strong> medicamento(s):
-                              {prescription.items.slice(0, 3).map((item: PrescriptionItem, i: number) => (
-                                <span key={i}> {item.medicationName}{i < Math.min(prescription.items.length, 3) - 1 ? ',' : ''}</span>
-                              ))}
-                              {prescription.items.length > 3 && <span> e mais {prescription.items.length - 3}...</span>}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col space-y-1 ml-4">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setSelectedPrescription(prescription)}
-                            data-testid={`btn-view-${prescription.id}`}
-                          >
-                            <Eye className="w-4 h-4 mr-1" /> Ver
-                          </Button>
-                          {!prescription.pharmacistReadAt && (
+                          <div className="flex flex-col space-y-1 ml-4">
                             <Button
                               size="sm"
                               variant="outline"
-                              className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
-                              onClick={() => confirmReadMutation.mutate(prescription.id)}
-                              disabled={confirmReadMutation.isPending}
+                              onClick={() => setSelectedPrescription(prescription)}
+                              data-testid={`btn-view-${prescription.id}`}
                             >
-                              <ClipboardCheck className="w-4 h-4 mr-1" /> Confirmar
+                              <Eye className="w-4 h-4 mr-1" /> Ver
                             </Button>
-                          )}
+                            {!prescription.pharmacistReadAt && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                                onClick={() => confirmReadMutation.mutate(prescription.id)}
+                                disabled={confirmReadMutation.isPending}
+                              >
+                                <ClipboardCheck className="w-4 h-4 mr-1" /> Confirmar
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="dispensing">
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Package className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                <p className="text-lg font-semibold mb-2">Selecione uma Prescrição</p>
-                <p className="text-muted-foreground text-sm">
-                  Clique em "Ver" em uma prescrição pendente para iniciar o processo de dispensação.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          ))}
         </Tabs>
 
         {selectedPrescription && (

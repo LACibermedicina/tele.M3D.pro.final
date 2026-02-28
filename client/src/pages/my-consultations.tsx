@@ -25,6 +25,7 @@ import {
   ChevronUp,
   Clock3,
   Shield,
+  Star,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -47,6 +48,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { FormattedText } from "@/components/ui/formatted-text";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface ConsultationRequest {
   id: string;
@@ -71,12 +80,15 @@ interface ConsultationRequest {
 interface VideoHistoryItem {
   id: string;
   doctorId: string;
+  appointmentId: string | null;
   status: string;
   startedAt: string;
   endedAt: string;
   duration: number;
   meetingNotes: string;
   createdAt: string;
+  rating: number | null;
+  feedback: string | null;
   doctor: {
     name: string;
     specialty?: string;
@@ -231,14 +243,55 @@ function PostConsultationItemsPanel({ consultationId }: { consultationId: string
   );
 }
 
+function StarRating({ rating, onRate, size = 5 }: { rating: number; onRate?: (r: number) => void; size?: number }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: size }, (_, i) => i + 1).map((star) => (
+        <Star
+          key={star}
+          className={`w-5 h-5 cursor-${onRate ? 'pointer' : 'default'} transition-colors ${
+            star <= (hover || rating)
+              ? 'fill-yellow-400 text-yellow-400'
+              : 'text-gray-300'
+          }`}
+          onClick={() => onRate?.(star)}
+          onMouseEnter={() => onRate && setHover(star)}
+          onMouseLeave={() => onRate && setHover(0)}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function MyConsultations() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const [ratingDialog, setRatingDialog] = useState<{ appointmentId: string; doctorName: string } | null>(null);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingFeedback, setRatingFeedback] = useState("");
 
   const { data: consultations, isLoading } = useQuery<MyConsultations>({
     queryKey: ['/api/my-consultations'],
     enabled: !!user && user.role === 'patient',
+  });
+
+  const rateMutation = useMutation({
+    mutationFn: async ({ appointmentId, rating, feedback }: { appointmentId: string; rating: number; feedback: string }) => {
+      const res = await apiRequest('POST', `/api/appointments/${appointmentId}/rate`, { rating, feedback });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Avaliação enviada", description: "Obrigado por avaliar sua consulta!" });
+      queryClient.invalidateQueries({ queryKey: ['/api/my-consultations'] });
+      setRatingDialog(null);
+      setRatingValue(0);
+      setRatingFeedback("");
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível enviar a avaliação.", variant: "destructive" });
+    },
   });
 
   const cancelMutation = useMutation({
@@ -700,6 +753,28 @@ export default function MyConsultations() {
                         )}
                       </div>
 
+                      {vc.rating ? (
+                        <div className="flex items-center gap-2 pt-2 border-t">
+                          <span className="text-sm font-medium">Sua avaliação:</span>
+                          <StarRating rating={vc.rating} />
+                          {vc.feedback && (
+                            <span className="text-sm text-muted-foreground ml-2">"{vc.feedback}"</span>
+                          )}
+                        </div>
+                      ) : vc.appointmentId ? (
+                        <div className="pt-2 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-yellow-600 border-yellow-300 hover:bg-yellow-50"
+                            onClick={() => setRatingDialog({ appointmentId: vc.appointmentId!, doctorName: vc.doctor.name })}
+                          >
+                            <Star className="w-4 h-4 mr-1.5" />
+                            Avaliar Consulta
+                          </Button>
+                        </div>
+                      ) : null}
+
                       <PostConsultationItemsPanel consultationId={vc.id} />
                     </CardContent>
                   </Card>
@@ -709,6 +784,58 @@ export default function MyConsultations() {
           </Tabs>
         )}
       </div>
+
+      <Dialog open={!!ratingDialog} onOpenChange={(open) => { if (!open) { setRatingDialog(null); setRatingValue(0); setRatingFeedback(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-yellow-500" />
+              Avaliar Consulta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Como foi sua consulta com <span className="font-medium text-foreground">{ratingDialog?.doctorName}</span>?
+            </p>
+            <div className="flex justify-center">
+              <StarRating rating={ratingValue} onRate={setRatingValue} />
+            </div>
+            <div className="text-center text-sm text-muted-foreground">
+              {ratingValue === 1 && "Ruim"}
+              {ratingValue === 2 && "Regular"}
+              {ratingValue === 3 && "Bom"}
+              {ratingValue === 4 && "Muito bom"}
+              {ratingValue === 5 && "Excelente"}
+            </div>
+            <Textarea
+              placeholder="Deixe um comentário (opcional)"
+              value={ratingFeedback}
+              onChange={(e) => setRatingFeedback(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRatingDialog(null); setRatingValue(0); setRatingFeedback(""); }}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={ratingValue === 0 || rateMutation.isPending}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+              onClick={() => {
+                if (ratingDialog && ratingValue > 0) {
+                  rateMutation.mutate({
+                    appointmentId: ratingDialog.appointmentId,
+                    rating: ratingValue,
+                    feedback: ratingFeedback,
+                  });
+                }
+              }}
+            >
+              {rateMutation.isPending ? "Enviando..." : "Enviar Avaliação"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageWrapper>
   );
 }

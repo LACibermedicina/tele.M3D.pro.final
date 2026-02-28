@@ -11588,6 +11588,7 @@ Retorne apenas o JSON válido.`;
       const patientVideoConsultations = await db.select({
         id: videoConsultations.id,
         doctorId: videoConsultations.doctorId,
+        appointmentId: videoConsultations.appointmentId,
         status: videoConsultations.status,
         startedAt: videoConsultations.startedAt,
         endedAt: videoConsultations.endedAt,
@@ -11609,11 +11610,24 @@ Retorne apenas o JSON válido.`;
         } catch {}
       }
 
+      const appointmentIds = patientVideoConsultations.map(v => v.appointmentId).filter(Boolean) as string[];
+      const appointmentRatings: Record<string, { rating: number | null; feedback: string | null }> = {};
+      if (appointmentIds.length > 0) {
+        const appts = await db.select({ id: appointments.id, rating: appointments.rating, feedback: appointments.feedback })
+          .from(appointments)
+          .where(inArray(appointments.id, appointmentIds));
+        for (const a of appts) {
+          appointmentRatings[a.id] = { rating: a.rating, feedback: a.feedback };
+        }
+      }
+
       const videoHistory = patientVideoConsultations
         .filter(v => v.status === 'ended' || v.status === 'completed')
         .map(v => ({
           ...v,
           doctor: doctorMap[v.doctorId] || { name: 'Médico', specialty: '' },
+          rating: v.appointmentId ? appointmentRatings[v.appointmentId]?.rating || null : null,
+          feedback: v.appointmentId ? appointmentRatings[v.appointmentId]?.feedback || null : null,
         }));
 
       const activeVideoConsultations = patientVideoConsultations
