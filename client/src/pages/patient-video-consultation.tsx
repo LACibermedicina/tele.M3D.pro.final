@@ -248,7 +248,15 @@ export default function PatientVideoConsultation() {
       });
     });
 
+    const handleBeforeUnload = () => {
+      localAudioTrack?.close();
+      localVideoTrack?.close();
+      agoraClient.leave().catch(() => {});
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       agoraClient.removeAllListeners();
       leaveChannel();
     };

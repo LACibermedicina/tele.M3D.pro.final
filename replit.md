@@ -15,17 +15,17 @@ The application features an Express.js backend and a React frontend, with shared
 - **Navigation:** Desktop uses dropdown menus for multi-item groups and direct icon links for single-item groups. Mobile uses a slide-out sheet. Icons have consistent drop-shadow styling.
 - **Mobile Layout:** Side menu (hamburger) for all users. Top bar keeps essential elements.
 - **Admin Theme:** Distinctive dark indigo/slate gradient with subtle dot grid pattern and radial glow effects.
-- **Voice Assistant:** IAM3D voice assistant with full-screen overlay and floating mic toggle.
+- **Voice Assistant:** IAM3D voice assistant with half-screen overlay on mobile (bottom 50vh) and full-screen on desktop. Voice button appears after language selector in header.
 - **Doctor Notes:** macOS Notes-style interface with folders, search, pinning, and color labels.
 - **Triage System:** 5-level Manchester Protocol (or WHO ETAT fallback) visual classification with color-coded badges.
 - **WhatsApp IA:** Messages display with role labels and color-coded bubbles; patient online status shown.
 - **Documentation:** Comprehensive role-based documentation system including installation, technical, user manual, and FAQ, with PDF export.
-- **Mobile Dashboards:** Rebuilt mobile patient and visitor dashboards with real API data and IAM3D integration.
+- **Mobile Dashboards:** Rebuilt mobile patient dashboard with prominent "Consultar Agora" card, list-style navigation links, and compact layout. Visitor dashboard with IAM3D integration.
 
 **Technical Implementations:**
 - **Database:** PostgreSQL on Neon with Drizzle ORM.
 - **AI Services:** Google Gemini API (with Replit OpenAI fallback) for chatbot, triage, video consultation support, medical records, and SOAP reports, adhering to medical guidelines (OMS, MS/Brasil, DSM-5/DSM-5-TR).
-- **Video Consultations:** Agora for real-time video, audio, screen sharing, chat, AI diagnostic queries, transcription, and specialist invitations, with AI-driven medical record generation. Dual-side transcription: doctor-side Speech Recognition labels as doctor, patient-side runs automatically and sends transcripts as notes with `speaker: 'patient'` metadata. Floating UI elements (IAM3D, chatbot, quick actions) hidden during video consultations.
+- **Video Consultations:** Agora for real-time video, audio, screen sharing, chat, AI diagnostic queries, transcription, and specialist invitations, with AI-driven medical record generation. Dual-side transcription: doctor-side Speech Recognition labels as doctor, patient-side runs automatically and sends transcripts as notes with `speaker: 'patient'` metadata. Floating UI elements (IAM3D, chatbot, quick actions) hidden during video consultations. Video swap (PiP toggle), side chat panel, screen share fullscreen overlay. Camera/mic properly closed on leave/navigation with beforeunload handler. End consultation dialog compact and scrollable on mobile.
 - **Patient Features:** AI-powered symptom triage, waiting room, prescription management, and medical record access.
 - **Consultation Access:** QR codes and short access codes for patients to join consultations without login. Doctor status visible in the waiting room. Temporary visitor access links with configurable expiry.
 - **Admin System Settings:** Configurable system parameters via admin interface (e.g., link expiry, AI triage toggle, financial settings).

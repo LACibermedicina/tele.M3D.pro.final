@@ -265,7 +265,16 @@ export default function VideoConsultation() {
       });
     });
 
+    const handleBeforeUnload = () => {
+      localAudioTrack?.close();
+      localVideoTrack?.close();
+      screenTrack?.close();
+      agoraClient.leave().catch(() => {});
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       agoraClient.removeAllListeners();
       leaveChannel();
     };
@@ -371,6 +380,7 @@ export default function VideoConsultation() {
     try {
       localAudioTrack?.close();
       localVideoTrack?.close();
+      screenTrack?.close();
       await client.leave();
     } catch (err) {
       console.warn('Error leaving channel:', err);
@@ -378,6 +388,8 @@ export default function VideoConsultation() {
     setJoined(false);
     setLocalAudioTrack(null);
     setLocalVideoTrack(null);
+    setScreenTrack(null);
+    setIsScreenSharing(false);
     setRemoteUsers([]);
   };
 
@@ -1414,49 +1426,46 @@ export default function VideoConsultation() {
       )}
 
       <Dialog open={showEndCallDialog} onOpenChange={setShowEndCallDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Encerrar Consulta</DialogTitle>
+            <DialogTitle className="text-base">Encerrar Consulta</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Como você deseja encerrar esta consulta?
+              Como deseja encerrar?
             </p>
-            <div className="space-y-3">
-              <Button
-                className="w-full justify-start h-auto py-3 px-4"
-                variant="default"
-                onClick={() => confirmEndCall('completed')}
-                disabled={endConsultationMutation.isPending}
-              >
-                <div className="text-left">
-                  <p className="font-medium">Concluir Consulta</p>
-                  <p className="text-xs opacity-80 mt-0.5">Consulta finalizada com sucesso. Prontuário será gerado automaticamente.</p>
-                </div>
-              </Button>
-              <div className="space-y-2">
-                <Button
-                  className="w-full justify-start h-auto py-3 px-4"
-                  variant="outline"
-                  onClick={() => confirmEndCall('incomplete')}
-                  disabled={endConsultationMutation.isPending}
-                >
-                  <div className="text-left">
-                    <p className="font-medium text-orange-600 dark:text-orange-400">Sair sem Concluir</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Problema técnico ou desconexão. Poderá retomar ou concluir depois.</p>
-                  </div>
-                </Button>
-                <Textarea
-                  placeholder="Motivo (opcional): ex. queda de conexão, paciente saiu..."
-                  value={endCallReason}
-                  onChange={(e) => setEndCallReason(e.target.value)}
-                  className="text-sm"
-                  rows={2}
-                />
+            <Button
+              className="w-full justify-start h-auto py-2.5 px-3"
+              variant="default"
+              onClick={() => confirmEndCall('completed')}
+              disabled={endConsultationMutation.isPending}
+            >
+              <div className="text-left">
+                <p className="font-medium text-sm">Concluir Consulta</p>
+                <p className="text-[11px] opacity-80 mt-0.5">Prontuário gerado automaticamente.</p>
               </div>
-            </div>
+            </Button>
+            <Button
+              className="w-full justify-start h-auto py-2.5 px-3"
+              variant="outline"
+              onClick={() => confirmEndCall('incomplete')}
+              disabled={endConsultationMutation.isPending}
+            >
+              <div className="text-left">
+                <p className="font-medium text-sm text-orange-600 dark:text-orange-400">Sair sem Concluir</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Poderá retomar depois.</p>
+              </div>
+            </Button>
+            <Textarea
+              placeholder="Motivo (opcional)..."
+              value={endCallReason}
+              onChange={(e) => setEndCallReason(e.target.value)}
+              className="text-sm"
+              rows={2}
+            />
             <Button
               variant="ghost"
+              size="sm"
               className="w-full"
               onClick={() => setShowEndCallDialog(false)}
             >

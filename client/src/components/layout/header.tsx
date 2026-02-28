@@ -1084,6 +1084,8 @@ export default function Header() {
               </form>
             )}
             
+            <LanguageSelector />
+
             {hasDecided && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1106,8 +1108,6 @@ export default function Header() {
                 </TooltipContent>
               </Tooltip>
             )}
-
-            <LanguageSelector />
             
             {user ? (
               <>

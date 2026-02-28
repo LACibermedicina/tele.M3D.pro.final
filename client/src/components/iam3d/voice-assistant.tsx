@@ -138,7 +138,8 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
     if (!ctx) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const size = Math.min(window.innerWidth * 0.5, 220);
+    const isMobile = window.innerWidth < 768;
+    const size = isMobile ? Math.min(window.innerWidth * 0.3, 120) : Math.min(window.innerWidth * 0.5, 220);
     canvas.width = size * dpr;
     canvas.height = size * dpr;
     canvas.style.width = `${size}px`;
@@ -468,10 +469,10 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
     : [{ label: "Sintomas", color: "bg-cyan-500/30 text-cyan-300" }, { label: "Agendar", color: "bg-green-500/30 text-green-300" }, { label: "Cadastrar", color: "bg-blue-500/30 text-blue-300" }];
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-gradient-to-b from-[#0a0e1a] via-[#0d1526] to-[#0a0e1a]">
+    <div className="fixed inset-x-0 bottom-0 top-[50vh] md:top-0 z-[9999] flex flex-col bg-gradient-to-b from-[#0a0e1a] via-[#0d1526] to-[#0a0e1a] rounded-t-2xl md:rounded-none shadow-2xl">
 
       {/* Top Bar - Agora-style */}
-      <div className="flex items-center justify-between px-4 py-3 bg-black/30">
+      <div className="flex items-center justify-between px-3 md:px-4 py-2 md:py-3 bg-black/30 shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -511,10 +512,10 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 overflow-hidden">
+      <div className="flex-1 flex flex-col items-center justify-center px-3 md:px-4 overflow-hidden">
 
         {/* Sphere */}
-        <div className="relative mb-4">
+        <div className="relative mb-2 md:mb-4">
           <button
             onClick={handleSphereClick}
             className="relative block focus:outline-none"
@@ -651,24 +652,22 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
       </div>
 
       {/* Bottom Controls Bar - Agora-style */}
-      <div className="pb-6 pt-4 bg-gradient-to-t from-black/40 to-transparent">
-        <div className="flex items-center justify-center gap-5">
-          {/* Mute */}
+      <div className="pb-4 md:pb-6 pt-2 md:pt-4 bg-gradient-to-t from-black/40 to-transparent shrink-0">
+        <div className="flex items-center justify-center gap-4 md:gap-5">
           <button
             onClick={toggleMute}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+            className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all ${
               isMuted
                 ? "bg-red-500/30 border border-red-500/40 text-red-400"
                 : "bg-white/10 border border-white/20 text-white/80 hover:bg-white/20"
             }`}
           >
-            {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            {isMuted ? <MicOff className="w-4 h-4 md:w-5 md:h-5" /> : <Mic className="w-4 h-4 md:w-5 md:h-5" />}
           </button>
 
-          {/* Main mic button */}
           <button
             onClick={handleSphereClick}
-            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${
+            className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${
               state === "listening"
                 ? "bg-cyan-500 text-white shadow-cyan-500/40 animate-pulse"
                 : state === "calling"
@@ -679,28 +678,26 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
             {state === "listening" ? <Mic className="w-7 h-7" /> : state === "calling" ? <Phone className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
           </button>
 
-          {/* Speaker */}
           <button
             onClick={toggleSpeaker}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+            className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all ${
               !isSpeakerOn
                 ? "bg-red-500/30 border border-red-500/40 text-red-400"
                 : "bg-white/10 border border-white/20 text-white/80 hover:bg-white/20"
             }`}
           >
-            {isSpeakerOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+            {isSpeakerOn ? <Volume2 className="w-4 h-4 md:w-5 md:h-5" /> : <VolumeX className="w-4 h-4 md:w-5 md:h-5" />}
           </button>
 
-          {/* End call */}
           <button
             onClick={handleClose}
-            className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-all shadow-lg shadow-red-600/30"
+            className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-all shadow-lg shadow-red-600/30"
           >
-            <PhoneOff className="w-5 h-5" />
+            <PhoneOff className="w-4 h-4 md:w-5 md:h-5" />
           </button>
         </div>
 
-        <p className="text-white/20 text-[10px] text-center mt-4">Tele{"<"}M3D{">"} Pro • IAM3D Assistente Médico Virtual</p>
+        <p className="text-white/20 text-[10px] text-center mt-2 md:mt-4 hidden md:block">Tele{"<"}M3D{">"} Pro • IAM3D Assistente Médico Virtual</p>
       </div>
     </div>
   );

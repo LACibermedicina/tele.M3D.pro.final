@@ -173,7 +173,9 @@ export default function PatientProfile() {
               {patient.gender && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Gênero</label>
-                  <p className="text-sm" data-testid="text-patient-gender">{patient.gender}</p>
+                  <p className="text-sm capitalize" data-testid="text-patient-gender">
+                    {patient.gender === 'prefiro_nao_informar' ? 'Prefiro não informar' : patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1)}
+                  </p>
                 </div>
               )}
 
