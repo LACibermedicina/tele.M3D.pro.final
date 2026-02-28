@@ -32,6 +32,11 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 app.use((req, res, next) => {
+  res.setHeader('Content-Language', 'pt-BR');
+  next();
+});
+
+app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;

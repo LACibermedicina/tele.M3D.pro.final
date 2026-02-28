@@ -35,16 +35,20 @@ const resources = {
   gn: { translation: gnTranslations },
 };
 
+const langMap: Record<string, string> = {
+  pt: 'pt-BR', en: 'en', es: 'es', fr: 'fr', it: 'it', de: 'de', zh: 'zh', gn: 'gn',
+};
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'pt', // Default language is Portuguese
-    debug: false, // Disable debug to reduce console noise
+    fallbackLng: 'pt',
+    debug: false,
     
     interpolation: {
-      escapeValue: false, // React already escapes values
+      escapeValue: false,
     },
     
     detection: {
@@ -53,11 +57,22 @@ i18n
       lookupLocalStorage: 'telemed-language',
     },
     
-    cleanCode: true, // Clean language codes (en-US -> en)
+    cleanCode: true,
     
     react: {
-      useSuspense: false, // Avoid suspense issues with SSR
+      useSuspense: false,
     },
   });
+
+i18n.on('languageChanged', (lng: string) => {
+  const htmlLang = langMap[lng] || lng;
+  document.documentElement.lang = htmlLang;
+  document.documentElement.setAttribute('translate', 'no');
+});
+
+if (i18n.language) {
+  const htmlLang = langMap[i18n.language] || i18n.language;
+  document.documentElement.lang = htmlLang;
+}
 
 export default i18n;
