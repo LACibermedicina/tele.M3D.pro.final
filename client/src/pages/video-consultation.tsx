@@ -45,6 +45,10 @@ import {
   LayoutDashboard,
   Columns,
   Tv,
+  ArrowLeftRight,
+  PanelRightClose,
+  PanelRightOpen,
+  X,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWebSocket } from '@/hooks/use-websocket';
@@ -103,6 +107,9 @@ export default function VideoConsultation() {
   const [showSpecialistDialog, setShowSpecialistDialog] = useState(false);
   const [showEndCallDialog, setShowEndCallDialog] = useState(false);
   const [endCallReason, setEndCallReason] = useState('');
+  const [videoSwapped, setVideoSwapped] = useState(false);
+  const [screenShareFullscreen, setScreenShareFullscreen] = useState(true);
+  const [showSideChat, setShowSideChat] = useState(false);
 
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
@@ -113,6 +120,7 @@ export default function VideoConsultation() {
 
   const localVideoRef = useRef<HTMLDivElement>(null);
   const remoteVideoRef = useRef<HTMLDivElement>(null);
+  const screenShareOverlayRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -277,6 +285,28 @@ export default function VideoConsultation() {
       }
     }
   }, [remoteUsers]);
+
+  useEffect(() => {
+    if (!joined) return;
+    const timer = setTimeout(() => {
+      if (localVideoTrack && localVideoRef.current) {
+        localVideoTrack.play(localVideoRef.current);
+      }
+      if (remoteUsers.length > 0 && remoteVideoRef.current) {
+        const remoteUser = remoteUsers[0];
+        if (remoteUser.videoTrack) {
+          remoteUser.videoTrack.play(remoteVideoRef.current);
+        }
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [videoSwapped, joined, localVideoTrack, remoteUsers]);
+
+  useEffect(() => {
+    if (isScreenSharing && screenTrack && screenShareOverlayRef.current && screenShareFullscreen) {
+      screenTrack.play(screenShareOverlayRef.current);
+    }
+  }, [isScreenSharing, screenTrack, screenShareFullscreen]);
 
   useEffect(() => {
     const latestMsg = wsMessages[wsMessages.length - 1];
@@ -486,6 +516,15 @@ export default function VideoConsultation() {
     }
   };
 
+  const notifyScreenShare = useCallback((status: boolean) => {
+    if (!consultationId) return;
+    apiRequest('POST', `/api/video-consultations/${consultationId}/notes`, {
+      type: 'annotation',
+      content: status ? 'Médico iniciou compartilhamento de tela' : 'Médico encerrou compartilhamento de tela',
+      metadata: { screenShareStatus: status },
+    }).catch(() => {});
+  }, [consultationId]);
+
   const toggleScreenShare = async () => {
     if (!client || !joined) return;
     if (isScreenSharing) {
@@ -499,6 +538,8 @@ export default function VideoConsultation() {
         if (localVideoRef.current) localVideoTrack.play(localVideoRef.current);
       }
       setIsScreenSharing(false);
+      setScreenShareFullscreen(false);
+      notifyScreenShare(false);
       toast({ title: 'Compartilhamento encerrado', description: 'Voltou para a câmera.' });
     } else {
       try {
@@ -511,6 +552,8 @@ export default function VideoConsultation() {
         if (localVideoRef.current) videoTrack.play(localVideoRef.current);
         setScreenTrack(videoTrack);
         setIsScreenSharing(true);
+        setScreenShareFullscreen(true);
+        notifyScreenShare(true);
         (videoTrack as any).on?.('track-ended', async () => {
           await client.unpublish(videoTrack);
           videoTrack.close();
@@ -520,6 +563,8 @@ export default function VideoConsultation() {
             if (localVideoRef.current) localVideoTrack.play(localVideoRef.current);
           }
           setIsScreenSharing(false);
+          setScreenShareFullscreen(false);
+          notifyScreenShare(false);
         });
         toast({ title: 'Compartilhando tela', description: 'Sua tela está sendo compartilhada com o paciente.' });
       } catch (err: any) {
@@ -699,10 +744,13 @@ export default function VideoConsultation() {
     );
   }
 
+  const mainVideoLabel = videoSwapped ? 'Você' : 'Paciente';
+  const pipVideoLabel = videoSwapped ? 'Paciente' : 'Você';
+
   const videoArea = (className?: string, compact?: boolean) => (
     <div className={`relative bg-gray-900 rounded-lg overflow-hidden ${className || ''}`}>
-      <div ref={remoteVideoRef} className="absolute inset-0" data-testid="video-remote">
-        {remoteUsers.length === 0 && (
+      <div ref={videoSwapped ? localVideoRef : remoteVideoRef} className="absolute inset-0" data-testid="video-remote">
+        {!videoSwapped && remoteUsers.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center text-white">
             <div className="text-center">
               <Video className={`${compact ? 'h-8 w-8' : 'h-16 w-16'} mx-auto mb-2 opacity-50`} />
@@ -710,23 +758,35 @@ export default function VideoConsultation() {
             </div>
           </div>
         )}
+        {videoSwapped && !isVideoOn && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+            <VideoOff className={`${compact ? 'h-8 w-8' : 'h-16 w-16'} text-white opacity-50`} />
+          </div>
+        )}
       </div>
-      <div className={`absolute ${compact ? 'bottom-2 right-2 w-28 h-20' : 'bottom-16 right-4 w-56 h-40'} bg-gray-800 rounded-lg overflow-hidden border-2 border-white shadow-lg z-10`}>
-        <div ref={localVideoRef} className="w-full h-full" data-testid="video-local" />
-        {!isVideoOn && (
+      <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded z-10">{mainVideoLabel}</div>
+      <div
+        className={`absolute ${compact ? 'bottom-2 right-2 w-28 h-20' : 'bottom-16 right-4 w-56 h-40'} bg-gray-800 rounded-lg overflow-hidden border-2 border-white shadow-lg z-10 cursor-pointer group`}
+        onClick={() => setVideoSwapped(!videoSwapped)}
+      >
+        <div ref={videoSwapped ? remoteVideoRef : localVideoRef} className="w-full h-full" data-testid="video-local" />
+        {!videoSwapped && !isVideoOn && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
             <VideoOff className={`${compact ? 'h-6 w-6' : 'h-10 w-10'} text-white opacity-50`} />
           </div>
         )}
-        <div className="absolute bottom-1 left-2 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">Você</div>
+        <div className="absolute bottom-1 left-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">{pipVideoLabel}</div>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors">
+          <ArrowLeftRight className={`${compact ? 'h-4 w-4' : 'h-6 w-6'} text-white opacity-0 group-hover:opacity-100 transition-opacity`} />
+        </div>
       </div>
       {isRecording && (
-        <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-red-600 text-white px-3 py-1.5 rounded-full z-10" data-testid="status-recording">
+        <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-red-600 text-white px-3 py-1.5 rounded-full z-10" data-testid="status-recording">
           <CircleDot className="h-3 w-3 animate-pulse" /><span className="font-semibold text-xs">REC</span>
         </div>
       )}
       {isTranscribing && (
-        <div className={`absolute top-2 ${isRecording ? 'left-24' : 'left-2'} flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 rounded-full z-10`}>
+        <div className={`absolute top-2 ${isRecording ? 'right-24' : 'right-2'} flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 rounded-full z-10`}>
           <AudioLines className="h-3 w-3 animate-pulse" /><span className="font-semibold text-xs">Transcrição</span>
         </div>
       )}
@@ -749,6 +809,9 @@ export default function VideoConsultation() {
       </Button>
       <Button variant={isScreenSharing ? 'destructive' : 'secondary'} size="icon" onClick={toggleScreenShare} className={`rounded-full ${compact ? 'h-8 w-8' : ''}`} title={isScreenSharing ? 'Parar compartilhamento' : 'Compartilhar tela'}>
         {isScreenSharing ? <MonitorOff className={compact ? 'h-4 w-4' : 'h-5 w-5'} /> : <Monitor className={compact ? 'h-4 w-4' : 'h-5 w-5'} />}
+      </Button>
+      <Button variant="outline" size="icon" onClick={() => setVideoSwapped(!videoSwapped)} className={`rounded-full ${compact ? 'h-8 w-8' : ''}`} title="Trocar vídeos">
+        <ArrowLeftRight className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
       </Button>
       <Button variant="secondary" size="icon" onClick={() => setShowSpecialistDialog(true)} className={`rounded-full ${compact ? 'h-8 w-8' : ''}`} title="Convidar Especialista">
         <UserPlus className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
@@ -1016,87 +1079,163 @@ export default function VideoConsultation() {
     </div>
   );
 
-  const renderVideoLayout = () => (
-    <div className={`${isFullscreen ? 'fixed inset-0 z-50' : 'container mx-auto p-4'} bg-black flex flex-col`} data-testid="video-consultation-page">
-      {/* View mode selector floating */}
-      <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
-        {viewModeSelector()}
-        <Button variant="outline" size="icon" onClick={() => setIsFullscreen(!isFullscreen)} className="rounded-full h-8 w-8 bg-gray-800/80 border-gray-600 text-white hover:text-white" data-testid="button-toggle-fullscreen">
-          {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-        </Button>
-      </div>
+  const sideChatPanel = () => (
+    <div className={`bg-background border-l flex flex-col transition-all duration-300 ${showSideChat ? 'w-80' : 'w-0 overflow-hidden'}`}>
+      {showSideChat && (
+        <>
+          <div className="px-3 py-2 border-b flex items-center gap-2 shrink-0">
+            <MessageSquare className="h-4 w-4 text-primary" />
+            <span className="text-xs font-semibold">Chat</span>
+            {chatNotes.length > 0 && <Badge variant="secondary" className="h-5 px-1.5 text-xs ml-auto">{chatNotes.length}</Badge>}
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setShowSideChat(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <ScrollArea className="flex-1 p-2" data-testid="scroll-side-chat">
+            <div className="space-y-1.5" ref={chatScrollRef}>
+              {chatNotes.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">Sem mensagens</p>}
+              {chatNotes.map((note) => {
+                const isDoctor = note.metadata?.senderRole === 'doctor' || note.userId === user?.id;
+                return (
+                  <div key={note.id} className={`flex ${isDoctor ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] rounded-lg px-2.5 py-1.5 ${isDoctor ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      <div className="flex items-center gap-1">
+                        {isDoctor ? <Stethoscope className="h-2.5 w-2.5" /> : <User className="h-2.5 w-2.5" />}
+                        <span className="text-[10px] font-medium">{isDoctor ? 'Dr.' : 'Pac.'}</span>
+                        <span className={`text-[10px] ml-auto ${isDoctor ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
+                          {new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-xs mt-0.5">{note.content}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+          <div className="p-2 border-t flex gap-1.5 shrink-0">
+            <Input placeholder="Mensagem..." value={chatMessage} onChange={(e) => setChatMessage(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()} className="text-xs h-8" />
+            <Button onClick={sendChatMessage} size="icon" disabled={createNoteMutation.isPending} className="h-8 w-8 shrink-0"><Send className="h-3.5 w-3.5" /></Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
 
-      <div className="flex-1 relative" style={{ minHeight: '60vh' }}>
-        {videoArea('absolute inset-0')}
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20">
+  const screenShareOverlay = () => {
+    if (!isScreenSharing || !screenShareFullscreen) return null;
+    return (
+      <div className="fixed inset-0 z-[60] bg-black flex items-center justify-center">
+        <div ref={screenShareOverlayRef} className="w-full h-full" />
+        <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-full shadow-lg z-10">
+          <Monitor className="h-4 w-4" />
+          <span className="text-sm font-medium">Compartilhando tela</span>
+        </div>
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setScreenShareFullscreen(false)} className="rounded-full gap-1.5">
+            <Minimize className="h-4 w-4" /> Reduzir
+          </Button>
+          <Button variant="destructive" size="sm" onClick={toggleScreenShare} className="rounded-full gap-1.5">
+            <MonitorOff className="h-4 w-4" /> Parar
+          </Button>
+        </div>
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
           {controlBar()}
         </div>
       </div>
+    );
+  };
 
-      <div className="w-full bg-background border-t" style={{ height: '40vh' }}>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <TabsList className="w-full grid grid-cols-4 h-10">
-            <TabsTrigger value="chat" className="flex items-center gap-1 text-xs" data-testid="tab-chat">
-              <MessageSquare className="h-3.5 w-3.5" /> Chat
-              {chatNotes.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{chatNotes.length}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="ai" className="flex items-center gap-1 text-xs" data-testid="tab-ai">
-              <Brain className="h-3.5 w-3.5" /> IA
-              {aiLoading && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
-            </TabsTrigger>
-            <TabsTrigger value="transcription" className="flex items-center gap-1 text-xs">
-              <AudioLines className="h-3.5 w-3.5" /> Transcrição
-              {transcriptEntries.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{transcriptEntries.length}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="notes" className="flex items-center gap-1 text-xs" data-testid="tab-notes">
-              <FileText className="h-3.5 w-3.5" /> Notas
-            </TabsTrigger>
-          </TabsList>
+  const renderVideoLayout = () => (
+    <div className={`${isFullscreen ? 'fixed inset-0 z-50' : 'container mx-auto p-4'} bg-black flex`} data-testid="video-consultation-page">
+      {screenShareOverlay()}
 
-          <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden mt-0">
-            <ScrollArea className="flex-1 p-3" data-testid="scroll-chat">
-              <div className="space-y-2" ref={chatScrollRef}>
-                {chatNotes.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhuma mensagem. Envie uma mensagem para o paciente.</p>}
-                {chatNotes.map((note) => {
-                  const isDoctor = note.metadata?.senderRole === 'doctor' || note.userId === user?.id;
-                  return (
-                    <div key={note.id} className={`flex ${isDoctor ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[80%] rounded-xl px-3 py-2 ${isDoctor ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                        <div className="flex items-center gap-1 mb-0.5">
-                          {isDoctor ? <Stethoscope className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                          <span className="text-xs font-medium">{isDoctor ? 'Dr.' : 'Paciente'}</span>
+      <div className="flex-1 flex flex-col">
+        <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+          {viewModeSelector()}
+          <Button variant={showSideChat ? 'secondary' : 'outline'} size="icon" onClick={() => setShowSideChat(!showSideChat)} className="rounded-full h-8 w-8 bg-gray-800/80 border-gray-600 text-white hover:text-white relative" title="Chat lateral">
+            {showSideChat ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+            {chatNotes.length > 0 && !showSideChat && (
+              <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[9px] bg-red-500">{chatNotes.length}</Badge>
+            )}
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => setIsFullscreen(!isFullscreen)} className="rounded-full h-8 w-8 bg-gray-800/80 border-gray-600 text-white hover:text-white" data-testid="button-toggle-fullscreen">
+            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+          </Button>
+        </div>
+
+        <div className="flex-1 relative" style={{ minHeight: '60vh' }}>
+          {videoArea('absolute inset-0')}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20">
+            {controlBar()}
+          </div>
+        </div>
+
+        <div className="w-full bg-background border-t" style={{ height: '40vh' }}>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+            <TabsList className="w-full grid grid-cols-4 h-10">
+              <TabsTrigger value="chat" className="flex items-center gap-1 text-xs" data-testid="tab-chat">
+                <MessageSquare className="h-3.5 w-3.5" /> Chat
+                {chatNotes.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{chatNotes.length}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="ai" className="flex items-center gap-1 text-xs" data-testid="tab-ai">
+                <Brain className="h-3.5 w-3.5" /> IA
+                {aiLoading && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
+              </TabsTrigger>
+              <TabsTrigger value="transcription" className="flex items-center gap-1 text-xs">
+                <AudioLines className="h-3.5 w-3.5" /> Transcrição
+                {transcriptEntries.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{transcriptEntries.length}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="notes" className="flex items-center gap-1 text-xs" data-testid="tab-notes">
+                <FileText className="h-3.5 w-3.5" /> Notas
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden mt-0">
+              <ScrollArea className="flex-1 p-3" data-testid="scroll-chat">
+                <div className="space-y-2" ref={!showSideChat ? chatScrollRef : undefined}>
+                  {chatNotes.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhuma mensagem. Envie uma mensagem para o paciente.</p>}
+                  {chatNotes.map((note) => {
+                    const isDoctor = note.metadata?.senderRole === 'doctor' || note.userId === user?.id;
+                    return (
+                      <div key={note.id} className={`flex ${isDoctor ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] rounded-xl px-3 py-2 ${isDoctor ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                          <div className="flex items-center gap-1 mb-0.5">
+                            {isDoctor ? <Stethoscope className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                            <span className="text-xs font-medium">{isDoctor ? 'Dr.' : 'Paciente'}</span>
+                          </div>
+                          <p className="text-sm">{note.content}</p>
+                          <p className={`text-xs mt-1 ${isDoctor ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                            {new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
                         </div>
-                        <p className="text-sm">{note.content}</p>
-                        <p className={`text-xs mt-1 ${isDoctor ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                          {new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+              <div className="p-3 border-t flex gap-2">
+                <Input placeholder="Mensagem para o paciente..." value={chatMessage} onChange={(e) => setChatMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()} data-testid="input-chat-message" />
+                <Button onClick={sendChatMessage} size="icon" disabled={createNoteMutation.isPending} data-testid="button-send-chat"><Send className="h-4 w-4" /></Button>
               </div>
-            </ScrollArea>
-            <div className="p-3 border-t flex gap-2">
-              <Input placeholder="Mensagem para o paciente..." value={chatMessage} onChange={(e) => setChatMessage(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()} data-testid="input-chat-message" />
-              <Button onClick={sendChatMessage} size="icon" disabled={createNoteMutation.isPending} data-testid="button-send-chat"><Send className="h-4 w-4" /></Button>
-            </div>
-          </TabsContent>
+            </TabsContent>
 
-          <TabsContent value="ai" className="flex-1 flex flex-col overflow-hidden mt-0">
-            <ScrollArea className="flex-1 p-3"><div className="space-y-2" ref={aiScrollRef}>
-              {iam3dNotes.length > 0 && (
-                <div className="mb-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wide">Interconsulta IAM3D</span>
-                    <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-[10px]">{iam3dNotes.length}</Badge>
-                  </div>
-                  {iam3dNotes.slice(-1).map((note) => (
-                    <Card key={note.id} className="p-3 bg-purple-50 dark:bg-purple-950 border-purple-300 dark:border-purple-700 border-l-4 border-l-purple-600">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-xs font-bold text-purple-700 dark:text-purple-400">🔬 IAM3D — Hipóteses Diagnósticas</span>
-                        <span className="text-xs text-muted-foreground ml-auto">{new Date(note.timestamp || note.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
+            <TabsContent value="ai" className="flex-1 flex flex-col overflow-hidden mt-0">
+              <ScrollArea className="flex-1 p-3"><div className="space-y-2" ref={aiScrollRef}>
+                {iam3dNotes.length > 0 && (
+                  <div className="mb-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wide">Interconsulta IAM3D</span>
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-[10px]">{iam3dNotes.length}</Badge>
+                    </div>
+                    {iam3dNotes.slice(-1).map((note) => (
+                      <Card key={note.id} className="p-3 bg-purple-50 dark:bg-purple-950 border-purple-300 dark:border-purple-700 border-l-4 border-l-purple-600">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-xs font-bold text-purple-700 dark:text-purple-400">🔬 IAM3D — Hipóteses Diagnósticas</span>
+                          <span className="text-xs text-muted-foreground ml-auto">{new Date(note.timestamp || note.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
                       <FormattedText content={note.content} className="text-sm" />
                     </Card>
                   ))}
@@ -1185,6 +1324,8 @@ export default function VideoConsultation() {
           </TabsContent>
         </Tabs>
       </div>
+      </div>
+      {sideChatPanel()}
     </div>
   );
 
@@ -1259,11 +1400,14 @@ export default function VideoConsultation() {
         </DialogContent>
       </Dialog>
 
-      {isScreenSharing && (
+      {isScreenSharing && !screenShareFullscreen && (
         <div className="fixed top-4 right-4 z-[60] bg-red-600 text-white px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
           <Monitor className="h-4 w-4" />
           <span className="text-sm font-medium">Compartilhando tela</span>
-          <Button variant="ghost" size="sm" onClick={toggleScreenShare} className="text-white hover:text-white hover:bg-red-700 h-6 px-2 ml-1">
+          <Button variant="ghost" size="sm" onClick={() => setScreenShareFullscreen(true)} className="text-white hover:text-white hover:bg-red-700 h-6 px-2">
+            Expandir
+          </Button>
+          <Button variant="ghost" size="sm" onClick={toggleScreenShare} className="text-white hover:text-white hover:bg-red-700 h-6 px-2">
             Parar
           </Button>
         </div>

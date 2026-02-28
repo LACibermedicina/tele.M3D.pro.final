@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { Badge } from '@/components/ui/badge';
 import {
   Video,
   VideoOff,
@@ -24,6 +25,11 @@ import {
   Send,
   Stethoscope,
   User,
+  ArrowLeftRight,
+  Monitor,
+  X,
+  PanelRightClose,
+  PanelRightOpen,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,9 +67,13 @@ export default function PatientVideoConsultation() {
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [chatMessage, setChatMessage] = useState('');
   const [showChat, setShowChat] = useState(false);
+  const [videoSwapped, setVideoSwapped] = useState(false);
+  const [isRemoteScreenShare, setIsRemoteScreenShare] = useState(false);
+  const [screenShareMinimized, setScreenShareMinimized] = useState(false);
 
   const localVideoRef = useRef<HTMLDivElement>(null);
   const remoteVideoRef = useRef<HTMLDivElement>(null);
+  const screenShareRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const isTranscribingRef = useRef(false);
   const transcriptBufferRef = useRef<string[]>([]);
@@ -417,6 +427,18 @@ export default function PatientVideoConsultation() {
 
   const chatNotes = notes.filter((n) => n.type === 'chat');
 
+  useEffect(() => {
+    const screenShareNote = [...notes].reverse().find(
+      (n) => n.type === 'annotation' && n.metadata?.screenShareStatus !== undefined
+    );
+    if (screenShareNote) {
+      setIsRemoteScreenShare(screenShareNote.metadata.screenShareStatus === true);
+      if (screenShareNote.metadata.screenShareStatus === true) {
+        setScreenShareMinimized(false);
+      }
+    }
+  }, [notes]);
+
   if (tokenLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
@@ -429,100 +451,139 @@ export default function PatientVideoConsultation() {
     );
   }
 
+  const mainVideoLabel = videoSwapped ? 'Você' : 'Médico';
+  const pipVideoLabel = videoSwapped ? 'Médico' : 'Você';
+
   return (
-    <div className={`${isFullscreen ? 'fixed inset-0 z-50' : 'container mx-auto p-4'} bg-black flex flex-col`}>
-      <div className="flex-1 relative" style={{ minHeight: showChat ? '60vh' : '85vh' }}>
-        <div
-          ref={remoteVideoRef}
-          className="absolute inset-0 bg-gray-900"
-        >
-          {remoteUsers.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center text-white">
-              <div className="text-center">
-                <Stethoscope className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                <p className="text-lg">Aguardando o médico...</p>
-                <p className="text-sm text-gray-400 mt-2">O médico será notificado da sua presença</p>
+    <div className={`${isFullscreen ? 'fixed inset-0 z-50' : 'container mx-auto p-4'} bg-black flex`}>
+      {isRemoteScreenShare && !screenShareMinimized && (
+        <div className="fixed inset-0 z-[70] bg-black flex items-center justify-center">
+          <div ref={screenShareRef} className="w-full h-full" />
+          <div className="absolute top-4 left-4 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg z-10">
+            <Monitor className="h-4 w-4" />
+            <span className="text-sm font-medium">Tela compartilhada pelo médico</span>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setScreenShareMinimized(true)}
+            className="absolute top-4 right-4 z-10 rounded-full gap-1.5"
+          >
+            <Minimize className="h-4 w-4" /> Reduzir
+          </Button>
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+            <div className="flex items-center gap-3 bg-gray-900/90 px-6 py-3 rounded-full">
+              <Button variant={isAudioOn ? 'default' : 'destructive'} size="icon" onClick={toggleAudio} className="rounded-full">
+                {isAudioOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+              </Button>
+              <Button variant={showChat ? 'secondary' : 'outline'} size="icon" onClick={() => setShowChat(!showChat)} className="rounded-full">
+                <MessageSquare className="h-5 w-5" />
+              </Button>
+              <Button variant="destructive" size="icon" onClick={endCall} className="rounded-full">
+                <PhoneOff className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`flex-1 relative flex flex-col ${showChat ? '' : ''}`}>
+        <div className="flex-1 relative" style={{ minHeight: '100%' }}>
+          <div
+            ref={videoSwapped ? localVideoRef : remoteVideoRef}
+            className="absolute inset-0 bg-gray-900"
+          >
+            {!videoSwapped && remoteUsers.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center text-white">
+                <div className="text-center">
+                  <Stethoscope className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Aguardando o médico...</p>
+                  <p className="text-sm text-gray-400 mt-2">O médico será notificado da sua presença</p>
+                </div>
               </div>
-            </div>
+            )}
+            {videoSwapped && !isVideoOn && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                <VideoOff className="h-16 w-16 text-white opacity-50" />
+              </div>
+            )}
+          </div>
+          <div className="absolute top-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded z-10">{mainVideoLabel}</div>
+
+          {isRemoteScreenShare && screenShareMinimized && (
+            <button
+              onClick={() => setScreenShareMinimized(false)}
+              className="absolute top-3 right-3 z-20 flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+            >
+              <Monitor className="h-3.5 w-3.5" /> Ver tela compartilhada
+            </button>
           )}
-        </div>
 
-        <div className="absolute bottom-4 right-4 w-48 h-36 sm:w-64 sm:h-48 bg-gray-800 rounded-lg overflow-hidden border-2 border-white shadow-lg">
-          <div ref={localVideoRef} className="w-full h-full" />
-          {!isVideoOn && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-              <VideoOff className="h-12 w-12 text-white opacity-50" />
+          <div
+            className="absolute bottom-16 right-4 w-40 h-28 sm:w-56 sm:h-40 bg-gray-800 rounded-lg overflow-hidden border-2 border-white shadow-lg z-10 cursor-pointer group"
+            onClick={() => setVideoSwapped(!videoSwapped)}
+          >
+            <div ref={videoSwapped ? remoteVideoRef : localVideoRef} className="w-full h-full" />
+            {!videoSwapped && !isVideoOn && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                <VideoOff className="h-8 w-8 text-white opacity-50" />
+              </div>
+            )}
+            <div className="absolute bottom-1 left-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">{pipVideoLabel}</div>
+            <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors">
+              <ArrowLeftRight className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-          )}
-        </div>
+          </div>
 
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-gray-900/90 px-6 py-3 rounded-full">
-          <Button
-            variant={isVideoOn ? 'default' : 'destructive'}
-            size="icon"
-            onClick={toggleVideo}
-            className="rounded-full"
-          >
-            {isVideoOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-          </Button>
-
-          <Button
-            variant={isAudioOn ? 'default' : 'destructive'}
-            size="icon"
-            onClick={toggleAudio}
-            className="rounded-full"
-          >
-            {isAudioOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-          </Button>
-
-          <Button
-            variant={showChat ? 'secondary' : 'outline'}
-            size="icon"
-            onClick={() => setShowChat(!showChat)}
-            className="rounded-full"
-          >
-            <MessageSquare className="h-5 w-5" />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            className="rounded-full"
-          >
-            {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
-          </Button>
-
-          <Button
-            variant="destructive"
-            size="icon"
-            onClick={endCall}
-            className="rounded-full ml-2"
-          >
-            <PhoneOff className="h-5 w-5" />
-          </Button>
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-gray-900/90 px-6 py-3 rounded-full z-20">
+            <Button variant={isVideoOn ? 'default' : 'destructive'} size="icon" onClick={toggleVideo} className="rounded-full">
+              {isVideoOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+            </Button>
+            <Button variant={isAudioOn ? 'default' : 'destructive'} size="icon" onClick={toggleAudio} className="rounded-full">
+              {isAudioOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+            </Button>
+            <Button variant={showChat ? 'secondary' : 'outline'} size="icon" onClick={() => setShowChat(!showChat)} className="rounded-full" title="Chat">
+              {showChat ? <PanelRightClose className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
+              {chatNotes.length > 0 && !showChat && (
+                <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[9px] bg-red-500">{chatNotes.length}</Badge>
+              )}
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => setVideoSwapped(!videoSwapped)} className="rounded-full" title="Trocar vídeos">
+              <ArrowLeftRight className="h-5 w-5" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => setIsFullscreen(!isFullscreen)} className="rounded-full">
+              {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+            </Button>
+            <Button variant="destructive" size="icon" onClick={endCall} className="rounded-full ml-2">
+              <PhoneOff className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      {showChat && (
-        <div className="w-full bg-background border-t" style={{ height: '30vh' }}>
-          <div className="h-full flex flex-col">
-            <div className="px-4 py-2 border-b flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
+      <div className={`bg-background border-l flex flex-col transition-all duration-300 ${showChat ? 'w-80 sm:w-96' : 'w-0 overflow-hidden'}`}>
+        {showChat && (
+          <>
+            <div className="px-4 py-2.5 border-b flex items-center gap-2 shrink-0">
+              <MessageSquare className="h-4 w-4 text-primary" />
               <span className="font-medium text-sm">Chat da Consulta</span>
+              {chatNotes.length > 0 && <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-xs">{chatNotes.length}</Badge>}
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setShowChat(false)}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-3">
+            <ScrollArea className="flex-1 p-3">
+              <div className="space-y-2.5">
                 {chatNotes.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Nenhuma mensagem ainda. Envie uma mensagem para o médico.
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Envie uma mensagem para o médico.
                   </p>
                 )}
                 {chatNotes.map((note) => {
                   const isPatient = note.metadata?.senderRole === 'patient' || note.userId === user?.id;
                   return (
                     <div key={note.id} className={`flex ${isPatient ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[80%] rounded-xl px-3 py-2 ${isPatient ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      <div className={`max-w-[85%] rounded-xl px-3 py-2 ${isPatient ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                         <div className="flex items-center gap-1 mb-0.5">
                           {isPatient ? <User className="h-3 w-3" /> : <Stethoscope className="h-3 w-3" />}
                           <span className="text-xs font-medium">{isPatient ? 'Você' : 'Dr.'}</span>
@@ -537,20 +598,20 @@ export default function PatientVideoConsultation() {
                 })}
               </div>
             </ScrollArea>
-            <div className="p-3 border-t flex gap-2">
+            <div className="p-3 border-t flex gap-2 shrink-0">
               <Input
                 placeholder="Mensagem para o médico..."
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
+                onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
               />
-              <Button onClick={sendChatMessage} size="icon">
+              <Button onClick={sendChatMessage} size="icon" className="shrink-0">
                 <Send className="h-4 w-4" />
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
