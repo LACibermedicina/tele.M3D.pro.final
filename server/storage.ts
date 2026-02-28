@@ -334,12 +334,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createVisitorAccount(ipAddress: string): Promise<User> {
-    // Create a visitor account with IP as username
     const visitorData = {
       username: ipAddress,
       password: crypto.createHash('sha256').update(`visitor-${ipAddress}-${Date.now()}`).digest('hex'),
       role: 'visitor' as const,
-      name: `Visitante ${ipAddress}`,
+      name: 'Visitante',
       email: undefined,
       phone: undefined,
       tmcCredits: 0

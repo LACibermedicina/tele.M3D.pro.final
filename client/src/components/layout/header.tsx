@@ -129,8 +129,14 @@ export default function Header() {
     return 'bg-slate-300 dark:bg-white/20';
   };
 
-  // Get only first and second name
+  const getDisplayName = () => {
+    if (!user) return '';
+    if (user.role === 'visitor') return 'Visitante';
+    return user.name;
+  };
+
   const getShortName = (fullName: string) => {
+    if (user?.role === 'visitor') return 'Visitante';
     const names = fullName.trim().split(' ');
     if (names.length <= 2) return fullName;
     return `${names[0]} ${names[1]}`;
@@ -333,6 +339,7 @@ export default function Header() {
   };
 
   const getUserInitials = (name: string) => {
+    if (user?.role === 'visitor') return 'V';
     return name
       .split(' ')
       .map(word => word[0])
@@ -1142,9 +1149,9 @@ export default function Header() {
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>
                       <div>
-                        <p className="font-semibold">{user.name}</p>
+                        <p className="font-semibold">{user.role === 'visitor' ? 'Visitante' : user.name}</p>
                         <p className="text-xs text-muted-foreground font-normal">
-                          {user.email || user.username}
+                          {user.role === 'visitor' ? 'Acesso visitante' : (user.email || user.username)}
                         </p>
                       </div>
                     </DropdownMenuLabel>
