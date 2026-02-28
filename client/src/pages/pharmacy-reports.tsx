@@ -52,7 +52,7 @@ export default function PharmacyReportsPage() {
   const [filterDoctor, setFilterDoctor] = useState("");
   const [filterPathology, setFilterPathology] = useState("");
 
-  const { data: reports = [], isLoading } = useQuery<PharmacyReport[]>({
+  const { data: reports = [], isLoading, error: reportsError } = useQuery<PharmacyReport[]>({
     queryKey: ["/api/pharmacy/reports"],
   });
 
@@ -234,7 +234,15 @@ export default function PharmacyReportsPage() {
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4 print:hidden">
-            {isLoading ? (
+            {reportsError ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <FileText className="w-12 h-12 mx-auto text-red-400 mb-3" />
+                  <p className="text-red-600 font-medium">Erro ao carregar relatórios</p>
+                  <p className="text-sm text-muted-foreground mt-1">{(reportsError as any)?.message || 'Tente novamente mais tarde'}</p>
+                </CardContent>
+              </Card>
+            ) : isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>

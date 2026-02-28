@@ -60,11 +60,11 @@ export default function PharmacyDashboard() {
     dispensingNotes: "",
   });
 
-  const { data: prescriptions = [], isLoading } = useQuery<PharmacyPrescription[]>({
+  const { data: prescriptions = [], isLoading, error: listError } = useQuery<PharmacyPrescription[]>({
     queryKey: ['/api/pharmacy/prescriptions'],
   });
 
-  const { data: prescriptionDetail, isLoading: isDetailLoading } = useQuery<any>({
+  const { data: prescriptionDetail, isLoading: isDetailLoading, error: detailError } = useQuery<any>({
     queryKey: ['/api/pharmacy/prescriptions', selectedPrescriptionId],
     enabled: !!selectedPrescriptionId,
   });
@@ -290,7 +290,15 @@ export default function PharmacyDashboard() {
 
           {["active", "dispensed", "all"].map((tab) => (
             <TabsContent key={tab} value={tab} className="space-y-4">
-              {isLoading ? (
+              {listError ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <AlertTriangle className="w-12 h-12 mx-auto text-red-400 mb-3" />
+                    <p className="text-red-600 font-medium">Erro ao carregar prescrições</p>
+                    <p className="text-sm text-muted-foreground mt-1">{(listError as any)?.message || 'Tente novamente mais tarde'}</p>
+                  </CardContent>
+                </Card>
+              ) : isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
@@ -388,7 +396,13 @@ export default function PharmacyDashboard() {
                 </DialogTitle>
               </DialogHeader>
 
-              {isDetailLoading ? (
+              {detailError ? (
+                <div className="py-8 text-center">
+                  <AlertTriangle className="w-10 h-10 mx-auto text-red-400 mb-2" />
+                  <p className="text-red-600 font-medium">Erro ao carregar detalhes</p>
+                  <p className="text-sm text-muted-foreground">{(detailError as any)?.message || 'Tente novamente'}</p>
+                </div>
+              ) : isDetailLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
