@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { queryClient } from "./lib/queryClient";
@@ -97,6 +97,9 @@ function Router() {
   useCommandEvents();
   useApplicationShortcuts();
 
+  const [location] = useLocation();
+  const isInVideoConsultation = location.startsWith('/consultation/video') || location.startsWith('/patient/video');
+
   const sidebarMargin = mobileMenuStyle === 'sidebar' && user
     ? (sidebarCollapsed ? 'md:ml-0 ml-[60px]' : 'md:ml-0 ml-64')
     : '';
@@ -113,8 +116,7 @@ function Router() {
         userRole={user?.role}
       />
 
-      {/* Quick Actions Bar */}
-      {user && <QuickActionsBar userRole={user.role} />}
+      {user && !isInVideoConsultation && <QuickActionsBar userRole={user.role} />}
 
       <Switch>
         {/* Public routes */}
@@ -496,17 +498,13 @@ function Router() {
         </div>
       </footer>
       
-      {/* Floating AI Chatbot - Available on all pages */}
-      <FloatingChatbot />
+      {!isInVideoConsultation && <FloatingChatbot />}
       
-      {/* Quick Actions Bar - Available for authenticated users */}
-      {user && <QuickActionsBar userRole={user.role} />}
+      {user && !isInVideoConsultation && <QuickActionsBar userRole={user.role} />}
 
-      {/* Voice Assistant Prompt - Shown on first visit */}
-      <VoiceAssistantPrompt />
+      {!isInVideoConsultation && <VoiceAssistantPrompt />}
       
-      {/* Voice Assistant Overlay - Full screen when active */}
-      <VoiceAssistantOverlay />
+      {!isInVideoConsultation && <VoiceAssistantOverlay />}
       
     </div>
   );

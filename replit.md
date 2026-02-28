@@ -25,7 +25,7 @@ The application features an Express.js backend and a React frontend, with shared
 **Technical Implementations:**
 - **Database:** PostgreSQL on Neon with Drizzle ORM.
 - **AI Services:** Google Gemini API (with Replit OpenAI fallback) for chatbot, triage, video consultation support, medical records, and SOAP reports, adhering to medical guidelines (OMS, MS/Brasil, DSM-5/DSM-5-TR).
-- **Video Consultations:** Agora for real-time video, audio, screen sharing, chat, AI diagnostic queries, transcription, and specialist invitations, with AI-driven medical record generation.
+- **Video Consultations:** Agora for real-time video, audio, screen sharing, chat, AI diagnostic queries, transcription, and specialist invitations, with AI-driven medical record generation. Dual-side transcription: doctor-side Speech Recognition labels as doctor, patient-side runs automatically and sends transcripts as notes with `speaker: 'patient'` metadata. Floating UI elements (IAM3D, chatbot, quick actions) hidden during video consultations.
 - **Patient Features:** AI-powered symptom triage, waiting room, prescription management, and medical record access.
 - **Consultation Access:** QR codes and short access codes for patients to join consultations without login. Doctor status visible in the waiting room. Temporary visitor access links with configurable expiry.
 - **Admin System Settings:** Configurable system parameters via admin interface (e.g., link expiry, AI triage toggle, financial settings).

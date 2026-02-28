@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import AgoraRTC, {
@@ -28,6 +28,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebSocket } from '@/hooks/use-websocket';
+
+const SpeechRecognitionAPI = typeof window !== 'undefined'
+  ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+  : null;
 
 type ConsultationNote = {
   id: string;
@@ -60,6 +64,9 @@ export default function PatientVideoConsultation() {
 
   const localVideoRef = useRef<HTMLDivElement>(null);
   const remoteVideoRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const isTranscribingRef = useRef(false);
+  const transcriptBufferRef = useRef<string[]>([]);
 
   const { data: consultation } = useQuery<any>({
     queryKey: ['/api/video-consultations', consultationId],
@@ -117,6 +124,77 @@ export default function PatientVideoConsultation() {
       queryClient.invalidateQueries({ queryKey: ['/api/video-consultations', consultationId, 'notes'] });
     },
   });
+
+  const flushTranscriptBuffer = useCallback(() => {
+    if (transcriptBufferRef.current.length === 0 || !consultationId) return;
+    const entries = transcriptBufferRef.current.map(text => {
+      const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      return `[${time}] Paciente: ${text}`;
+    });
+    const content = entries.join('\n');
+    transcriptBufferRef.current = [];
+    apiRequest('POST', '/api/video-consultations/' + consultationId + '/notes', {
+      type: 'transcription',
+      content,
+      metadata: { speaker: 'patient', entryCount: entries.length },
+    }).catch(() => {});
+  }, [consultationId]);
+
+  const startPatientTranscription = useCallback(() => {
+    if (!SpeechRecognitionAPI || !consultationId) return;
+    const recognition = new SpeechRecognitionAPI();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = 'pt-BR';
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event: any) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          const text = event.results[i][0].transcript.trim();
+          if (text) transcriptBufferRef.current.push(text);
+        }
+      }
+      if (transcriptBufferRef.current.length >= 3) flushTranscriptBuffer();
+    };
+
+    recognition.onerror = (event: any) => {
+      if (event.error === 'no-speech' || event.error === 'aborted') return;
+      console.warn('Patient transcription error:', event.error);
+    };
+
+    recognition.onend = () => {
+      if (isTranscribingRef.current && recognitionRef.current) {
+        try { recognitionRef.current.start(); } catch {}
+      }
+    };
+
+    recognitionRef.current = recognition;
+    isTranscribingRef.current = true;
+    recognition.start();
+  }, [consultationId, flushTranscriptBuffer]);
+
+  const stopPatientTranscription = useCallback(() => {
+    isTranscribingRef.current = false;
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+      recognitionRef.current = null;
+    }
+    flushTranscriptBuffer();
+  }, [flushTranscriptBuffer]);
+
+  useEffect(() => {
+    if (joined && consultationId) {
+      startPatientTranscription();
+    }
+    return () => { stopPatientTranscription(); };
+  }, [joined, consultationId, startPatientTranscription, stopPatientTranscription]);
+
+  useEffect(() => {
+    if (!joined || !consultationId) return;
+    const interval = setInterval(flushTranscriptBuffer, 15000);
+    return () => clearInterval(interval);
+  }, [joined, consultationId, flushTranscriptBuffer]);
 
   useEffect(() => {
     const agoraClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
@@ -284,6 +362,7 @@ export default function PatientVideoConsultation() {
   };
 
   const leaveChannel = async () => {
+    stopPatientTranscription();
     if (!client) return;
     try {
       localAudioTrack?.close();
