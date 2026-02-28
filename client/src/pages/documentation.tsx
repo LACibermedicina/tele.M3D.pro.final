@@ -50,7 +50,10 @@ import {
   Download,
   AudioLines,
   Coins,
-  Landmark
+  Landmark,
+  Pill,
+  ClipboardList,
+  Zap
 } from "lucide-react";
 
 export default function Documentation() {
@@ -140,6 +143,16 @@ export default function Documentation() {
           title: "Atendimento 24/7",
           description: "Plantão médico disponível a qualquer hora com sistema de escalas e inter-consulta",
           features: ["Médicos de plantão", "Emergências priorizadas", "Inter-consulta entre médicos", "Continuidade do cuidado"]
+        },
+        {
+          title: "Avaliação de Consultas",
+          description: "Sistema de avaliação 1-5 estrelas com feedback opcional após consultas concluídas",
+          features: ["Avaliação 1-5 estrelas", "Feedback textual opcional", "Disponível após conclusão", "Métricas de satisfação"]
+        },
+        {
+          title: "Consultar Agora",
+          description: "Botão de consulta imediata que encontra automaticamente o primeiro médico disponível",
+          features: ["Auto-busca médico disponível", "Contagem de médicos online", "Sala de espera fallback", "Disponível no desktop"]
         }
       ]
     },
@@ -162,6 +175,11 @@ export default function Documentation() {
           title: "Chatbot e Triagem IA",
           description: "Assistente virtual com triagem Manchester e direcionamento inteligente",
           features: ["Disponível sem login", "Triagem Manchester 5 níveis", "Respostas instantâneas", "Direcionamento adequado"]
+        },
+        {
+          title: "Geração de Lista de Medicamentos por IA",
+          description: "Planos de tratamento completos gerados por IA a partir de diagnóstico, sintomas e histórico",
+          features: ["Geração automática de tratamento", "Baseado em diagnóstico/sintomas", "Considera histórico do paciente", "Interações medicamentosas verificadas"]
         }
       ]
     },
@@ -189,6 +207,16 @@ export default function Documentation() {
           title: "Resultados de Exames",
           description: "Upload e visualização de exames laboratoriais e imagens",
           features: ["Upload seguro", "Visualizador integrado", "Compartilhamento", "Organização por data"]
+        },
+        {
+          title: "PMD v1.0 (Prontuário Médico Digital)",
+          description: "Prontuário médico digital em conformidade com CFM/LGPD/RGPD, com CRUD, audit logs e exportação multi-locale",
+          features: ["Conformidade CFM/LGPD/RGPD", "CRUD com audit logs", "Exportação multi-locale (BR/ES/USA)", "Formatos JSON/PDF/XML/CSV"]
+        },
+        {
+          title: "Prontuário Unificado",
+          description: "Visão consolidada em timeline agrupando registros, consultas, prescrições e exames por dia",
+          features: ["Timeline consolidada", "Cards com código de cores", "Agrupamento por dia", "Registros/consultas/prescrições/exames"]
         }
       ]
     },
@@ -220,9 +248,9 @@ export default function Documentation() {
       color: "amber",
       items: [
         {
-          title: "Compra de Créditos via PayPal",
-          description: "6 pacotes de crédito pré-definidos com checkout seguro PayPal",
-          features: ["PayPal Checkout seguro", "6 pacotes de crédito", "15 custos de funcionalidades", "Recibos automáticos"]
+          title: "Checkout Unificado de Pagamentos",
+          description: "Múltiplos métodos de pagamento: PayPal, Stripe (cartão/Apple Pay) e PagBank (PIX/Boleto)",
+          features: ["PayPal Checkout seguro", "Stripe (cartão/Apple Pay)", "PagBank (PIX/Boleto)", "6 pacotes de crédito", "Recibos automáticos"]
         },
         {
           title: "Carteira Digital",
@@ -233,6 +261,11 @@ export default function Documentation() {
           title: "Auditoria Financeira",
           description: "Log de auditoria com filtros e resumos semanais de todas as transações",
           features: ["Log de auditoria completo", "Filtro por ação", "Resumos semanais", "Transparência total"]
+        },
+        {
+          title: "Monitoramento de Pagamentos (Admin)",
+          description: "Dashboard administrativo em /admin/payments com filtros, resumos e breakdown por provedor",
+          features: ["Dashboard /admin/payments", "Filtros por provedor/status/data", "Cards de resumo", "Breakdown por provedor de pagamento"]
         }
       ]
     },
@@ -255,6 +288,11 @@ export default function Documentation() {
           title: "Detecção de Inatividade e Auto-Logout",
           description: "Timeout configurável com prompt, desconexão Agora e logout automático",
           features: ["Timeout configurável", "Prompt antes do logout", "Desconexão Agora automática", "RBAC granular"]
+        },
+        {
+          title: "Assinatura Digital Verificável",
+          description: "Dual-path RSA-PSS ICP-Brasil A3 + RSA-SHA256 com QR code de verificação e OCSP checks",
+          features: ["RSA-PSS ICP-Brasil A3", "RSA-SHA256 fallback", "QR code para verificação pública", "OCSP checks e audit trail"]
         }
       ]
     },
@@ -277,6 +315,38 @@ export default function Documentation() {
           title: "Gestão Financeira Admin",
           description: "CRUD de pacotes de crédito, custos de funcionalidades e taxa de câmbio TM3D/USD",
           features: ["Pacotes de crédito CRUD", "15 custos de funcionalidades", "Taxa TM3D/USD", "Envio de créditos"]
+        },
+        {
+          title: "Bloqueio de Pacientes",
+          description: "Médicos podem bloquear pacientes de solicitar consultas",
+          features: ["Bloqueio por médico", "Desbloqueio disponível", "Impede novas solicitações", "Registro de bloqueio"]
+        }
+      ]
+    },
+    {
+      category: "Farmácia",
+      icon: Pill,
+      color: "emerald",
+      items: [
+        {
+          title: "Painel da Farmácia",
+          description: "Lista de prescrições com abas (Pendentes/Dispensadas/Todas), busca e estatísticas resumidas",
+          features: ["Abas Pendentes/Dispensadas/Todas", "Busca por prescrição", "Estatísticas resumidas", "Interface tab-based"]
+        },
+        {
+          title: "Verificação de Prescrições",
+          description: "Verificação de assinatura digital e CRM do médico com confirmação de leitura",
+          features: ["Verificação de assinatura digital", "Verificação de CRM", "Confirmação de leitura", "Status de verificação"]
+        },
+        {
+          title: "Dispensação de Medicamentos",
+          description: "Dispensação por item com rastreamento de lote, fabricante e validade",
+          features: ["Dispensação por item", "Rastreamento de lote", "Registro de fabricante", "Controle de validade"]
+        },
+        {
+          title: "Relatórios LGPD",
+          description: "Relatórios diários/semanais/mensais/personalizados com breakdowns e toggle LGPD",
+          features: ["Relatórios diários/semanais/mensais", "Período personalizado", "Breakdowns medicamento/médico/patologia", "Toggle LGPD de anonimização"]
         }
       ]
     },
@@ -337,7 +407,7 @@ export default function Documentation() {
     },
     {
       title: "Integrações",
-      items: ["Google Gemini 2.0 Flash", "OpenAI GPT-4o-mini (fallback)", "Agora.io Video SDK", "PayPal Checkout", "HL7 FHIR R4 Export"]
+      items: ["Google Gemini 2.0 Flash", "OpenAI GPT-4o-mini (fallback)", "Agora.io Video SDK", "PayPal Checkout", "Stripe Checkout", "PagBank (PIX/Boleto)", "HL7 FHIR R4 Export"]
     },
     {
       title: "Segurança",
@@ -352,11 +422,13 @@ export default function Documentation() {
       guides: [
         "Como solicitar consulta (por especialidade ou triagem IA)",
         "Como usar o assistente de voz IAM3D (consulta urgente)",
-        "Como comprar créditos TM3D via PayPal",
+        "Como comprar créditos TM3D (PayPal, Stripe, PagBank PIX/Boleto)",
         "Como participar de videochamada",
         "Como acessar prescrições e prontuário",
         "Como exportar dados médicos (FHIR R4 - direito LGPD)",
-        "Como funciona a detecção de inatividade"
+        "Como funciona a detecção de inatividade",
+        "Como avaliar uma consulta (1-5 estrelas + feedback)",
+        "Como usar o botão Consultar Agora"
       ]
     },
     {
@@ -370,7 +442,12 @@ export default function Documentation() {
         "Como usar notas médicas (estilo macOS Notes)",
         "Como agendar inter-consultas entre médicos",
         "Como exportar dados de pacientes (FHIR R4)",
-        "Como acessar o dashboard de relatórios"
+        "Como acessar o dashboard de relatórios",
+        "Como usar o PMD v1.0 (criar/editar/exportar)",
+        "Como visualizar o Prontuário Unificado",
+        "Como bloquear/desbloquear pacientes",
+        "Como gerar lista de medicamentos por IA",
+        "Como verificar prescrições na farmácia"
       ]
     },
     {
@@ -383,7 +460,20 @@ export default function Documentation() {
         "Como gerenciar pacotes de crédito e custos",
         "Como acessar o dashboard de relatórios",
         "Como auditar transações financeiras",
-        "Como gerenciar conformidade FHIR e exportação"
+        "Como gerenciar conformidade FHIR e exportação",
+        "Como monitorar pagamentos (Stripe/PagBank/PayPal)",
+        "Como gerenciar farmacêuticos"
+      ]
+    },
+    {
+      role: "Farmacêuticos",
+      icon: Pill,
+      guides: [
+        "Como acessar o painel da farmácia",
+        "Como verificar assinatura digital de prescrições",
+        "Como dispensar medicamentos (lote/fabricante/validade)",
+        "Como gerar relatórios LGPD da farmácia",
+        "Como usar filtros e busca de prescrições"
       ]
     }
   ];
@@ -413,7 +503,7 @@ export default function Documentation() {
               </Badge>
               <Badge className="bg-white/20 text-white text-sm px-4 py-2">
                 <Star className="w-4 h-4 mr-2" />
-                Versão 3.0
+                Versão 3.5
               </Badge>
             </div>
             <div className="mt-6">
@@ -521,7 +611,7 @@ export default function Documentation() {
           {/* Guias por Perfil */}
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-white text-center mb-8 drop-shadow-lg">Guias de Uso por Perfil</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {userGuides.map((guide, idx) => (
                 <Card key={idx} className="shadow-xl hover:shadow-2xl transition-all bg-white/95 backdrop-blur-sm">
                   <CardHeader className="bg-gradient-to-br from-amber-50 to-orange-50">

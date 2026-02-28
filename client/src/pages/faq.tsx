@@ -7,7 +7,8 @@ import {
   HelpCircle, Search, ChevronDown, ChevronUp,
   Video, Calendar, MessageCircle, FileText, Bot, CreditCard,
   Shield, Settings,
-  Wallet, Gem, Download, Mic, Clock, BarChart3, Stethoscope, ClipboardCheck
+  Wallet, Gem, Download, Mic, Clock, BarChart3, Stethoscope, ClipboardCheck,
+  Pill, Star, ClipboardList
 } from "lucide-react";
 
 interface FaqItem {
@@ -341,6 +342,101 @@ const faqData: FaqItem[] = [
     category: "Técnico",
     question: "O sistema funciona offline?",
     answer: "Não. O Tele<M3D> requer conexão com a internet para todas as funcionalidades, incluindo teleconsultas, IA médica, mensagens e acesso a prontuários."
+  },
+  {
+    category: "Farmácia",
+    question: "O que é o módulo de Farmácia?",
+    answer: "O módulo de Farmácia permite que farmacêuticos acessem prescrições digitais emitidas por médicos, verifiquem assinaturas digitais e CRM, realizem a dispensação de medicamentos com rastreamento de lote/fabricante/validade, e gerem relatórios compatíveis com a LGPD. É uma integração completa entre médicos e farmacêuticos dentro do sistema."
+  },
+  {
+    category: "Farmácia",
+    question: "Como verificar uma prescrição na farmácia?",
+    answer: "No painel da farmácia, acesse a aba 'Pendentes' para ver prescrições aguardando verificação. Clique na prescrição desejada para visualizar os detalhes. O sistema verifica automaticamente a assinatura digital do médico e a validade do CRM. Após conferir, marque como 'Verificada' para prosseguir com a dispensação."
+  },
+  {
+    category: "Farmácia",
+    question: "Como dispensar medicamentos?",
+    answer: "Após verificar a prescrição, clique em 'Dispensar' para cada medicamento. Preencha os campos de lote, fabricante e data de validade do medicamento a ser dispensado. Ao confirmar, o status da prescrição é atualizado automaticamente para 'Dispensada' e o registro fica disponível para auditoria."
+  },
+  {
+    category: "Farmácia",
+    question: "Como gerar relatórios da farmácia?",
+    answer: "No painel da farmácia, acesse a seção 'Relatórios'. Selecione o período desejado (diário, semanal, mensal ou personalizado). Os relatórios incluem análises por medicamento, médico prescritor, patologia e horários de dispensação. Ative o toggle LGPD para anonimizar dados sensíveis dos pacientes."
+  },
+  {
+    category: "Farmácia",
+    question: "Os relatórios da farmácia são compatíveis com a LGPD?",
+    answer: "Sim. Os relatórios possuem um toggle de conformidade LGPD que, quando ativado, anonimiza automaticamente dados pessoais dos pacientes (nome, CPF, etc.), mantendo apenas dados clínicos e estatísticos relevantes. Isso garante proteção de dados pessoais conforme a Lei Geral de Proteção de Dados."
+  },
+  {
+    category: "PMD",
+    question: "O que é o PMD (Prontuário Médico Digital)?",
+    answer: "O PMD v1.0 é o Prontuário Médico Digital do sistema, desenvolvido em conformidade com as normas do CFM (Conselho Federal de Medicina), LGPD e RGPD. Ele oferece registros clínicos estruturados com logs de auditoria completos, garantindo rastreabilidade de todas as operações realizadas no prontuário do paciente."
+  },
+  {
+    category: "PMD",
+    question: "Como exportar um PMD?",
+    answer: "Na página do PMD, selecione o registro desejado e clique em 'Exportar'. Escolha o locale de exportação (Brasil, Espanha ou EUA) e o formato desejado: PDF (documento formatado), JSON (dados estruturados), XML (interoperabilidade) ou CSV (planilha). O sistema gera o arquivo conforme os padrões do locale selecionado."
+  },
+  {
+    category: "PMD",
+    question: "Quem pode acessar o PMD?",
+    answer: "O acesso ao PMD é restrito: o médico criador tem acesso completo (leitura e edição), administradores têm acesso de supervisão, e outros profissionais possuem acesso limitado conforme suas permissões. Todas as visualizações e edições são registradas nos logs de auditoria para garantir conformidade."
+  },
+  {
+    category: "Pagamentos",
+    question: "Quais métodos de pagamento são aceitos?",
+    answer: "O sistema aceita três provedores de pagamento: PayPal (saldo e cartões vinculados), Stripe (cartão de crédito/débito e Apple Pay) e PagBank (PIX e Boleto Bancário). O checkout unificado permite escolher o método mais conveniente no momento da compra de créditos TM3D."
+  },
+  {
+    category: "Pagamentos",
+    question: "Como pagar com PIX?",
+    answer: "Ao comprar créditos, selecione a opção PagBank e escolha PIX como método de pagamento. O sistema gera um QR Code que pode ser escaneado pelo aplicativo do seu banco. Após a confirmação do pagamento (geralmente instantânea), os créditos são adicionados automaticamente à sua conta."
+  },
+  {
+    category: "Pagamentos",
+    question: "Como pagar com cartão de crédito?",
+    answer: "Selecione a opção Stripe no checkout de créditos. Você será redirecionado para uma página segura de pagamento onde pode inserir os dados do cartão de crédito ou usar Apple Pay (em dispositivos compatíveis). Após a aprovação, os créditos são creditados imediatamente."
+  },
+  {
+    category: "Pagamentos",
+    question: "Como o administrador monitora pagamentos?",
+    answer: "Administradores podem acessar o dashboard de pagamentos em /admin/payments. O painel oferece filtros por provedor (PayPal, Stripe, PagBank), status (pendente, concluído, falho) e período. Cards de resumo mostram totais por provedor e uma visão consolidada de todas as transações do sistema."
+  },
+  {
+    category: "Avaliação",
+    question: "Como avaliar uma consulta?",
+    answer: "Após a conclusão de uma consulta, o paciente pode avaliá-la com 1 a 5 estrelas e adicionar um comentário de feedback opcional. A opção de avaliação aparece na aba 'Histórico' das consultas. Basta clicar na consulta concluída e selecionar a quantidade de estrelas desejada."
+  },
+  {
+    category: "Avaliação",
+    question: "A avaliação é obrigatória?",
+    answer: "Não, a avaliação é opcional. No entanto, é encorajada pois ajuda a melhorar a qualidade do atendimento. O médico pode visualizar as avaliações recebidas, e administradores têm acesso a relatórios consolidados de satisfação."
+  },
+  {
+    category: "Prontuário Unificado",
+    question: "O que é o Prontuário Unificado?",
+    answer: "O Prontuário Unificado é uma visão consolidada em formato de timeline que agrupa todos os registros clínicos, consultas, prescrições e exames do paciente por dia. Cada tipo de registro é apresentado com cards coloridos distintos, facilitando a visualização cronológica completa do histórico do paciente."
+  },
+  {
+    category: "Bloqueio de Pacientes",
+    question: "Como bloquear um paciente?",
+    answer: "Médicos podem bloquear pacientes na página de Agenda (aba Histórico) ou no perfil do paciente. O bloqueio impede que o paciente envie novas solicitações de consulta para aquele médico específico. O desbloqueio pode ser feito a qualquer momento pelo mesmo médico."
+  },
+  {
+    category: "Bloqueio de Pacientes",
+    question: "O paciente é notificado quando é bloqueado?",
+    answer: "Quando um paciente bloqueado tenta solicitar consulta com o médico, ele recebe uma mensagem informando que não pode solicitar consultas com aquele profissional. O bloqueio é específico para o médico que o aplicou — o paciente pode solicitar consultas com outros médicos normalmente."
+  },
+  {
+    category: "Assinatura Digital",
+    question: "Como funciona a verificação de assinatura digital?",
+    answer: "O sistema utiliza um esquema de assinatura dual-path: RSA-PSS compatível com ICP-Brasil A3 e RSA-SHA256 para verificação local. Prescrições e documentos assinados incluem um QR Code que aponta para um endpoint público de verificação. O sistema também realiza verificações OCSP e mantém uma trilha de auditoria completa."
+  },
+  {
+    category: "Assinatura Digital",
+    question: "As prescrições possuem assinatura digital?",
+    answer: "Sim. Toda prescrição emitida no sistema recebe uma assinatura digital vinculada ao médico prescritor. Um QR Code é gerado automaticamente, permitindo que qualquer pessoa (farmacêutico, paciente ou auditor) verifique a autenticidade da prescrição através de um endpoint público de verificação."
   }
 ];
 
@@ -365,6 +461,13 @@ const categoryIcons: Record<string, any> = {
   "Pós-Consulta": <ClipboardCheck className="h-4 w-4" />,
   "Segurança": <Shield className="h-4 w-4" />,
   "Técnico": <Settings className="h-4 w-4" />,
+  "Farmácia": <Pill className="h-4 w-4" />,
+  "PMD": <FileText className="h-4 w-4" />,
+  "Pagamentos": <CreditCard className="h-4 w-4" />,
+  "Avaliação": <Star className="h-4 w-4" />,
+  "Prontuário Unificado": <ClipboardList className="h-4 w-4" />,
+  "Assinatura Digital": <Shield className="h-4 w-4" />,
+  "Bloqueio de Pacientes": <Shield className="h-4 w-4" />,
 };
 
 export default function FAQ() {

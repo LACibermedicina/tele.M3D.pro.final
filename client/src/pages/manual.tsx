@@ -9,7 +9,8 @@ import {
   Bot, CreditCard, Activity, Settings, MonitorSmartphone, Stethoscope,
   ClipboardList, Bell, Search, Phone, ArrowRight, CheckCircle, AlertTriangle,
   Globe, Mic, QrCode, Download, Lock, Wallet, BarChart3, UserCog,
-  Eye, Heart, Clock, Share2, Briefcase, Database, Key, LogOut
+  Eye, Heart, Clock, Share2, Briefcase, Database, Key, LogOut, Pill, Star,
+  Ban, Sparkles, Layers
 } from "lucide-react";
 
 interface Section {
@@ -304,7 +305,7 @@ Acesse a exportação pelo menu do seu perfil ou na página de prontuários.`
         text: `O sistema utiliza créditos TM3D (Tele-Medicina Credits) para funcionalidades:
 
 - **Saldo**: Visualize seu saldo atual de TM3D
-- **Comprar Créditos**: Adquira pacotes via PayPal (6 pacotes disponíveis)
+- **Comprar Créditos**: Adquira pacotes via PayPal, Stripe (cartão/Apple Pay) ou PagBank (PIX/Boleto)
 - **Transferências**: Envie créditos para outros usuários
 - **Histórico**: Veja todas as transações com detalhes (data, tipo, valor, saldo)
 
@@ -315,6 +316,42 @@ Custos das principais funcionalidades:
 - Relatório Epidemiológico: 20 TM3D
 
 Acesse "Carteira" no menu para gerenciar seus créditos e visualizar o histórico de transações.`
+      }
+    ]
+  },
+  {
+    id: "p-rating",
+    title: "Avaliação de Consultas",
+    icon: <Star className="h-5 w-5" />,
+    content: [
+      {
+        title: "Avaliando uma Consulta",
+        text: `Após a conclusão de uma consulta, você pode avaliá-la:
+
+- **Estrelas (1-5)**: Atribua uma nota de 1 a 5 estrelas para o atendimento recebido
+- **Feedback Opcional**: Escreva um comentário sobre sua experiência
+- **Onde Encontrar**: Acesse a aba "Histórico" nas suas consultas para avaliar consultas concluídas
+- **Não Obrigatória**: A avaliação é opcional, mas encorajada para melhorar a qualidade do atendimento
+
+A avaliação ajuda a plataforma a manter a qualidade dos atendimentos e a identificar áreas de melhoria.`
+      }
+    ]
+  },
+  {
+    id: "p-immediate",
+    title: "Consultar Agora",
+    icon: <Stethoscope className="h-5 w-5" />,
+    content: [
+      {
+        title: "Consulta Imediata",
+        text: `O botão "Consultar Agora" (disponível no desktop) permite iniciar uma consulta rapidamente:
+
+- **Auto-busca**: O sistema encontra automaticamente o primeiro médico disponível
+- **Contagem de Médicos**: Veja quantos médicos estão online no momento
+- **Sala de Espera**: Se nenhum médico estiver disponível, você é direcionado à sala de espera
+- **Sem Agendamento**: Não é necessário agendar — basta clicar e aguardar o atendimento
+
+Ideal para consultas urgentes ou quando você precisa de atendimento rápido.`
       }
     ]
   },
@@ -699,7 +736,7 @@ Exporte relatórios em diferentes formatos para análise externa.`
         text: `Gerencie seus créditos TM3D:
 
 - **Saldo e Histórico**: Veja saldo atual e histórico completo de transações
-- **Comprar Créditos**: Pacotes via PayPal (6 pacotes disponíveis)
+- **Comprar Créditos**: Pacotes via PayPal, Stripe (cartão/Apple Pay) ou PagBank (PIX/Boleto)
 - **Transferências**: Envie créditos para outros usuários
 - **Vincular Carteira Externa**: Conecte MetaMask ou WalletConnect
 - **Solicitações de Saque**: Solicite conversão de TM3D para moeda fiduciária`
@@ -755,6 +792,92 @@ Acesse a exportação pela página do paciente ou pelo menu de prontuários.`
 - **Badge de Segurança**: Indicador visual do nível de acesso (médico) para transparência
 
 O IAM3D é especialmente útil durante consultas, permitindo consultas à IA sem sair da interface de vídeo.`
+      }
+    ]
+  },
+  {
+    id: "d-pharmacy",
+    title: "Farmácia",
+    icon: <Pill className="h-5 w-5" />,
+    content: [
+      {
+        title: "Integração com Farmácia",
+        text: `O módulo de Farmácia permite integração entre médicos e farmacêuticos:
+
+- **Prescrições Visíveis**: Suas prescrições ficam automaticamente disponíveis para farmacêuticos verificarem
+- **Assinatura Digital**: Cada prescrição possui assinatura digital verificável pelo farmacêutico
+- **Status de Dispensação**: Acompanhe em tempo real se os medicamentos foram dispensados
+- **Rastreabilidade**: Veja lote, fabricante e validade dos medicamentos dispensados ao paciente`
+      }
+    ]
+  },
+  {
+    id: "d-pmd",
+    title: "PMD v1.0 (Prontuário Médico Digital)",
+    icon: <FileText className="h-5 w-5" />,
+    content: [
+      {
+        title: "Prontuário Médico Digital",
+        text: `O PMD v1.0 é o Prontuário Médico Digital em conformidade com CFM, LGPD e RGPD:
+
+- **Criar Registros**: Adicione registros clínicos estruturados com campos padronizados
+- **Editar Registros**: Modifique registros existentes com log de auditoria automático
+- **Audit Logs**: Todas as alterações são registradas com timestamp, usuário e detalhes da modificação
+- **Exportação Multi-Locale**: Exporte em formatos para Brasil (BR), Espanha (ES) e EUA (USA)
+- **Formatos de Exportação**: JSON, PDF, XML e CSV disponíveis para cada registro`
+      }
+    ]
+  },
+  {
+    id: "d-unified-record",
+    title: "Prontuário Unificado",
+    icon: <Layers className="h-5 w-5" />,
+    content: [
+      {
+        title: "Visão Consolidada do Paciente",
+        text: `O Prontuário Unificado oferece uma visão timeline completa do paciente:
+
+- **Timeline Unificada**: Todos os registros médicos, consultas, prescrições e exames em uma única linha do tempo
+- **Agrupamento por Dia**: Eventos são agrupados por data para fácil navegação
+- **Cards Coloridos**: Cada tipo de evento possui uma cor distinta para identificação visual rápida
+- **Visão Completa**: Substitui a necessidade de navegar entre múltiplas telas para ver o histórico do paciente`
+      }
+    ]
+  },
+  {
+    id: "d-block-patients",
+    title: "Bloqueio de Pacientes",
+    icon: <Ban className="h-5 w-5" />,
+    content: [
+      {
+        title: "Bloquear/Desbloquear Pacientes",
+        text: `O módulo de bloqueio permite controlar quais pacientes podem solicitar consultas:
+
+- **Bloquear Paciente**: Impeça que um paciente específico solicite novas consultas com você
+- **Desbloquear**: Remova o bloqueio a qualquer momento para permitir novas solicitações
+- **Motivo**: Registre um motivo para o bloqueio (opcional)
+- **Transparência**: O paciente é notificado sobre o bloqueio e pode procurar outros médicos
+
+Acesse a opção de bloqueio pela página do paciente ou pela lista de pacientes.`
+      }
+    ]
+  },
+  {
+    id: "d-ai-medications",
+    title: "Geração de Medicamentos por IA",
+    icon: <Sparkles className="h-5 w-5" />,
+    content: [
+      {
+        title: "Planos de Tratamento Gerados por IA",
+        text: `A IA pode gerar listas completas de medicamentos para tratamento:
+
+- **Baseado em Diagnóstico**: Informe o diagnóstico e a IA sugere medicamentos apropriados
+- **Sintomas e Histórico**: A IA considera sintomas relatados e histórico do paciente
+- **Plano Completo**: Inclui medicamento, dosagem, via de administração, frequência e duração
+- **Interações**: Verificação automática de interações com medicamentos em uso pelo paciente
+- **Revisão Médica**: Todas as sugestões são revisáveis — edite, aprove ou rejeite cada item
+
+Disponível durante a criação de prescrições e no fluxo pós-consulta.`
       }
     ]
   },
@@ -919,6 +1042,43 @@ Exporte relatórios em diferentes formatos para apresentações e análises.`
     ]
   },
   {
+    id: "a-payments-monitoring",
+    title: "Monitoramento de Pagamentos",
+    icon: <CreditCard className="h-5 w-5" />,
+    content: [
+      {
+        title: "Dashboard de Pagamentos",
+        text: `O dashboard administrativo de pagamentos (/admin/payments) oferece visão completa:
+
+- **Filtros**: Filtre por provedor (PayPal, Stripe, PagBank), status e período
+- **Cards de Resumo**: Total de transações, receita, taxa de aprovação e ticket médio
+- **Breakdown por Provedor**: Distribuição de pagamentos entre PayPal, Stripe e PagBank
+- **Lista de Transações**: Detalhes de cada pagamento com status, valor e metadata
+- **Exportação**: Exporte relatórios de pagamentos para análise
+
+Acompanhe em tempo real todas as transações financeiras da plataforma.`
+      }
+    ]
+  },
+  {
+    id: "a-pharmacists",
+    title: "Farmacêuticos",
+    icon: <Pill className="h-5 w-5" />,
+    content: [
+      {
+        title: "Gestão de Farmacêuticos",
+        text: `O módulo de gestão de farmacêuticos permite:
+
+- **Cadastro**: Registre farmacêuticos com CRF, especialidade e dados profissionais
+- **Permissões**: Configure acessos específicos para o perfil farmacêutico
+- **Monitoramento**: Acompanhe atividade de dispensação e verificação de prescrições
+- **Relatórios**: Visualize relatórios de atividade por farmacêutico
+
+Os farmacêuticos possuem um dashboard dedicado com funcionalidades específicas de verificação e dispensação.`
+      }
+    ]
+  },
+  {
     id: "a-installation",
     title: "Guia de Instalação",
     icon: <Settings className="h-5 w-5" />,
@@ -937,9 +1097,95 @@ Variáveis de ambiente necessárias:
 - AGORA_APP_ID / AGORA_APP_CERTIFICATE (opcional): Vídeo via Agora.io
 - SESSION_SECRET (opcional): Criptografia de sessão
 - PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET (opcional): Pagamentos PayPal
+- STRIPE_SECRET_KEY / VITE_STRIPE_PUBLIC_KEY (opcional): Pagamentos Stripe
+- PAGBANK_TOKEN / PAGBANK_EMAIL (opcional): Pagamentos PagBank (PIX/Boleto)
+- PHARMACY_ENABLED (opcional): Habilitar módulo de Farmácia
+- PMD_AUDIT_ENABLED (opcional): Habilitar audit logs do PMD
 - AI_INTEGRATIONS_OPENAI_API_KEY (opcional): Fallback OpenAI
 
 O sistema utiliza 61 tabelas no PostgreSQL e migra automaticamente na inicialização.`
+      }
+    ]
+  }
+];
+
+const pharmacistSections: Section[] = [
+  {
+    id: "ph-dashboard",
+    title: "Dashboard do Farmacêutico",
+    icon: <MonitorSmartphone className="h-5 w-5" />,
+    content: [
+      {
+        title: "Painel da Farmácia",
+        text: `O dashboard do farmacêutico é a central de operações da farmácia:
+
+- **Estatísticas**: Total de prescrições pendentes, dispensadas e rejeitadas
+- **Abas de Prescrições**: Navegue entre Pendentes, Dispensadas e Todas as prescrições
+- **Busca**: Pesquise prescrições por paciente, médico ou medicamento
+- **Cards de Resumo**: Visão rápida das métricas do dia (prescrições recebidas, dispensadas, pendentes)
+- **Alertas**: Notificações de novas prescrições e prescrições próximas do vencimento
+
+O painel é atualizado em tempo real para garantir que nenhuma prescrição fique sem atendimento.`
+      }
+    ]
+  },
+  {
+    id: "ph-verification",
+    title: "Verificação de Prescrições",
+    icon: <Shield className="h-5 w-5" />,
+    content: [
+      {
+        title: "Verificando Prescrições",
+        text: `A verificação de prescrições garante a autenticidade e validade:
+
+- **Assinatura Digital**: Verifique a assinatura digital do médico prescritor
+- **Verificação CRM**: Confirme o registro profissional (CRM) do médico junto ao conselho
+- **Confirm-Read**: Marque a prescrição como lida e verificada antes de iniciar a dispensação
+- **Alertas de Inconsistência**: O sistema alerta sobre dosagens incomuns ou interações medicamentosas
+- **Histórico de Verificações**: Registro completo de todas as verificações realizadas
+
+A verificação é obrigatória antes de qualquer dispensação de medicamentos.`
+      }
+    ]
+  },
+  {
+    id: "ph-dispensing",
+    title: "Dispensação de Medicamentos",
+    icon: <Pill className="h-5 w-5" />,
+    content: [
+      {
+        title: "Fluxo de Dispensação",
+        text: `O processo de dispensação segue etapas padronizadas:
+
+1. **Selecionar Prescrição**: Escolha uma prescrição verificada da lista de pendentes
+2. **Verificar Itens**: Revise cada medicamento da prescrição
+3. **Informar Dados do Lote**: Para cada medicamento, preencha:
+   - **Lote**: Número do lote do medicamento
+   - **Fabricante**: Nome do laboratório fabricante
+   - **Validade**: Data de validade do lote
+4. **Confirmar Dispensação**: Submeta a dispensação — o status é atualizado automaticamente
+5. **Registro**: A dispensação é registrada com timestamp e farmacêutico responsável
+
+Todos os dados de dispensação são armazenados para rastreabilidade e conformidade regulatória.`
+      }
+    ]
+  },
+  {
+    id: "ph-reports",
+    title: "Relatórios LGPD",
+    icon: <BarChart3 className="h-5 w-5" />,
+    content: [
+      {
+        title: "Gerando Relatórios da Farmácia",
+        text: `O módulo de relatórios permite gerar análises detalhadas:
+
+- **Períodos**: Selecione diário, semanal, mensal ou período personalizado
+- **Breakdowns**: Análise por medicamento, médico prescritor, patologia e horário de dispensação
+- **Toggle LGPD**: Ative a anonimização para relatórios compatíveis com a LGPD
+- **Dados Anonimizados**: Com LGPD ativo, dados do paciente são desidentificados
+- **Exportação**: Exporte relatórios em PDF ou CSV
+
+Os relatórios são essenciais para controle de estoque, auditoria regulatória e análise de padrões de prescrição. Com o toggle LGPD ativo, os relatórios podem ser compartilhados externamente sem comprometer dados pessoais dos pacientes.`
       }
     ]
   }
@@ -1013,20 +1259,23 @@ export default function Manual() {
                 Manual do Usuário
               </h1>
               <p className="text-muted-foreground">
-                Guia completo de uso da plataforma Tele{"<"}M3D{">"} Pro — v3.0
+                Guia completo de uso da plataforma Tele{"<"}M3D{">"} Pro — v3.5
               </p>
             </div>
           </div>
-          <div className="flex gap-2 mt-3">
+          <div className="flex flex-wrap gap-2 mt-3">
             <Badge variant="outline">HL7 FHIR R4</Badge>
             <Badge variant="outline">Protocolo de Manchester</Badge>
             <Badge variant="outline">LGPD</Badge>
+            <Badge variant="outline">PMD v1.0</Badge>
+            <Badge variant="outline">Farmácia</Badge>
+            <Badge variant="outline">Stripe/PagBank</Badge>
             <Badge variant="outline">61 Tabelas</Badge>
           </div>
         </div>
 
         <Tabs defaultValue="visitors" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="visitors" className="flex items-center gap-1.5">
               <Eye className="h-4 w-4" />
               <span className="hidden sm:inline">Visitantes</span>
@@ -1047,6 +1296,11 @@ export default function Manual() {
               <span className="hidden sm:inline">Administradores</span>
               <span className="sm:hidden">Admin</span>
             </TabsTrigger>
+            <TabsTrigger value="pharmacists" className="flex items-center gap-1.5">
+              <Pill className="h-4 w-4" />
+              <span className="hidden sm:inline">Farmacêuticos</span>
+              <span className="sm:hidden">Farm.</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="visitors">
@@ -1063,6 +1317,10 @@ export default function Manual() {
 
           <TabsContent value="admins">
             <TabContent sections={adminSections} />
+          </TabsContent>
+
+          <TabsContent value="pharmacists">
+            <TabContent sections={pharmacistSections} />
           </TabsContent>
         </Tabs>
       </div>
