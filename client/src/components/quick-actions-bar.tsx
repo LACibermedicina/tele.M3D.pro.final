@@ -145,7 +145,7 @@ export default function QuickActionsBar({ userRole }: QuickActionsBarProps) {
       },
       {
         id: 'tmc-system',
-        title: 'Sistema TMC',
+        title: 'Sistema TM3D',
         icon: <CreditCard className="w-4 h-4" />,
         shortcut: 'Ctrl+M',
         action: () => {

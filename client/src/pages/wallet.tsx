@@ -296,7 +296,7 @@ export default function WalletPage() {
       setTransferUserId("");
       setTransferReason("");
       setTransferOpen(false);
-      toast({ title: "Transferência realizada", description: "Créditos TMC transferidos com sucesso!" });
+      toast({ title: "Transferência realizada", description: "Créditos TM3D transferidos com sucesso!" });
     },
     onError: (error: any) => {
       toast({ title: "Erro", description: error.message || "Falha na transferência", variant: "destructive" });
@@ -334,7 +334,7 @@ export default function WalletPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold">Carteira Digital</h1>
-          <p className="text-sm text-muted-foreground">Gerencie seus créditos TMC e realize compras via PayPal</p>
+          <p className="text-sm text-muted-foreground">Gerencie seus créditos TM3D e realize compras via PayPal</p>
         </div>
       </div>
 
@@ -345,7 +345,7 @@ export default function WalletPage() {
               <div>
                 <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Saldo Atual</p>
                 <p className="text-3xl font-bold text-blue-800 dark:text-blue-200 mt-1">
-                  {balanceLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : `${balance?.balance || 0} TMC`}
+                  {balanceLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : `${balance?.balance || 0} TM3D`}
                 </p>
               </div>
               <div className="p-3 bg-blue-200/50 dark:bg-blue-800/50 rounded-full">
@@ -361,7 +361,7 @@ export default function WalletPage() {
               <div>
                 <p className="text-sm text-green-600 dark:text-green-400 font-medium">Total Recebido</p>
                 <p className="text-3xl font-bold text-green-800 dark:text-green-200 mt-1">
-                  +{totalCredits} TMC
+                  +{totalCredits} TM3D
                 </p>
               </div>
               <div className="p-3 bg-green-200/50 dark:bg-green-800/50 rounded-full">
@@ -379,7 +379,7 @@ export default function WalletPage() {
                   {user?.role === "doctor" ? "Comissões" : "Total Gasto"}
                 </p>
                 <p className="text-3xl font-bold text-orange-800 dark:text-orange-200 mt-1">
-                  {user?.role === "doctor" ? `+${totalCommissions}` : `-${totalDebits}`} TMC
+                  {user?.role === "doctor" ? `+${totalCommissions}` : `-${totalDebits}`} TM3D
                 </p>
               </div>
               <div className="p-3 bg-orange-200/50 dark:bg-orange-800/50 rounded-full">
@@ -433,7 +433,7 @@ export default function WalletPage() {
               <h2 className="text-lg font-semibold">Pacotes de Créditos</h2>
             </div>
             <Badge variant="outline" className="text-xs">
-              Taxa: 1 USD = {exchangeRate?.rate || 5} TMC
+              Taxa: 1 USD = {exchangeRate?.rate || 5} TM3D
             </Badge>
           </div>
 
@@ -788,10 +788,10 @@ export default function WalletPage() {
                       </div>
                       <div className="text-right shrink-0 ml-3">
                         <span className={`font-semibold ${isCredit(tx.type) ? "text-green-600" : "text-red-500"}`}>
-                          {isCredit(tx.type) ? "+" : "-"}{Math.abs(tx.amount)} TMC
+                          {isCredit(tx.type) ? "+" : "-"}{Math.abs(tx.amount)} TM3D
                         </span>
                         {tx.balanceAfter != null && (
-                          <p className="text-xs text-muted-foreground">Saldo: {tx.balanceAfter} TMC</p>
+                          <p className="text-xs text-muted-foreground">Saldo: {tx.balanceAfter} TM3D</p>
                         )}
                       </div>
                     </div>
@@ -811,7 +811,7 @@ export default function WalletPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Enviar Créditos TMC</CardTitle>
+                <CardTitle className="text-base">Enviar Créditos TM3D</CardTitle>
                 <CardDescription>Transfira créditos para outro usuário da plataforma</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -919,7 +919,7 @@ export default function WalletPage() {
                       </div>
                       <span className="text-sm font-medium">{feature.name}</span>
                     </div>
-                    <Badge variant="secondary" className="font-bold">{feature.cost} TMC</Badge>
+                    <Badge variant="secondary" className="font-bold">{feature.cost} TM3D</Badge>
                   </div>
                 </CardContent>
               </Card>
@@ -1107,7 +1107,7 @@ export default function WalletPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="withdraw-amount">Valor (TMC)</Label>
+                <Label htmlFor="withdraw-amount">Valor (TM3D)</Label>
                 <Input
                   id="withdraw-amount"
                   type="number"
@@ -1123,15 +1123,15 @@ export default function WalletPage() {
                     <div className="text-sm space-y-1">
                       <div className="flex justify-between">
                         <span>Valor solicitado:</span>
-                        <span className="font-medium">{parseFloat(withdrawAmount)} TMC</span>
+                        <span className="font-medium">{parseFloat(withdrawAmount)} TM3D</span>
                       </div>
                       <div className="flex justify-between text-orange-600">
                         <span>Taxa (2%):</span>
-                        <span className="font-medium">-{(parseFloat(withdrawAmount) * 0.02).toFixed(2)} TMC</span>
+                        <span className="font-medium">-{(parseFloat(withdrawAmount) * 0.02).toFixed(2)} TM3D</span>
                       </div>
                       <div className="border-t pt-1 flex justify-between font-semibold">
                         <span>Valor líquido:</span>
-                        <span className="text-green-600">{(parseFloat(withdrawAmount) * 0.98).toFixed(2)} TMC</span>
+                        <span className="text-green-600">{(parseFloat(withdrawAmount) * 0.98).toFixed(2)} TM3D</span>
                       </div>
                     </div>
                   </CardContent>
@@ -1183,9 +1183,9 @@ export default function WalletPage() {
                           <TableCell className="text-xs">
                             {new Date(w.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}
                           </TableCell>
-                          <TableCell className="font-medium">{w.amount} TMC</TableCell>
-                          <TableCell className="text-orange-600 text-xs">{w.fee || (w.amount * 0.02).toFixed(2)} TMC</TableCell>
-                          <TableCell className="text-green-600 font-medium">{w.netAmount || (w.amount * 0.98).toFixed(2)} TMC</TableCell>
+                          <TableCell className="font-medium">{w.amount} TM3D</TableCell>
+                          <TableCell className="text-orange-600 text-xs">{w.fee || (w.amount * 0.02).toFixed(2)} TM3D</TableCell>
+                          <TableCell className="text-green-600 font-medium">{w.netAmount || (w.amount * 0.98).toFixed(2)} TM3D</TableCell>
                           <TableCell>
                             <Badge className={
                               w.status === "pending" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" :
@@ -1248,21 +1248,21 @@ export default function WalletPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-xs text-muted-foreground">Total Créditos</p>
-                    <p className="text-lg font-bold text-green-600">+{weeklyReport.totalCredits || 0} TMC</p>
+                    <p className="text-lg font-bold text-green-600">+{weeklyReport.totalCredits || 0} TM3D</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Total Débitos</p>
-                    <p className="text-lg font-bold text-red-600">-{weeklyReport.totalDebits || 0} TMC</p>
+                    <p className="text-lg font-bold text-red-600">-{weeklyReport.totalDebits || 0} TM3D</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Variação Líquida</p>
                     <p className={`text-lg font-bold ${(weeklyReport.netChange || 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {(weeklyReport.netChange || 0) >= 0 ? "+" : ""}{weeklyReport.netChange || 0} TMC
+                      {(weeklyReport.netChange || 0) >= 0 ? "+" : ""}{weeklyReport.netChange || 0} TM3D
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Saldo Atual</p>
-                    <p className="text-lg font-bold text-blue-600">{weeklyReport.currentBalance || 0} TMC</p>
+                    <p className="text-lg font-bold text-blue-600">{weeklyReport.currentBalance || 0} TM3D</p>
                   </div>
                 </div>
               </CardContent>
@@ -1309,10 +1309,10 @@ export default function WalletPage() {
                             <TransactionLabel type={entry.action} />
                           </TableCell>
                           <TableCell className={`font-medium ${isCredit(entry.action) ? "text-green-600" : "text-red-500"}`}>
-                            {isCredit(entry.action) ? "+" : "-"}{Math.abs(entry.amount)} TMC
+                            {isCredit(entry.action) ? "+" : "-"}{Math.abs(entry.amount)} TM3D
                           </TableCell>
-                          <TableCell className="text-xs">{entry.balanceBefore ?? "—"} TMC</TableCell>
-                          <TableCell className="text-xs">{entry.balanceAfter ?? "—"} TMC</TableCell>
+                          <TableCell className="text-xs">{entry.balanceBefore ?? "—"} TM3D</TableCell>
+                          <TableCell className="text-xs">{entry.balanceAfter ?? "—"} TM3D</TableCell>
                           <TableCell className="text-xs max-w-[200px] truncate">{entry.description || "—"}</TableCell>
                           <TableCell className="text-xs">{entry.actorRole || "Sistema"}</TableCell>
                         </TableRow>

@@ -200,7 +200,7 @@ GEMINI_API_KEY=sua_chave_gemini_api
 AGORA_APP_ID=seu_agora_app_id
 AGORA_APP_CERTIFICATE=seu_agora_certificate
 
-# PayPal para compra de créditos TMC (opcional)
+# PayPal para compra de créditos TM3D (opcional)
 PAYPAL_CLIENT_ID=seu_paypal_client_id
 PAYPAL_CLIENT_SECRET=seu_paypal_client_secret
 
@@ -315,7 +315,7 @@ fi
 
 if [ -z "$PAYPAL_CLIENT_ID" ]; then
     echo "[INFO] PAYPAL_CLIENT_ID não configurada (opcional)."
-    echo "  Necessária para compra de créditos TMC via PayPal."
+    echo "  Necessária para compra de créditos TM3D via PayPal."
 else
     echo "[OK] PAYPAL_CLIENT_ID configurada"
 fi
@@ -479,7 +479,7 @@ docker-compose logs -f app`} />
                       "Configurar DATABASE_URL com banco de produção (Neon, Supabase, AWS RDS)",
                       "Definir GEMINI_API_KEY para IA médica (Google Gemini)",
                       "Configurar AGORA_APP_ID e AGORA_APP_CERTIFICATE para teleconsultas",
-                      "Configurar PAYPAL_CLIENT_ID e PAYPAL_CLIENT_SECRET para compra de créditos TMC",
+                      "Configurar PAYPAL_CLIENT_ID e PAYPAL_CLIENT_SECRET para compra de créditos TM3D",
                       "Definir SESSION_SECRET com chave forte e aleatória",
                       "Ativar HTTPS/TLS (obrigatório para WebRTC)",
                       "Configurar backup automático do banco de dados (61 tabelas)",
@@ -533,9 +533,9 @@ docker-compose logs -f app`} />
                     { name: "doctor_notes", desc: "Anotações do médico" },
                     { name: "doctor_schedule", desc: "Horários dos médicos" },
                     { name: "medical_teams", desc: "Equipes médicas" },
-                    { name: "tmc_credit_packages", desc: "Pacotes de créditos TMC" },
+                    { name: "tmc_credit_packages", desc: "Pacotes de créditos TM3D" },
                     { name: "paypal_orders", desc: "Pedidos PayPal" },
-                    { name: "tmc_transactions", desc: "Transações de créditos TMC" },
+                    { name: "tmc_transactions", desc: "Transações de créditos TM3D" },
                     { name: "wallet_audit_log", desc: "Auditoria de carteira" },
                     { name: "dynamic_nfts", desc: "NFTs dinâmicos (LGPD)" },
                     { name: "nft_ownership", desc: "Propriedade de NFTs" },
@@ -578,7 +578,7 @@ docker-compose logs -f app`} />
                     { name: "SESSION_SECRET", required: false, desc: "Chave secreta para sessões" },
                     { name: "AI_INTEGRATIONS_OPENAI_API_KEY", required: false, desc: "Chave OpenAI (fallback IA)" },
                     { name: "AI_INTEGRATIONS_OPENAI_BASE_URL", required: false, desc: "URL base OpenAI (fallback)" },
-                    { name: "PAYPAL_CLIENT_ID", required: false, desc: "Client ID do PayPal (compra de créditos TMC)" },
+                    { name: "PAYPAL_CLIENT_ID", required: false, desc: "Client ID do PayPal (compra de créditos TM3D)" },
                     { name: "PAYPAL_CLIENT_SECRET", required: false, desc: "Client Secret do PayPal (processamento de pagamentos)" },
                   ].map((env) => (
                     <div key={env.name} className="flex items-center gap-3 p-2 rounded-md bg-muted/30">

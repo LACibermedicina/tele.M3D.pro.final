@@ -315,7 +315,7 @@ export default function Profile() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <CreditCard className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Créditos TMC</span>
+                  <span className="text-sm">Créditos TM3D</span>
                 </div>
                 <span className="font-semibold" data-testid="text-tmc-credits">
                   {user?.tmcCredits || 0}

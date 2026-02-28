@@ -531,7 +531,7 @@ export default function AdminPage() {
                       <TableHead>Role</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Last Login</TableHead>
-                      <TableHead>TMC Credits</TableHead>
+                      <TableHead>TM3D Credits</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -571,7 +571,7 @@ export default function AdminPage() {
                           {user.lastLogin ? format(new Date(user.lastLogin), 'MMM dd, yyyy HH:mm') : 'Never'}
                         </TableCell>
                         <TableCell>
-                          <span className="font-mono">{user.tmcCredits || 0} TMC</span>
+                          <span className="font-mono">{user.tmcCredits || 0} TM3D</span>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
@@ -2459,7 +2459,7 @@ function FinancialManagementTab() {
                 <DollarSign className="h-5 w-5" />
                 <span>Saldos de Créditos dos Usuários</span>
               </CardTitle>
-              <CardDescription>Visualize e gerencie os créditos TMC de todos os usuários</CardDescription>
+              <CardDescription>Visualize e gerencie os créditos TM3D de todos os usuários</CardDescription>
             </div>
             <Dialog open={sendCreditsOpen} onOpenChange={setSendCreditsOpen}>
               <DialogTrigger asChild>
@@ -2470,7 +2470,7 @@ function FinancialManagementTab() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Enviar Créditos TMC</DialogTitle>
+                  <DialogTitle>Enviar Créditos TM3D</DialogTitle>
                   <DialogDescription>Envie créditos para um usuário do sistema</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -2490,7 +2490,7 @@ function FinancialManagementTab() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Quantidade (TMC)</Label>
+                    <Label>Quantidade (TM3D)</Label>
                     <Input
                       type="number"
                       min="1"
@@ -2557,7 +2557,7 @@ function FinancialManagementTab() {
                     <TableHead>Username</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead className="text-right">Saldo TMC</TableHead>
+                    <TableHead className="text-right">Saldo TM3D</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -2582,7 +2582,7 @@ function FinancialManagementTab() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{user.email || '-'}</TableCell>
-                      <TableCell className="text-right font-mono font-bold">{user.tmcCredits || 0} TMC</TableCell>
+                      <TableCell className="text-right font-mono font-bold">{user.tmcCredits || 0} TM3D</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -2598,7 +2598,7 @@ function FinancialManagementTab() {
             <Settings className="h-5 w-5" />
             <span>Custos das Funcionalidades</span>
           </CardTitle>
-          <CardDescription>Configure os custos em créditos TMC para cada funcionalidade do sistema</CardDescription>
+          <CardDescription>Configure os custos em créditos TM3D para cada funcionalidade do sistema</CardDescription>
         </CardHeader>
         <CardContent>
           {loadingConfigs ? (
@@ -2665,7 +2665,7 @@ function FinancialManagementTab() {
                                 ) : (
                                   <div className="flex items-center gap-1">
                                     <span className="font-mono font-bold text-lg">{config.costInCredits}</span>
-                                    <span className="text-xs text-muted-foreground">TMC</span>
+                                    <span className="text-xs text-muted-foreground">TM3D</span>
                                     <Button
                                       size="sm"
                                       variant="ghost"
@@ -2683,7 +2683,7 @@ function FinancialManagementTab() {
                               </div>
                             </div>
                             {config.bonusForPatient > 0 && (
-                              <p className="text-xs text-green-600 mt-2">Bônus paciente: +{config.bonusForPatient} TMC</p>
+                              <p className="text-xs text-green-600 mt-2">Bônus paciente: +{config.bonusForPatient} TM3D</p>
                             )}
                             {config.commissionPercentage > 0 && (
                               <p className="text-xs text-blue-600 mt-1">Comissão: {config.commissionPercentage}%</p>
@@ -2707,7 +2707,7 @@ function FinancialManagementTab() {
                 <CreditCard className="h-5 w-5" />
                 <span>Pacotes de Créditos & Taxa de Câmbio</span>
               </CardTitle>
-              <CardDescription>Gerencie os pacotes disponíveis para compra e a taxa TMC/USD</CardDescription>
+              <CardDescription>Gerencie os pacotes disponíveis para compra e a taxa TM3D/USD</CardDescription>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 border rounded-lg px-3 py-1.5">
@@ -2724,7 +2724,7 @@ function FinancialManagementTab() {
                     }
                   }}
                 />
-                <span className="text-sm font-medium">TMC</span>
+                <span className="text-sm font-medium">TM3D</span>
               </div>
             </div>
           </div>
@@ -2869,7 +2869,7 @@ function FinancialManagementTab() {
                 <FileText className="h-5 w-5" />
                 <span>Log de Auditoria da Carteira</span>
               </CardTitle>
-              <CardDescription>Histórico de todas as transações TMC do sistema</CardDescription>
+              <CardDescription>Histórico de todas as transações TM3D do sistema</CardDescription>
             </div>
             <div className="flex items-center gap-3">
               <Select value={auditFilter} onValueChange={setAuditFilter}>
@@ -2941,13 +2941,13 @@ function FinancialManagementTab() {
                       <TableCell className="text-sm">{log.username || log.userId}</TableCell>
                       <TableCell className="text-sm max-w-[200px] truncate">{log.reason}</TableCell>
                       <TableCell className={`text-right font-mono font-bold ${log.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {log.amount >= 0 ? '+' : ''}{log.amount} TMC
+                        {log.amount >= 0 ? '+' : ''}{log.amount} TM3D
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm text-muted-foreground">
-                        {log.balanceBefore} TMC
+                        {log.balanceBefore} TM3D
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm">
-                        {log.balanceAfter} TMC
+                        {log.balanceAfter} TM3D
                       </TableCell>
                     </TableRow>
                   ))}
@@ -3042,7 +3042,7 @@ function DatabaseCleanupTab() {
                   <li>Todas as prescrições</li>
                   <li>Todos os resultados de exames</li>
                   <li>Todas as mensagens do WhatsApp</li>
-                  <li>Todas as transações TMC</li>
+                  <li>Todas as transações TM3D</li>
                   <li>Todas as fotos de perfil</li>
                 </ul>
                 <p className="text-sm font-semibold text-destructive mt-2">

@@ -361,7 +361,7 @@ export default function Analytics() {
                     <div className="flex items-center space-x-2">
                       <CreditCard className="h-5 w-5 text-orange-600" />
                       <span className="text-sm font-medium text-muted-foreground">
-                        TMC Utilizados
+                        TM3D Utilizados
                       </span>
                     </div>
                     <div className="mt-2">
@@ -511,7 +511,7 @@ export default function Analytics() {
                         <th className="text-center p-3 font-medium">Concluídas</th>
                         <th className="text-center p-3 font-medium">Taxa (%)</th>
                         <th className="text-center p-3 font-medium">Prescrições</th>
-                        <th className="text-center p-3 font-medium">Receita TMC</th>
+                        <th className="text-center p-3 font-medium">Receita TM3D</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -529,7 +529,7 @@ export default function Analytics() {
                             </Badge>
                           </td>
                           <td className="text-center p-3">{doctor.prescriptionCount}</td>
-                          <td className="text-center p-3">{doctor.totalRevenue.toLocaleString()} TMC</td>
+                          <td className="text-center p-3">{doctor.totalRevenue.toLocaleString()} TM3D</td>
                         </tr>
                       ))}
                     </tbody>
@@ -637,7 +637,7 @@ export default function Analytics() {
               {/* Revenue Trend */}
               <Card className="lg:col-span-2">
                 <CardHeader>
-                  <CardTitle>Fluxo de TMC (Últimos {selectedPeriod} dias)</CardTitle>
+                  <CardTitle>Fluxo de TM3D (Últimos {selectedPeriod} dias)</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
@@ -650,7 +650,7 @@ export default function Analytics() {
                       <YAxis />
                       <Tooltip 
                         labelFormatter={(value) => format(new Date(value), 'dd/MM/yyyy', { locale: ptBR })}
-                        formatter={(value) => [`${value} TMC`, 'Receita']}
+                        formatter={(value) => [`${value} TM3D`, 'Receita']}
                       />
                       <Area 
                         type="monotone" 
@@ -677,7 +677,7 @@ export default function Analytics() {
                           {type.transactionType}
                         </span>
                         <div className="text-right">
-                          <div className="font-medium">{type.totalAmount.toLocaleString()} TMC</div>
+                          <div className="font-medium">{type.totalAmount.toLocaleString()} TM3D</div>
                           <div className="text-xs text-muted-foreground">
                             {type.transactionCount} transações
                           </div>
@@ -691,7 +691,7 @@ export default function Analytics() {
               {/* Top Spenders */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Maiores Usuários TMC</CardTitle>
+                  <CardTitle>Maiores Usuários TM3D</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -700,7 +700,7 @@ export default function Analytics() {
                         <span className="text-sm font-medium truncate flex-1">
                           {spender.userName || 'Usuário não identificado'}
                         </span>
-                        <Badge variant="outline">{spender.totalSpent.toLocaleString()} TMC</Badge>
+                        <Badge variant="outline">{spender.totalSpent.toLocaleString()} TM3D</Badge>
                       </div>
                     ))}
                   </div>

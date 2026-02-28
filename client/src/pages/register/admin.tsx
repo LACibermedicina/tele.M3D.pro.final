@@ -88,7 +88,7 @@ export default function AdminRegister() {
     },
     {
       icon: FileText,
-      title: "Sistema TMC",
+      title: "Sistema TM3D",
       description: "Controle de créditos, recargas e transações financeiras"
     },
     {

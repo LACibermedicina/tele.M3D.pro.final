@@ -279,9 +279,9 @@ function FinancialTab({ data, onExport }: { data: FinancialReport | undefined; o
         </Button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard title="Total Créditos" value={`${data.totalCredits} TMC`} icon={DollarSign} subtitle="Entradas no período" />
-        <StatCard title="Total Débitos" value={`${data.totalDebits} TMC`} icon={DollarSign} subtitle="Saídas no período" />
-        <StatCard title="Fluxo Líquido" value={`${data.netFlow} TMC`} icon={DollarSign} subtitle={data.netFlow >= 0 ? 'Positivo' : 'Negativo'} />
+        <StatCard title="Total Créditos" value={`${data.totalCredits} TM3D`} icon={DollarSign} subtitle="Entradas no período" />
+        <StatCard title="Total Débitos" value={`${data.totalDebits} TM3D`} icon={DollarSign} subtitle="Saídas no período" />
+        <StatCard title="Fluxo Líquido" value={`${data.netFlow} TM3D`} icon={DollarSign} subtitle={data.netFlow >= 0 ? 'Positivo' : 'Negativo'} />
       </div>
       <Card>
         <CardHeader><CardTitle className="text-lg">Transações Recentes</CardTitle></CardHeader>
@@ -302,7 +302,7 @@ function FinancialTab({ data, onExport }: { data: FinancialReport | undefined; o
                     <Badge variant={tx.type === 'credit' ? 'default' : 'destructive'}>{tx.type}</Badge>
                   </TableCell>
                   <TableCell>{tx.reason}</TableCell>
-                  <TableCell className="text-right font-mono">{tx.amount} TMC</TableCell>
+                  <TableCell className="text-right font-mono">{tx.amount} TM3D</TableCell>
                   <TableCell>{tx.date ? new Date(tx.date).toLocaleDateString('pt-BR') : '-'}</TableCell>
                 </TableRow>
               ))}

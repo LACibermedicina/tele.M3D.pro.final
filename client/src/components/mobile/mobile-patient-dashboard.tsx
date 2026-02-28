@@ -79,7 +79,7 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold">{wallet?.balance ?? 0}</div>
-              <div className="text-white/80 text-xs">TMC</div>
+              <div className="text-white/80 text-xs">TM3D</div>
             </div>
           </div>
         </CardContent>

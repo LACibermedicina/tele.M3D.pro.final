@@ -215,7 +215,7 @@ export default function Documentation() {
       ]
     },
     {
-      category: "Sistema de Créditos TMC",
+      category: "Sistema de Créditos TM3D",
       icon: CreditCard,
       color: "amber",
       items: [
@@ -275,8 +275,8 @@ export default function Documentation() {
         },
         {
           title: "Gestão Financeira Admin",
-          description: "CRUD de pacotes de crédito, custos de funcionalidades e taxa de câmbio TMC/USD",
-          features: ["Pacotes de crédito CRUD", "15 custos de funcionalidades", "Taxa TMC/USD", "Envio de créditos"]
+          description: "CRUD de pacotes de crédito, custos de funcionalidades e taxa de câmbio TM3D/USD",
+          features: ["Pacotes de crédito CRUD", "15 custos de funcionalidades", "Taxa TM3D/USD", "Envio de créditos"]
         }
       ]
     },
@@ -352,7 +352,7 @@ export default function Documentation() {
       guides: [
         "Como solicitar consulta (por especialidade ou triagem IA)",
         "Como usar o assistente de voz IAM3D (consulta urgente)",
-        "Como comprar créditos TMC via PayPal",
+        "Como comprar créditos TM3D via PayPal",
         "Como participar de videochamada",
         "Como acessar prescrições e prontuário",
         "Como exportar dados médicos (FHIR R4 - direito LGPD)",

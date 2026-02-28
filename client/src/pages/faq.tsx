@@ -164,8 +164,8 @@ const faqData: FaqItem[] = [
   },
   {
     category: "Créditos",
-    question: "Como funcionam os créditos TMC?",
-    answer: "TMC (Tele-Medicina Credits) é a moeda virtual do sistema. Cada funcionalidade tem um custo definido (são 15 funcionalidades com custos específicos). Adquira pacotes de créditos na página 'Créditos' via PayPal — são 6 pacotes disponíveis com diferentes quantidades e preços."
+    question: "Como funcionam os créditos TM3D?",
+    answer: "TM3D é a moeda virtual do sistema. Cada funcionalidade tem um custo definido (são 15 funcionalidades com custos específicos). Adquira pacotes de créditos na página 'Créditos' via PayPal — são 6 pacotes disponíveis com diferentes quantidades e preços."
   },
   {
     category: "Créditos",
@@ -174,13 +174,13 @@ const faqData: FaqItem[] = [
   },
   {
     category: "Carteira Digital",
-    question: "Como comprar créditos TMC?",
+    question: "Como comprar créditos TM3D?",
     answer: "Acesse a página 'Carteira' ou 'Créditos' no menu. Escolha um dos 6 pacotes de créditos disponíveis e finalize a compra via PayPal. Os créditos são adicionados automaticamente ao seu saldo após a confirmação do pagamento."
   },
   {
     category: "Carteira Digital",
     question: "Como transferir créditos para outro usuário?",
-    answer: "Na página da Carteira, use a função 'Transferir'. Informe o usuário destinatário e a quantidade de créditos TMC. A transferência é instantânea e aparece no histórico de transações de ambos os usuários."
+    answer: "Na página da Carteira, use a função 'Transferir'. Informe o usuário destinatário e a quantidade de créditos TM3D. A transferência é instantânea e aparece no histórico de transações de ambos os usuários."
   },
   {
     category: "Carteira Digital",

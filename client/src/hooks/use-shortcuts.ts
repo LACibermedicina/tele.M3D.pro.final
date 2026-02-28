@@ -203,7 +203,7 @@ export function useApplicationShortcuts() {
       id: 'tmc-transfer',
       key: 'm',
       ctrlKey: true,
-      description: 'Transferir TMC',
+      description: 'Transferir TM3D',
       action: () => {
         const event = new CustomEvent('tmc-transfer');
         window.dispatchEvent(event);

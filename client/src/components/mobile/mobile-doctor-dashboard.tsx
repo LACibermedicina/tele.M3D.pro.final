@@ -200,19 +200,19 @@ export function MobileDoctorDashboard() {
         <CardHeader className="pb-3">
           <h2 className="text-lg font-semibold flex items-center text-green-800">
             <DollarSign className="w-5 h-5 mr-2" />
-            Ganhos TMC
+            Ganhos TM3D
           </h2>
         </CardHeader>
         <CardContent>
           <div className="text-center mb-4">
-            <div className="text-3xl font-bold text-green-700">{tmcStats.todayEarnings.toLocaleString()} TMC</div>
+            <div className="text-3xl font-bold text-green-700">{tmcStats.todayEarnings.toLocaleString()} TM3D</div>
             <div className="text-green-600">≈ R$ {tmcStats.totalCredits.toFixed(2)} hoje</div>
           </div>
           
           <div className="space-y-3">
             <div className="flex justify-between items-center text-sm">
               <span className="text-green-700">Por consulta</span>
-              <span className="font-medium">{tmcStats.consultationRate} TMC</span>
+              <span className="font-medium">{tmcStats.consultationRate} TM3D</span>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Button variant="outline" size="sm" className="text-green-700 border-green-300">

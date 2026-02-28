@@ -116,7 +116,7 @@ export function MobileAdminDashboard() {
         <CardContent className="p-6">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Painel Administrativo</h1>
-            <p className="text-white/90 text-sm mt-1">Sistema de Telemedicina TMC</p>
+            <p className="text-white/90 text-sm mt-1">Sistema de Telemedicina TM3D</p>
             <div className="flex items-center justify-center space-x-4 mt-4 text-sm">
               <div className="flex items-center space-x-1">
                 <CheckCircle className="w-4 h-4" />
@@ -344,7 +344,7 @@ export function MobileAdminDashboard() {
           data-testid="button-tmc-config"
         >
           <Coins className="w-6 h-6" />
-          <span className="text-sm">Config TMC</span>
+          <span className="text-sm">Config TM3D</span>
         </Button>
         
         <Button 

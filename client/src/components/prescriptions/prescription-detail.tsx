@@ -534,7 +534,7 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
             <div className="flex items-center space-x-2 text-amber-800">
               <div className="h-2 w-2 bg-amber-500 rounded-full"></div>
               <span className="text-sm font-medium">
-                Custo TMC: {prescription.tmcCostPaid} créditos
+                Custo TM3D: {prescription.tmcCostPaid} créditos
               </span>
             </div>
           </CardContent>

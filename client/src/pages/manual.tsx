@@ -87,7 +87,7 @@ O chatbot é alimentado por IA (Google Gemini) com referências da OMS, Ministé
 - **Triagem por Protocolo de Manchester**: Classificação automática de risco em 5 níveis
 - **Prontuários Eletrônicos**: Gestão completa de registros médicos
 - **WhatsApp IA**: Comunicação inteligente médico-paciente
-- **Carteira Digital TMC**: Sistema de créditos e pagamentos
+- **Carteira Digital TM3D**: Sistema de créditos e pagamentos
 - **NFTs Médicos**: Tokenização de dados clínicos anonimizados
 - **Exportação FHIR R4**: Exportação de dados em padrões internacionais
 
@@ -300,19 +300,19 @@ Acesse a exportação pelo menu do seu perfil ou na página de prontuários.`
     icon: <Wallet className="h-5 w-5" />,
     content: [
       {
-        title: "Gerenciando seus Créditos TMC",
-        text: `O sistema utiliza créditos TMC (Tele-Medicina Credits) para funcionalidades:
+        title: "Gerenciando seus Créditos TM3D",
+        text: `O sistema utiliza créditos TM3D (Tele-Medicina Credits) para funcionalidades:
 
-- **Saldo**: Visualize seu saldo atual de TMC
+- **Saldo**: Visualize seu saldo atual de TM3D
 - **Comprar Créditos**: Adquira pacotes via PayPal (6 pacotes disponíveis)
 - **Transferências**: Envie créditos para outros usuários
 - **Histórico**: Veja todas as transações com detalhes (data, tipo, valor, saldo)
 
 Custos das principais funcionalidades:
-- Teleconsulta por Vídeo: 50 TMC
-- Mensagem WhatsApp: 10 TMC
-- Análise IA de Exame: 15 TMC
-- Relatório Epidemiológico: 20 TMC
+- Teleconsulta por Vídeo: 50 TM3D
+- Mensagem WhatsApp: 10 TM3D
+- Análise IA de Exame: 15 TM3D
+- Relatório Epidemiológico: 20 TM3D
 
 Acesse "Carteira" no menu para gerenciar seus créditos e visualizar o histórico de transações.`
       }
@@ -695,14 +695,14 @@ Exporte relatórios em diferentes formatos para análise externa.`
     icon: <Wallet className="h-5 w-5" />,
     content: [
       {
-        title: "Carteira Digital TMC",
-        text: `Gerencie seus créditos TMC:
+        title: "Carteira Digital TM3D",
+        text: `Gerencie seus créditos TM3D:
 
 - **Saldo e Histórico**: Veja saldo atual e histórico completo de transações
 - **Comprar Créditos**: Pacotes via PayPal (6 pacotes disponíveis)
 - **Transferências**: Envie créditos para outros usuários
 - **Vincular Carteira Externa**: Conecte MetaMask ou WalletConnect
-- **Solicitações de Saque**: Solicite conversão de TMC para moeda fiduciária`
+- **Solicitações de Saque**: Solicite conversão de TM3D para moeda fiduciária`
       },
       {
         title: "NFTs Médicos e Broker",
@@ -810,7 +810,7 @@ const adminSections: Section[] = [
 - **Editar Perfil**: Modifique dados de qualquer usuário (nome, especialidade, status)
 - **Ativar/Desativar**: Controle o acesso de usuários ao sistema
 - **Créditos**: Visualize e gerencie o saldo de créditos de cada usuário
-- **Enviar Créditos**: Envie créditos TMC diretamente para um usuário específico`
+- **Enviar Créditos**: Envie créditos TM3D diretamente para um usuário específico`
       }
     ]
   },
@@ -828,7 +828,7 @@ const adminSections: Section[] = [
 - **Triagem por IA**: Ative/desative a triagem automática pelo Protocolo de Manchester
 - **Timeout de Inatividade**: Configure o tempo de inatividade antes do auto-logout (em minutos)
 - **E-mail PayPal**: Configure o e-mail de destino para pagamentos PayPal
-- **Configurações Financeiras**: Taxa de câmbio TMC/USD, limites de transação
+- **Configurações Financeiras**: Taxa de câmbio TM3D/USD, limites de transação
 
 Cada alteração é salva imediatamente e afeta todos os usuários do sistema.`
       }
@@ -841,16 +841,16 @@ Cada alteração é salva imediatamente e afeta todos os usuários do sistema.`
     content: [
       {
         title: "Pacotes de Créditos",
-        text: `Gerencie os pacotes de créditos TMC:
+        text: `Gerencie os pacotes de créditos TM3D:
 
 - **CRUD de Pacotes**: Crie, edite e remova pacotes de créditos (6 pacotes padrão)
-- **Preços e Quantidades**: Defina o preço em USD e quantidade de TMC de cada pacote
+- **Preços e Quantidades**: Defina o preço em USD e quantidade de TM3D de cada pacote
 - **Pacotes Destacados**: Marque pacotes como "destaque" para promoção
 - **Descrições**: Adicione descrições e benefícios para cada pacote`
       },
       {
         title: "Custos de Funcionalidades",
-        text: `Configure o custo em TMC de cada funcionalidade (15 funcionalidades):
+        text: `Configure o custo em TM3D de cada funcionalidade (15 funcionalidades):
 
 - Teleconsulta por vídeo, mensagem WhatsApp, análise IA, relatórios, etc.
 - Ajuste os preços conforme a estratégia de monetização
@@ -858,9 +858,9 @@ Cada alteração é salva imediatamente e afeta todos os usuários do sistema.`
       },
       {
         title: "Taxa de Câmbio e Envio de Créditos",
-        text: `- **Taxa TMC/USD**: Configure a taxa de conversão entre TMC e dólares americanos
+        text: `- **Taxa TM3D/USD**: Configure a taxa de conversão entre TM3D e dólares americanos
 - **Enviar Créditos**: Envie créditos gratuitamente a qualquer usuário (promoções, bônus, suporte)
-- **Solicitações de Saque**: Aprove ou rejeite solicitações de conversão de TMC para moeda fiduciária`
+- **Solicitações de Saque**: Aprove ou rejeite solicitações de conversão de TM3D para moeda fiduciária`
       }
     ]
   },

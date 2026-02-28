@@ -134,7 +134,7 @@ export default function Features() {
       technologies: [
         { name: "OpenAI API", description: t("architecture.integrations.openai") },
         { name: "WhatsApp Business", description: t("architecture.integrations.whatsapp_business") },
-        { name: "TMC Payment", description: t("architecture.integrations.tmc") },
+        { name: "TM3D Payment", description: t("architecture.integrations.tmc") },
         { name: "Digital Certificates", description: t("architecture.integrations.digital_certs") }
       ]
     }

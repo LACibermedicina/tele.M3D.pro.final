@@ -82,7 +82,7 @@ export default function CreditsPage() {
     <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Comprar Créditos TMC</h1>
+          <h1 className="text-3xl font-bold mb-2">Comprar Créditos TM3D</h1>
           <p className="text-muted-foreground">Recarregue sua conta com créditos para usar as funcionalidades da plataforma</p>
         </div>
 
@@ -96,7 +96,7 @@ export default function CreditsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold text-orange-600 dark:text-orange-400">
-              {balance.balance} TMC
+              {balance.balance} TM3D
             </div>
           </CardContent>
         </Card>
@@ -206,10 +206,10 @@ export default function CreditsPage() {
                   </div>
                   <div className="text-right">
                     <span className={`font-semibold ${tx.type === 'credit' || tx.type === 'purchase' || tx.type === 'recharge' || tx.type === 'bonus' ? 'text-green-600' : 'text-red-500'}`}>
-                      {tx.type === 'credit' || tx.type === 'purchase' || tx.type === 'recharge' || tx.type === 'bonus' ? '+' : '-'}{Math.abs(tx.amount)} TMC
+                      {tx.type === 'credit' || tx.type === 'purchase' || tx.type === 'recharge' || tx.type === 'bonus' ? '+' : '-'}{Math.abs(tx.amount)} TM3D
                     </span>
                     {tx.balanceAfter != null && (
-                      <p className="text-xs text-muted-foreground">Saldo: {tx.balanceAfter} TMC</p>
+                      <p className="text-xs text-muted-foreground">Saldo: {tx.balanceAfter} TM3D</p>
                     )}
                   </div>
                 </div>
@@ -228,23 +228,23 @@ export default function CreditsPage() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span>Consulta por Vídeo</span>
-              <span className="font-semibold">50 TMC</span>
+              <span className="font-semibold">50 TM3D</span>
             </div>
             <div className="flex justify-between">
               <span>Consulta via WhatsApp</span>
-              <span className="font-semibold">10 TMC</span>
+              <span className="font-semibold">10 TM3D</span>
             </div>
             <div className="flex justify-between">
               <span>Análise de Exames com IA</span>
-              <span className="font-semibold">15 TMC</span>
+              <span className="font-semibold">15 TM3D</span>
             </div>
             <div className="flex justify-between">
               <span>Consulta ao Assistente IA</span>
-              <span className="font-semibold">5 TMC</span>
+              <span className="font-semibold">5 TM3D</span>
             </div>
             <div className="flex justify-between">
               <span>Assinatura Digital de Prescrição</span>
-              <span className="font-semibold">20 TMC</span>
+              <span className="font-semibold">20 TM3D</span>
             </div>
           </div>
         </CardContent>

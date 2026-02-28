@@ -319,7 +319,7 @@ export default function NftManagement() {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="nft-value">Valor (TMC)</Label>
+                  <Label htmlFor="nft-value">Valor (TM3D)</Label>
                   <Input id="nft-value" type="number" min={1} value={formData.valueTmc} onChange={(e) => setFormData({ ...formData, valueTmc: e.target.value })} placeholder="1000" />
                 </div>
                 <div>
@@ -373,7 +373,7 @@ export default function NftManagement() {
                     <span className="text-muted-foreground flex items-center gap-1">
                       <Coins className="h-3.5 w-3.5" /> Valor
                     </span>
-                    <span className="font-bold text-primary">{nft.valueTmc} TMC</span>
+                    <span className="font-bold text-primary">{nft.valueTmc} TM3D</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground flex items-center gap-1">
@@ -425,7 +425,7 @@ export default function NftManagement() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-muted/50 rounded-lg p-3 text-center">
                   <p className="text-xs text-muted-foreground">Valor Total</p>
-                  <p className="text-lg font-bold text-primary">{nftDetail.valueTmc} TMC</p>
+                  <p className="text-lg font-bold text-primary">{nftDetail.valueTmc} TM3D</p>
                 </div>
                 <div className="bg-muted/50 rounded-lg p-3 text-center">
                   <p className="text-xs text-muted-foreground">Cotas Totais</p>
@@ -437,7 +437,7 @@ export default function NftManagement() {
                 </div>
                 <div className="bg-muted/50 rounded-lg p-3 text-center">
                   <p className="text-xs text-muted-foreground">Preço/Cota</p>
-                  <p className="text-lg font-bold">{(nftDetail.valueTmc / nftDetail.totalShares).toFixed(2)} TMC</p>
+                  <p className="text-lg font-bold">{(nftDetail.valueTmc / nftDetail.totalShares).toFixed(2)} TM3D</p>
                 </div>
               </div>
 
@@ -546,7 +546,7 @@ export default function NftManagement() {
               <div className="bg-muted/50 rounded-lg p-4">
                 <div className="flex justify-between text-sm mb-2">
                   <span>Preço por cota:</span>
-                  <span className="font-bold">{costPerShare.toFixed(2)} TMC</span>
+                  <span className="font-bold">{costPerShare.toFixed(2)} TM3D</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Cotas disponíveis:</span>
@@ -566,7 +566,7 @@ export default function NftManagement() {
               </div>
               <div className="bg-primary/10 rounded-lg p-4 text-center">
                 <p className="text-sm text-muted-foreground">Custo total</p>
-                <p className="text-2xl font-bold text-primary">{isNaN(totalCost) ? 0 : totalCost.toFixed(2)} TMC</p>
+                <p className="text-2xl font-bold text-primary">{isNaN(totalCost) ? 0 : totalCost.toFixed(2)} TM3D</p>
               </div>
               <Button
                 onClick={() => selectedNft && buySharesMutation.mutate({ id: selectedNft.id, shares: parseInt(buyAmount) })}
@@ -624,7 +624,7 @@ export default function NftManagement() {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="edit-value">Valor (TMC)</Label>
+                <Label htmlFor="edit-value">Valor (TM3D)</Label>
                 <Input id="edit-value" type="number" min={1} value={editData.valueTmc} onChange={(e) => setEditData({ ...editData, valueTmc: e.target.value })} />
               </div>
               <div>

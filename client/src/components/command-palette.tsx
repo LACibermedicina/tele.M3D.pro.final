@@ -265,9 +265,9 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor' }
     // TMC System
     {
       id: 'tmc-transfer',
-      title: 'Transferir TMC',
-      description: 'Transferir créditos TMC entre usuários',
-      category: 'TMC',
+      title: 'Transferir TM3D',
+      description: 'Transferir créditos TM3D entre usuários',
+      category: 'TM3D',
       icon: <CreditCard className="w-4 h-4" />,
       shortcut: 'Ctrl+M',
       action: () => {
@@ -279,9 +279,9 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor' }
     },
     {
       id: 'tmc-balance',
-      title: 'Ver Saldo TMC',
-      description: 'Visualizar saldo de créditos TMC',
-      category: 'TMC',
+      title: 'Ver Saldo TM3D',
+      description: 'Visualizar saldo de créditos TM3D',
+      category: 'TM3D',
       icon: <Activity className="w-4 h-4" />,
       action: () => {
         const event = new CustomEvent('view-tmc-balance');

@@ -272,7 +272,7 @@ export default function BrokerPage() {
               </div>
               <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                 <span className="text-sm font-medium">Total Estimado:</span>
-                <span className="text-lg font-bold text-primary">{total} TMC</span>
+                <span className="text-lg font-bold text-primary">{total} TM3D</span>
               </div>
               <Button onClick={handleCreateOrder} disabled={createOrderMutation.isPending} className="w-full">
                 {createOrderMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
@@ -576,7 +576,7 @@ export default function BrokerPage() {
                       <Input type="number" value={supplyReserve} onChange={(e) => setSupplyReserve(e.target.value)} placeholder="0" />
                     </div>
                     <div>
-                      <Label>Preço por Token (TMC)</Label>
+                      <Label>Preço por Token (TM3D)</Label>
                       <Input type="number" step={0.01} value={supplyPrice} onChange={(e) => setSupplyPrice(e.target.value)} placeholder="0.00" />
                     </div>
                     <Button onClick={handleUpdateSupply} disabled={updateSupplyMutation.isPending} className="w-full">
@@ -649,7 +649,7 @@ export default function BrokerPage() {
                     <div>
                       <p className="text-sm text-green-600 dark:text-green-400 font-medium">Preço/Token</p>
                       <p className="text-2xl font-bold text-green-800 dark:text-green-200 mt-1">
-                        {tm3dSupply?.pricePerToken?.toFixed(2) || "0.00"} TMC
+                        {tm3dSupply?.pricePerToken?.toFixed(2) || "0.00"} TM3D
                       </p>
                     </div>
                     <div className="p-3 bg-green-200/50 dark:bg-green-800/50 rounded-full">
@@ -717,7 +717,7 @@ export default function BrokerPage() {
               </div>
               <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                 <span className="text-sm font-medium">Total:</span>
-                <span className="text-lg font-bold text-primary">{total} TMC</span>
+                <span className="text-lg font-bold text-primary">{total} TM3D</span>
               </div>
               <Button onClick={handleCreateOrder} disabled={createOrderMutation.isPending} className="w-full">
                 {createOrderMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}

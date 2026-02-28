@@ -237,7 +237,7 @@ export function DesktopVisitorDashboard() {
                 </li>
                 <li className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-medical-secondary rounded-full"></div>
-                  <span>Sistema TMC de pagamentos</span>
+                  <span>Sistema TM3D de pagamentos</span>
                 </li>
                 <li className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-medical-secondary rounded-full"></div>

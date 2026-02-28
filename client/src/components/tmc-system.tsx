@@ -71,17 +71,17 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
   const [rechargeUserId, setRechargeUserId] = useState('');
   const [rechargeMethod, setRechargeMethod] = useState('manual');
 
-  // Get TMC Balance
+  // Get TM3D Balance
   const { data: balance, isLoading: balanceLoading } = useQuery<{balance: number, currency: string}>({
     queryKey: ['/api/tmc/balance'],
   });
 
-  // Get TMC Transactions
+  // Get TM3D Transactions
   const { data: transactions, isLoading: transactionsLoading } = useQuery<TmcTransaction[]>({
     queryKey: ['/api/tmc/transactions'],
   });
 
-  // Get TMC Configuration
+  // Get TM3D Configuration
   const { data: tmcConfig, isLoading: configLoading } = useQuery<TmcConfig[]>({
     queryKey: ['/api/tmc/config'],
     enabled: showAdminFeatures || userRole === 'admin' || userRole === 'doctor',
@@ -109,13 +109,13 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
       setTransferReason('');
       toast({
         title: "Transferência Realizada",
-        description: "Créditos TMC transferidos com sucesso!",
+        description: "Créditos TM3D transferidos com sucesso!",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Erro na Transferência",
-        description: error.message || "Falha ao transferir créditos TMC",
+        description: error.message || "Falha ao transferir créditos TM3D",
         variant: "destructive",
       });
     },
@@ -142,13 +142,13 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
       setRechargeUserId('');
       toast({
         title: "Recarga Realizada",
-        description: "Créditos TMC adicionados com sucesso!",
+        description: "Créditos TM3D adicionados com sucesso!",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Erro na Recarga",
-        description: error.message || "Falha ao recarregar créditos TMC",
+        description: error.message || "Falha ao recarregar créditos TM3D",
         variant: "destructive",
       });
     },
@@ -226,14 +226,14 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Wallet className="w-5 h-5 text-blue-600" />
-            Sistema TMC
+            Sistema TM3D
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Balance Display */}
           <div className="text-center p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
             <div className="text-2xl font-bold text-blue-800">
-              {balanceLoading ? "..." : `${balance?.balance || 0} TMC`}
+              {balanceLoading ? "..." : `${balance?.balance || 0} TM3D`}
             </div>
             <p className="text-sm text-blue-600">Saldo Atual</p>
           </div>
@@ -249,7 +249,7 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Transferir Créditos TMC</DialogTitle>
+                  <DialogTitle>Transferir Créditos TM3D</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
@@ -304,7 +304,7 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Histórico de Transações TMC</DialogTitle>
+                  <DialogTitle>Histórico de Transações TM3D</DialogTitle>
                 </DialogHeader>
                 <div className="max-h-96 overflow-y-auto space-y-3">
                   {transactionsLoading ? (
@@ -323,10 +323,10 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
                         </div>
                         <div className="text-right">
                           <p className={`font-semibold ${getTransactionColor(transaction.type)}`}>
-                            {transaction.amount > 0 ? '+' : ''}{transaction.amount} TMC
+                            {transaction.amount > 0 ? '+' : ''}{transaction.amount} TM3D
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            Saldo: {transaction.balanceAfter} TMC
+                            Saldo: {transaction.balanceAfter} TM3D
                           </p>
                         </div>
                       </div>
@@ -346,7 +346,7 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Coins className="w-6 h-6 text-blue-600" />
-          Sistema de Créditos TMC
+          Sistema de Créditos TM3D
           <Badge variant="secondary" className="ml-auto">Moeda Digital</Badge>
         </CardTitle>
       </CardHeader>
@@ -365,7 +365,7 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
           <TabsContent value="balance" className="space-y-6">
             <div className="text-center p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
               <div className="text-4xl font-bold text-blue-800 mb-2">
-                {balanceLoading ? "..." : `${balance?.balance || 0} TMC`}
+                {balanceLoading ? "..." : `${balance?.balance || 0} TM3D`}
               </div>
               <p className="text-blue-600">Saldo Atual de Créditos</p>
             </div>
@@ -381,7 +381,7 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
                       t.type === 'credit' && 
                       new Date(t.createdAt).getMonth() === new Date().getMonth()
                     ).reduce((sum: number, t: TmcTransaction) => sum + t.amount, 0) || 0
-                  } TMC</p>
+                  } TM3D</p>
                 </CardContent>
               </Card>
               
@@ -395,7 +395,7 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
                         t.type === 'debit' && 
                         new Date(t.createdAt).getMonth() === new Date().getMonth()
                       ).reduce((sum: number, t: TmcTransaction) => sum + Math.abs(t.amount), 0) || 0
-                    )} TMC
+                    )} TM3D
                   </p>
                 </CardContent>
               </Card>
@@ -407,7 +407,7 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
                   <p className="text-xl font-semibold">+{
                     transactions?.filter((t: TmcTransaction) => t.type === 'commission')
                       .reduce((sum: number, t: TmcTransaction) => sum + t.amount, 0) || 0
-                  } TMC</p>
+                  } TM3D</p>
                 </CardContent>
               </Card>
             </div>
@@ -437,10 +437,10 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
                     </div>
                     <div className="text-right">
                       <p className={`text-lg font-semibold ${getTransactionColor(transaction.type)}`}>
-                        {transaction.amount > 0 ? '+' : ''}{transaction.amount} TMC
+                        {transaction.amount > 0 ? '+' : ''}{transaction.amount} TM3D
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        Saldo: {transaction.balanceAfter} TMC
+                        Saldo: {transaction.balanceAfter} TM3D
                       </p>
                     </div>
                   </div>
@@ -470,7 +470,7 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
                   type="number"
                   value={transferAmount}
                   onChange={(e) => setTransferAmount(e.target.value)}
-                  placeholder="Quantidade de TMC a transferir"
+                  placeholder="Quantidade de TM3D a transferir"
                   data-testid="input-transfer-amount"
                 />
               </div>
@@ -561,12 +561,12 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
                   </CardContent>
                 </Card>
 
-                {/* TMC Configuration */}
+                {/* TM3D Configuration */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Settings className="w-5 h-5" />
-                      Configuração do Sistema TMC
+                      Configuração do Sistema TM3D
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -585,7 +585,7 @@ export function TmcSystem({ userRole, showAdminFeatures = false, compact = false
                             </div>
                             <div className="text-right">
                               <p className="font-semibold text-blue-600">
-                                {config.costInCredits} TMC
+                                {config.costInCredits} TM3D
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 Min: {config.minimumRole}
