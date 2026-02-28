@@ -49,7 +49,7 @@ export default function PharmacyDashboard() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedPrescription, setSelectedPrescription] = useState<PharmacyPrescription | null>(null);
+  const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<string | null>(null);
   const [expandedDrugInfo, setExpandedDrugInfo] = useState<string | null>(null);
   const [showCrmVerification, setShowCrmVerification] = useState(false);
   const [dispensingForm, setDispensingForm] = useState({
@@ -63,6 +63,26 @@ export default function PharmacyDashboard() {
   const { data: prescriptions = [], isLoading } = useQuery<PharmacyPrescription[]>({
     queryKey: ['/api/pharmacy/prescriptions'],
   });
+
+  const { data: prescriptionDetail, isLoading: isDetailLoading } = useQuery<any>({
+    queryKey: ['/api/pharmacy/prescriptions', selectedPrescriptionId],
+    enabled: !!selectedPrescriptionId,
+  });
+
+  const selectedPrescription = selectedPrescriptionId
+    ? (prescriptionDetail?.prescription
+      ? {
+          ...prescriptionDetail.prescription,
+          items: prescriptionDetail.items || [],
+          patientName: prescriptionDetail.patient?.name || prescriptionDetail.prescription.patientName,
+          doctorName: prescriptionDetail.doctor?.name || prescriptionDetail.prescription.doctorName,
+          doctorCrm: prescriptionDetail.doctor?.medicalLicense || prescriptionDetail.prescription.doctorCrm,
+          doctorSpecialization: prescriptionDetail.doctor?.specialization,
+          signature: prescriptionDetail.signature,
+          dispensingRecords: prescriptionDetail.dispensingRecords || [],
+        }
+      : prescriptions.find(p => p.id === selectedPrescriptionId) || null)
+    : null;
 
   const verifyMutation = useMutation({
     mutationFn: async (prescriptionId: string) => {
@@ -114,7 +134,7 @@ export default function PharmacyDashboard() {
         description: "Dispensação registrada com sucesso!",
       });
       setDispensingForm({ batchNumber: "", manufacturer: "", expiryDate: "", dispensedQuantity: "", dispensingNotes: "" });
-      setSelectedPrescription(null);
+      setSelectedPrescriptionId(null);
       queryClient.invalidateQueries({ queryKey: ['/api/pharmacy/prescriptions'] });
     },
     onError: (error: any) => {
@@ -180,7 +200,7 @@ export default function PharmacyDashboard() {
   };
 
   return (
-    <PageWrapper>
+    <PageWrapper variant="gradient">
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
@@ -231,8 +251,8 @@ export default function PharmacyDashboard() {
                 <Shield className="w-5 h-5 text-yellow-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{prescriptions.filter((p: PharmacyPrescription) => p.pharmacistReadAt).length}</p>
-                <p className="text-xs text-muted-foreground">Verificados</p>
+                <p className="text-2xl font-bold">{prescriptions.filter((p: PharmacyPrescription) => p.digitalSignatureId).length}</p>
+                <p className="text-xs text-muted-foreground">Com Assinatura</p>
               </div>
             </CardContent>
           </Card>
@@ -331,7 +351,7 @@ export default function PharmacyDashboard() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => setSelectedPrescription(prescription)}
+                              onClick={() => setSelectedPrescriptionId(prescription.id)}
                               data-testid={`btn-view-${prescription.id}`}
                             >
                               <Eye className="w-4 h-4 mr-1" /> Ver
@@ -358,8 +378,8 @@ export default function PharmacyDashboard() {
           ))}
         </Tabs>
 
-        {selectedPrescription && (
-          <Dialog open={!!selectedPrescription} onOpenChange={() => setSelectedPrescription(null)}>
+        {selectedPrescriptionId && (
+          <Dialog open={!!selectedPrescriptionId} onOpenChange={() => setSelectedPrescriptionId(null)}>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center space-x-2">
@@ -368,6 +388,11 @@ export default function PharmacyDashboard() {
                 </DialogTitle>
               </DialogHeader>
 
+              {isDetailLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : selectedPrescription ? (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                   <div>
@@ -379,6 +404,9 @@ export default function PharmacyDashboard() {
                     <p className="font-semibold">{selectedPrescription.doctorName || 'N/A'}</p>
                     {selectedPrescription.doctorCrm && (
                       <p className="text-xs text-muted-foreground">CRM: {selectedPrescription.doctorCrm}</p>
+                    )}
+                    {selectedPrescription.doctorSpecialization && (
+                      <p className="text-xs text-muted-foreground">{selectedPrescription.doctorSpecialization}</p>
                     )}
                   </div>
                   <div>
@@ -498,6 +526,49 @@ export default function PharmacyDashboard() {
                   </div>
                 )}
 
+                {selectedPrescription.signature && (
+                  <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-900/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Shield className="w-5 h-5 text-blue-600" />
+                        <p className="font-semibold text-blue-800 dark:text-blue-400">Assinatura Digital</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <p><strong>Status:</strong> {selectedPrescription.signature.status === 'signed' ? 'Assinada' : selectedPrescription.signature.status === 'verified' ? 'Verificada' : selectedPrescription.signature.status}</p>
+                        {selectedPrescription.signature.signedAt && (
+                          <p><strong>Assinada em:</strong> {new Date(selectedPrescription.signature.signedAt).toLocaleString('pt-BR')}</p>
+                        )}
+                        {selectedPrescription.signature.verificationCount > 0 && (
+                          <p><strong>Verificações:</strong> {selectedPrescription.signature.verificationCount}</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {selectedPrescription.dispensingRecords && selectedPrescription.dispensingRecords.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-3 flex items-center">
+                      <ClipboardCheck className="w-5 h-5 mr-2" /> Registros de Dispensação
+                    </h3>
+                    <div className="space-y-2">
+                      {selectedPrescription.dispensingRecords.map((record: any, idx: number) => (
+                        <Card key={record.id || idx} className="border">
+                          <CardContent className="p-3 text-sm">
+                            <div className="grid grid-cols-2 gap-2">
+                              {record.batchNumber && <p><strong>Lote:</strong> {record.batchNumber}</p>}
+                              {record.manufacturer && <p><strong>Fabricante:</strong> {record.manufacturer}</p>}
+                              {record.dispensedQuantity && <p><strong>Qtd Dispensada:</strong> {record.dispensedQuantity}</p>}
+                              {record.dispensedAt && <p><strong>Data:</strong> {new Date(record.dispensedAt).toLocaleString('pt-BR')}</p>}
+                            </div>
+                            {record.notes && <p className="mt-1 text-muted-foreground"><strong>Obs:</strong> {record.notes}</p>}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {selectedPrescription.status === 'active' && (
                   <Card className="border-emerald-200">
                     <CardHeader>
@@ -567,6 +638,11 @@ export default function PharmacyDashboard() {
                   </Card>
                 )}
               </div>
+              ) : (
+                <div className="py-8 text-center text-muted-foreground">
+                  <p>Prescrição não encontrada</p>
+                </div>
+              )}
             </DialogContent>
           </Dialog>
         )}
