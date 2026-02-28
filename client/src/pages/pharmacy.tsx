@@ -179,8 +179,12 @@ export default function PharmacyDashboard() {
   };
 
   const handleDispense = (prescriptionId: string) => {
-    const prescription = prescriptions.find(p => p.id === prescriptionId);
-    const itemsPayload = (prescription?.items || []).map(item => ({
+    const items = selectedPrescription?.items || prescriptions.find(p => p.id === prescriptionId)?.items || [];
+    if (items.length === 0) {
+      toast({ title: "Erro", description: "Nenhum item encontrado na prescrição para dispensar.", variant: "destructive" });
+      return;
+    }
+    const itemsPayload = items.map((item: PrescriptionItem) => ({
       prescriptionItemId: item.id,
       medicationName: item.medicationName,
       dispensedQuantity: parseInt(dispensingForm.dispensedQuantity) || item.quantity || 1,

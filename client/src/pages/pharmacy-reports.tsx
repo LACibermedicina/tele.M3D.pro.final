@@ -51,6 +51,7 @@ export default function PharmacyReportsPage() {
   const [filterMedication, setFilterMedication] = useState("");
   const [filterDoctor, setFilterDoctor] = useState("");
   const [filterPathology, setFilterPathology] = useState("");
+  const [activeTab, setActiveTab] = useState("generate");
 
   const { data: reports = [], isLoading, error: reportsError } = useQuery<PharmacyReport[]>({
     queryKey: ["/api/pharmacy/reports"],
@@ -64,6 +65,7 @@ export default function PharmacyReportsPage() {
     onSuccess: (data) => {
       toast({ title: "Relatório Gerado", description: "Relatório gerado com sucesso!" });
       setSelectedReport(data);
+      setActiveTab("view");
       queryClient.invalidateQueries({ queryKey: ["/api/pharmacy/reports"] });
     },
     onError: (error: any) => {
@@ -144,7 +146,7 @@ export default function PharmacyReportsPage() {
           )}
         </div>
 
-        <Tabs defaultValue="generate" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="print:hidden">
             <TabsTrigger value="generate">Gerar Relatório</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
@@ -256,7 +258,7 @@ export default function PharmacyReportsPage() {
             ) : (
               <div className="space-y-3">
                 {reports.map((report: PharmacyReport) => (
-                  <Card key={report.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedReport(report)}>
+                  <Card key={report.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setSelectedReport(report); setActiveTab("view"); }}>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">

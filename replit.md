@@ -21,6 +21,8 @@ The application features an Express.js backend and a React frontend, with shared
 - **WhatsApp IA:** Messages display with role labels and color-coded bubbles; patient online status shown.
 - **Documentation:** Comprehensive role-based documentation system including installation, technical, user manual, and FAQ, with PDF export.
 - **Mobile Dashboards:** Rebuilt mobile patient dashboard with prominent "Consultar Agora" card, list-style navigation links, and compact layout. Visitor dashboard with IAM3D integration.
+- **Desktop Patient Dashboard:** Prominent "Consultar Agora" button with auto-find-first-available-doctor logic, live doctor availability count, and fallback to waiting room.
+- **Installation Guide:** Updated `install.sh` (v3.5) and `installation.tsx` page covering all modules (Pharmacy, PMD, Stripe, PagBank, Digital Signatures, FHIR R4). Environment variable reference with categorized sections.
 
 **Technical Implementations:**
 - **Database:** PostgreSQL on Neon with Drizzle ORM.

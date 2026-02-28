@@ -2,7 +2,7 @@
 set -euo pipefail
 
 #===============================================================================
-#  Tele<M3D> Pro — Instalador para Servidor Externo
+#  Tele<M3D> Pro v3.5 — Instalador para Servidor Externo
 #  Repositório: https://github.com/LACibermedicina/tele.M3D.pro
 #
 #  Uso:
@@ -12,6 +12,18 @@ set -euo pipefail
 #
 #  Requisitos: Ubuntu 20.04+ / Debian 11+ (ou derivados)
 #  Instala: Node.js 20, PostgreSQL 16, Nginx, Certbot, PM2
+#
+#  Módulos incluídos:
+#    - Teleconsultas por vídeo (Agora)
+#    - IA Médica (Google Gemini + OpenAI fallback)
+#    - Farmácia (prescrições, dispensação, relatórios LGPD)
+#    - PMD v1.0 (Prontuário Médico Digital CFM/LGPD/RGPD)
+#    - Assinatura Digital (ICP-Brasil A3 / RSA-SHA256)
+#    - Exportação FHIR R4 (BR, US, EU, Internacional)
+#    - Pagamentos (PayPal, Stripe, PagBank PIX/Boleto)
+#    - Wallet Digital (TM3D tokens, NFTs, Broker interno)
+#    - IAM3D Voice Assistant (STT/TTS)
+#    - WhatsApp IA
 #===============================================================================
 
 REPO_URL="https://github.com/LACibermedicina/tele.M3D.pro.git"
@@ -21,6 +33,7 @@ NODE_VERSION="20"
 PG_VERSION="16"
 ENV_FILE="$APP_DIR/.env"
 SERVICE_NAME="telemed3"
+APP_VERSION="3.5"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -75,21 +88,22 @@ print_banner() {
   ║        ██║   ███████╗███████╗███████╗                  ║
   ║        ╚═╝   ╚══════╝╚══════╝╚══════╝                 ║
   ║                  < M 3 D >  Pro                       ║
-  ║         Telemedicina & Gestão Clínica                 ║
+  ║       Telemedicina & Gestão Clínica v3.5              ║
   ║                                                       ║
   ╚═══════════════════════════════════════════════════════╝
 BANNER
   echo -e "${NC}"
   info "Instalador automático para servidor externo"
   info "Repositório: $REPO_URL"
+  info "Versão: $APP_VERSION"
   echo ""
 }
 
 install_dependencies_debian() {
-  header "1/8 — Instalando Dependências do Sistema"
+  header "1/9 — Instalando Dependências do Sistema"
 
   apt-get update -qq
-  apt-get install -y -qq curl wget git build-essential ca-certificates gnupg lsb-release software-properties-common > /dev/null 2>&1
+  apt-get install -y -qq curl wget git build-essential ca-certificates gnupg lsb-release software-properties-common openssl > /dev/null 2>&1
   log "Dependências base instaladas"
 
   if ! command -v node &> /dev/null || [[ $(node -v | cut -d. -f1 | tr -d 'v') -lt $NODE_VERSION ]]; then
@@ -110,9 +124,9 @@ install_dependencies_debian() {
 }
 
 install_dependencies_rhel() {
-  header "1/8 — Instalando Dependências do Sistema (RHEL)"
+  header "1/9 — Instalando Dependências do Sistema (RHEL)"
 
-  yum install -y -q curl wget git gcc-c++ make ca-certificates > /dev/null 2>&1
+  yum install -y -q curl wget git gcc-c++ make ca-certificates openssl > /dev/null 2>&1
   log "Dependências base instaladas"
 
   if ! command -v node &> /dev/null || [[ $(node -v | cut -d. -f1 | tr -d 'v') -lt $NODE_VERSION ]]; then
@@ -130,7 +144,7 @@ install_dependencies_rhel() {
 }
 
 setup_postgresql() {
-  header "2/8 — Configurando PostgreSQL"
+  header "2/9 — Configurando PostgreSQL"
 
   if ! command -v psql &> /dev/null; then
     case "$OS_ID" in
@@ -180,7 +194,7 @@ setup_postgresql() {
 }
 
 create_app_user() {
-  header "3/8 — Criando Usuário do Sistema"
+  header "3/9 — Criando Usuário do Sistema"
 
   if id "$APP_USER" &>/dev/null; then
     warn "Usuário '$APP_USER' já existe"
@@ -191,7 +205,7 @@ create_app_user() {
 }
 
 clone_repository() {
-  header "4/8 — Clonando Repositório"
+  header "4/9 — Clonando Repositório"
 
   if [[ -d "$APP_DIR" ]]; then
     warn "Diretório $APP_DIR já existe."
@@ -210,7 +224,7 @@ clone_repository() {
 }
 
 configure_environment() {
-  header "5/8 — Configurando Variáveis de Ambiente"
+  header "5/9 — Configurando Variáveis de Ambiente"
 
   SESSION_SECRET=$(openssl rand -hex 32)
 
@@ -220,10 +234,10 @@ configure_environment() {
   fi
 
   cat > "$ENV_FILE" << ENVEOF
-# ══════════════════════════════════════════
-# Tele<M3D> Pro — Variáveis de Ambiente
+# ══════════════════════════════════════════════════════
+# Tele<M3D> Pro v$APP_VERSION — Variáveis de Ambiente
 # Gerado em: $(date '+%Y-%m-%d %H:%M:%S')
-# ══════════════════════════════════════════
+# ══════════════════════════════════════════════════════
 
 # ── Servidor ──
 NODE_ENV=production
@@ -233,19 +247,30 @@ SESSION_SECRET=$SESSION_SECRET
 # ── Banco de Dados ──
 DATABASE_URL=$DATABASE_URL
 
-# ── IA / Gemini (obrigatório para funcionalidades de IA) ──
+# ── IA / Google Gemini (obrigatório para funcionalidades de IA) ──
 GEMINI_API_KEY=
 
 # ── IA / OpenAI (fallback opcional) ──
-OPENAI_API_KEY=
+AI_INTEGRATIONS_OPENAI_API_KEY=
+AI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1
 
 # ── Agora.io (obrigatório para teleconsultas por vídeo) ──
 AGORA_APP_ID=
 AGORA_APP_CERTIFICATE=
 
-# ── PayPal (opcional — para compra de créditos TMC) ──
+# ── PayPal (opcional — compra de créditos TM3D) ──
 PAYPAL_CLIENT_ID=
 PAYPAL_CLIENT_SECRET=
+PAYPAL_MODE=sandbox
+
+# ── Stripe (opcional — pagamento com cartão/Apple Pay) ──
+STRIPE_SECRET_KEY=
+STRIPE_PUBLISHABLE_KEY=
+STRIPE_WEBHOOK_SECRET=
+
+# ── PagBank (opcional — PIX e Boleto) ──
+PAGBANK_TOKEN=
+PAGBANK_SANDBOX=true
 
 # ── WhatsApp Business API (opcional) ──
 WHATSAPP_ACCESS_TOKEN=
@@ -265,17 +290,35 @@ ENVEOF
   info "  sudo nano $ENV_FILE"
   echo ""
   info "  Chaves obrigatórias:"
-  info "    - GEMINI_API_KEY    → https://aistudio.google.com/apikey"
-  info "    - AGORA_APP_ID      → https://console.agora.io"
+  info "    - GEMINI_API_KEY         → https://aistudio.google.com/apikey"
+  info "    - AGORA_APP_ID           → https://console.agora.io"
   info "    - AGORA_APP_CERTIFICATE"
   echo ""
-  info "  Chaves opcionais:"
-  info "    - PAYPAL_CLIENT_ID / SECRET → https://developer.paypal.com"
-  info "    - WHATSAPP_ACCESS_TOKEN     → https://developers.facebook.com"
+  info "  Pagamentos (opcionais):"
+  info "    - PAYPAL_CLIENT_ID/SECRET → https://developer.paypal.com"
+  info "    - STRIPE_SECRET_KEY       → https://dashboard.stripe.com/apikeys"
+  info "    - PAGBANK_TOKEN           → https://pagseguro.uol.com.br"
+  echo ""
+  info "  Outros (opcionais):"
+  info "    - WHATSAPP_ACCESS_TOKEN   → https://developers.facebook.com"
+  info "    - AI_INTEGRATIONS_OPENAI_API_KEY → https://platform.openai.com/api-keys"
+}
+
+setup_upload_dirs() {
+  header "6/9 — Configurando Diretórios de Upload"
+
+  mkdir -p "$APP_DIR/client/public/uploads/profiles"
+  mkdir -p "$APP_DIR/client/public/uploads/references"
+  mkdir -p "$APP_DIR/client/public/uploads/clinical-assets"
+
+  chown -R $APP_USER:$APP_USER "$APP_DIR/client/public/uploads"
+  chmod -R 755 "$APP_DIR/client/public/uploads"
+
+  log "Diretórios de upload criados"
 }
 
 install_application() {
-  header "6/8 — Instalando Aplicação"
+  header "7/9 — Instalando Aplicação"
 
   cd "$APP_DIR"
 
@@ -294,11 +337,11 @@ install_application() {
     sudo -u $APP_USER npx drizzle-kit push --force
     sudo -u $APP_USER npm prune --omit=dev
   }
-  log "Schema do banco aplicado"
+  log "Schema do banco aplicado (tabelas de usuários, consultas, prescrições, farmácia, PMD, pagamentos, NFTs, etc.)"
 }
 
 setup_pm2() {
-  header "7/8 — Configurando PM2 (Process Manager)"
+  header "8/9 — Configurando PM2 (Process Manager)"
 
   cd "$APP_DIR"
 
@@ -315,7 +358,7 @@ module.exports = {
       PORT: 5000
     },
     env_file: '/opt/telemed3/.env',
-    max_memory_restart: '512M',
+    max_memory_restart: '1G',
     error_file: '/var/log/telemed3/error.log',
     out_file: '/var/log/telemed3/output.log',
     merge_logs: true,
@@ -341,7 +384,7 @@ PM2EOF
 }
 
 setup_nginx() {
-  header "8/8 — Configurando Nginx (Proxy Reverso)"
+  header "9/9 — Configurando Nginx (Proxy Reverso)"
 
   case "$OS_ID" in
     ubuntu|debian|linuxmint|pop)
@@ -373,6 +416,24 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_read_timeout 86400;
         proxy_send_timeout 86400;
+    }
+
+    location /uploads/ {
+        alias /opt/telemed3/client/public/uploads/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location /api/stripe/webhook {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Content-Type application/json;
+        proxy_request_buffering off;
+    }
+
+    location /api/pagbank/webhook {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Content-Type application/json;
+        proxy_request_buffering off;
     }
 }
 NGINXEOF
@@ -413,7 +474,7 @@ print_summary() {
   echo -e "${CYAN}"
   cat << 'SUMMARY'
   ╔═══════════════════════════════════════════════════════╗
-  ║          INSTALAÇÃO CONCLUÍDA COM SUCESSO!           ║
+  ║       INSTALAÇÃO CONCLUÍDA COM SUCESSO! v3.5         ║
   ╚═══════════════════════════════════════════════════════╝
 SUMMARY
   echo -e "${NC}"
@@ -421,6 +482,21 @@ SUMMARY
   info "Diretório da aplicação: $APP_DIR"
   info "Arquivo de configuração: $ENV_FILE"
   info "Logs: /var/log/telemed3/"
+  echo ""
+  echo -e "${BOLD}Módulos instalados:${NC}"
+  echo "  - Teleconsultas por vídeo (Agora WebRTC)"
+  echo "  - IA Médica (Gemini + OpenAI fallback)"
+  echo "  - Farmácia (prescrições, dispensação, relatórios LGPD)"
+  echo "  - PMD v1.0 (Prontuário Médico Digital CFM/LGPD/RGPD)"
+  echo "  - Assinatura Digital (ICP-Brasil A3 / RSA-SHA256)"
+  echo "  - Exportação FHIR R4 (BR, US, EU, Internacional)"
+  echo "  - Pagamentos (PayPal, Stripe, PagBank PIX/Boleto)"
+  echo "  - Wallet Digital (TM3D tokens, NFTs, Broker)"
+  echo "  - IAM3D Voice Assistant (STT/TTS)"
+  echo "  - Triagem IA (Manchester Protocol / WHO ETAT)"
+  echo "  - WhatsApp IA"
+  echo "  - Relatórios epidemiológicos (MeSH/ICD)"
+  echo "  - Equipes médicas e inter-consultas"
   echo ""
   echo -e "${BOLD}Próximos passos:${NC}"
   echo ""
@@ -449,6 +525,10 @@ SUMMARY
   echo "  Conectar:          sudo -u postgres psql -d $DB_NAME"
   echo "  Aplicar schema:    cd $APP_DIR && npx drizzle-kit push"
   echo ""
+  echo -e "${BOLD}Webhooks (configurar no painel do provedor):${NC}"
+  echo "  Stripe:            https://$DOMAIN/api/stripe/webhook"
+  echo "  PagBank:           https://$DOMAIN/api/pagbank/webhook"
+  echo ""
   warn "Lembre-se de configurar as chaves de API no arquivo .env antes de usar!"
   echo ""
 }
@@ -463,10 +543,14 @@ main() {
   print_banner
 
   echo -e "${BOLD}Este script irá instalar:${NC}"
-  echo "  • Node.js $NODE_VERSION + PM2"
-  echo "  • PostgreSQL $PG_VERSION"
-  echo "  • Nginx + Certbot (SSL)"
-  echo "  • Aplicação Tele<M3D> Pro"
+  echo "  - Node.js $NODE_VERSION + PM2"
+  echo "  - PostgreSQL $PG_VERSION"
+  echo "  - Nginx + Certbot (SSL)"
+  echo "  - Aplicação Tele<M3D> Pro v$APP_VERSION"
+  echo ""
+  echo -e "${BOLD}Módulos incluídos:${NC}"
+  echo "  - Teleconsultas, IA Médica, Farmácia, PMD, Pagamentos"
+  echo "  - Assinatura Digital, FHIR R4, NFTs, WhatsApp IA"
   echo ""
   read -p "Deseja continuar? [S/n]: " proceed
   proceed=${proceed:-S}
@@ -488,6 +572,7 @@ main() {
   create_app_user
   clone_repository
   configure_environment
+  setup_upload_dirs
   install_application
   setup_pm2
   setup_nginx

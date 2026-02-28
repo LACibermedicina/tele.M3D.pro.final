@@ -4,12 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import PageWrapper from "@/components/layout/page-wrapper";
 import {
   Terminal, Copy, Check, Server, Database, Key, Globe,
   Package, Settings, Shield, MonitorSmartphone, Rocket,
-  FileCode, GitBranch, HardDrive, Cpu, AlertCircle
+  FileCode, GitBranch, HardDrive, Cpu, AlertCircle,
+  CreditCard, Pill, Video, Brain, Wallet, FileText
 } from "lucide-react";
 
 function CodeBlock({ title, code, language = "bash" }: { title?: string; code: string; language?: string }) {
@@ -55,11 +55,37 @@ export default function Installation() {
                 Guia de Instalação
               </h1>
               <p className="text-muted-foreground">
-                Script de instalação e configuração do Tele{"<"}M3D{">"} Pro v3.0
+                Script de instalação e configuração do Tele{"<"}M3D{">"} Pro v3.5
               </p>
             </div>
           </div>
         </div>
+
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <h3 className="font-semibold mb-3 flex items-center gap-2">
+              <Package className="h-4 w-4 text-teal-600" />
+              Módulos Incluídos
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-sm">
+              {[
+                { icon: <Video className="h-3.5 w-3.5" />, label: "Teleconsultas (Agora)" },
+                { icon: <Brain className="h-3.5 w-3.5" />, label: "IA Médica (Gemini)" },
+                { icon: <Pill className="h-3.5 w-3.5" />, label: "Farmácia LGPD" },
+                { icon: <FileText className="h-3.5 w-3.5" />, label: "PMD v1.0 (CFM)" },
+                { icon: <Shield className="h-3.5 w-3.5" />, label: "Assinatura Digital" },
+                { icon: <Globe className="h-3.5 w-3.5" />, label: "FHIR R4 Export" },
+                { icon: <CreditCard className="h-3.5 w-3.5" />, label: "PayPal/Stripe/PIX" },
+                { icon: <Wallet className="h-3.5 w-3.5" />, label: "Wallet TM3D/NFTs" },
+              ].map((mod, idx) => (
+                <div key={idx} className="flex items-center gap-1.5 text-muted-foreground">
+                  {mod.icon}
+                  <span>{mod.label}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue="replit" className="space-y-6">
           <TabsList className="grid w-full max-w-lg grid-cols-3">
@@ -87,7 +113,7 @@ export default function Installation() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  O Tele{"<"}M3D{">"} Pro v3.0 é otimizado para rodar no Replit. O sistema possui 61 tabelas no banco de dados e a maior parte da configuração é automática.
+                  O Tele{"<"}M3D{">"} Pro v3.5 é otimizado para rodar no Replit. O schema é aplicado automaticamente com migrações internas. Inclui integração com Stripe (Replit Integration) e módulo de farmácia.
                 </p>
 
                 <div className="space-y-4">
@@ -107,7 +133,7 @@ export default function Installation() {
                       Banco de Dados PostgreSQL
                     </h3>
                     <p className="text-sm text-muted-foreground mb-2">
-                      Adicione o módulo PostgreSQL no painel de ferramentas do Replit. A variável DATABASE_URL será configurada automaticamente. O schema completo com 61 tabelas será criado automaticamente.
+                      Adicione o módulo PostgreSQL no painel de ferramentas do Replit. A variável DATABASE_URL será configurada automaticamente. O schema completo será criado automaticamente via migrações internas.
                     </p>
                   </div>
 
@@ -119,25 +145,39 @@ export default function Installation() {
                     <p className="text-sm text-muted-foreground mb-2">
                       Configure as seguintes variáveis no painel Secrets do Replit:
                     </p>
-                    <CodeBlock title="Variáveis obrigatórias" code={`DATABASE_URL=postgresql://user:pass@host:5432/dbname
+                    <CodeBlock title="Obrigatórias" code={`DATABASE_URL=postgresql://user:pass@host:5432/dbname
 GEMINI_API_KEY=sua_chave_gemini_api`} />
-                    <CodeBlock title="Variáveis opcionais (Agora para vídeo)" code={`AGORA_APP_ID=seu_agora_app_id
+                    <CodeBlock title="Teleconsultas (Agora)" code={`AGORA_APP_ID=seu_agora_app_id
 AGORA_APP_CERTIFICATE=seu_agora_certificate`} />
-                    <CodeBlock title="Variáveis opcionais (PayPal para créditos)" code={`PAYPAL_CLIENT_ID=seu_paypal_client_id
-PAYPAL_CLIENT_SECRET=seu_paypal_client_secret`} />
-                    <CodeBlock title="Variáveis opcionais (OpenAI fallback e sessão)" code={`SESSION_SECRET=uma_chave_secreta_longa
+                    <CodeBlock title="Pagamentos — PayPal" code={`PAYPAL_CLIENT_ID=seu_paypal_client_id
+PAYPAL_CLIENT_SECRET=seu_paypal_client_secret
+PAYPAL_MODE=sandbox`} />
+                    <CodeBlock title="Pagamentos — Stripe (via Replit Integration)" code={`# Stripe é configurado automaticamente via Replit Integration
+# Se preferir manual:
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...`} />
+                    <CodeBlock title="Pagamentos — PagBank (PIX/Boleto)" code={`PAGBANK_TOKEN=seu_pagbank_token
+PAGBANK_SANDBOX=true`} />
+                    <CodeBlock title="WhatsApp IA (opcional)" code={`WHATSAPP_ACCESS_TOKEN=seu_whatsapp_token
+WHATSAPP_PHONE_NUMBER_ID=seu_phone_id
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=seu_webhook_verify_token`} />
+                    <CodeBlock title="IA Fallback, Sessão e URL" code={`SESSION_SECRET=uma_chave_secreta_longa
 AI_INTEGRATIONS_OPENAI_API_KEY=sua_chave_openai
-AI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1`} />
+AI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1
+BASE_URL=https://seu-dominio.com`} />
                   </div>
 
                   <div>
                     <h3 className="font-semibold mb-2 flex items-center gap-2">
                       <Badge variant="outline">4</Badge>
-                      Instalar Dependências e Iniciar
+                      Instalar e Iniciar
                     </h3>
                     <CodeBlock title="Terminal" code={`npm install
-npm run db:push
 npm run dev`} />
+                    <p className="text-sm text-muted-foreground">
+                      O servidor inicia na porta 5000. As migrações do banco são aplicadas automaticamente.
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -170,11 +210,9 @@ npm run dev`} />
                     <Badge variant="outline">1</Badge>
                     Clonar e Instalar
                   </h3>
-                  <CodeBlock title="Terminal" code={`# Clonar o repositório
-git clone https://github.com/LACibermedicina/tele.M3D.pro.git
+                  <CodeBlock title="Terminal" code={`git clone https://github.com/LACibermedicina/tele.M3D.pro.git
 cd tele.M3D.pro
 
-# Instalar dependências
 npm install`} />
                 </div>
 
@@ -183,57 +221,56 @@ npm install`} />
                     <Badge variant="outline">2</Badge>
                     Configurar Variáveis de Ambiente
                   </h3>
-                  <CodeBlock title="Criar arquivo .env" code={`# Banco de dados PostgreSQL
+                  <CodeBlock title="Criar arquivo .env" code={`# ── Banco de dados PostgreSQL ──
 DATABASE_URL=postgresql://postgres:senha@localhost:5432/telemed3
 
-# Variáveis individuais (alternativa)
-PGHOST=localhost
-PGPORT=5432
-PGUSER=postgres
-PGPASSWORD=sua_senha
-PGDATABASE=telemed3
-
-# IA - Google Gemini (obrigatório)
+# ── IA - Google Gemini (obrigatório) ──
 GEMINI_API_KEY=sua_chave_gemini_api
 
-# Agora.io para teleconsultas (opcional)
+# ── Agora.io para teleconsultas (opcional) ──
 AGORA_APP_ID=seu_agora_app_id
 AGORA_APP_CERTIFICATE=seu_agora_certificate
 
-# PayPal para compra de créditos TM3D (opcional)
+# ── PayPal (opcional) ──
 PAYPAL_CLIENT_ID=seu_paypal_client_id
 PAYPAL_CLIENT_SECRET=seu_paypal_client_secret
+PAYPAL_MODE=sandbox
 
-# OpenAI como fallback de IA (opcional)
+# ── Stripe (opcional) ──
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# ── PagBank PIX/Boleto (opcional) ──
+PAGBANK_TOKEN=seu_pagbank_token
+PAGBANK_SANDBOX=true
+
+# ── OpenAI como fallback de IA (opcional) ──
 AI_INTEGRATIONS_OPENAI_API_KEY=sua_chave_openai
 AI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1
 
-# Sessão
-SESSION_SECRET=uma_chave_secreta_longa_e_aleatoria`} />
+# ── WhatsApp IA (opcional) ──
+WHATSAPP_ACCESS_TOKEN=seu_whatsapp_token
+WHATSAPP_PHONE_NUMBER_ID=seu_phone_id
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=seu_webhook_verify_token
+
+# ── Sessão e URL ──
+SESSION_SECRET=uma_chave_secreta_longa_e_aleatoria
+BASE_URL=https://seu-dominio.com`} />
                 </div>
 
                 <div>
                   <h3 className="font-semibold mb-2 flex items-center gap-2">
                     <Badge variant="outline">3</Badge>
-                    Criar Banco de Dados e Migrar Schema
+                    Criar Banco de Dados e Iniciar
                   </h3>
                   <CodeBlock title="Terminal" code={`# Criar banco de dados (se necessário)
 createdb telemed3
 
-# Aplicar schema do Drizzle (61 tabelas)
-npm run db:push`} />
-                </div>
-
-                <div>
-                  <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    <Badge variant="outline">4</Badge>
-                    Iniciar o Servidor
-                  </h3>
-                  <CodeBlock title="Terminal" code={`# Modo desenvolvimento (hot-reload)
+# Iniciar o servidor (migrações são aplicadas automaticamente)
 npm run dev
 
-# O servidor inicia na porta 5000
-# Acesse: http://localhost:5000`} />
+# O servidor estará disponível em http://localhost:5000`} />
                 </div>
               </CardContent>
             </Card>
@@ -247,13 +284,13 @@ npm run dev
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Use este script para instalar automaticamente em um sistema Linux/macOS:
+                  Use este script para verificar e instalar automaticamente em um sistema Linux/macOS:
                 </p>
-                <CodeBlock title="install.sh" language="bash" code={`#!/bin/bash
+                <CodeBlock title="install-local.sh" language="bash" code={`#!/bin/bash
 set -e
 
 echo "============================================"
-echo "  Tele<M3D> Pro v3.0 - Script de Instalação"
+echo "  Tele<M3D> Pro v3.5 - Script de Instalação"
 echo "============================================"
 echo ""
 
@@ -283,6 +320,12 @@ echo ""
 echo "[INFO] Instalando dependências..."
 npm install
 
+# Criar diretórios de upload
+mkdir -p client/public/uploads/profiles
+mkdir -p client/public/uploads/references
+mkdir -p client/public/uploads/clinical-assets
+echo "[OK] Diretórios de upload criados"
+
 # Verificar variáveis de ambiente
 echo ""
 if [ -z "$DATABASE_URL" ]; then
@@ -291,17 +334,12 @@ if [ -z "$DATABASE_URL" ]; then
     echo "  Exemplo: export DATABASE_URL=postgresql://user:pass@host:5432/db"
 else
     echo "[OK] DATABASE_URL configurada"
-    
-    # Aplicar schema (61 tabelas)
-    echo "[INFO] Aplicando schema do banco de dados (61 tabelas)..."
-    npm run db:push
-    echo "[OK] Schema aplicado com sucesso"
 fi
 
 if [ -z "$GEMINI_API_KEY" ]; then
     echo "[AVISO] GEMINI_API_KEY não configurada."
     echo "  A IA médica não funcionará sem esta chave."
-    echo "  Obtenha em: https://makersuite.google.com/app/apikey"
+    echo "  Obtenha em: https://aistudio.google.com/apikey"
 else
     echo "[OK] GEMINI_API_KEY configurada"
 fi
@@ -313,33 +351,14 @@ else
     echo "[OK] AGORA_APP_ID configurada"
 fi
 
-if [ -z "$PAYPAL_CLIENT_ID" ]; then
-    echo "[INFO] PAYPAL_CLIENT_ID não configurada (opcional)."
-    echo "  Necessária para compra de créditos TM3D via PayPal."
-else
-    echo "[OK] PAYPAL_CLIENT_ID configurada"
-fi
-
-if [ -z "$PAYPAL_CLIENT_SECRET" ]; then
-    echo "[INFO] PAYPAL_CLIENT_SECRET não configurada (opcional)."
-    echo "  Necessária para processamento de pagamentos PayPal."
-else
-    echo "[OK] PAYPAL_CLIENT_SECRET configurada"
-fi
-
-if [ -z "$SESSION_SECRET" ]; then
-    echo "[INFO] SESSION_SECRET não configurada (opcional)."
-    echo "  Recomendada para segurança de sessões em produção."
-else
-    echo "[OK] SESSION_SECRET configurada"
-fi
-
-if [ -z "$AI_INTEGRATIONS_OPENAI_API_KEY" ]; then
-    echo "[INFO] AI_INTEGRATIONS_OPENAI_API_KEY não configurada (opcional)."
-    echo "  Fallback de IA caso o Gemini não esteja disponível."
-else
-    echo "[OK] AI_INTEGRATIONS_OPENAI_API_KEY configurada"
-fi
+# Verificação de pagamentos
+for VAR in PAYPAL_CLIENT_ID STRIPE_SECRET_KEY PAGBANK_TOKEN; do
+    if [ -z "\${!VAR:-}" ]; then
+        echo "[INFO] $VAR não configurada (opcional)."
+    else
+        echo "[OK] $VAR configurada"
+    fi
+done
 
 echo ""
 echo "============================================"
@@ -352,9 +371,17 @@ echo ""
 echo "O servidor estará disponível em:"
 echo "  http://localhost:5000"
 echo ""
-echo "Usuário padrão (médico):"
-echo "  E-mail: doctor@telemed.com"
-echo "  Senha: doctor123"
+echo "Módulos incluídos:"
+echo "  - Teleconsultas por vídeo (Agora)"
+echo "  - IA Médica (Gemini + OpenAI fallback)"
+echo "  - Farmácia (prescrições, dispensação, LGPD)"
+echo "  - PMD v1.0 (Prontuário Digital CFM/LGPD)"
+echo "  - Assinatura Digital (ICP-Brasil)"
+echo "  - Exportação FHIR R4"
+echo "  - Pagamentos (PayPal, Stripe, PagBank PIX/Boleto)"
+echo "  - Wallet Digital (TM3D, NFTs, Broker)"
+echo "  - IAM3D Voice Assistant"
+echo "  - WhatsApp IA"
 echo "============================================"`} />
               </CardContent>
             </Card>
@@ -375,11 +402,11 @@ echo "============================================"`} />
                     <span className="font-bold text-green-800 dark:text-green-200">Instalador Automático (Recomendado)</span>
                   </div>
                   <p className="text-sm text-green-700 dark:text-green-300 mb-3">
-                    Copie e execute o comando abaixo no terminal do seu servidor Ubuntu/Debian como root. O script instala tudo automaticamente: Node.js, PostgreSQL, Nginx, SSL, PM2 e a aplicação.
+                    Copie e execute o comando abaixo no terminal do seu servidor Ubuntu/Debian como root. O script instala tudo automaticamente: Node.js, PostgreSQL, Nginx, SSL, PM2 e a aplicação completa com todos os módulos.
                   </p>
                   <CodeBlock title="Executar no servidor (como root)" code={`curl -fsSL https://raw.githubusercontent.com/LACibermedicina/tele.M3D.pro/main/install.sh | sudo bash`} />
                   <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                    O script clona o repositório do GitHub, configura o banco de dados (61 tabelas), compila a aplicação e inicia o serviço com PM2.
+                    O script clona o repositório do GitHub, configura o banco de dados, compila a aplicação e inicia o serviço com PM2. Inclui farmácia, PMD, assinatura digital, pagamentos e todos os módulos.
                   </p>
                 </div>
 
@@ -418,6 +445,10 @@ RUN npm ci --only=production
 COPY . .
 RUN npm run build
 
+RUN mkdir -p client/public/uploads/profiles \\
+    client/public/uploads/references \\
+    client/public/uploads/clinical-assets
+
 EXPOSE 5000
 
 ENV NODE_ENV=production
@@ -438,9 +469,17 @@ services:
       - AGORA_APP_CERTIFICATE=\${AGORA_APP_CERTIFICATE}
       - PAYPAL_CLIENT_ID=\${PAYPAL_CLIENT_ID}
       - PAYPAL_CLIENT_SECRET=\${PAYPAL_CLIENT_SECRET}
+      - PAYPAL_MODE=\${PAYPAL_MODE:-sandbox}
+      - STRIPE_SECRET_KEY=\${STRIPE_SECRET_KEY}
+      - STRIPE_PUBLISHABLE_KEY=\${STRIPE_PUBLISHABLE_KEY}
+      - STRIPE_WEBHOOK_SECRET=\${STRIPE_WEBHOOK_SECRET}
+      - PAGBANK_TOKEN=\${PAGBANK_TOKEN}
+      - PAGBANK_SANDBOX=\${PAGBANK_SANDBOX:-true}
       - AI_INTEGRATIONS_OPENAI_API_KEY=\${AI_INTEGRATIONS_OPENAI_API_KEY}
       - AI_INTEGRATIONS_OPENAI_BASE_URL=\${AI_INTEGRATIONS_OPENAI_BASE_URL}
       - NODE_ENV=production
+    volumes:
+      - uploads:/app/client/public/uploads
     depends_on:
       - db
 
@@ -456,12 +495,10 @@ services:
       - "5432:5432"
 
 volumes:
-  pgdata:`} />
+  pgdata:
+  uploads:`} />
                   <CodeBlock title="Terminal" code={`# Build e iniciar
 docker-compose up -d
-
-# Aplicar migrações (61 tabelas)
-docker-compose exec app npm run db:push
 
 # Ver logs
 docker-compose logs -f app`} />
@@ -472,6 +509,34 @@ docker-compose logs -f app`} />
                 <div>
                   <h3 className="font-semibold mb-2 flex items-center gap-2">
                     <Badge variant="outline">3</Badge>
+                    Webhooks de Pagamento
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Configure os URLs de webhook nos painéis dos provedores de pagamento:
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
+                      <CreditCard className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      <div>
+                        <span className="font-medium">Stripe:</span>{" "}
+                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">https://seu-dominio.com/api/stripe/webhook</code>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
+                      <CreditCard className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <div>
+                        <span className="font-medium">PagBank:</span>{" "}
+                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">https://seu-dominio.com/api/pagbank/webhook</code>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h3 className="font-semibold mb-2 flex items-center gap-2">
+                    <Badge variant="outline">4</Badge>
                     Checklist de Produção
                   </h3>
                   <div className="space-y-2 text-sm">
@@ -479,17 +544,22 @@ docker-compose logs -f app`} />
                       "Configurar DATABASE_URL com banco de produção (Neon, Supabase, AWS RDS)",
                       "Definir GEMINI_API_KEY para IA médica (Google Gemini)",
                       "Configurar AGORA_APP_ID e AGORA_APP_CERTIFICATE para teleconsultas",
-                      "Configurar PAYPAL_CLIENT_ID e PAYPAL_CLIENT_SECRET para compra de créditos TM3D",
+                      "Configurar PAYPAL_CLIENT_ID/SECRET e PAYPAL_MODE=production",
+                      "Configurar STRIPE_SECRET_KEY e STRIPE_WEBHOOK_SECRET",
+                      "Configurar PAGBANK_TOKEN e PAGBANK_SANDBOX=false",
                       "Definir SESSION_SECRET com chave forte e aleatória",
-                      "Ativar HTTPS/TLS (obrigatório para WebRTC)",
-                      "Configurar backup automático do banco de dados (61 tabelas)",
-                      "Configurar monitoramento e alertas",
+                      "Definir BASE_URL com o domínio público (ex: https://med.exemplo.com)",
+                      "Ativar HTTPS/TLS (obrigatório para WebRTC e pagamentos)",
+                      "Configurar backup automático do banco de dados",
+                      "Configurar monitoramento e alertas (PM2 logs)",
                       "Revisar permissões de acesso e CORS",
                       "Configurar timeout de inatividade no painel Admin (auto-logout)",
-                      "Configurar e-mail de destinatário PayPal nas configurações do Admin",
-                      "Verificar conformidade FHIR R4 para exportação de dados de pacientes",
-                      "Testar todas as funcionalidades críticas",
-                      "Configurar domínio personalizado e DNS"
+                      "Registrar webhooks do Stripe e PagBank nos painéis dos provedores",
+                      "Verificar conformidade FHIR R4 para exportação de dados",
+                      "Configurar diretórios de upload com permissões adequadas",
+                      "Testar módulo de farmácia (prescrições, dispensação, relatórios)",
+                      "Testar assinatura digital de prescrições",
+                      "Configurar domínio personalizado e DNS",
                     ].map((item, idx) => (
                       <div key={idx} className="flex items-center gap-2 text-muted-foreground">
                         <div className="w-5 h-5 rounded border border-border flex items-center justify-center flex-shrink-0">
@@ -506,52 +576,82 @@ docker-compose logs -f app`} />
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5 text-blue-600" />
-                  Estrutura do Banco de Dados
+                  <Key className="h-5 w-5 text-amber-600" />
+                  Referência de Variáveis de Ambiente
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  O schema possui 61 tabelas gerenciadas pelo Drizzle ORM. Principais tabelas:
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                  {[
-                    { name: "users", desc: "Médicos, admins, pacientes" },
-                    { name: "patients", desc: "Dados clínicos dos pacientes" },
-                    { name: "appointments", desc: "Agendamentos de consultas" },
-                    { name: "video_consultations", desc: "Teleconsultas por vídeo" },
-                    { name: "consultation_notes", desc: "Notas das teleconsultas" },
-                    { name: "consultation_requests", desc: "Solicitações de consulta" },
-                    { name: "consultation_sessions", desc: "Sessões de consulta ativas" },
-                    { name: "consultation_access_tokens", desc: "Tokens QR/código de acesso" },
-                    { name: "inter_consultations", desc: "Inter-consultas médicas" },
-                    { name: "medical_records", desc: "Prontuários eletrônicos" },
-                    { name: "prescriptions", desc: "Prescrições médicas" },
-                    { name: "post_consultation_items", desc: "Itens pós-consulta (IA)" },
-                    { name: "diagnostic_inferences", desc: "Classificação diagnóstica (CID/DSM)" },
-                    { name: "whatsapp_messages", desc: "Mensagens do WhatsApp IA" },
-                    { name: "doctor_notes", desc: "Anotações do médico" },
-                    { name: "doctor_schedule", desc: "Horários dos médicos" },
-                    { name: "medical_teams", desc: "Equipes médicas" },
-                    { name: "tmc_credit_packages", desc: "Pacotes de créditos TM3D" },
-                    { name: "paypal_orders", desc: "Pedidos PayPal" },
-                    { name: "tmc_transactions", desc: "Transações de créditos TM3D" },
-                    { name: "wallet_audit_log", desc: "Auditoria de carteira" },
-                    { name: "dynamic_nfts", desc: "NFTs dinâmicos (LGPD)" },
-                    { name: "nft_ownership", desc: "Propriedade de NFTs" },
-                    { name: "broker_orders", desc: "Ordens do broker TM3D/NFT" },
-                    { name: "broker_trades", desc: "Negociações do broker" },
-                    { name: "tm3d_supply", desc: "Oferta de tokens TM3D" },
-                    { name: "external_wallets", desc: "Carteiras externas (MetaMask)" },
-                    { name: "withdrawal_requests", desc: "Solicitações de saque" },
-                    { name: "chatbot_references", desc: "Referências clínicas da IA" },
-                    { name: "pending_notifications", desc: "Notificações pendentes" },
-                  ].map((table) => (
-                    <div key={table.name} className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
-                      <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{table.name}</code>
-                      <span className="text-muted-foreground text-xs">{table.desc}</span>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <h4 className="font-semibold text-green-700 dark:text-green-400 mb-1">Obrigatórias</h4>
+                    <div className="grid grid-cols-1 gap-1">
+                      {[
+                        { key: "DATABASE_URL", desc: "URL de conexão PostgreSQL" },
+                        { key: "GEMINI_API_KEY", desc: "Chave da API Google Gemini para IA médica" },
+                        { key: "SESSION_SECRET", desc: "Segredo para sessões e JWT" },
+                      ].map((v) => (
+                        <div key={v.key} className="flex items-center gap-2 p-1.5 rounded bg-green-50 dark:bg-green-900/10">
+                          <code className="text-xs font-mono font-medium text-green-800 dark:text-green-300">{v.key}</code>
+                          <span className="text-muted-foreground text-xs">— {v.desc}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-blue-700 dark:text-blue-400 mb-1">Teleconsultas</h4>
+                    <div className="grid grid-cols-1 gap-1">
+                      {[
+                        { key: "AGORA_APP_ID", desc: "ID do app Agora.io" },
+                        { key: "AGORA_APP_CERTIFICATE", desc: "Certificado do app Agora.io" },
+                      ].map((v) => (
+                        <div key={v.key} className="flex items-center gap-2 p-1.5 rounded bg-blue-50 dark:bg-blue-900/10">
+                          <code className="text-xs font-mono font-medium text-blue-800 dark:text-blue-300">{v.key}</code>
+                          <span className="text-muted-foreground text-xs">— {v.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-purple-700 dark:text-purple-400 mb-1">Pagamentos</h4>
+                    <div className="grid grid-cols-1 gap-1">
+                      {[
+                        { key: "PAYPAL_CLIENT_ID", desc: "Client ID do PayPal" },
+                        { key: "PAYPAL_CLIENT_SECRET", desc: "Client Secret do PayPal" },
+                        { key: "PAYPAL_MODE", desc: "sandbox ou production" },
+                        { key: "STRIPE_SECRET_KEY", desc: "Chave secreta do Stripe" },
+                        { key: "STRIPE_PUBLISHABLE_KEY", desc: "Chave pública do Stripe" },
+                        { key: "STRIPE_WEBHOOK_SECRET", desc: "Segredo do webhook Stripe" },
+                        { key: "PAGBANK_TOKEN", desc: "Token de autenticação PagBank" },
+                        { key: "PAGBANK_SANDBOX", desc: "true para sandbox, false para produção" },
+                      ].map((v) => (
+                        <div key={v.key} className="flex items-center gap-2 p-1.5 rounded bg-purple-50 dark:bg-purple-900/10">
+                          <code className="text-xs font-mono font-medium text-purple-800 dark:text-purple-300">{v.key}</code>
+                          <span className="text-muted-foreground text-xs">— {v.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-orange-700 dark:text-orange-400 mb-1">Outros</h4>
+                    <div className="grid grid-cols-1 gap-1">
+                      {[
+                        { key: "AI_INTEGRATIONS_OPENAI_API_KEY", desc: "Chave OpenAI (fallback de IA)" },
+                        { key: "AI_INTEGRATIONS_OPENAI_BASE_URL", desc: "URL base da API OpenAI" },
+                        { key: "WHATSAPP_ACCESS_TOKEN", desc: "Token do WhatsApp Business API" },
+                        { key: "WHATSAPP_PHONE_NUMBER_ID", desc: "ID do número WhatsApp" },
+                        { key: "WHATSAPP_WEBHOOK_VERIFY_TOKEN", desc: "Token de verificação do webhook WhatsApp" },
+                        { key: "BASE_URL", desc: "URL pública do servidor (ex: https://med.exemplo.com)" },
+                      ].map((v) => (
+                        <div key={v.key} className="flex items-center gap-2 p-1.5 rounded bg-orange-50 dark:bg-orange-900/10">
+                          <code className="text-xs font-mono font-medium text-orange-800 dark:text-orange-300">{v.key}</code>
+                          <span className="text-muted-foreground text-xs">— {v.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -559,34 +659,55 @@ docker-compose logs -f app`} />
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Key className="h-5 w-5 text-amber-600" />
-                  Variáveis de Ambiente Completas
+                  <Database className="h-5 w-5 text-blue-600" />
+                  Estrutura do Banco de Dados
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 text-sm">
+                <p className="text-sm text-muted-foreground mb-4">
+                  O schema é gerenciado pelo Drizzle ORM com migrações automáticas. Principais tabelas:
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   {[
-                    { name: "DATABASE_URL", required: true, desc: "URL de conexão PostgreSQL" },
-                    { name: "PGHOST", required: false, desc: "Host do PostgreSQL (alternativa)" },
-                    { name: "PGPORT", required: false, desc: "Porta do PostgreSQL (padrão: 5432)" },
-                    { name: "PGUSER", required: false, desc: "Usuário do PostgreSQL" },
-                    { name: "PGPASSWORD", required: false, desc: "Senha do PostgreSQL" },
-                    { name: "PGDATABASE", required: false, desc: "Nome do banco" },
-                    { name: "GEMINI_API_KEY", required: true, desc: "Chave da API Google Gemini" },
-                    { name: "AGORA_APP_ID", required: false, desc: "App ID do Agora.io (teleconsultas)" },
-                    { name: "AGORA_APP_CERTIFICATE", required: false, desc: "Certificado do Agora.io" },
-                    { name: "SESSION_SECRET", required: false, desc: "Chave secreta para sessões" },
-                    { name: "AI_INTEGRATIONS_OPENAI_API_KEY", required: false, desc: "Chave OpenAI (fallback IA)" },
-                    { name: "AI_INTEGRATIONS_OPENAI_BASE_URL", required: false, desc: "URL base OpenAI (fallback)" },
-                    { name: "PAYPAL_CLIENT_ID", required: false, desc: "Client ID do PayPal (compra de créditos TM3D)" },
-                    { name: "PAYPAL_CLIENT_SECRET", required: false, desc: "Client Secret do PayPal (processamento de pagamentos)" },
-                  ].map((env) => (
-                    <div key={env.name} className="flex items-center gap-3 p-2 rounded-md bg-muted/30">
-                      <code className="text-xs font-mono font-semibold">{env.name}</code>
-                      <Badge variant={env.required ? "destructive" : "secondary"} className="text-[10px]">
-                        {env.required ? "obrigatório" : "opcional"}
-                      </Badge>
-                      <span className="text-muted-foreground text-xs flex-1">{env.desc}</span>
+                    { name: "users", desc: "Médicos, admins, pacientes, farmacêuticos" },
+                    { name: "patients", desc: "Dados clínicos dos pacientes" },
+                    { name: "appointments", desc: "Agendamentos de consultas" },
+                    { name: "video_consultations", desc: "Teleconsultas por vídeo" },
+                    { name: "consultation_notes", desc: "Notas e transcrições" },
+                    { name: "consultation_requests", desc: "Solicitações de consulta" },
+                    { name: "consultation_sessions", desc: "Sessões ativas" },
+                    { name: "consultation_access_tokens", desc: "QR codes e códigos de acesso" },
+                    { name: "inter_consultations", desc: "Inter-consultas médicas" },
+                    { name: "medical_records", desc: "Prontuários (PMD v1.0)" },
+                    { name: "prescriptions", desc: "Prescrições médicas" },
+                    { name: "prescription_items", desc: "Itens das prescrições" },
+                    { name: "pharmacy_dispensing", desc: "Registros de dispensação" },
+                    { name: "pharmacy_reports", desc: "Relatórios da farmácia (LGPD)" },
+                    { name: "digital_signatures", desc: "Assinaturas digitais ICP-Brasil" },
+                    { name: "post_consultation_items", desc: "Itens pós-consulta (IA)" },
+                    { name: "diagnostic_inferences", desc: "CID-10/11 e DSM-5/TR" },
+                    { name: "doctor_notes", desc: "Anotações do médico" },
+                    { name: "doctor_schedule", desc: "Horários e plantão" },
+                    { name: "medical_teams", desc: "Equipes médicas" },
+                    { name: "tmc_credit_packages", desc: "Pacotes de créditos TM3D" },
+                    { name: "payment_transactions", desc: "Transações (PayPal/Stripe/PagBank)" },
+                    { name: "tmc_transactions", desc: "Histórico de créditos TM3D" },
+                    { name: "wallet_audit_log", desc: "Auditoria de carteira" },
+                    { name: "dynamic_nfts", desc: "NFTs dinâmicos (LGPD)" },
+                    { name: "broker_orders", desc: "Ordens do broker TM3D/NFT" },
+                    { name: "broker_trades", desc: "Negociações do broker" },
+                    { name: "external_wallets", desc: "Carteiras externas (MetaMask)" },
+                    { name: "withdrawal_requests", desc: "Solicitações de saque" },
+                    { name: "pending_notifications", desc: "Notificações pendentes" },
+                    { name: "system_settings", desc: "Configurações do sistema (Admin)" },
+                    { name: "whatsapp_messages", desc: "Mensagens WhatsApp IA" },
+                  ].map((table) => (
+                    <div key={table.name} className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
+                      <Database className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                      <div>
+                        <code className="text-xs font-mono font-medium">{table.name}</code>
+                        <span className="text-xs text-muted-foreground ml-1.5">— {table.desc}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
