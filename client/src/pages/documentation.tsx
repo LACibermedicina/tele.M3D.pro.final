@@ -53,7 +53,8 @@ import {
   Landmark,
   Pill,
   ClipboardList,
-  Zap
+  Zap,
+  Globe
 } from "lucide-react";
 
 export default function Documentation() {
@@ -115,6 +116,12 @@ export default function Documentation() {
       borderHeader: "border-slate-200",
       icon: "text-slate-700",
       bullet: "bg-slate-600"
+    },
+    teal: {
+      bgHeader: "bg-teal-50/90",
+      borderHeader: "border-teal-200",
+      icon: "text-teal-700",
+      bullet: "bg-teal-600"
     }
   };
 
@@ -373,6 +380,28 @@ export default function Documentation() {
       ]
     },
     {
+      category: "Suporte Multilíngue",
+      icon: Globe,
+      color: "teal",
+      items: [
+        {
+          title: "8 Idiomas Suportados",
+          description: "Interface completa traduzida com seletor de idioma no cabeçalho",
+          features: ["Português (BR)", "Espanhol (ES)", "Inglês (EN)", "Francês, Alemão, Italiano", "Chinês, Guarani", "Seletor no header"]
+        },
+        {
+          title: "IA e Voz Multilíngue",
+          description: "Respostas da IA, STT e TTS respeitam o idioma selecionado pelo usuário",
+          features: ["Chatbot responde no idioma", "IAM3D voz localizada", "STT reconhece por locale", "TTS sintetiza por idioma"]
+        },
+        {
+          title: "Internacionalização (i18n)",
+          description: "Sistema i18next com fallback automático e traduções organizadas por módulo",
+          features: ["react-i18next", "Fallback para PT-BR", "Chaves por módulo", "Formatação de data/hora"]
+        }
+      ]
+    },
+    {
       category: "Blockchain e NFTs",
       icon: Coins,
       color: "amber",
@@ -399,7 +428,7 @@ export default function Documentation() {
   const technicalSpecs = [
     {
       title: "Arquitetura Frontend",
-      items: ["React 18 com TypeScript", "Tailwind CSS + shadcn/ui", "Wouter para roteamento", "TanStack Query v5", "Web Speech API (IAM3D)"]
+      items: ["React 18 com TypeScript", "Tailwind CSS + shadcn/ui", "Wouter para roteamento", "TanStack Query v5", "Web Speech API (IAM3D)", "i18next (8 idiomas)"]
     },
     {
       title: "Arquitetura Backend",

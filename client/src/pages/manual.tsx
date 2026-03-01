@@ -152,6 +152,33 @@ Os links temporários são seguros e possuem tempo de expiração configurável 
 - O acesso ao vídeo é liberado automaticamente quando a consulta começa`
       }
     ]
+  },
+  {
+    id: "v-idiomas",
+    title: "Suporte Multilíngue",
+    icon: <Globe className="h-5 w-5" />,
+    content: [
+      {
+        title: "Escolhendo o Idioma",
+        text: `O Tele<M3D> Pro suporta 8 idiomas. Para alterar o idioma:
+
+1. **Clique no seletor de idioma** no canto superior direito do cabeçalho (ícone de bandeira ou código do idioma)
+2. **Selecione o idioma desejado** na lista suspensa
+3. A mudança é aplicada **instantaneamente** em toda a interface
+
+**Idiomas disponíveis:**
+- 🇧🇷 Português (BR) — idioma padrão
+- 🇪🇸 Español (ES)
+- 🇺🇸 English (EN)
+- 🇫🇷 Français (FR)
+- 🇩🇪 Deutsch (DE)
+- 🇮🇹 Italiano (IT)
+- 🇨🇳 中文 (ZH)
+- 🇵🇾 Guaraní (GN)
+
+O chatbot e o assistente de voz IAM3D também respondem no idioma selecionado. O reconhecimento de voz (STT) e a síntese de fala (TTS) são ajustados automaticamente para o locale correspondente.`
+      }
+    ]
   }
 ];
 

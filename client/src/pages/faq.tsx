@@ -8,7 +8,7 @@ import {
   Video, Calendar, MessageCircle, FileText, Bot, CreditCard,
   Shield, Settings,
   Wallet, Gem, Download, Mic, Clock, BarChart3, Stethoscope, ClipboardCheck,
-  Pill, Star, ClipboardList, Ban
+  Pill, Star, ClipboardList, Ban, Globe
 } from "lucide-react";
 
 interface FaqItem {
@@ -437,6 +437,31 @@ const faqData: FaqItem[] = [
     category: "Assinatura Digital",
     question: "As prescrições possuem assinatura digital?",
     answer: "Sim. Toda prescrição emitida no sistema recebe uma assinatura digital vinculada ao médico prescritor. Um QR Code é gerado automaticamente, permitindo que qualquer pessoa (farmacêutico, paciente ou auditor) verifique a autenticidade da prescrição através de um endpoint público de verificação."
+  },
+  {
+    category: "Multilíngue",
+    question: "Quais idiomas o sistema suporta?",
+    answer: "O sistema suporta 8 idiomas: Português (BR), Espanhol (ES), Inglês (EN), Francês (FR), Alemão (DE), Italiano (IT), Chinês (ZH) e Guarani (GN). O idioma pode ser alterado a qualquer momento pelo seletor no cabeçalho da página. Toda a interface, menus, botões e mensagens são traduzidos automaticamente."
+  },
+  {
+    category: "Multilíngue",
+    question: "A IA responde no idioma selecionado?",
+    answer: "Sim. O chatbot e o assistente de voz IAM3D detectam automaticamente o idioma selecionado pelo usuário e respondem nesse idioma. O reconhecimento de voz (STT) e a síntese de voz (TTS) também são ajustados para o idioma correto, garantindo uma experiência natural em qualquer idioma suportado."
+  },
+  {
+    category: "Multilíngue",
+    question: "Como mudar o idioma do sistema?",
+    answer: "Clique no seletor de idioma localizado no cabeçalho (ao lado do ícone de sino/notificações). Selecione o idioma desejado na lista. A mudança é aplicada instantaneamente em toda a interface, incluindo o chatbot, IAM3D, menus e formulários. A preferência é salva automaticamente para sessões futuras."
+  },
+  {
+    category: "Triagem",
+    question: "Como funciona a triagem por IA?",
+    answer: "A triagem utiliza o Protocolo de Manchester (5 níveis) ou WHO ETAT como fallback. O paciente descreve seus sintomas no chatbot ou IAM3D, e a IA classifica a urgência com badge colorido (vermelho=emergência, laranja=muito urgente, amarelo=urgente, verde=pouco urgente, azul=não urgente). A classificação ajuda a priorizar o atendimento."
+  },
+  {
+    category: "Triagem",
+    question: "A triagem substitui uma consulta médica?",
+    answer: "Não. A triagem por IA é uma ferramenta auxiliar de pré-atendimento que ajuda a organizar a ordem de prioridade. Ela não substitui a avaliação de um profissional de saúde. Em casos de emergência, o sistema orienta o paciente a ligar para o SAMU (192) ou ir ao pronto-socorro mais próximo."
   }
 ];
 
@@ -468,6 +493,8 @@ const categoryIcons: Record<string, any> = {
   "Prontuário Unificado": <ClipboardList className="h-4 w-4" />,
   "Assinatura Digital": <Shield className="h-4 w-4" />,
   "Bloqueio de Pacientes": <Ban className="h-4 w-4" />,
+  "Multilíngue": <Globe className="h-4 w-4" />,
+  "Triagem": <Stethoscope className="h-4 w-4" />,
 };
 
 export default function FAQ() {
