@@ -42,10 +42,11 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
 
   const { data: consultations } = useQuery<ConsultationsData>({
     queryKey: ['/api/my-consultations'],
+    retry: false,
   });
 
   const { data: wallet } = useQuery<WalletData>({
-    queryKey: ['/api/wallet/balance'],
+    queryKey: ['/api/credits/balance'],
   });
 
   const { data: pricing } = useQuery<{ urgentConsultationPrice: number }>({
