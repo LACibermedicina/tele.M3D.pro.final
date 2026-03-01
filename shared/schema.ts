@@ -1901,6 +1901,74 @@ export const insertPaymentTransactionSchema = createInsertSchema(paymentTransact
 export type InsertPaymentTransaction = z.infer<typeof insertPaymentTransactionSchema>;
 export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
 
+// Clinics — Hospital administration groups created by doctors
+export const clinics = pgTable("clinics", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  ownerId: uuid("owner_id").references(() => users.id).notNull(),
+  inviteCode: text("invite_code").notNull().unique(),
+  patientDiscountPercent: integer("patient_discount_percent").notNull().default(30),
+  associateCommissionPercent: integer("associate_commission_percent").notNull().default(15),
+  logoUrl: text("logo_url"),
+  specialty: text("specialty"),
+  settings: jsonb("settings"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertClinicSchema = createInsertSchema(clinics).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertClinic = z.infer<typeof insertClinicSchema>;
+export type Clinic = typeof clinics.$inferSelect;
+
+// Clinic Members — doctors and staff associated with a clinic
+export const clinicMembers = pgTable("clinic_members", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  clinicId: uuid("clinic_id").references(() => clinics.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  role: text("role").notNull().default("associate"), // owner, associate, staff
+  isActive: boolean("is_active").default(true),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
+export const insertClinicMemberSchema = createInsertSchema(clinicMembers).omit({ id: true, joinedAt: true });
+export type InsertClinicMember = z.infer<typeof insertClinicMemberSchema>;
+export type ClinicMember = typeof clinicMembers.$inferSelect;
+
+// Clinic Patient Bindings — patients linked to a clinic for discounts
+export const clinicPatientBindings = pgTable("clinic_patient_bindings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  clinicId: uuid("clinic_id").references(() => clinics.id).notNull(),
+  patientId: uuid("patient_id").references(() => users.id).notNull(),
+  discountPercent: integer("discount_percent").notNull().default(30),
+  isActive: boolean("is_active").default(true),
+  boundAt: timestamp("bound_at").defaultNow().notNull(),
+});
+
+export const insertClinicPatientBindingSchema = createInsertSchema(clinicPatientBindings).omit({ id: true, boundAt: true });
+export type InsertClinicPatientBinding = z.infer<typeof insertClinicPatientBindingSchema>;
+export type ClinicPatientBinding = typeof clinicPatientBindings.$inferSelect;
+
+// Clinic Consultation Log — tracks clinic-related consultations for commission
+export const clinicConsultationLogs = pgTable("clinic_consultation_logs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  clinicId: uuid("clinic_id").references(() => clinics.id).notNull(),
+  appointmentId: uuid("appointment_id"),
+  doctorId: uuid("doctor_id").references(() => users.id).notNull(),
+  patientId: uuid("patient_id").references(() => users.id).notNull(),
+  originalCost: integer("original_cost").notNull(),
+  discountApplied: integer("discount_applied").notNull().default(0),
+  finalCost: integer("final_cost").notNull(),
+  ownerCommission: integer("owner_commission").notNull().default(0),
+  ownerPaid: boolean("owner_paid").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertClinicConsultationLogSchema = createInsertSchema(clinicConsultationLogs).omit({ id: true, createdAt: true });
+export type InsertClinicConsultationLog = z.infer<typeof insertClinicConsultationLogSchema>;
+export type ClinicConsultationLog = typeof clinicConsultationLogs.$inferSelect;
+
 // TMC system types
 export interface TmcBalance {
   userId: string;

@@ -14,7 +14,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
@@ -87,6 +87,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migratePMDColumns();
   await migrateDoctorPatientBlocks();
   await migratePaymentTransactions();
+  await migrateClinicTables();
   await initStripeSync();
   
   // Initialize default doctor if not exists and get the actual ID
@@ -19539,6 +19540,629 @@ ${combinedText.slice(0, 8000)}`;
     }
   });
 
+  // ========== CLINIC MANAGEMENT API ==========
+
+  function generateInviteCode(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
+
+  app.post('/api/clinics', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'doctor' && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas médicos podem criar clínicas' });
+      }
+      const { name, description, specialty } = req.body;
+      if (!name) return res.status(400).json({ message: 'Nome da clínica é obrigatório' });
+
+      let inviteCode = generateInviteCode();
+      let attempts = 0;
+      while (attempts < 10) {
+        const existing = await db.select().from(clinics).where(eq(clinics.inviteCode, inviteCode)).limit(1);
+        if (!existing.length) break;
+        inviteCode = generateInviteCode();
+        attempts++;
+      }
+
+      const [clinic] = await db.insert(clinics).values({
+        name,
+        description: description || null,
+        ownerId: user.id,
+        inviteCode,
+        specialty: specialty || user.specialization || null,
+      }).returning();
+
+      await db.insert(clinicMembers).values({
+        clinicId: clinic.id,
+        userId: user.id,
+        role: 'owner',
+      });
+
+      res.json(clinic);
+    } catch (error) {
+      console.error('Failed to create clinic:', error);
+      res.status(500).json({ message: 'Erro ao criar clínica' });
+    }
+  });
+
+  app.get('/api/clinics', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const memberships = await db.select().from(clinicMembers)
+        .where(and(eq(clinicMembers.userId, user.id), eq(clinicMembers.isActive, true)));
+      if (!memberships.length) return res.json([]);
+
+      const clinicIds = memberships.map(m => m.clinicId);
+      const allClinics = await db.select().from(clinics)
+        .where(and(inArray(clinics.id, clinicIds), eq(clinics.isActive, true)));
+
+      const result = await Promise.all(allClinics.map(async (clinic) => {
+        const members = await db.select({
+          member: clinicMembers,
+          user: users,
+        }).from(clinicMembers)
+          .innerJoin(users, eq(clinicMembers.userId, users.id))
+          .where(and(eq(clinicMembers.clinicId, clinic.id), eq(clinicMembers.isActive, true)));
+
+        const patientCount = await db.select().from(clinicPatientBindings)
+          .where(and(eq(clinicPatientBindings.clinicId, clinic.id), eq(clinicPatientBindings.isActive, true)));
+
+        const myRole = memberships.find(m => m.clinicId === clinic.id)?.role || 'associate';
+        return {
+          ...clinic,
+          myRole,
+          memberCount: members.length,
+          patientCount: patientCount.length,
+          members: members.map(m => ({
+            id: m.member.id,
+            userId: m.user.id,
+            name: m.user.name,
+            role: m.member.role,
+            specialization: m.user.specialization,
+            medicalLicense: m.user.medicalLicense,
+            isOnline: m.user.isOnline,
+            joinedAt: m.member.joinedAt,
+          })),
+        };
+      }));
+
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to fetch clinics:', error);
+      res.status(500).json({ message: 'Erro ao buscar clínicas' });
+    }
+  });
+
+  app.get('/api/clinics/:id', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const clinicId = req.params.id;
+      const [clinic] = await db.select().from(clinics).where(eq(clinics.id, clinicId)).limit(1);
+      if (!clinic) return res.status(404).json({ message: 'Clínica não encontrada' });
+
+      const membership = await db.select().from(clinicMembers)
+        .where(and(eq(clinicMembers.clinicId, clinicId), eq(clinicMembers.userId, user.id), eq(clinicMembers.isActive, true)))
+        .limit(1);
+      if (!membership.length && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Você não é membro desta clínica' });
+      }
+
+      const members = await db.select({
+        member: clinicMembers,
+        user: users,
+      }).from(clinicMembers)
+        .innerJoin(users, eq(clinicMembers.userId, users.id))
+        .where(and(eq(clinicMembers.clinicId, clinicId), eq(clinicMembers.isActive, true)));
+
+      const patientBindings = await db.select({
+        binding: clinicPatientBindings,
+        user: users,
+      }).from(clinicPatientBindings)
+        .innerJoin(users, eq(clinicPatientBindings.patientId, users.id))
+        .where(and(eq(clinicPatientBindings.clinicId, clinicId), eq(clinicPatientBindings.isActive, true)));
+
+      const consultationLogs = await db.select().from(clinicConsultationLogs)
+        .where(eq(clinicConsultationLogs.clinicId, clinicId))
+        .orderBy(desc(clinicConsultationLogs.createdAt))
+        .limit(50);
+
+      res.json({
+        ...clinic,
+        myRole: membership[0]?.role || (user.role === 'admin' ? 'admin' : null),
+        members: members.map(m => ({
+          id: m.member.id,
+          userId: m.user.id,
+          name: m.user.name,
+          email: m.user.email,
+          phone: m.user.phone,
+          role: m.member.role,
+          specialization: m.user.specialization,
+          medicalLicense: m.user.medicalLicense,
+          isOnline: m.user.isOnline,
+          joinedAt: m.member.joinedAt,
+        })),
+        patients: patientBindings.map(p => ({
+          id: p.binding.id,
+          userId: p.user.id,
+          name: p.user.name,
+          email: p.user.email,
+          discountPercent: p.binding.discountPercent,
+          boundAt: p.binding.boundAt,
+        })),
+        consultationLogs,
+      });
+    } catch (error) {
+      console.error('Failed to fetch clinic details:', error);
+      res.status(500).json({ message: 'Erro ao buscar detalhes da clínica' });
+    }
+  });
+
+  app.patch('/api/clinics/:id', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const clinicId = req.params.id;
+      const [clinic] = await db.select().from(clinics).where(eq(clinics.id, clinicId)).limit(1);
+      if (!clinic) return res.status(404).json({ message: 'Clínica não encontrada' });
+
+      if (clinic.ownerId !== user.id && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas o proprietário pode editar a clínica' });
+      }
+
+      const { name, description, specialty, patientDiscountPercent, associateCommissionPercent } = req.body;
+      const updateData: any = { updatedAt: new Date() };
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (specialty !== undefined) updateData.specialty = specialty;
+      if (patientDiscountPercent !== undefined) updateData.patientDiscountPercent = Math.max(0, Math.min(100, parseInt(patientDiscountPercent)));
+      if (associateCommissionPercent !== undefined) updateData.associateCommissionPercent = Math.max(0, Math.min(100, parseInt(associateCommissionPercent)));
+
+      const [updated] = await db.update(clinics).set(updateData).where(eq(clinics.id, clinicId)).returning();
+      res.json(updated);
+    } catch (error) {
+      console.error('Failed to update clinic:', error);
+      res.status(500).json({ message: 'Erro ao atualizar clínica' });
+    }
+  });
+
+  app.delete('/api/clinics/:id', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const clinicId = req.params.id;
+      const [clinic] = await db.select().from(clinics).where(eq(clinics.id, clinicId)).limit(1);
+      if (!clinic) return res.status(404).json({ message: 'Clínica não encontrada' });
+      if (clinic.ownerId !== user.id && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas o proprietário pode desativar a clínica' });
+      }
+
+      await db.update(clinics).set({ isActive: false, updatedAt: new Date() }).where(eq(clinics.id, clinicId));
+      await db.update(clinicMembers).set({ isActive: false }).where(eq(clinicMembers.clinicId, clinicId));
+      await db.update(clinicPatientBindings).set({ isActive: false }).where(eq(clinicPatientBindings.clinicId, clinicId));
+      res.json({ message: 'Clínica desativada com sucesso' });
+    } catch (error) {
+      console.error('Failed to deactivate clinic:', error);
+      res.status(500).json({ message: 'Erro ao desativar clínica' });
+    }
+  });
+
+  app.post('/api/clinics/join', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const { inviteCode } = req.body;
+      if (!inviteCode) return res.status(400).json({ message: 'Código de convite é obrigatório' });
+
+      const [clinic] = await db.select().from(clinics)
+        .where(and(eq(clinics.inviteCode, inviteCode.toUpperCase()), eq(clinics.isActive, true)))
+        .limit(1);
+      if (!clinic) return res.status(404).json({ message: 'Código de convite inválido ou clínica inativa' });
+
+      const existing = await db.select().from(clinicMembers)
+        .where(and(eq(clinicMembers.clinicId, clinic.id), eq(clinicMembers.userId, user.id)))
+        .limit(1);
+      if (existing.length) {
+        if (existing[0].isActive) return res.status(400).json({ message: 'Você já é membro desta clínica' });
+        await db.update(clinicMembers).set({ isActive: true }).where(eq(clinicMembers.id, existing[0].id));
+        return res.json({ message: 'Reativado na clínica', clinic });
+      }
+
+      const role = (user.role === 'doctor') ? 'associate' : 'staff';
+      await db.insert(clinicMembers).values({
+        clinicId: clinic.id,
+        userId: user.id,
+        role,
+      });
+
+      broadcastToUser(clinic.ownerId, {
+        type: 'clinic_member_joined',
+        data: { clinicId: clinic.id, clinicName: clinic.name, memberName: user.name, role },
+      });
+
+      try {
+        await db.insert(pendingNotifications).values({
+          userId: clinic.ownerId,
+          type: 'clinic_member_joined',
+          title: 'Novo membro na clínica',
+          message: `${user.name} entrou na clínica ${clinic.name} como ${role}`,
+          data: { clinicId: clinic.id, memberId: user.id },
+        });
+      } catch {}
+
+      res.json({ message: 'Entrou na clínica com sucesso', clinic });
+    } catch (error) {
+      console.error('Failed to join clinic:', error);
+      res.status(500).json({ message: 'Erro ao entrar na clínica' });
+    }
+  });
+
+  app.delete('/api/clinics/:id/members/:userId', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const { id: clinicId, userId: targetUserId } = req.params;
+      const [clinic] = await db.select().from(clinics).where(eq(clinics.id, clinicId)).limit(1);
+      if (!clinic) return res.status(404).json({ message: 'Clínica não encontrada' });
+
+      if (clinic.ownerId !== user.id && user.id !== targetUserId && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Sem permissão para remover membro' });
+      }
+      if (targetUserId === clinic.ownerId) {
+        return res.status(400).json({ message: 'Não é possível remover o proprietário da clínica' });
+      }
+
+      await db.update(clinicMembers).set({ isActive: false })
+        .where(and(eq(clinicMembers.clinicId, clinicId), eq(clinicMembers.userId, targetUserId)));
+      res.json({ message: 'Membro removido com sucesso' });
+    } catch (error) {
+      console.error('Failed to remove clinic member:', error);
+      res.status(500).json({ message: 'Erro ao remover membro' });
+    }
+  });
+
+  app.post('/api/clinics/:id/bind-patient', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const clinicId = req.params.id;
+
+      if (user.role !== 'patient') {
+        return res.status(403).json({ message: 'Apenas pacientes podem vincular-se a uma clínica' });
+      }
+
+      const [clinic] = await db.select().from(clinics)
+        .where(and(eq(clinics.id, clinicId), eq(clinics.isActive, true)))
+        .limit(1);
+      if (!clinic) return res.status(404).json({ message: 'Clínica não encontrada' });
+
+      const existing = await db.select().from(clinicPatientBindings)
+        .where(and(eq(clinicPatientBindings.clinicId, clinicId), eq(clinicPatientBindings.patientId, user.id)))
+        .limit(1);
+      if (existing.length) {
+        if (existing[0].isActive) return res.status(400).json({ message: 'Você já está vinculado a esta clínica' });
+        await db.update(clinicPatientBindings).set({ isActive: true, discountPercent: clinic.patientDiscountPercent })
+          .where(eq(clinicPatientBindings.id, existing[0].id));
+        return res.json({ message: 'Vínculo reativado', discountPercent: clinic.patientDiscountPercent });
+      }
+
+      await db.insert(clinicPatientBindings).values({
+        clinicId,
+        patientId: user.id,
+        discountPercent: clinic.patientDiscountPercent,
+      });
+
+      res.json({ message: 'Vinculado à clínica com sucesso', discountPercent: clinic.patientDiscountPercent });
+    } catch (error) {
+      console.error('Failed to bind patient to clinic:', error);
+      res.status(500).json({ message: 'Erro ao vincular paciente' });
+    }
+  });
+
+  app.delete('/api/clinics/:id/unbind-patient', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const clinicId = req.params.id;
+
+      await db.update(clinicPatientBindings).set({ isActive: false })
+        .where(and(eq(clinicPatientBindings.clinicId, clinicId), eq(clinicPatientBindings.patientId, user.id)));
+      res.json({ message: 'Vínculo removido com sucesso' });
+    } catch (error) {
+      console.error('Failed to unbind patient:', error);
+      res.status(500).json({ message: 'Erro ao remover vínculo' });
+    }
+  });
+
+  app.get('/api/clinics/patient/my-clinics', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const bindings = await db.select({
+        binding: clinicPatientBindings,
+        clinic: clinics,
+      }).from(clinicPatientBindings)
+        .innerJoin(clinics, eq(clinicPatientBindings.clinicId, clinics.id))
+        .where(and(eq(clinicPatientBindings.patientId, user.id), eq(clinicPatientBindings.isActive, true), eq(clinics.isActive, true)));
+
+      res.json(bindings.map(b => ({
+        ...b.clinic,
+        discountPercent: b.binding.discountPercent,
+        boundAt: b.binding.boundAt,
+      })));
+    } catch (error) {
+      console.error('Failed to fetch patient clinics:', error);
+      res.status(500).json({ message: 'Erro ao buscar clínicas' });
+    }
+  });
+
+  app.get('/api/clinics/lookup/:inviteCode', async (req: any, res) => {
+    try {
+      const code = req.params.inviteCode?.toUpperCase();
+      const [clinic] = await db.select().from(clinics)
+        .where(and(eq(clinics.inviteCode, code), eq(clinics.isActive, true)))
+        .limit(1);
+      if (!clinic) return res.status(404).json({ message: 'Clínica não encontrada' });
+
+      const owner = await db.select().from(users).where(eq(users.id, clinic.ownerId)).limit(1);
+      const memberCount = await db.select().from(clinicMembers)
+        .where(and(eq(clinicMembers.clinicId, clinic.id), eq(clinicMembers.isActive, true)));
+
+      res.json({
+        id: clinic.id,
+        name: clinic.name,
+        description: clinic.description,
+        specialty: clinic.specialty,
+        ownerName: owner[0]?.name || 'Médico',
+        ownerSpecialization: owner[0]?.specialization,
+        memberCount: memberCount.length,
+        patientDiscountPercent: clinic.patientDiscountPercent,
+      });
+    } catch (error) {
+      console.error('Failed to lookup clinic:', error);
+      res.status(500).json({ message: 'Erro ao buscar clínica' });
+    }
+  });
+
+  app.post('/api/clinics/:id/invite-associate', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const clinicId = req.params.id;
+      const { associateId, consultationId } = req.body;
+
+      const [clinic] = await db.select().from(clinics).where(eq(clinics.id, clinicId)).limit(1);
+      if (!clinic) return res.status(404).json({ message: 'Clínica não encontrada' });
+
+      const membership = await db.select().from(clinicMembers)
+        .where(and(eq(clinicMembers.clinicId, clinicId), eq(clinicMembers.userId, user.id), eq(clinicMembers.isActive, true)))
+        .limit(1);
+      if (!membership.length) return res.status(403).json({ message: 'Você não é membro desta clínica' });
+
+      const associateMembership = await db.select().from(clinicMembers)
+        .where(and(eq(clinicMembers.clinicId, clinicId), eq(clinicMembers.userId, associateId), eq(clinicMembers.isActive, true)))
+        .limit(1);
+      if (!associateMembership.length) return res.status(404).json({ message: 'Associado não encontrado nesta clínica' });
+
+      const associate = await db.select().from(users).where(eq(users.id, associateId)).limit(1);
+      if (!associate.length) return res.status(404).json({ message: 'Usuário não encontrado' });
+
+      const actionUrl = consultationId
+        ? `/consultation/video/${consultationId}?clinicId=${clinicId}&role=associate`
+        : `/clinics/${clinicId}`;
+
+      const notificationMessage = consultationId
+        ? `Dr. ${user.name} solicita sua participação em uma consulta da clínica ${clinic.name}. Acesse o link para entrar diretamente.`
+        : `Dr. ${user.name} solicita sua presença na clínica ${clinic.name}.`;
+
+      broadcastToUser(associateId, {
+        type: 'clinic_associate_invite',
+        data: {
+          clinicId, clinicName: clinic.name,
+          doctorName: user.name, consultationId,
+          message: notificationMessage, actionUrl,
+        },
+      });
+
+      try {
+        await db.insert(pendingNotifications).values({
+          userId: associateId,
+          type: 'clinic_associate_invite',
+          title: 'Chamado da Clínica',
+          message: notificationMessage,
+          priority: consultationId ? 'critical' : 'high',
+          data: { clinicId, consultationId, actionUrl },
+        });
+      } catch {}
+
+      if (associate[0].whatsappNumber) {
+        try {
+          await whatsAppService.sendMessage(
+            associate[0].whatsappNumber,
+            `[${clinic.name}] ${notificationMessage}`
+          );
+        } catch (e) { console.log('WhatsApp notification failed:', e); }
+      }
+
+      if (associate[0].email) {
+        console.log(`[EMAIL] To: ${associate[0].email} | Subject: Chamado da Clínica ${clinic.name} | Body: ${notificationMessage}`);
+      }
+
+      if (associate[0].phone) {
+        console.log(`[SMS] To: ${associate[0].phone} | Body: [${clinic.name}] ${notificationMessage}`);
+      }
+
+      res.json({ message: 'Convite enviado por todos os canais disponíveis' });
+    } catch (error) {
+      console.error('Failed to invite clinic associate:', error);
+      res.status(500).json({ message: 'Erro ao convidar associado' });
+    }
+  });
+
+  app.get('/api/clinics/:id/shared-patients', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const clinicId = req.params.id;
+
+      const membership = await db.select().from(clinicMembers)
+        .where(and(eq(clinicMembers.clinicId, clinicId), eq(clinicMembers.userId, user.id), eq(clinicMembers.isActive, true)))
+        .limit(1);
+      if (!membership.length && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Você não é membro desta clínica' });
+      }
+
+      const bindings = await db.select({
+        binding: clinicPatientBindings,
+        user: users,
+      }).from(clinicPatientBindings)
+        .innerJoin(users, eq(clinicPatientBindings.patientId, users.id))
+        .where(and(eq(clinicPatientBindings.clinicId, clinicId), eq(clinicPatientBindings.isActive, true)));
+
+      const patientData = await Promise.all(bindings.map(async (b) => {
+        const patientRecord = await db.select().from(patients).where(eq(patients.userId, b.user.id)).limit(1);
+        return {
+          userId: b.user.id,
+          name: b.user.name,
+          email: b.user.email,
+          phone: b.user.phone,
+          discountPercent: b.binding.discountPercent,
+          patientId: patientRecord[0]?.id,
+          dateOfBirth: patientRecord[0]?.dateOfBirth,
+          gender: patientRecord[0]?.gender,
+          bloodType: patientRecord[0]?.bloodType,
+        };
+      }));
+
+      res.json(patientData);
+    } catch (error) {
+      console.error('Failed to fetch shared patients:', error);
+      res.status(500).json({ message: 'Erro ao buscar pacientes compartilhados' });
+    }
+  });
+
+  app.get('/api/clinics/:id/shared-records/:patientUserId', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const { id: clinicId, patientUserId } = req.params;
+
+      const membership = await db.select().from(clinicMembers)
+        .where(and(eq(clinicMembers.clinicId, clinicId), eq(clinicMembers.userId, user.id), eq(clinicMembers.isActive, true)))
+        .limit(1);
+      if (!membership.length) return res.status(403).json({ message: 'Sem permissão' });
+
+      const patientBinding = await db.select().from(clinicPatientBindings)
+        .where(and(eq(clinicPatientBindings.clinicId, clinicId), eq(clinicPatientBindings.patientId, patientUserId), eq(clinicPatientBindings.isActive, true)))
+        .limit(1);
+      if (!patientBinding.length) return res.status(403).json({ message: 'Paciente não vinculado a esta clínica' });
+
+      const patientRecord = await db.select().from(patients).where(eq(patients.userId, patientUserId)).limit(1);
+      if (!patientRecord.length) return res.json({ records: [], appointments: [], prescriptionList: [] });
+
+      const records = await db.select().from(medicalRecords)
+        .where(eq(medicalRecords.patientId, patientRecord[0].id))
+        .orderBy(desc(medicalRecords.createdAt)).limit(50);
+
+      const appointmentList = await db.select().from(appointments)
+        .where(eq(appointments.patientId, patientRecord[0].id))
+        .orderBy(desc(appointments.createdAt)).limit(50);
+
+      const prescriptionList = await db.select().from(prescriptions)
+        .where(eq(prescriptions.patientId, patientRecord[0].id))
+        .orderBy(desc(prescriptions.createdAt)).limit(50);
+
+      res.json({ records, appointments: appointmentList, prescriptionList });
+    } catch (error) {
+      console.error('Failed to fetch shared records:', error);
+      res.status(500).json({ message: 'Erro ao buscar prontuários compartilhados' });
+    }
+  });
+
+  app.get('/api/clinics/check-discount/:doctorId', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const doctorId = req.params.doctorId;
+
+      const doctorMemberships = await db.select().from(clinicMembers)
+        .where(and(eq(clinicMembers.userId, doctorId), eq(clinicMembers.isActive, true)));
+      if (!doctorMemberships.length) return res.json({ hasDiscount: false, discountPercent: 0 });
+
+      const clinicIds = doctorMemberships.map(m => m.clinicId);
+      const patientBinding = await db.select({
+        binding: clinicPatientBindings,
+        clinic: clinics,
+      }).from(clinicPatientBindings)
+        .innerJoin(clinics, eq(clinicPatientBindings.clinicId, clinics.id))
+        .where(and(
+          eq(clinicPatientBindings.patientId, user.id),
+          eq(clinicPatientBindings.isActive, true),
+          inArray(clinicPatientBindings.clinicId, clinicIds),
+          eq(clinics.isActive, true)
+        ))
+        .limit(1);
+
+      if (patientBinding.length) {
+        return res.json({
+          hasDiscount: true,
+          discountPercent: patientBinding[0].binding.discountPercent,
+          clinicId: patientBinding[0].clinic.id,
+          clinicName: patientBinding[0].clinic.name,
+        });
+      }
+
+      res.json({ hasDiscount: false, discountPercent: 0 });
+    } catch (error) {
+      console.error('Failed to check clinic discount:', error);
+      res.status(500).json({ message: 'Erro ao verificar desconto' });
+    }
+  });
+
+  app.get('/api/admin/clinics', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Apenas admin' });
+
+      const allClinics = await db.select({
+        clinic: clinics,
+        owner: users,
+      }).from(clinics)
+        .innerJoin(users, eq(clinics.ownerId, users.id))
+        .orderBy(desc(clinics.createdAt));
+
+      const result = await Promise.all(allClinics.map(async (c) => {
+        const memberCount = await db.select().from(clinicMembers)
+          .where(and(eq(clinicMembers.clinicId, c.clinic.id), eq(clinicMembers.isActive, true)));
+        const patientCount = await db.select().from(clinicPatientBindings)
+          .where(and(eq(clinicPatientBindings.clinicId, c.clinic.id), eq(clinicPatientBindings.isActive, true)));
+        return {
+          ...c.clinic,
+          ownerName: c.owner.name,
+          ownerSpecialization: c.owner.specialization,
+          memberCount: memberCount.length,
+          patientCount: patientCount.length,
+        };
+      }));
+
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to fetch admin clinics:', error);
+      res.status(500).json({ message: 'Erro ao buscar clínicas' });
+    }
+  });
+
+  app.patch('/api/admin/clinics/:id', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Apenas admin' });
+
+      const clinicId = req.params.id;
+      const { patientDiscountPercent, associateCommissionPercent, isActive } = req.body;
+      const updateData: any = { updatedAt: new Date() };
+      if (patientDiscountPercent !== undefined) updateData.patientDiscountPercent = Math.max(0, Math.min(100, parseInt(patientDiscountPercent)));
+      if (associateCommissionPercent !== undefined) updateData.associateCommissionPercent = Math.max(0, Math.min(100, parseInt(associateCommissionPercent)));
+      if (isActive !== undefined) updateData.isActive = isActive;
+
+      const [updated] = await db.update(clinics).set(updateData).where(eq(clinics.id, clinicId)).returning();
+      res.json(updated);
+    } catch (error) {
+      console.error('Failed to update admin clinic:', error);
+      res.status(500).json({ message: 'Erro ao atualizar clínica' });
+    }
+  });
+
   return httpServer;
 }
 
@@ -19741,6 +20365,66 @@ async function migratePaymentTransactions() {
     console.log('✓ Payment transactions table migrated successfully');
   } catch (error) {
     console.error('Failed to migrate payment transactions:', error);
+  }
+}
+
+async function migrateClinicTables() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS clinics (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name TEXT NOT NULL,
+        description TEXT,
+        owner_id UUID NOT NULL REFERENCES users(id),
+        invite_code TEXT NOT NULL UNIQUE,
+        patient_discount_percent INTEGER NOT NULL DEFAULT 30,
+        associate_commission_percent INTEGER NOT NULL DEFAULT 15,
+        logo_url TEXT,
+        specialty TEXT,
+        settings JSONB,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS clinic_members (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        clinic_id UUID NOT NULL REFERENCES clinics(id),
+        user_id UUID NOT NULL REFERENCES users(id),
+        role TEXT NOT NULL DEFAULT 'associate',
+        is_active BOOLEAN DEFAULT true,
+        joined_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS clinic_patient_bindings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        clinic_id UUID NOT NULL REFERENCES clinics(id),
+        patient_id UUID NOT NULL REFERENCES users(id),
+        discount_percent INTEGER NOT NULL DEFAULT 30,
+        is_active BOOLEAN DEFAULT true,
+        bound_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS clinic_consultation_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        clinic_id UUID NOT NULL REFERENCES clinics(id),
+        appointment_id UUID,
+        doctor_id UUID NOT NULL REFERENCES users(id),
+        patient_id UUID NOT NULL REFERENCES users(id),
+        original_cost INTEGER NOT NULL,
+        discount_applied INTEGER NOT NULL DEFAULT 0,
+        final_cost INTEGER NOT NULL,
+        owner_commission INTEGER NOT NULL DEFAULT 0,
+        owner_paid BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    console.log('✓ Clinic tables migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate clinic tables:', error);
   }
 }
 

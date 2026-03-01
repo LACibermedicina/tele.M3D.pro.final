@@ -61,6 +61,7 @@ import Manual from "@/pages/manual";
 import FAQ from "@/pages/faq";
 import Installation from "@/pages/installation";
 import Broker from "@/pages/broker";
+import ClinicsPage from "@/pages/clinics";
 import Reports from "@/pages/reports";
 import NftManagement from "@/pages/nft-management";
 import UrgentAlertOverlay from "@/components/notifications/urgent-alert-overlay";
@@ -464,6 +465,13 @@ function Router() {
           <ProtectedRoute>
             <Header />
             <Broker />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/clinics">
+          <ProtectedRoute>
+            <Header />
+            <ClinicsPage />
           </ProtectedRoute>
         </Route>
         
