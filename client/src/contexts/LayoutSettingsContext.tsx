@@ -23,11 +23,11 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
   });
 
   const mobileMenuStyle: MobileMenuStyle = (() => {
-    if (!layoutData) return "sidebar";
+    if (!layoutData) return "slide";
     const setting = layoutData.find((s: any) => s.settingKey === "mobile_menu_style");
     const val = setting?.settingValue;
     if (val === "slide" || val === "sidebar" || val === "bottom") return val;
-    return "sidebar";
+    return "slide";
   })();
 
   return (
