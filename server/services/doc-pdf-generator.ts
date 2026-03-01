@@ -67,7 +67,7 @@ export function generateSystemDocumentationHTML(): string {
   <div class="cover-title">Tele&lt;M3D&gt; Pro</div>
   <div class="cover-subtitle">Sistema de Gestão Médica e Telemedicina</div>
   <p style="font-size:14px;color:#475569;margin-bottom:20px">Documentação Completa do Sistema</p>
-  <div class="cover-version">Versão 3.0</div>
+  <div class="cover-version">Versão 3.5</div>
   <p class="cover-date" style="margin-top:40px">${today}</p>
   <p style="font-size:10px;color:#94a3b8;margin-top:10px">Cybermedicina Ltda. — Todos os direitos reservados</p>
 </div>
@@ -91,6 +91,12 @@ export function generateSystemDocumentationHTML(): string {
   <div class="toc-item"><span>13. Instalação e Configuração</span><span>18</span></div>
   <div class="toc-item"><span>14. Exportação de Dados do Paciente (HL7 FHIR R4)</span><span>20</span></div>
   <div class="toc-item"><span>15. Detecção de Inatividade e Auto-Logout</span><span>22</span></div>
+  <div class="toc-item"><span>16. Módulo de Farmácia</span><span>24</span></div>
+  <div class="toc-item"><span>17. PMD v1.0 (Prontuário Médico Digital)</span><span>25</span></div>
+  <div class="toc-item"><span>18. Checkout Unificado de Pagamentos</span><span>26</span></div>
+  <div class="toc-item"><span>19. Assinatura Digital Verificável</span><span>27</span></div>
+  <div class="toc-item"><span>20. Sistema de Gestão de Clínicas</span><span>28</span></div>
+  <div class="toc-item"><span>21. Avaliação de Consultas e Prontuário Unificado</span><span>29</span></div>
 </div>
 </div>
 
@@ -144,8 +150,9 @@ export function generateSystemDocumentationHTML(): string {
     <div class="card-header">💰 Sistema Financeiro</div>
     <ul>
       <li>Créditos TMC com taxa configurável</li>
-      <li>Checkout via PayPal (6 pacotes, 15 custos de funcionalidades)</li>
+      <li>Checkout Unificado: PayPal, Stripe (cartão/Apple Pay), PagBank (PIX/Boleto)</li>
       <li>Carteira digital com auditoria completa</li>
+      <li>Monitoramento de Pagamentos (Admin /admin/payments)</li>
       <li>NFTs de dados médicos (LGPD)</li>
       <li>Broker interno para TM3D/NFTs (order book, histórico)</li>
       <li>Carteiras externas (MetaMask/WalletConnect)</li>
@@ -156,9 +163,13 @@ export function generateSystemDocumentationHTML(): string {
     <div class="card-header">🔒 Segurança e Conformidade</div>
     <ul>
       <li>Detecção de inatividade e auto-logout configurável</li>
+      <li>Assinatura Digital Verificável (RSA-PSS ICP-Brasil A3 + RSA-SHA256)</li>
       <li>Exportação FHIR R4 (Brasil/SUS, USA/HIPAA, EU/GDPR, Internacional)</li>
+      <li>PMD v1.0 (Prontuário Médico Digital CFM/LGPD/RGPD)</li>
       <li>Desidentificação HIPAA de dados exportados</li>
       <li>Dashboard de relatórios (consultas, pacientes, financeiro, performance)</li>
+      <li>Módulo de Farmácia com LGPD (dispensação, relatórios)</li>
+      <li>Sistema de Gestão de Clínicas multi-unidade</li>
     </ul>
   </div>
 </div>
@@ -211,7 +222,7 @@ export function generateSystemDocumentationHTML(): string {
   <text x="570" y="55" text-anchor="middle" font-size="10" fill="#475569">Google Gemini 2.0 Flash</text>
   <text x="570" y="70" text-anchor="middle" font-size="10" fill="#475569">OpenAI GPT-4o-mini (fallback)</text>
   <text x="570" y="85" text-anchor="middle" font-size="10" fill="#475569">Agora.io (Vídeo/RTC)</text>
-  <text x="570" y="100" text-anchor="middle" font-size="10" fill="#475569">PayPal (Pagamentos)</text>
+  <text x="570" y="100" text-anchor="middle" font-size="10" fill="#475569">PayPal/Stripe/PagBank</text>
   <text x="570" y="115" text-anchor="middle" font-size="10" fill="#475569">Web Speech API (Voz)</text>
   <text x="570" y="130" text-anchor="middle" font-size="10" fill="#475569">MetaMask/WalletConnect</text>
 
@@ -247,7 +258,7 @@ export function generateSystemDocumentationHTML(): string {
   <tr><td>IA Principal</td><td>Google Gemini 2.0 Flash</td><td>Chatbot, triagem, diagnóstico</td></tr>
   <tr><td>IA Fallback</td><td>OpenAI GPT-4o-mini</td><td>Backup para serviços IA</td></tr>
   <tr><td>Vídeo</td><td>Agora.io SDK</td><td>Videoconsultas em tempo real</td></tr>
-  <tr><td>Pagamento</td><td>PayPal REST API</td><td>Checkout para créditos TMC</td></tr>
+  <tr><td>Pagamento</td><td>PayPal, Stripe, PagBank</td><td>Checkout unificado (cartão/PIX/Boleto)</td></tr>
   <tr><td>Voz</td><td>Web Speech API</td><td>STT/TTS para IAM3D</td></tr>
   <tr><td>Exportação</td><td>HL7 FHIR R4</td><td>Exportação de dados clínicos multi-padrão</td></tr>
 </table>
@@ -430,9 +441,25 @@ export function generateSystemDocumentationHTML(): string {
 
 <h3>4.7 Créditos TMC</h3>
 <ul>
-  <li>Compra de créditos via PayPal</li>
+  <li>Compra de créditos via PayPal, Stripe (cartão/Apple Pay) ou PagBank (PIX/Boleto)</li>
   <li>6 pacotes disponíveis (Básico, Padrão, Profissional, Premium, Empresarial, Ilimitado)</li>
   <li>Saldo e histórico de transações na carteira digital</li>
+</ul>
+
+<h3>4.8 Avaliação de Consultas</h3>
+<ul>
+  <li>Após a conclusão da consulta, avaliar com 1-5 estrelas</li>
+  <li>Feedback textual opcional sobre a experiência</li>
+  <li>Disponível na aba "Histórico" das consultas</li>
+  <li>Ajuda a melhorar a qualidade dos atendimentos</li>
+</ul>
+
+<h3>4.9 Consultar Agora</h3>
+<ul>
+  <li>Botão no dashboard para consulta imediata</li>
+  <li>Auto-busca do primeiro médico disponível online</li>
+  <li>Contagem de médicos disponíveis em tempo real</li>
+  <li>Fallback para sala de espera se nenhum médico disponível</li>
 </ul>
 </div>
 
@@ -561,6 +588,43 @@ export function generateSystemDocumentationHTML(): string {
   <li>Relatórios epidemiológicos com análise IA</li>
   <li>Exportação de dados em CSV</li>
 </ul>
+
+<h3>5.11 PMD v1.0 (Prontuário Médico Digital)</h3>
+<ul>
+  <li>Criar/editar registros clínicos estruturados em conformidade CFM/LGPD/RGPD</li>
+  <li>Audit logs automáticos (timestamp, usuário, ação, dados antigos/novos)</li>
+  <li>Exportação multi-locale: Brasil (CFM+CRM), Espanha (RGPD+DNI), EUA (HIPAA)</li>
+  <li>Formatos de exportação: JSON, PDF, XML e CSV</li>
+</ul>
+
+<h3>5.12 Prontuário Unificado</h3>
+<ul>
+  <li>Timeline consolidada de todos os dados do paciente</li>
+  <li>Agrupamento por dia com cards coloridos (azul=consultas, verde=registros, âmbar=prescrições, roxo=exames)</li>
+  <li>Substitui navegação entre múltiplas telas para ver histórico completo</li>
+</ul>
+
+<h3>5.13 Bloqueio de Pacientes</h3>
+<ul>
+  <li>Bloquear pacientes de solicitar consultas com você</li>
+  <li>Desbloqueio disponível a qualquer momento</li>
+  <li>O paciente pode continuar agendando com outros médicos</li>
+</ul>
+
+<h3>5.14 Geração de Medicamentos por IA</h3>
+<ul>
+  <li>Planos de tratamento completos gerados por IA a partir de diagnóstico e sintomas</li>
+  <li>Considera histórico do paciente e medicamentos em uso</li>
+  <li>Verificação automática de interações medicamentosas</li>
+  <li>Médico revisa, edita e aprova cada sugestão</li>
+</ul>
+
+<h3>5.15 Integração com Farmácia</h3>
+<ul>
+  <li>Prescrições automaticamente disponíveis para farmacêuticos</li>
+  <li>Assinatura digital verificável pelo farmacêutico</li>
+  <li>Acompanhamento do status de dispensação em tempo real</li>
+</ul>
 </div>
 
 <!-- 6. GUIA DO ADMINISTRADOR -->
@@ -617,6 +681,28 @@ export function generateSystemDocumentationHTML(): string {
   <li><strong>Taxa de Câmbio:</strong> TMC/USD com atualização em tempo real</li>
   <li><strong>Envio de Créditos:</strong> Adicionar créditos diretamente a contas de usuários</li>
   <li><strong>Log de Auditoria:</strong> Histórico completo de transações com filtros por ação e resumos semanais</li>
+</ul>
+
+<h3>6.7 Monitoramento de Pagamentos</h3>
+<ul>
+  <li>Dashboard em /admin/payments com visão consolidada de todos os pagamentos</li>
+  <li>Filtros por provedor (PayPal, Stripe, PagBank), status e período</li>
+  <li>Cards de resumo: total de transações, receita, taxa de aprovação, ticket médio</li>
+  <li>Breakdown por provedor de pagamento</li>
+</ul>
+
+<h3>6.8 Gestão de Farmacêuticos</h3>
+<ul>
+  <li>Cadastro de farmacêuticos com CRF e dados profissionais</li>
+  <li>Monitoramento de atividade de dispensação</li>
+  <li>Relatórios de atividade por farmacêutico</li>
+</ul>
+
+<h3>6.9 Gestão de Clínicas</h3>
+<ul>
+  <li>Visão geral de todas as clínicas cadastradas</li>
+  <li>Monitoramento de membros, pacientes e receitas por clínica</li>
+  <li>Configuração de descontos e comissões padrão</li>
 </ul>
 </div>
 
@@ -720,7 +806,7 @@ export function generateSystemDocumentationHTML(): string {
 <p>A plataforma utiliza um sistema de créditos interno (TMC) para transações financeiras.</p>
 <ul>
   <li>Taxa de câmbio configurável (padrão: 1 USD = 5 TMC)</li>
-  <li>Compra via PayPal com 6 pacotes pré-configurados</li>
+  <li>Checkout Unificado: PayPal, Stripe (cartão/Apple Pay) e PagBank (PIX/Boleto)</li>
   <li>15 tipos de custos para funcionalidades do sistema</li>
 </ul>
 
@@ -738,7 +824,7 @@ export function generateSystemDocumentationHTML(): string {
 <h3>8.3 Carteira Digital</h3>
 <ul>
   <li><strong>Saldo:</strong> Visualização em TMC e equivalente USD</li>
-  <li><strong>Comprar:</strong> Pacotes via PayPal</li>
+  <li><strong>Comprar:</strong> Pacotes via PayPal, Stripe ou PagBank</li>
   <li><strong>Transferir:</strong> Envio de créditos entre usuários</li>
   <li><strong>Histórico:</strong> Todas as transações detalhadas</li>
   <li><strong>Carteira Externa:</strong> Vincular MetaMask/WalletConnect</li>
@@ -835,7 +921,7 @@ export function generateSystemDocumentationHTML(): string {
 <!-- 11. ESTRUTURA DO BANCO -->
 <div class="page-break">
 <h2>11. Estrutura do Banco de Dados</h2>
-<p>PostgreSQL com 61 tabelas gerenciadas pelo Drizzle ORM.</p>
+<p>PostgreSQL com 65+ tabelas gerenciadas pelo Drizzle ORM.</p>
 
 <h3>Tabelas Principais</h3>
 <table>
@@ -869,6 +955,11 @@ export function generateSystemDocumentationHTML(): string {
   <tr><td>consultation_sessions</td><td>Sessões de consulta ativas</td><td>users, appointments</td></tr>
   <tr><td>tmc_credit_packages</td><td>Pacotes de crédito para venda</td><td>-</td></tr>
   <tr><td>paypal_orders</td><td>Ordens de pagamento PayPal</td><td>users, tmc_credit_packages</td></tr>
+  <tr><td>payment_transactions</td><td>Transações de todos os provedores (PayPal, Stripe, PagBank)</td><td>users</td></tr>
+  <tr><td>clinics</td><td>Clínicas cadastradas</td><td>users (owner)</td></tr>
+  <tr><td>clinic_members</td><td>Membros de clínicas (médicos associados)</td><td>clinics, users</td></tr>
+  <tr><td>clinic_patient_bindings</td><td>Vínculos paciente-clínica com descontos</td><td>clinics, users</td></tr>
+  <tr><td>clinic_consultation_logs</td><td>Logs de consultas por clínica</td><td>clinics, appointments</td></tr>
 </table>
 
 <div class="diagram">
@@ -978,6 +1069,29 @@ export function generateSystemDocumentationHTML(): string {
   <tr><td><span class="badge badge-green">POST</span></td><td>/api/wallet/transfer</td><td>Transferir créditos</td></tr>
   <tr><td><span class="badge badge-blue">GET</span></td><td>/api/admin/credit-packages</td><td>Listar pacotes</td></tr>
   <tr><td><span class="badge badge-green">POST</span></td><td>/api/paypal/create-order</td><td>Criar ordem PayPal</td></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/stripe/create-checkout</td><td>Criar checkout Stripe</td></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/pagbank/create-order</td><td>Criar ordem PagBank (PIX/Boleto)</td></tr>
+</table>
+
+<h3>Farmácia</h3>
+<table>
+  <tr><th>Método</th><th>Endpoint</th><th>Descrição</th></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/pharmacy/prescriptions</td><td>Listar prescrições para farmácia</td></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/pharmacy/verify/:id</td><td>Verificar prescrição</td></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/pharmacy/dispense/:id</td><td>Dispensar medicamento</td></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/pharmacy/reports</td><td>Relatórios da farmácia</td></tr>
+</table>
+
+<h3>PMD e Clínicas</h3>
+<table>
+  <tr><th>Método</th><th>Endpoint</th><th>Descrição</th></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/pmd/create</td><td>Criar registro PMD</td></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/pmd/list</td><td>Listar registros PMD</td></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/pmd/:id/export</td><td>Exportar PMD (locale/format)</td></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/clinics</td><td>Listar clínicas</td></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/clinics</td><td>Criar clínica</td></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/clinics/join</td><td>Entrar em clínica por código</td></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/appointments/:id/rate</td><td>Avaliar consulta (1-5 estrelas)</td></tr>
 </table>
 </div>
 
@@ -999,7 +1113,13 @@ AGORA_APP_ID=your_agora_app_id
 AGORA_APP_CERTIFICATE=your_agora_cert
 PAYPAL_CLIENT_ID=your_paypal_client_id
 PAYPAL_CLIENT_SECRET=your_paypal_secret
-SESSION_SECRET=random_secure_string</div>
+STRIPE_SECRET_KEY=your_stripe_secret_key
+VITE_STRIPE_PUBLIC_KEY=your_stripe_public_key
+PAGBANK_TOKEN=your_pagbank_token
+PAGBANK_EMAIL=your_pagbank_email
+SESSION_SECRET=random_secure_string
+PHARMACY_ENABLED=true
+PMD_AUDIT_ENABLED=true</div>
 
 <h3>13.3 Instalação Rápida</h3>
 <div class="code">git clone https://github.com/LACibermedicina/tele.M3D.pro.git
