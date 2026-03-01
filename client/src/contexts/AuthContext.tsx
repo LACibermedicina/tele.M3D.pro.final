@@ -35,12 +35,13 @@ interface RegisterData {
   name: string;
   email?: string;
   phone?: string;
-  medicalLicense?: string; // CRM for doctors
-  specialization?: string; // Specialty for doctors
-  dateOfBirth?: string; // Date of birth for patients
-  gender?: string; // Gender for patients
-  bloodType?: string; // Blood type for patients
-  allergies?: string; // Allergies for patients
+  medicalLicense?: string;
+  specialization?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  bloodType?: string;
+  allergies?: string;
+  referralCode?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

@@ -33,6 +33,9 @@ export default function DoctorRegister() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const referralCode = urlParams.get('ref') || undefined;
+
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -55,9 +58,10 @@ export default function DoctorRegister() {
         name: data.name,
         email: data.email,
         phone: data.phone,
-        medicalLicense: data.crm, // Map CRM to medicalLicense
-        specialization: data.specialty, // Map specialty to specialization
+        medicalLicense: data.crm,
+        specialization: data.specialty,
         role: "doctor" as const,
+        referralCode,
       });
       
       toast({
@@ -146,6 +150,14 @@ export default function DoctorRegister() {
             {t("register.doctor.subtitle")}
           </p>
         </div>
+
+        {referralCode && (
+          <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-300/50 backdrop-blur-sm text-center">
+            <p className="text-white font-medium drop-shadow-md">
+              🤝 Você foi indicado por um colega médico! Ao se registrar, ambos se beneficiam do programa de indicações.
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           

@@ -41,6 +41,7 @@ import MyConsultations from "@/pages/my-consultations";
 import ConsultationSession from "@/pages/consultation-session";
 import ClinicalDashboard from "@/pages/clinical-dashboard";
 import DoctorAvailability from "@/pages/doctor-availability";
+import DoctorReferrals from "@/pages/doctor-referrals";
 import ImmediateConsultation from "@/pages/immediate-consultation";
 import DoctorChat from "@/pages/doctor-chat";
 import DoctorNotesPage from "@/pages/doctor-notes";
@@ -362,6 +363,13 @@ function Router() {
           <ProtectedRoute requiredRoles={['doctor']}>
             <Header />
             <DoctorAvailability />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/doctor-referrals">
+          <ProtectedRoute requiredRoles={['doctor']}>
+            <Header />
+            <DoctorReferrals />
           </ProtectedRoute>
         </Route>
         

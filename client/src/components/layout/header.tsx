@@ -432,6 +432,7 @@ export default function Header() {
         { path: "/prescriptions", label: "Prescrições", icon: ClipboardList, faIcon: "fas fa-prescription-bottle-alt", roles: ["admin", "doctor"] },
         { path: "/inter-consultation", label: "Interconsulta", icon: Stethoscope, faIcon: "fas fa-user-md", roles: ["doctor"] },
         { path: "/doctor-notes", label: "Anotações", icon: StickyNote, faIcon: "fas fa-sticky-note", roles: ["doctor"] },
+        { path: "/doctor-referrals", label: "Indicações", icon: UserPlus, faIcon: "fas fa-user-plus", roles: ["doctor"] },
       ],
     },
     {

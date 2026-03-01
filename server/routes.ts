@@ -3913,6 +3913,35 @@ ${clinicalSummary}`;
                       console.warn('Cashbox update failed:', cashErr);
                     }
                   }
+
+                  // Referral commission: pay the referring doctor a % of the consultation
+                  try {
+                    const doctorRecord = await db.select({ superiorDoctorId: users.superiorDoctorId }).from(users).where(eq(users.id, consultation.doctorId)).limit(1);
+                    if (doctorRecord[0]?.superiorDoctorId) {
+                      const refSetting = await storage.getSystemSetting('doctor_referral_commission_percent');
+                      const referralPercent = refSetting ? parseInt(refSetting.settingValue) : 5;
+                      if (referralPercent > 0) {
+                        const referralAmount = Math.floor((totalCredits * referralPercent) / 100);
+                        if (referralAmount > 0) {
+                          await tmcCreditsService.creditUser(
+                            doctorRecord[0].superiorDoctorId,
+                            referralAmount,
+                            'referral_commission',
+                            {
+                              functionUsed: 'referral_commission',
+                              consultationId: consultation.id,
+                              referredDoctorId: consultation.doctorId,
+                              originalAmount: totalCredits,
+                              referralPercent,
+                            }
+                          );
+                          console.log(`✅ Referral commission: ${referralAmount} credits to ${doctorRecord[0].superiorDoctorId} (${referralPercent}%)`);
+                        }
+                      }
+                    }
+                  } catch (refErr) {
+                    console.warn('Referral commission failed:', refErr);
+                  }
                 }
                 
                 console.log(`✅ Charged ${totalCredits} credits (${pricingMode}) for consultation`);
@@ -9266,7 +9295,7 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
   // User Registration
   app.post('/api/auth/register', upload.single('avatar'), async (req, res) => {
     try {
-      const { username, password, role, name, email, phone, medicalLicense, specialization, dateOfBirth, gender, bloodType, allergies } = req.body;
+      const { username, password, role, name, email, phone, medicalLicense, specialization, dateOfBirth, gender, bloodType, allergies, referralCode } = req.body;
       const avatarFile = req.file;
       
       // Validate required fields
@@ -9311,6 +9340,19 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
       // Prepare profile picture URL if avatar was uploaded
       const profilePictureUrl = avatarFile ? `/uploads/profiles/${avatarFile.filename}` : undefined;
 
+      let validReferrerId: string | undefined;
+      if (referralCode && role === 'doctor') {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(referralCode)) {
+          const referrer = await db.select({ id: users.id, role: users.role }).from(users).where(
+            and(eq(users.id, referralCode), eq(users.role, 'doctor'))
+          ).limit(1);
+          if (referrer.length > 0) {
+            validReferrerId = referrer[0].id;
+          }
+        }
+      }
+
       // Use transaction to create both user and patient record (if patient)
       const newUser = await db.transaction(async (tx) => {
         // Create user
@@ -9325,6 +9367,7 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
           specialization: role === 'doctor' ? specialization : undefined,
           digitalCertificate: role === 'doctor' ? `cert-${Date.now()}` : undefined,
           profilePicture: profilePictureUrl,
+          superiorDoctorId: validReferrerId,
         }).returning();
         
         // If patient, also create patient record
@@ -16634,6 +16677,79 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
+  // =============================================
+  // DOCTOR REFERRAL SYSTEM
+  // =============================================
+
+  // Generate referral link for a doctor
+  app.get('/api/doctors/referral-link', async (req: any, res) => {
+    if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+    if (req.user.role !== 'doctor') return res.status(403).json({ message: 'Only doctors can generate referral links' });
+
+    try {
+      const referralCode = req.user.id;
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const referralLink = `${baseUrl}/register/doctor?ref=${referralCode}`;
+
+      const commissionSetting = await storage.getSystemSetting('doctor_referral_commission_percent');
+      const commissionPercent = commissionSetting ? parseInt(commissionSetting.settingValue) : 5;
+
+      res.json({
+        referralCode,
+        referralLink,
+        commissionPercent,
+      });
+    } catch (error) {
+      console.error('Generate referral link error:', error);
+      res.status(500).json({ message: 'Erro ao gerar link de indicação' });
+    }
+  });
+
+  // Get referral stats for a doctor
+  app.get('/api/doctors/referral-stats', async (req: any, res) => {
+    if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+    if (req.user.role !== 'doctor') return res.status(403).json({ message: 'Only doctors can view referral stats' });
+
+    try {
+      const referredDoctors = await db.select({
+        id: users.id,
+        name: users.name,
+        specialization: users.specialization,
+        medicalLicense: users.medicalLicense,
+        profilePicture: users.profilePicture,
+        createdAt: users.createdAt,
+      }).from(users).where(
+        and(
+          eq(users.superiorDoctorId, req.user.id),
+          eq(users.role, 'doctor')
+        )
+      );
+
+      const commissionSetting = await storage.getSystemSetting('doctor_referral_commission_percent');
+      const commissionPercent = commissionSetting ? parseInt(commissionSetting.settingValue) : 5;
+
+      const referralTransactions = await db.select().from(tmcTransactions).where(
+        and(
+          eq(tmcTransactions.userId, req.user.id),
+          eq(tmcTransactions.reason, 'referral_commission')
+        )
+      ).orderBy(desc(tmcTransactions.createdAt)).limit(50);
+
+      const totalEarned = referralTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+      res.json({
+        referredDoctors,
+        totalReferred: referredDoctors.length,
+        commissionPercent,
+        totalEarned,
+        recentTransactions: referralTransactions,
+      });
+    } catch (error) {
+      console.error('Get referral stats error:', error);
+      res.status(500).json({ message: 'Erro ao buscar estatísticas de indicação' });
+    }
+  });
+
   // Get all doctors
   app.get('/api/doctors', async (req: Request, res: Response) => {
     try {
@@ -20677,6 +20793,14 @@ async function initializeDefaultSystemSettings() {
       settingValue: '15',
       settingType: 'number',
       description: 'Taxa percentual da plataforma sobre o preço da consulta definido pelo médico (ex: 15 = 15%)',
+      category: 'financial',
+      isEditable: true,
+    },
+    {
+      settingKey: 'doctor_referral_commission_percent',
+      settingValue: '5',
+      settingType: 'number',
+      description: 'Percentual de comissão que o médico indicador recebe sobre cada consulta do médico indicado (ex: 5 = 5%)',
       category: 'financial',
       isEditable: true,
     },
