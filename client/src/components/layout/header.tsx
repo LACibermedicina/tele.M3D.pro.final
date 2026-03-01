@@ -9,7 +9,7 @@ import LanguageSelector from "@/components/ui/language-selector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines, ChevronDown, CalendarX2, CreditCard } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines, ChevronDown, CalendarX2, CreditCard, Coins } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { formatErrorForToast } from "@/lib/error-handler";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -22,7 +22,7 @@ import { useLayoutSettings } from "@/contexts/LayoutSettingsContext";
 
 export default function Header() {
   const [location, navigate] = useLocation();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const { user, logout } = useAuth();
@@ -375,11 +375,43 @@ export default function Header() {
     select: (data) => data || [],
   });
 
+  const { data: creditData } = useQuery<{ balance: number }>({
+    queryKey: ['/api/credits/balance'],
+    enabled: !!user && user.role !== 'visitor',
+    refetchInterval: 30000,
+  });
+
+  const { data: pricingData } = useQuery<{ exchangeRate: number }>({
+    queryKey: ['/api/credits/pricing'],
+    enabled: !!user && user.role !== 'visitor',
+  });
+
   const hasActivePrescriptions = patientPrescriptions?.some((p: any) => {
     return p.status === 'active' && new Date(p.expiresAt) >= new Date();
   }) || false;
 
   const hasRecords = (patientRecords && patientRecords.length > 0);
+
+  const getCurrencyForLang = (lang: string): { symbol: string; code: string; rate: number } => {
+    const exchangeRate = pricingData?.exchangeRate || 5;
+    const usdPerCredit = 1 / exchangeRate;
+    const map: Record<string, { symbol: string; code: string; rate: number }> = {
+      pt: { symbol: 'R$', code: 'BRL', rate: usdPerCredit * 5.2 },
+      es: { symbol: '€', code: 'EUR', rate: usdPerCredit * 0.92 },
+      en: { symbol: '$', code: 'USD', rate: usdPerCredit },
+      fr: { symbol: '€', code: 'EUR', rate: usdPerCredit * 0.92 },
+      de: { symbol: '€', code: 'EUR', rate: usdPerCredit * 0.92 },
+      it: { symbol: '€', code: 'EUR', rate: usdPerCredit * 0.92 },
+      zh: { symbol: '¥', code: 'CNY', rate: usdPerCredit * 7.2 },
+      gn: { symbol: '₲', code: 'PYG', rate: usdPerCredit * 7500 },
+    };
+    return map[lang] || map.pt;
+  };
+
+  const currentLang = (i18n.resolvedLanguage || i18n.language || 'pt').split('-')[0];
+  const currency = getCurrencyForLang(currentLang);
+  const creditBalance = creditData?.balance ?? 0;
+  const convertedValue = (creditBalance * currency.rate).toFixed(currency.code === 'PYG' ? 0 : 2);
 
   const navGroups = [
     {
@@ -1111,6 +1143,18 @@ export default function Header() {
             
             {user ? (
               <>
+                {user.role !== 'visitor' && creditData !== undefined && (
+                  <Link href="/wallet">
+                    <Badge
+                      className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-2.5 py-1 text-xs font-semibold hover:from-amber-600 hover:to-orange-600 transition-all hidden sm:flex items-center gap-1.5"
+                      data-testid="badge-credit-balance"
+                    >
+                      <Coins className="w-3.5 h-3.5" />
+                      <span>{creditBalance} TMC</span>
+                      <span className="text-[10px] opacity-80">({currency.symbol}{convertedValue})</span>
+                    </Badge>
+                  </Link>
+                )}
                 <NotificationCenter isScrolled={isScrolled} />
                 
                 <DropdownMenu>

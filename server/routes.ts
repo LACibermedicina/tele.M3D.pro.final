@@ -18062,6 +18062,22 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
+  app.get('/api/credits/pricing', async (req: any, res) => {
+    try {
+      const urgentSetting = await storage.getSystemSetting('tmc_credit_cost_urgent');
+      const exchangeSetting = await storage.getSystemSetting('tmc_exchange_rate');
+      const urgentPrice = parseInt(urgentSetting?.settingValue || '30');
+      const exchangeRate = parseInt(exchangeSetting?.settingValue || '5');
+
+      res.json({
+        urgentConsultationPrice: urgentPrice,
+        exchangeRate,
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Erro ao buscar preços' });
+    }
+  });
+
   // Get user credit balance and transaction history
   app.get('/api/credits/balance', async (req: any, res) => {
     try {
@@ -20637,6 +20653,14 @@ async function initializeDefaultSystemSettings() {
       settingValue: '5',
       settingType: 'number',
       description: 'Custo em créditos TMC por consulta por vídeo',
+      category: 'financial',
+      isEditable: true,
+    },
+    {
+      settingKey: 'tmc_credit_cost_urgent',
+      settingValue: '30',
+      settingType: 'number',
+      description: 'Custo fixo em créditos TMC para pronto atendimento (consulta urgente imediata)',
       category: 'financial',
       isEditable: true,
     },

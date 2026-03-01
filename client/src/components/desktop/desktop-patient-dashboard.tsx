@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, FileText, Stethoscope, ClipboardList, Video, CalendarCheck, Pill, Zap, Loader2, CheckCircle } from "lucide-react";
+import { Calendar, FileText, Stethoscope, ClipboardList, Video, CalendarCheck, Pill, Zap, Loader2, CheckCircle, Ambulance, Coins } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -23,6 +23,12 @@ interface OnlineDoctor {
   specialization: string;
   availableForImmediate: boolean;
   inConsultation?: boolean;
+  consultationPrice?: number;
+}
+
+interface PricingInfo {
+  urgentConsultationPrice: number;
+  exchangeRate: number;
 }
 
 export function DesktopPatientDashboard() {
@@ -49,6 +55,10 @@ export function DesktopPatientDashboard() {
   const { data: onlineDoctors } = useQuery<OnlineDoctor[]>({
     queryKey: ['/api/doctors/online'],
     refetchInterval: 15000,
+  });
+
+  const { data: pricing } = useQuery<PricingInfo>({
+    queryKey: ['/api/credits/pricing'],
   });
 
   const immediateJoinMutation = useMutation({
@@ -115,46 +125,86 @@ export function DesktopPatientDashboard() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
 
-        <button
-          onClick={handleImmediateConsultation}
-          disabled={isSearchingDoctor || immediateJoinMutation.isPending}
-          className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 p-6 group disabled:opacity-80 disabled:cursor-wait"
-          data-testid="button-immediate-consultation"
-        >
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-              {isSearchingDoctor || immediateJoinMutation.isPending ? (
-                <Loader2 className="w-8 h-8 animate-spin" />
-              ) : (
-                <Zap className="w-8 h-8" />
-              )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            onClick={handleImmediateConsultation}
+            disabled={isSearchingDoctor || immediateJoinMutation.isPending}
+            className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 p-5 group disabled:opacity-80 disabled:cursor-wait text-left"
+            data-testid="button-immediate-consultation"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                {isSearchingDoctor || immediateJoinMutation.isPending ? (
+                  <Loader2 className="w-7 h-7 animate-spin" />
+                ) : (
+                  <Zap className="w-7 h-7" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-bold">
+                  {isSearchingDoctor ? "Buscando..." : "Consultar Agora"}
+                </h2>
+                <p className="text-white/80 text-xs mt-0.5">
+                  {isSearchingDoctor
+                    ? "Conectando ao médico..."
+                    : "Consulta com médico disponível"
+                  }
+                </p>
+              </div>
             </div>
-            <div className="flex-1 text-left">
-              <h2 className="text-xl font-bold">
-                {isSearchingDoctor ? "Buscando médico disponível..." : "Consultar Agora"}
-              </h2>
-              <p className="text-white/80 text-sm mt-1">
-                {isSearchingDoctor
-                  ? "Conectando ao primeiro médico disponível..."
-                  : "Atendimento imediato com médico disponível online"
-                }
-              </p>
+            <div className="mt-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {availableCount > 0 ? (
+                  <>
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-300 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-400"></span>
+                    </span>
+                    <span className="text-xs font-medium">{availableCount} médico{availableCount > 1 ? 's' : ''}</span>
+                  </>
+                ) : (
+                  <Badge className="bg-white/20 text-white border-0 text-[10px]">Ver disponíveis</Badge>
+                )}
+              </div>
+              {(() => {
+                const firstDoc = (onlineDoctors || []).find(d => d.availableForImmediate && !d.inConsultation);
+                const docPrice = firstDoc?.consultationPrice;
+                return docPrice && docPrice > 0 ? (
+                  <Badge className="bg-white/25 text-white border-0 text-xs font-semibold">
+                    <Coins className="w-3 h-3 mr-1" />
+                    {docPrice} TMC
+                  </Badge>
+                ) : null;
+              })()}
             </div>
-            <div className="text-right shrink-0">
-              {availableCount > 0 ? (
-                <div className="flex items-center gap-1.5">
-                  <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-300 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-400"></span>
-                  </span>
-                  <span className="text-sm font-semibold">{availableCount} médico{availableCount > 1 ? 's' : ''}</span>
+          </button>
+
+          <Link href="/immediate-consultation">
+            <button
+              className="w-full h-full rounded-2xl bg-gradient-to-r from-red-500 via-rose-500 to-pink-500 hover:from-red-600 hover:via-rose-600 hover:to-pink-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 p-5 group text-left"
+              data-testid="button-urgent-care"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <Ambulance className="w-7 h-7" />
                 </div>
-              ) : (
-                <Badge className="bg-white/20 text-white border-0 text-xs">Ver disponíveis</Badge>
-              )}
-            </div>
-          </div>
-        </button>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg font-bold">Pronto Atendimento</h2>
+                  <p className="text-white/80 text-xs mt-0.5">
+                    Sala de espera urgente — preço fixo
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-xs text-white/70">Preço definido pelo administrador</span>
+                <Badge className="bg-white/25 text-white border-0 text-xs font-semibold">
+                  <Coins className="w-3 h-3 mr-1" />
+                  {pricing?.urgentConsultationPrice ?? 30} TMC
+                </Badge>
+              </div>
+            </button>
+          </Link>
+        </div>
 
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

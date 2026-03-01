@@ -13,6 +13,8 @@ import {
   Zap,
   Clock,
   ChevronRight,
+  Ambulance,
+  Coins,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Link } from "wouter"
@@ -44,6 +46,10 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
 
   const { data: wallet } = useQuery<WalletData>({
     queryKey: ['/api/wallet/balance'],
+  });
+
+  const { data: pricing } = useQuery<{ urgentConsultationPrice: number }>({
+    queryKey: ['/api/credits/pricing'],
   });
 
   const upcomingCount = consultations?.upcoming?.length ?? 0;
@@ -80,20 +86,37 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
           </div>
         </div>
 
-        <Link href="/immediate-consultation">
-          <Card className="border-0 shadow-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white cursor-pointer hover:shadow-xl transition-shadow" data-testid="button-waiting-room">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                <Zap className="w-7 h-7" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-base font-bold">Consultar Agora</h2>
-                <p className="text-white/90 text-xs mt-0.5">Médicos disponíveis para atendimento imediato</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-white/70 shrink-0" />
-            </CardContent>
-          </Card>
-        </Link>
+        <div className="grid grid-cols-2 gap-3">
+          <Link href="/consultation-request">
+            <Card className="border-0 shadow-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white cursor-pointer hover:shadow-xl transition-shadow h-full" data-testid="button-consult-now">
+              <CardContent className="p-3 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-sm font-bold leading-tight">Consultar Agora</h2>
+                </div>
+                <p className="text-white/80 text-[10px]">Médico disponível</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/immediate-consultation">
+            <Card className="border-0 shadow-lg bg-gradient-to-r from-red-500 to-rose-600 text-white cursor-pointer hover:shadow-xl transition-shadow h-full" data-testid="button-urgent-care">
+              <CardContent className="p-3 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                    <Ambulance className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-sm font-bold leading-tight">Pronto Atendimento</h2>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Coins className="w-3 h-3 text-white/80" />
+                  <span className="text-[10px] text-white/80">{pricing?.urgentConsultationPrice ?? 30} TMC</span>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
 
         <div className="space-y-1">
           <Link href="/consultation-request">
