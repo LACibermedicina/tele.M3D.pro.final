@@ -14,16 +14,23 @@ set -euo pipefail
 #  Instala: Node.js 20, PostgreSQL 16, Nginx, Certbot, PM2
 #
 #  Módulos incluídos:
-#    - Teleconsultas por vídeo (Agora)
+#    - Teleconsultas por vídeo (Agora WebRTC)
 #    - IA Médica (Google Gemini + OpenAI fallback)
+#    - Triagem IA (Manchester Protocol / WHO ETAT)
 #    - Farmácia (prescrições, dispensação, relatórios LGPD)
 #    - PMD v1.0 (Prontuário Médico Digital CFM/LGPD/RGPD)
+#    - Prontuário Unificado (timeline consolidada)
 #    - Assinatura Digital (ICP-Brasil A3 / RSA-SHA256)
 #    - Exportação FHIR R4 (BR, US, EU, Internacional)
 #    - Pagamentos (PayPal, Stripe, PagBank PIX/Boleto)
 #    - Wallet Digital (TM3D tokens, NFTs, Broker interno)
-#    - IAM3D Voice Assistant (STT/TTS)
+#    - IAM3D Voice Assistant (STT/TTS multilíngue)
 #    - WhatsApp IA
+#    - Avaliação de Consultas (1-5 estrelas)
+#    - Bloqueio de Pacientes por Médico
+#    - Equipes Médicas e Inter-Consultas
+#    - Relatórios Epidemiológicos (MeSH/ICD)
+#    - Multilíngue (PT, EN, ES, FR, DE, IT, ZH, GN)
 #===============================================================================
 
 REPO_URL="https://github.com/LACibermedicina/tele.M3D.pro.git"
@@ -486,17 +493,21 @@ SUMMARY
   echo -e "${BOLD}Módulos instalados:${NC}"
   echo "  - Teleconsultas por vídeo (Agora WebRTC)"
   echo "  - IA Médica (Gemini + OpenAI fallback)"
+  echo "  - Triagem IA (Manchester Protocol / WHO ETAT)"
   echo "  - Farmácia (prescrições, dispensação, relatórios LGPD)"
   echo "  - PMD v1.0 (Prontuário Médico Digital CFM/LGPD/RGPD)"
+  echo "  - Prontuário Unificado (timeline consolidada)"
   echo "  - Assinatura Digital (ICP-Brasil A3 / RSA-SHA256)"
   echo "  - Exportação FHIR R4 (BR, US, EU, Internacional)"
   echo "  - Pagamentos (PayPal, Stripe, PagBank PIX/Boleto)"
   echo "  - Wallet Digital (TM3D tokens, NFTs, Broker)"
-  echo "  - IAM3D Voice Assistant (STT/TTS)"
-  echo "  - Triagem IA (Manchester Protocol / WHO ETAT)"
-  echo "  - WhatsApp IA"
-  echo "  - Relatórios epidemiológicos (MeSH/ICD)"
+  echo "  - IAM3D Voice Assistant (STT/TTS multilíngue)"
+  echo "  - Avaliação de Consultas (1-5 estrelas + feedback)"
+  echo "  - Bloqueio de Pacientes por Médico"
   echo "  - Equipes médicas e inter-consultas"
+  echo "  - Relatórios epidemiológicos (MeSH/ICD)"
+  echo "  - WhatsApp IA"
+  echo "  - Multilíngue (PT, EN, ES, FR, DE, IT, ZH, GN)"
   echo ""
   echo -e "${BOLD}Próximos passos:${NC}"
   echo ""
@@ -549,8 +560,9 @@ main() {
   echo "  - Aplicação Tele<M3D> Pro v$APP_VERSION"
   echo ""
   echo -e "${BOLD}Módulos incluídos:${NC}"
-  echo "  - Teleconsultas, IA Médica, Farmácia, PMD, Pagamentos"
-  echo "  - Assinatura Digital, FHIR R4, NFTs, WhatsApp IA"
+  echo "  - Teleconsultas, IA Médica, Triagem, Farmácia, PMD"
+  echo "  - Pagamentos, Assinatura Digital, FHIR R4, NFTs"
+  echo "  - IAM3D, WhatsApp IA, Multilíngue, Avaliação"
   echo ""
   read -p "Deseja continuar? [S/n]: " proceed
   proceed=${proceed:-S}

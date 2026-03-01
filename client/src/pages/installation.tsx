@@ -9,7 +9,8 @@ import {
   Terminal, Copy, Check, Server, Database, Key, Globe,
   Package, Settings, Shield, MonitorSmartphone, Rocket,
   FileCode, GitBranch, HardDrive, Cpu, AlertCircle,
-  CreditCard, Pill, Video, Brain, Wallet, FileText
+  CreditCard, Pill, Video, Brain, Wallet, FileText,
+  Mic, Languages, Star, Users, Activity, MessageCircle
 } from "lucide-react";
 
 function CodeBlock({ title, code, language = "bash" }: { title?: string; code: string; language?: string }) {
@@ -71,12 +72,18 @@ export default function Installation() {
               {[
                 { icon: <Video className="h-3.5 w-3.5" />, label: "Teleconsultas (Agora)" },
                 { icon: <Brain className="h-3.5 w-3.5" />, label: "IA Médica (Gemini)" },
+                { icon: <Activity className="h-3.5 w-3.5" />, label: "Triagem IA" },
                 { icon: <Pill className="h-3.5 w-3.5" />, label: "Farmácia LGPD" },
                 { icon: <FileText className="h-3.5 w-3.5" />, label: "PMD v1.0 (CFM)" },
                 { icon: <Shield className="h-3.5 w-3.5" />, label: "Assinatura Digital" },
                 { icon: <Globe className="h-3.5 w-3.5" />, label: "FHIR R4 Export" },
                 { icon: <CreditCard className="h-3.5 w-3.5" />, label: "PayPal/Stripe/PIX" },
                 { icon: <Wallet className="h-3.5 w-3.5" />, label: "Wallet TM3D/NFTs" },
+                { icon: <Mic className="h-3.5 w-3.5" />, label: "IAM3D Voice" },
+                { icon: <Star className="h-3.5 w-3.5" />, label: "Avaliação Consultas" },
+                { icon: <Users className="h-3.5 w-3.5" />, label: "Equipes Médicas" },
+                { icon: <MessageCircle className="h-3.5 w-3.5" />, label: "WhatsApp IA" },
+                { icon: <Languages className="h-3.5 w-3.5" />, label: "Multilíngue (8)" },
               ].map((mod, idx) => (
                 <div key={idx} className="flex items-center gap-1.5 text-muted-foreground">
                   {mod.icon}
@@ -372,16 +379,21 @@ echo "O servidor estará disponível em:"
 echo "  http://localhost:5000"
 echo ""
 echo "Módulos incluídos:"
-echo "  - Teleconsultas por vídeo (Agora)"
+echo "  - Teleconsultas por vídeo (Agora WebRTC)"
 echo "  - IA Médica (Gemini + OpenAI fallback)"
+echo "  - Triagem IA (Manchester Protocol / WHO ETAT)"
 echo "  - Farmácia (prescrições, dispensação, LGPD)"
-echo "  - PMD v1.0 (Prontuário Digital CFM/LGPD)"
-echo "  - Assinatura Digital (ICP-Brasil)"
-echo "  - Exportação FHIR R4"
+echo "  - PMD v1.0 (Prontuário Digital CFM/LGPD/RGPD)"
+echo "  - Prontuário Unificado (timeline consolidada)"
+echo "  - Assinatura Digital (ICP-Brasil A3 / RSA-SHA256)"
+echo "  - Exportação FHIR R4 (BR, US, EU, Internacional)"
 echo "  - Pagamentos (PayPal, Stripe, PagBank PIX/Boleto)"
 echo "  - Wallet Digital (TM3D, NFTs, Broker)"
-echo "  - IAM3D Voice Assistant"
+echo "  - IAM3D Voice Assistant (STT/TTS multilíngue)"
+echo "  - Avaliação de Consultas (1-5 estrelas)"
+echo "  - Equipes Médicas e Inter-Consultas"
 echo "  - WhatsApp IA"
+echo "  - Multilíngue (PT, EN, ES, FR, DE, IT, ZH, GN)"
 echo "============================================"`} />
               </CardContent>
             </Card>
@@ -406,7 +418,7 @@ echo "============================================"`} />
                   </p>
                   <CodeBlock title="Executar no servidor (como root)" code={`curl -fsSL https://raw.githubusercontent.com/LACibermedicina/tele.M3D.pro/main/install.sh | sudo bash`} />
                   <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                    O script clona o repositório do GitHub, configura o banco de dados, compila a aplicação e inicia o serviço com PM2. Inclui farmácia, PMD, assinatura digital, pagamentos e todos os módulos.
+                    O script clona o repositório do GitHub, configura o banco de dados, compila a aplicação e inicia o serviço com PM2. Inclui todos os módulos: farmácia, PMD, assinatura digital, pagamentos (PayPal/Stripe/PIX), triagem IA, IAM3D, equipes médicas, avaliação de consultas e suporte multilíngue.
                   </p>
                 </div>
 
@@ -698,6 +710,7 @@ docker-compose logs -f app`} />
                     { name: "broker_trades", desc: "Negociações do broker" },
                     { name: "external_wallets", desc: "Carteiras externas (MetaMask)" },
                     { name: "withdrawal_requests", desc: "Solicitações de saque" },
+                    { name: "doctor_patient_blocks", desc: "Bloqueio de pacientes por médico" },
                     { name: "pending_notifications", desc: "Notificações pendentes" },
                     { name: "system_settings", desc: "Configurações do sistema (Admin)" },
                     { name: "whatsapp_messages", desc: "Mensagens WhatsApp IA" },
