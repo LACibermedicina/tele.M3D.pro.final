@@ -5,6 +5,8 @@ import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
 import PageWrapper from "@/components/layout/page-wrapper";
+import { TranslationLoading } from "@/components/ui/translation-loading";
+import { useMultiContentTranslation } from "@/hooks/use-content-translation";
 import medicalBgImage from "@assets/stock_images/medical_dashboard_in_fa79cda0.jpg";
 
 // Dashboard images (high resolution)
@@ -57,10 +59,47 @@ import {
   Globe
 } from "lucide-react";
 
+const docLabels = {
+  back: "Voltar",
+  pageTitle: "Documentação do Sistema Tele<M3D>",
+  pageSubtitle: "Manual completo de recursos, funcionalidades e guias de uso",
+  updatedAt: "Atualizado em Fevereiro 2026",
+  version: "Versão 3.5",
+  printBtn: "Documentação Completa para Impressão",
+  dashboardTitle: "Dashboard Intuitivo",
+  dashboardDesc: "Interface moderna e fácil de usar",
+  videoTitle: "Consultas em Vídeo",
+  videoDesc: "Atendimento online de qualidade",
+  recordsTitle: "Prontuários Digitais",
+  recordsDesc: "Gestão completa de dados médicos",
+  featuresHeading: "Recursos e Funcionalidades",
+  techSpecsHeading: "Especificações Técnicas",
+  guidesHeading: "Guias de Uso por Perfil",
+  helpTitle: "Precisa de Ajuda?",
+  helpDesc: "Nossa equipe de suporte está disponível para auxiliar você",
+  support247: "Suporte 24/7",
+  chatOnline: "Chat Online",
+  securityTitle: "Segurança e Privacidade",
+  dataProtected: "Dados Protegidos",
+  dataProtectedDesc: "Criptografia de ponta a ponta e armazenamento seguro",
+  lgpdCompliant: "LGPD Compliant",
+  lgpdCompliantDesc: "Total conformidade com a legislação de proteção de dados",
+  accessControl: "Acesso Controlado",
+  accessControlDesc: "Sistema robusto de autenticação e autorização",
+  manualLink: "Manual do Usuário",
+  manualLinkDesc: "Guia completo de uso da plataforma",
+  faqLink: "FAQ",
+  faqLinkDesc: "Perguntas frequentes",
+  installLink: "Instalação",
+  installLinkDesc: "Script e guia de instalação",
+  altDashboard: "Dashboard",
+  altVideo: "Videochamada",
+  altRecords: "Prontuários"
+};
+
 export default function Documentation() {
   const { t } = useTranslation();
 
-  // Random image selection (changes each page load)
   const randomImages = useMemo(() => {
     const dashboardImages = [dashboardImg1, dashboardImg2, dashboardImg3, dashboardImg4, dashboardImg5];
     const videoImages = [videoConsultImg1, videoConsultImg2, videoConsultImg3, videoConsultImg4, videoConsultImg5];
@@ -507,32 +546,80 @@ export default function Documentation() {
     }
   ];
 
+  const translatableFeatures = useMemo(() => systemFeatures.map(f => ({
+    category: f.category,
+    items: f.items.map(i => ({ title: i.title, description: i.description, features: i.features }))
+  })), []);
+
+  const translatableSpecs = useMemo(() => technicalSpecs.map(s => ({
+    title: s.title, items: s.items
+  })), []);
+
+  const translatableGuides = useMemo(() => userGuides.map(g => ({
+    role: g.role, guides: g.guides
+  })), []);
+
+  const { data: txSections, isLoading } = useMultiContentTranslation({
+    labels: docLabels,
+    features: translatableFeatures,
+    specs: translatableSpecs,
+    guides: translatableGuides
+  }, 'doc');
+
+  const lb = (txSections.labels || docLabels) as typeof docLabels;
+  const txFeatures = (txSections.features || translatableFeatures) as typeof translatableFeatures;
+  const txSpecs = (txSections.specs || translatableSpecs) as typeof translatableSpecs;
+  const txGuides = (txSections.guides || translatableGuides) as typeof translatableGuides;
+
+  const mergedFeatures = systemFeatures.map((f, idx) => ({
+    ...f,
+    category: txFeatures[idx]?.category || f.category,
+    items: f.items.map((item, iIdx) => ({
+      ...item,
+      title: txFeatures[idx]?.items?.[iIdx]?.title || item.title,
+      description: txFeatures[idx]?.items?.[iIdx]?.description || item.description,
+      features: txFeatures[idx]?.items?.[iIdx]?.features || item.features
+    }))
+  }));
+
+  const mergedSpecs = technicalSpecs.map((s, idx) => ({
+    ...s,
+    title: txSpecs[idx]?.title || s.title,
+    items: txSpecs[idx]?.items || s.items
+  }));
+
+  const mergedGuides = userGuides.map((g, idx) => ({
+    ...g,
+    role: txGuides[idx]?.role || g.role,
+    guides: txGuides[idx]?.guides || g.guides
+  }));
+
   return (
     <PageWrapper variant="medical" medicalBg={medicalBgImage}>
+      <TranslationLoading isLoading={isLoading}>
       <div className="py-8 px-4">
         <div className="max-w-7xl mx-auto">
           
-          {/* Header */}
           <div className="text-center mb-12">
             <Link href="/">
               <Button variant="ghost" className="mb-6 text-white hover:bg-white/10" data-testid="button-back-home">
                 <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
-                Voltar
+                {lb.back}
               </Button>
             </Link>
             <BookOpen className="w-16 h-16 mx-auto mb-4 text-white" />
-            <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-lg">Documentação do Sistema Tele{"<"}M3D{">"}</h1>
+            <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-lg">{lb.pageTitle}</h1>
             <p className="text-xl text-white/90 mb-6 drop-shadow-md">
-              Manual completo de recursos, funcionalidades e guias de uso
+              {lb.pageSubtitle}
             </p>
             <div className="flex justify-center gap-3 flex-wrap">
               <Badge className="bg-white/20 text-white text-sm px-4 py-2">
                 <CheckCircle className="w-4 h-4 mr-2" />
-                Atualizado em Fevereiro 2026
+                {lb.updatedAt}
               </Badge>
               <Badge className="bg-white/20 text-white text-sm px-4 py-2">
                 <Star className="w-4 h-4 mr-2" />
-                Versão 3.5
+                {lb.version}
               </Badge>
             </div>
             <div className="mt-6">
@@ -542,41 +629,39 @@ export default function Documentation() {
                 size="lg"
               >
                 <Download className="w-5 h-5 mr-2" />
-                Documentação Completa para Impressão
+                {lb.printBtn}
               </Button>
             </div>
           </div>
 
-          {/* Ilustrações principais */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <Card className="shadow-xl hover:shadow-2xl transition-all overflow-hidden bg-white/95 backdrop-blur-sm">
-              <img src={randomImages.dashboard} alt="Dashboard" className="w-full h-48 object-cover" />
+              <img src={randomImages.dashboard} alt={lb.altDashboard} className="w-full h-48 object-cover" />
               <CardContent className="p-4 text-center">
-                <h3 className="font-bold text-slate-800">Dashboard Intuitivo</h3>
-                <p className="text-sm text-slate-600">Interface moderna e fácil de usar</p>
+                <h3 className="font-bold text-slate-800">{lb.dashboardTitle}</h3>
+                <p className="text-sm text-slate-600">{lb.dashboardDesc}</p>
               </CardContent>
             </Card>
             <Card className="shadow-xl hover:shadow-2xl transition-all overflow-hidden bg-white/95 backdrop-blur-sm">
-              <img src={randomImages.video} alt="Videochamada" className="w-full h-48 object-cover" />
+              <img src={randomImages.video} alt={lb.altVideo} className="w-full h-48 object-cover" />
               <CardContent className="p-4 text-center">
-                <h3 className="font-bold text-slate-800">Consultas em Vídeo</h3>
-                <p className="text-sm text-slate-600">Atendimento online de qualidade</p>
+                <h3 className="font-bold text-slate-800">{lb.videoTitle}</h3>
+                <p className="text-sm text-slate-600">{lb.videoDesc}</p>
               </CardContent>
             </Card>
             <Card className="shadow-xl hover:shadow-2xl transition-all overflow-hidden bg-white/95 backdrop-blur-sm">
-              <img src={randomImages.health} alt="Prontuários" className="w-full h-48 object-cover" />
+              <img src={randomImages.health} alt={lb.altRecords} className="w-full h-48 object-cover" />
               <CardContent className="p-4 text-center">
-                <h3 className="font-bold text-slate-800">Prontuários Digitais</h3>
-                <p className="text-sm text-slate-600">Gestão completa de dados médicos</p>
+                <h3 className="font-bold text-slate-800">{lb.recordsTitle}</h3>
+                <p className="text-sm text-slate-600">{lb.recordsDesc}</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Recursos do Sistema */}
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-white text-center mb-8 drop-shadow-lg">Recursos e Funcionalidades</h2>
+            <h2 className="text-3xl font-bold text-white text-center mb-8 drop-shadow-lg">{lb.featuresHeading}</h2>
             <div className="space-y-8">
-              {systemFeatures.map((category, idx) => {
+              {mergedFeatures.map((category, idx) => {
                 const colors = colorClasses[category.color as keyof typeof colorClasses] || colorClasses.sky;
                 return (
                   <Card key={idx} className="shadow-xl bg-white/95 backdrop-blur-sm">
@@ -615,9 +700,9 @@ export default function Documentation() {
 
           {/* Especificações Técnicas */}
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-white text-center mb-8 drop-shadow-lg">Especificações Técnicas</h2>
+            <h2 className="text-3xl font-bold text-white text-center mb-8 drop-shadow-lg">{lb.techSpecsHeading}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {technicalSpecs.map((spec, idx) => (
+              {mergedSpecs.map((spec, idx) => (
                 <Card key={idx} className="shadow-xl bg-white/95 backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle className="text-lg text-center">{spec.title}</CardTitle>
@@ -639,9 +724,9 @@ export default function Documentation() {
 
           {/* Guias por Perfil */}
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-white text-center mb-8 drop-shadow-lg">Guias de Uso por Perfil</h2>
+            <h2 className="text-3xl font-bold text-white text-center mb-8 drop-shadow-lg">{lb.guidesHeading}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {userGuides.map((guide, idx) => (
+              {mergedGuides.map((guide, idx) => (
                 <Card key={idx} className="shadow-xl hover:shadow-2xl transition-all bg-white/95 backdrop-blur-sm">
                   <CardHeader className="bg-gradient-to-br from-amber-50 to-orange-50">
                     <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -671,18 +756,18 @@ export default function Documentation() {
                 <CardContent className="p-8">
                   <div className="text-center">
                     <Phone className="w-12 h-12 mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold mb-4">Precisa de Ajuda?</h2>
+                    <h2 className="text-2xl font-bold mb-4">{lb.helpTitle}</h2>
                     <p className="text-white/90 mb-6">
-                      Nossa equipe de suporte está disponível para auxiliar você
+                      {lb.helpDesc}
                     </p>
                     <div className="flex justify-center gap-4 flex-wrap">
                       <Badge className="bg-white/20 text-white px-4 py-2">
                         <Clock className="w-4 h-4 mr-2" />
-                        Suporte 24/7
+                        {lb.support247}
                       </Badge>
                       <Badge className="bg-white/20 text-white px-4 py-2">
                         <MessageCircle className="w-4 h-4 mr-2" />
-                        Chat Online
+                        {lb.chatOnline}
                       </Badge>
                       <Badge className="bg-white/20 text-white px-4 py-2">
                         <Phone className="w-4 h-4 mr-2" />
@@ -701,7 +786,7 @@ export default function Documentation() {
               <CardHeader className="bg-gradient-to-br from-emerald-50 to-emerald-100">
                 <CardTitle className="text-center text-2xl flex items-center justify-center">
                   <Lock className="w-8 h-8 mr-3 text-emerald-700" />
-                  Segurança e Privacidade
+                  {lb.securityTitle}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -710,27 +795,27 @@ export default function Documentation() {
                     <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
                       <Shield className="w-12 h-12 text-emerald-700" />
                     </div>
-                    <h3 className="font-bold text-emerald-900 mb-2">Dados Protegidos</h3>
+                    <h3 className="font-bold text-emerald-900 mb-2">{lb.dataProtected}</h3>
                     <p className="text-sm text-slate-700">
-                      Criptografia de ponta a ponta e armazenamento seguro
+                      {lb.dataProtectedDesc}
                     </p>
                   </div>
                   <div className="p-4">
                     <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
                       <CheckCircle className="w-12 h-12 text-emerald-700" />
                     </div>
-                    <h3 className="font-bold text-emerald-900 mb-2">LGPD Compliant</h3>
+                    <h3 className="font-bold text-emerald-900 mb-2">{lb.lgpdCompliant}</h3>
                     <p className="text-sm text-slate-700">
-                      Total conformidade com a legislação de proteção de dados
+                      {lb.lgpdCompliantDesc}
                     </p>
                   </div>
                   <div className="p-4">
                     <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
                       <Lock className="w-12 h-12 text-emerald-700" />
                     </div>
-                    <h3 className="font-bold text-emerald-900 mb-2">Acesso Controlado</h3>
+                    <h3 className="font-bold text-emerald-900 mb-2">{lb.accessControl}</h3>
                     <p className="text-sm text-slate-700">
-                      Sistema robusto de autenticação e autorização
+                      {lb.accessControlDesc}
                     </p>
                   </div>
                 </div>
@@ -743,8 +828,8 @@ export default function Documentation() {
               <Card className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
                 <CardContent className="p-6 text-center">
                   <BookOpen className="w-10 h-10 mx-auto mb-3 text-blue-600" />
-                  <h3 className="font-bold text-blue-900 dark:text-blue-100 mb-1">Manual do Usuário</h3>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">Guia completo de uso da plataforma</p>
+                  <h3 className="font-bold text-blue-900 dark:text-blue-100 mb-1">{lb.manualLink}</h3>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">{lb.manualLinkDesc}</p>
                 </CardContent>
               </Card>
             </Link>
@@ -752,8 +837,8 @@ export default function Documentation() {
               <Card className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-purple-200 dark:border-purple-800">
                 <CardContent className="p-6 text-center">
                   <ArrowRight className="w-10 h-10 mx-auto mb-3 text-purple-600" />
-                  <h3 className="font-bold text-purple-900 dark:text-purple-100 mb-1">FAQ</h3>
-                  <p className="text-sm text-purple-700 dark:text-purple-300">Perguntas frequentes</p>
+                  <h3 className="font-bold text-purple-900 dark:text-purple-100 mb-1">{lb.faqLink}</h3>
+                  <p className="text-sm text-purple-700 dark:text-purple-300">{lb.faqLinkDesc}</p>
                 </CardContent>
               </Card>
             </Link>
@@ -761,8 +846,8 @@ export default function Documentation() {
               <Card className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1 bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-950/30 dark:to-teal-950/30 border-green-200 dark:border-green-800">
                 <CardContent className="p-6 text-center">
                   <Settings className="w-10 h-10 mx-auto mb-3 text-green-600" />
-                  <h3 className="font-bold text-green-900 dark:text-green-100 mb-1">Instalação</h3>
-                  <p className="text-sm text-green-700 dark:text-green-300">Script e guia de instalação</p>
+                  <h3 className="font-bold text-green-900 dark:text-green-100 mb-1">{lb.installLink}</h3>
+                  <p className="text-sm text-green-700 dark:text-green-300">{lb.installLinkDesc}</p>
                 </CardContent>
               </Card>
             </Link>
@@ -770,6 +855,7 @@ export default function Documentation() {
 
         </div>
       </div>
+      </TranslationLoading>
     </PageWrapper>
   );
 }

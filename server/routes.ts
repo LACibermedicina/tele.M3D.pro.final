@@ -9041,6 +9041,29 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
     }
   });
 
+  // ===== AI TRANSLATION ENDPOINT =====
+  app.post('/api/ai/translate', async (req, res) => {
+    try {
+      const { content, targetLang, cacheKey } = req.body;
+      if (!content || !targetLang || !cacheKey) {
+        return res.status(400).json({ error: 'Missing required fields: content, targetLang, cacheKey' });
+      }
+      if (targetLang === 'pt') {
+        return res.json({ translated: content });
+      }
+      const validLangs = ['en', 'es', 'fr', 'de', 'it', 'zh', 'gn'];
+      if (!validLangs.includes(targetLang)) {
+        return res.status(400).json({ error: 'Unsupported target language' });
+      }
+      const { translateContent } = await import('./services/translation-service');
+      const translated = await translateContent(content, targetLang, cacheKey);
+      res.json({ translated });
+    } catch (error: any) {
+      console.error('Translation endpoint error:', error);
+      res.status(500).json({ error: 'Translation failed', message: error.message });
+    }
+  });
+
   // ===== AI ANALYSIS ENDPOINTS =====
   
   // Simplified symptom analysis endpoint

@@ -4,6 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import PageWrapper from "@/components/layout/page-wrapper";
+import { TranslationLoading } from "@/components/ui/translation-loading";
+import { useMultiContentTranslation } from "@/hooks/use-content-translation";
+import { useMemo } from "react";
 import {
   BookOpen, Video, Calendar, MessageCircle, FileText, Users, Shield,
   Bot, CreditCard, Activity, Settings, MonitorSmartphone, Stethoscope,
@@ -1218,13 +1221,13 @@ Os relatórios são essenciais para controle de estoque, auditoria regulatória 
   }
 ];
 
-function TabContent({ sections }: { sections: Section[] }) {
+function TabContent({ sections, indexLabel }: { sections: Section[]; indexLabel?: string }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
       <div className="lg:col-span-1">
         <Card className="sticky top-24">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Índice</CardTitle>
+            <CardTitle className="text-sm font-medium">{indexLabel || "Índice"}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <ScrollArea className="h-[calc(100vh-300px)]">
@@ -1272,9 +1275,68 @@ function TabContent({ sections }: { sections: Section[] }) {
   );
 }
 
+const manualLabels = {
+  title: "Manual do Usuário",
+  subtitle: "Guia completo de uso da plataforma Tele<M3D> Pro — v3.5",
+  visitors: "Visitantes",
+  visitorsShort: "Visit.",
+  patients: "Pacientes",
+  patientsShort: "Pacient.",
+  doctors: "Médicos",
+  doctorsShort: "Méd.",
+  admins: "Administradores",
+  adminsShort: "Admin",
+  pharmacists: "Farmacêuticos",
+  pharmacistsShort: "Farm.",
+  index: "Índice"
+};
+
+function extractSectionTexts(sections: Section[]) {
+  return sections.map(s => ({
+    id: s.id,
+    title: s.title,
+    content: s.content.map(c => ({ title: c.title, text: c.text }))
+  }));
+}
+
+function mergeSectionTexts(original: Section[], translated: any[]): Section[] {
+  return original.map((s, i) => ({
+    ...s,
+    title: translated[i]?.title || s.title,
+    content: s.content.map((c, j) => ({
+      title: translated[i]?.content?.[j]?.title || c.title,
+      text: translated[i]?.content?.[j]?.text || c.text
+    }))
+  }));
+}
+
 export default function Manual() {
+  const txVisitors = useMemo(() => extractSectionTexts(visitorSections), []);
+  const txPatients = useMemo(() => extractSectionTexts(patientSections), []);
+  const txDoctors = useMemo(() => extractSectionTexts(doctorSections), []);
+  const txAdmins = useMemo(() => extractSectionTexts(adminSections), []);
+  const txPharmacists = useMemo(() => extractSectionTexts(pharmacistSections), []);
+
+  const { data: txSections, isLoading } = useMultiContentTranslation({
+    labels: manualLabels,
+    visitors: txVisitors,
+    patients: txPatients,
+    doctors: txDoctors,
+    admins: txAdmins,
+    pharmacists: txPharmacists
+  }, 'manual');
+
+  const lb = (txSections.labels || manualLabels) as typeof manualLabels;
+
+  const mergedVisitors = mergeSectionTexts(visitorSections, txSections.visitors || txVisitors);
+  const mergedPatients = mergeSectionTexts(patientSections, txSections.patients || txPatients);
+  const mergedDoctors = mergeSectionTexts(doctorSections, txSections.doctors || txDoctors);
+  const mergedAdmins = mergeSectionTexts(adminSections, txSections.admins || txAdmins);
+  const mergedPharmacists = mergeSectionTexts(pharmacistSections, txSections.pharmacists || txPharmacists);
+
   return (
     <PageWrapper variant="origami">
+      <TranslationLoading isLoading={isLoading}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
@@ -1283,10 +1345,10 @@ export default function Manual() {
             </div>
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Manual do Usuário
+                {lb.title}
               </h1>
               <p className="text-muted-foreground">
-                Guia completo de uso da plataforma Tele{"<"}M3D{">"} Pro — v3.5
+                {lb.subtitle}
               </p>
             </div>
           </div>
@@ -1305,52 +1367,53 @@ export default function Manual() {
           <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="visitors" className="flex items-center gap-1.5">
               <Eye className="h-4 w-4" />
-              <span className="hidden sm:inline">Visitantes</span>
-              <span className="sm:hidden">Visit.</span>
+              <span className="hidden sm:inline">{lb.visitors}</span>
+              <span className="sm:hidden">{lb.visitorsShort}</span>
             </TabsTrigger>
             <TabsTrigger value="patients" className="flex items-center gap-1.5">
               <Heart className="h-4 w-4" />
-              <span className="hidden sm:inline">Pacientes</span>
-              <span className="sm:hidden">Pacient.</span>
+              <span className="hidden sm:inline">{lb.patients}</span>
+              <span className="sm:hidden">{lb.patientsShort}</span>
             </TabsTrigger>
             <TabsTrigger value="doctors" className="flex items-center gap-1.5">
               <Stethoscope className="h-4 w-4" />
-              <span className="hidden sm:inline">Médicos</span>
-              <span className="sm:hidden">Méd.</span>
+              <span className="hidden sm:inline">{lb.doctors}</span>
+              <span className="sm:hidden">{lb.doctorsShort}</span>
             </TabsTrigger>
             <TabsTrigger value="admins" className="flex items-center gap-1.5">
               <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">Administradores</span>
-              <span className="sm:hidden">Admin</span>
+              <span className="hidden sm:inline">{lb.admins}</span>
+              <span className="sm:hidden">{lb.adminsShort}</span>
             </TabsTrigger>
             <TabsTrigger value="pharmacists" className="flex items-center gap-1.5">
               <Pill className="h-4 w-4" />
-              <span className="hidden sm:inline">Farmacêuticos</span>
-              <span className="sm:hidden">Farm.</span>
+              <span className="hidden sm:inline">{lb.pharmacists}</span>
+              <span className="sm:hidden">{lb.pharmacistsShort}</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="visitors">
-            <TabContent sections={visitorSections} />
+            <TabContent sections={mergedVisitors} indexLabel={lb.index} />
           </TabsContent>
 
           <TabsContent value="patients">
-            <TabContent sections={patientSections} />
+            <TabContent sections={mergedPatients} indexLabel={lb.index} />
           </TabsContent>
 
           <TabsContent value="doctors">
-            <TabContent sections={doctorSections} />
+            <TabContent sections={mergedDoctors} indexLabel={lb.index} />
           </TabsContent>
 
           <TabsContent value="admins">
-            <TabContent sections={adminSections} />
+            <TabContent sections={mergedAdmins} indexLabel={lb.index} />
           </TabsContent>
 
           <TabsContent value="pharmacists">
-            <TabContent sections={pharmacistSections} />
+            <TabContent sections={mergedPharmacists} indexLabel={lb.index} />
           </TabsContent>
         </Tabs>
       </div>
+      </TranslationLoading>
     </PageWrapper>
   );
 }

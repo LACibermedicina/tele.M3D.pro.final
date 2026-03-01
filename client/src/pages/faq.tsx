@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import PageWrapper from "@/components/layout/page-wrapper";
+import { TranslationLoading } from "@/components/ui/translation-loading";
+import { useMultiContentTranslation } from "@/hooks/use-content-translation";
 import {
   HelpCircle, Search, ChevronDown, ChevronUp,
   Video, Calendar, MessageCircle, FileText, Bot, CreditCard,
@@ -497,10 +499,44 @@ const categoryIcons: Record<string, any> = {
   "Triagem": <Stethoscope className="h-4 w-4" />,
 };
 
+const faqLabels = {
+  title: "Perguntas Frequentes (FAQ)",
+  subtitle: "Respostas para as dúvidas mais comuns sobre o Tele<M3D>",
+  searchPlaceholder: "Buscar pergunta ou resposta...",
+  allLabel: "Todas",
+  noResults: "Nenhum resultado encontrado",
+  noResultsHint: "Tente buscar com outros termos."
+};
+
 export default function FAQ() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  const translatableFaq = useMemo(() => faqData.map(f => ({
+    question: f.question,
+    answer: f.answer,
+    category: f.category
+  })), []);
+
+  const { data: txSections, isLoading } = useMultiContentTranslation({
+    labels: faqLabels,
+    items: translatableFaq
+  }, 'faq');
+
+  const lb = (txSections.labels || faqLabels) as typeof faqLabels;
+  const txItems = (txSections.items || translatableFaq) as typeof translatableFaq;
+
+  const translatedFaq = useMemo(() => faqData.map((f, i) => ({
+    question: txItems[i]?.question || f.question,
+    answer: txItems[i]?.answer || f.answer,
+    category: txItems[i]?.category || f.category,
+    originalCategory: f.category
+  })), [txItems]);
+
+  const translatedCategories = useMemo(() =>
+    [...new Set(translatedFaq.map(f => f.category))],
+  [translatedFaq]);
 
   const toggleItem = (index: number) => {
     setExpandedItems(prev => {
@@ -514,7 +550,7 @@ export default function FAQ() {
     });
   };
 
-  const filteredFaq = faqData.filter(item => {
+  const filteredFaq = translatedFaq.filter(item => {
     const matchesSearch = !searchQuery || 
       item.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.answer.toLowerCase().includes(searchQuery.toLowerCase());
@@ -524,6 +560,7 @@ export default function FAQ() {
 
   return (
     <PageWrapper variant="origami">
+      <TranslationLoading isLoading={isLoading}>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
@@ -532,10 +569,10 @@ export default function FAQ() {
             </div>
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Perguntas Frequentes (FAQ)
+                {lb.title}
               </h1>
               <p className="text-muted-foreground">
-                Respostas para as dúvidas mais comuns sobre o Tele{"<"}M3D{">"}
+                {lb.subtitle}
               </p>
             </div>
           </div>
@@ -544,7 +581,7 @@ export default function FAQ() {
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar pergunta ou resposta..."
+            placeholder={lb.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -557,19 +594,22 @@ export default function FAQ() {
             className="cursor-pointer"
             onClick={() => setSelectedCategory(null)}
           >
-            Todas ({faqData.length})
+            {lb.allLabel} ({translatedFaq.length})
           </Badge>
-          {categories.map(cat => (
-            <Badge
-              key={cat}
-              variant={selectedCategory === cat ? "default" : "outline"}
-              className="cursor-pointer flex items-center gap-1"
-              onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
-            >
-              {categoryIcons[cat]}
-              {cat} ({faqData.filter(f => f.category === cat).length})
-            </Badge>
-          ))}
+          {translatedCategories.map(cat => {
+            const originalCat = translatedFaq.find(f => f.category === cat)?.originalCategory || cat;
+            return (
+              <Badge
+                key={cat}
+                variant={selectedCategory === cat ? "default" : "outline"}
+                className="cursor-pointer flex items-center gap-1"
+                onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
+              >
+                {categoryIcons[originalCat] || categoryIcons[cat]}
+                {cat} ({translatedFaq.filter(f => f.category === cat).length})
+              </Badge>
+            );
+          })}
         </div>
 
         <div className="space-y-3">
@@ -577,13 +617,13 @@ export default function FAQ() {
             <Card>
               <CardContent className="p-8 text-center">
                 <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="font-semibold mb-2">Nenhum resultado encontrado</h3>
-                <p className="text-sm text-muted-foreground">Tente buscar com outros termos.</p>
+                <h3 className="font-semibold mb-2">{lb.noResults}</h3>
+                <p className="text-sm text-muted-foreground">{lb.noResultsHint}</p>
               </CardContent>
             </Card>
           ) : (
             filteredFaq.map((item, index) => {
-              const globalIndex = faqData.indexOf(item);
+              const globalIndex = translatedFaq.indexOf(item);
               const isExpanded = expandedItems.has(globalIndex);
               return (
                 <Card 
@@ -595,7 +635,7 @@ export default function FAQ() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 flex-1">
                         <div className="mt-0.5">
-                          {categoryIcons[item.category] || <HelpCircle className="h-4 w-4" />}
+                          {categoryIcons[item.originalCategory] || <HelpCircle className="h-4 w-4" />}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -622,6 +662,7 @@ export default function FAQ() {
           )}
         </div>
       </div>
+      </TranslationLoading>
     </PageWrapper>
   );
 }
