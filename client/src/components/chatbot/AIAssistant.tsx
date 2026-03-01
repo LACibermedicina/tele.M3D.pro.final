@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,13 @@ import { FormattedText } from "@/components/ui/formatted-text";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
+
+const langToSpeechLocale: Record<string, string> = {
+  pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR', it: 'it-IT', de: 'de-DE', zh: 'zh-CN', gn: 'pt-BR',
+};
+const langToDateLocale: Record<string, string> = {
+  pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR', it: 'it-IT', de: 'de-DE', zh: 'zh-CN', gn: 'pt-BR',
+};
 
 interface Message {
   id: string;
@@ -31,6 +39,10 @@ const MAX_VISITOR_QUESTIONS = 10;
 export function AIAssistant({ open, onOpenChange, initialContext, mode = 'general' }: AIAssistantProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t, i18n } = useTranslation();
+  const currentLang = (i18n.resolvedLanguage || i18n.language || 'pt').split('-')[0];
+  const speechLocale = langToSpeechLocale[currentLang] || 'pt-BR';
+  const dateLocale = langToDateLocale[currentLang] || 'pt-BR';
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -49,7 +61,7 @@ export function AIAssistant({ open, onOpenChange, initialContext, mode = 'genera
       const recognition = new SpeechRecognitionAPI();
       recognition.continuous = false;
       recognition.interimResults = true;
-      recognition.lang = 'pt-BR';
+      recognition.lang = speechLocale;
       recognition.maxAlternatives = 1;
 
       recognition.onresult = (event: any) => {
@@ -74,7 +86,7 @@ export function AIAssistant({ open, onOpenChange, initialContext, mode = 'genera
       recognition.onerror = (event: any) => {
         setIsListening(false);
         if (event.error === 'not-allowed') {
-          toast({ title: 'Microfone bloqueado', description: 'Permita o acesso ao microfone.', variant: 'destructive' });
+          toast({ title: t('assistant.mic_blocked'), description: t('assistant.mic_allow'), variant: 'destructive' });
         }
       };
 
@@ -86,7 +98,7 @@ export function AIAssistant({ open, onOpenChange, initialContext, mode = 'genera
       if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
       if (synthRef.current) synthRef.current.cancel();
     };
-  }, []);
+  }, [speechLocale]);
 
   const toggleListening = () => {
     if (!recognitionRef.current) return;
@@ -106,12 +118,12 @@ export function AIAssistant({ open, onOpenChange, initialContext, mode = 'genera
     const cleanText = text.replace(/[📅🔑👋⚠️✅🩺📊📋🎯💡🚨⚡🔴🟠🟡🟢🔵]/g, '').replace(/\*\*/g, '').replace(/•/g, '').replace(/\n+/g, '. ').trim();
     if (!cleanText) return;
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'pt-BR';
+    utterance.lang = speechLocale;
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
     const voices = synthRef.current.getVoices();
-    const ptVoice = voices.find(v => v.lang.startsWith('pt-BR')) || voices.find(v => v.lang.startsWith('pt'));
-    if (ptVoice) utterance.voice = ptVoice;
+    const matchedVoice = voices.find(v => v.lang.startsWith(speechLocale)) || voices.find(v => v.lang.startsWith(currentLang));
+    if (matchedVoice) utterance.voice = matchedVoice;
     synthRef.current.speak(utterance);
   };
 
@@ -144,58 +156,27 @@ export function AIAssistant({ open, onOpenChange, initialContext, mode = 'genera
 
   const getGreeting = () => {
     if (!user) {
-      return `👋 Olá! Sou o assistente virtual da Tele<M3D>. Posso ajudá-lo com:
-
-📅 Agendar uma consulta médica
-🔑 Solicitar acesso temporário para conhecer a plataforma
-
-Para acesso completo (triagem, prontuário, teleconsulta), faça login ou registre-se!`;
+      return t('assistant.greeting_visitor');
     }
 
     const name = user.name.split(' ')[0];
     
     if (user.role === 'admin') {
-      return `👋 Olá, ${name}! Como administrador, posso mostrar:
-• Todas as consultas agendadas de todos os médicos
-• Estatísticas gerais da plataforma
-• Status de pacientes em espera
-• Configurações do sistema
-
-Como posso ajudar?`;
+      return t('assistant.greeting_admin', { name });
     }
 
     if (user.role === 'doctor') {
-      return `👋 Olá, Dr(a). ${name}! Posso mostrar:
-• Suas consultas agendadas
-• Pacientes que agendaram com você
-• Suas consultas em andamento e completadas
-• Gestão da sua agenda
-
-O que você gostaria de ver?`;
+      return t('assistant.greeting_doctor', { name });
     }
 
     if (user.role === 'patient') {
       if (mode === 'symptoms') {
-        return `🩺 Análise de Sintomas - Olá, ${name}!
-
-Vou realizar uma triagem clínica completa baseada nos protocolos:
-• Protocolo de Manchester (MTS)
-• Diretrizes OMS/WHO
-• Protocolos do Ministério da Saúde do Brasil
-• DSM-5/DSM-5-TR (para questões de saúde mental)
-
-Descreva seus sintomas com o máximo de detalhes possível:`;
+        return t('assistant.greeting_symptoms', { name });
       }
-      return `👋 Olá, ${name}! Posso ajudar com:
-• Agendar nova consulta
-• Ver suas consultas agendadas
-• Análise de sintomas
-• Orientações médicas
-
-Como posso ajudar hoje?`;
+      return t('assistant.greeting_patient', { name });
     }
 
-    return `👋 Olá, ${name}! Como posso ajudar você hoje?`;
+    return t('assistant.greeting_generic', { name });
   };
 
   const handleSend = async () => {
@@ -203,8 +184,8 @@ Como posso ajudar hoje?`;
 
     if (!user && visitorQuestionCount >= MAX_VISITOR_QUESTIONS) {
       toast({
-        title: "Limite atingido",
-        description: "Você atingiu o limite de perguntas como visitante. Registre-se para continuar.",
+        title: t('assistant.limit_reached'),
+        description: t('assistant.limit_desc'),
         variant: "destructive"
       });
       return;
@@ -229,7 +210,7 @@ Como posso ajudar hoje?`;
     try {
       const endpoint = user ? '/api/chatbot/message' : '/api/chatbot/visitor-message';
       
-      const body: any = { message: input };
+      const body: any = { message: input, language: currentLang };
       if (!user && mode === 'symptoms') {
         body.mode = 'symptoms';
       }
@@ -252,7 +233,7 @@ Como posso ajudar hoje?`;
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response || data.message?.content || 'Como posso ajudá-lo?',
+        content: data.response || data.message?.content || t('assistant.how_help'),
         timestamp: new Date(),
         type: data.type || 'text',
         metadata: data.metadata
@@ -268,15 +249,15 @@ Como posso ajudar hoje?`;
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Desculpe, houve um erro ao processar sua mensagem. Por favor, tente novamente.',
+        content: t('assistant.error_processing'),
         timestamp: new Date(),
         type: 'text'
       };
       setMessages(prev => [...prev, errorMessage]);
       
       toast({
-        title: "Erro",
-        description: "Não foi possível processar sua mensagem. Tente novamente.",
+        title: t('common.error'),
+        description: t('assistant.error_desc'),
         variant: "destructive"
       });
     } finally {
@@ -288,13 +269,11 @@ Como posso ajudar hoje?`;
     const suggestionMessage: Message = {
       id: (Date.now() + 2).toString(),
       role: 'assistant',
-      content: `📅 Encontrei um horário disponível:
-      
-Data: ${new Date(appointment.date).toLocaleDateString('pt-BR')}
-Horário: ${appointment.time}
-Tipo: ${appointment.type}
-
-Deseja confirmar este agendamento?`,
+      content: t('assistant.slot_found', {
+        date: new Date(appointment.date).toLocaleDateString(dateLocale),
+        time: appointment.time,
+        type: appointment.type,
+      }),
       timestamp: new Date(),
       type: 'appointment',
       metadata: appointment
@@ -329,7 +308,7 @@ Deseja confirmar este agendamento?`,
       const confirmMessage: Message = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: '✅ Consulta agendada com sucesso! Você receberá uma confirmação por email e WhatsApp.',
+        content: t('assistant.appointment_confirmed'),
         timestamp: new Date(),
         type: 'text'
       };
@@ -337,14 +316,14 @@ Deseja confirmar este agendamento?`,
       setMessages(prev => [...prev, confirmMessage]);
 
       toast({
-        title: "Sucesso!",
-        description: "Consulta agendada com sucesso.",
+        title: t('common.success'),
+        description: t('assistant.appointment_success'),
       });
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Não foi possível agendar a consulta.";
+      const errorMessage = error instanceof Error ? error.message : t('assistant.appointment_error');
       toast({
-        title: "Erro",
+        title: t('common.error'),
         description: errorMessage,
         variant: "destructive"
       });
@@ -355,26 +334,26 @@ Deseja confirmar este agendamento?`,
 
 
   const quickActions = user?.role === 'patient' ? [
-    { label: "Triagem de Sintomas", icon: HeartPulse, message: "Estou com alguns sintomas e gostaria de orientação" },
-    { label: "Agendar Consulta", icon: Calendar, message: "Gostaria de agendar uma consulta" },
-    { label: "Minhas Consultas", icon: ClipboardList, message: "Quais são minhas consultas agendadas?" },
+    { label: t('assistant.qa_triage'), icon: HeartPulse, message: t('assistant.qa_triage_msg') },
+    { label: t('assistant.qa_schedule'), icon: Calendar, message: t('assistant.qa_schedule_msg') },
+    { label: t('assistant.qa_my_appointments'), icon: ClipboardList, message: t('assistant.qa_my_appointments_msg') },
   ] : user?.role === 'doctor' ? [
-    { label: "Pacientes Hoje", icon: Users, message: "Quais pacientes tenho agendados para hoje?" },
-    { label: "Apoio Clínico", icon: Brain, message: "Preciso de uma segunda opinião sobre um caso clínico" },
-    { label: "Protocolos", icon: FileText, message: "Mostrar protocolos e guidelines médicos disponíveis" },
+    { label: t('assistant.qa_patients_today'), icon: Users, message: t('assistant.qa_patients_today_msg') },
+    { label: t('assistant.qa_clinical'), icon: Brain, message: t('assistant.qa_clinical_msg') },
+    { label: t('assistant.qa_protocols'), icon: FileText, message: t('assistant.qa_protocols_msg') },
   ] : user?.role === 'admin' ? [
-    { label: "Estatísticas", icon: BarChart3, message: "Mostre as estatísticas gerais da plataforma" },
-    { label: "Fila de Espera", icon: Users, message: "Quantos pacientes estão em espera agora?" },
-    { label: "Consultas Hoje", icon: Calendar, message: "Ver todas as consultas agendadas de hoje" },
+    { label: t('assistant.qa_stats'), icon: BarChart3, message: t('assistant.qa_stats_msg') },
+    { label: t('assistant.qa_waiting'), icon: Users, message: t('assistant.qa_waiting_msg') },
+    { label: t('assistant.qa_today'), icon: Calendar, message: t('assistant.qa_today_msg') },
   ] : [
-    { label: "Agendar Consulta", icon: Calendar, message: "Gostaria de agendar uma consulta médica" },
-    { label: "Acesso Temporário", icon: LogIn, message: "Gostaria de solicitar um acesso temporário para conhecer a plataforma" },
+    { label: t('assistant.qa_schedule'), icon: Calendar, message: t('assistant.qa_schedule_msg') },
+    { label: t('assistant.qa_temp_access'), icon: LogIn, message: t('assistant.qa_temp_access_msg') },
   ];
 
   const getDialogTitle = () => {
-    if (mode === 'symptoms') return 'Análise de Sintomas';
-    if (mode === 'questions') return 'Tirar Dúvidas';
-    return 'Assistente Virtual IA';
+    if (mode === 'symptoms') return t('assistant.title_symptoms');
+    if (mode === 'questions') return t('assistant.title_questions');
+    return t('assistant.title_default');
   };
 
   const getHeaderGradient = () => {
@@ -416,12 +395,12 @@ Deseja confirmar este agendamento?`,
             <div className="flex items-center gap-2">
               {user && (
                 <Badge variant="outline" className="ml-2">
-                  {user.role === 'admin' ? 'Admin' : user.role === 'doctor' ? 'Médico' : user.role === 'patient' ? 'Paciente' : user.role}
+                  {t(`user.role_${user.role}`)}
                 </Badge>
               )}
               {!user && remainingQuestions !== null && (
                 <Badge variant={remainingQuestions <= 3 ? "destructive" : "secondary"} className="text-xs">
-                  {remainingQuestions} restantes
+                  {t('assistant.remaining', { count: remainingQuestions })}
                 </Badge>
               )}
             </div>
@@ -466,11 +445,11 @@ Deseja confirmar este agendamento?`,
                         onClick={() => handleConfirmAppointment(message.metadata)}
                       >
                         <Check className="w-4 h-4 mr-2" />
-                        Confirmar Agendamento
+                        {t('assistant.confirm_appointment')}
                       </Button>
                     )}
                     <span className="text-xs text-muted-foreground mt-1">
-                      {message.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      {message.timestamp.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                 </div>
@@ -498,21 +477,21 @@ Deseja confirmar este agendamento?`,
             <div className="text-center space-y-3">
               <div className="flex items-center justify-center gap-2 text-orange-600">
                 <AlertTriangle className="w-5 h-5" />
-                <span className="font-medium">Limite de perguntas atingido</span>
+                <span className="font-medium">{t('assistant.limit_reached')}</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Registre-se gratuitamente para continuar usando o assistente sem limites.
+                {t('assistant.register_to_continue')}
               </p>
               <div className="flex gap-2 justify-center">
                 <Link href="/register">
                   <Button size="sm" className="gap-1.5">
                     <LogIn className="w-3.5 h-3.5" />
-                    Criar Conta Grátis
+                    {t('assistant.create_free_account')}
                   </Button>
                 </Link>
                 <Link href="/login">
                   <Button size="sm" variant="outline" className="gap-1.5">
-                    Fazer Login
+                    {t('ui.login_button')}
                   </Button>
                 </Link>
               </div>
@@ -544,7 +523,7 @@ Deseja confirmar este agendamento?`,
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()}
-                  placeholder={mode === 'symptoms' ? "Descreva seus sintomas..." : mode === 'questions' ? "Qual sua dúvida?" : "Digite sua pergunta..."}
+                  placeholder={mode === 'symptoms' ? t('assistant.placeholder_symptoms') : mode === 'questions' ? t('assistant.placeholder_questions') : t('assistant.placeholder_default')}
                   disabled={isLoading}
                 />
                 <Button 
@@ -560,7 +539,7 @@ Deseja confirmar este agendamento?`,
               </div>
               {!user && (
                 <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                  💡 Para funcionalidades completas, <Link href="/register"><span className="text-blue-600 underline cursor-pointer">registre-se</span></Link> ou <Link href="/login"><span className="text-blue-600 underline cursor-pointer">faça login</span></Link>.
+                  {t('assistant.full_access_hint')}
                 </p>
               )}
             </>

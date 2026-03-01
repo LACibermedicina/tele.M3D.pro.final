@@ -18033,7 +18033,8 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         return res.status(401).json({ message: 'Authentication required' });
       }
 
-      const { message, conversationId, context } = req.body;
+      const { message, conversationId, context, language } = req.body;
+      const userLang = language || 'pt';
 
       if (!message || !message.trim()) {
         return res.status(400).json({ message: 'Message is required' });
@@ -18057,6 +18058,11 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
           referencesUsed: [],
         }).returning();
       }
+
+      const langNames: Record<string, string> = { pt: 'Português', en: 'English', es: 'Español', fr: 'Français', it: 'Italiano', de: 'Deutsch', zh: '中文', gn: 'Guaraní' };
+      const langInstruction = userLang !== 'pt'
+        ? `\n\nIMPORTANT LANGUAGE INSTRUCTION: You MUST respond entirely in ${langNames[userLang] || userLang}. All text, explanations, recommendations, and medical terminology should be in ${langNames[userLang] || userLang}. Do NOT mix languages.`
+        : '';
 
       // Build system prompt based on user role and profile
       const userName = req.user.name?.split(' ')[0] || 'usuário';
@@ -18095,7 +18101,7 @@ REGRAS IMPORTANTES:
 4. NUNCA sugira agendamento de consultas ou triagem de sintomas — isso é para pacientes.
 5. Cite fontes quando disponíveis (OMS, MS/Brasil, DSM-5, PCDT, CAB).
 6. Para questões psiquiátricas: use critérios DSM-5, escalas (PHQ-9, GAD-7, AUDIT, CAGE), e terapêutica baseada em evidências.
-7. Use bullet points e negrito para termos-chave apenas quando listar múltiplos itens.`;
+7. Use bullet points e negrito para termos-chave apenas quando listar múltiplos itens.${langInstruction}`;
       } else if (req.user.role === 'admin') {
         systemPrompt = `Você é um assistente AI da plataforma Tele<M3D>, conversando com o administrador ${userName}.
 
@@ -18118,7 +18124,7 @@ REGRAS IMPORTANTES:
 1. Foque em informações gerenciais e operacionais.
 2. NÃO sugira triagem de sintomas ou agendamento pessoal — isso é para pacientes.
 3. Forneça dados e métricas quando solicitado.
-4. Use bullet points apenas quando listar múltiplos itens.`;
+4. Use bullet points apenas quando listar múltiplos itens.${langInstruction}`;
       } else {
         systemPrompt = `Você é um assistente de saúde AI da plataforma Tele<M3D>, conversando com o paciente ${userName}.
 
@@ -18378,7 +18384,12 @@ REGRAS IMPORTANTES:
   // Public chatbot endpoint for visitors (no authentication required)
   app.post('/api/chatbot/visitor-message', async (req: Request, res: Response) => {
     try {
-      const { message, mode } = req.body;
+      const { message, mode, language } = req.body;
+      const visitorLang = language || 'pt';
+      const vLangNames: Record<string, string> = { pt: 'Português', en: 'English', es: 'Español', fr: 'Français', it: 'Italiano', de: 'Deutsch', zh: '中文', gn: 'Guaraní' };
+      const vLangInstruction = visitorLang !== 'pt'
+        ? `\n\nIMPORTANT LANGUAGE INSTRUCTION: You MUST respond entirely in ${vLangNames[visitorLang] || visitorLang}. All text, explanations, recommendations, and medical terminology should be in ${vLangNames[visitorLang] || visitorLang}. Do NOT mix languages.`
+        : '';
 
       if (!message || !message.trim()) {
         return res.status(400).json({ message: 'Message is required' });
@@ -18421,7 +18432,7 @@ MODO DE RESPOSTAS CURTAS (ATIVO — tem prioridade sobre outras regras de compri
 • NUNCA prescreva medicamentos
 • Para 🔴 EMERGÊNCIA: oriente SAMU 192 / Pronto-Socorro IMEDIATAMENTE
 • Seja empático mas direto e conciso
-• Incentive cadastro para consulta médica completa`;
+• Incentive cadastro para consulta médica completa${vLangInstruction}`;
 
       const visitorGeneralPrompt = `╔══════════════════════════════════════════════════════════════╗
 ║  ASSISTENTE VIRTUAL IA - TELE<M3D>                            ║
@@ -18460,7 +18471,7 @@ MODO DE RESPOSTAS CURTAS (ATIVO — tem prioridade sobre outras regras de compri
 • Seja educado, direto e conciso
 • Para funcionalidades avançadas (prontuário, prescrições, teleconsulta), incentive o cadastro na plataforma
 
-Quando o visitante fornecer dados para acesso temporário, inclua na resposta a tag [TEMP_ACCESS_REQUEST] seguida dos dados coletados em formato JSON: {"name": "...", "email": "...", "reason": "..."}`;
+Quando o visitante fornecer dados para acesso temporário, inclua na resposta a tag [TEMP_ACCESS_REQUEST] seguida dos dados coletados em formato JSON: {"name": "...", "email": "...", "reason": "..."}${vLangInstruction}`;
 
       const systemPrompt = mode === 'symptoms' ? symptomSystemPrompt : visitorGeneralPrompt;
 

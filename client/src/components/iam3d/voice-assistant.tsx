@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { X, Keyboard, Send, Phone, Calendar, UserPlus, AlertTriangle, Mic, MicOff, PhoneOff, Clock, Stethoscope, User, Shield, Activity, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
@@ -7,6 +8,10 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
+
+const iam3dLangMap: Record<string, string> = {
+  pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR', it: 'it-IT', de: 'de-DE', zh: 'zh-CN', gn: 'pt-BR',
+};
 
 type AssistantState = "idle" | "listening" | "speaking" | "processing" | "calling";
 
@@ -26,9 +31,12 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { t, i18n } = useTranslation();
+  const currentLang = (i18n.resolvedLanguage || i18n.language || 'pt').split('-')[0];
+  const speechLocale = iam3dLangMap[currentLang] || 'pt-BR';
   const [state, setState] = useState<AssistantState>("idle");
   const [transcript, setTranscript] = useState("");
-  const [response, setResponse] = useState("Olá! Sou o IAM3D, seu assistente médico virtual. Posso ajudar com triagem de sintomas, agendamento de consultas, chamadas urgentes com médicos de plantão e muito mais. Toque no microfone para começar.");
+  const [response, setResponse] = useState("");
   const [showInput, setShowInput] = useState(false);
   const [manualInput, setManualInput] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -54,6 +62,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
 
   useEffect(() => {
     if (isOpen) {
+      setResponse(t('assistant.iam3d_greeting'));
       timerRef.current = setInterval(() => {
         setCallDuration(prev => prev + 1);
       }, 1000);
@@ -64,7 +73,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isOpen]);
+  }, [isOpen, t]);
 
   useEffect(() => {
     const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -72,7 +81,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
       const recognition = new SpeechRecognitionAPI();
       recognition.continuous = false;
       recognition.interimResults = true;
-      recognition.lang = "pt-BR";
+      recognition.lang = speechLocale;
       recognition.maxAlternatives = 1;
 
       recognition.onresult = (event: any) => {
@@ -86,9 +95,9 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
         setTranscript(final || interim);
         if (final) {
           const lower = final.toLowerCase().trim();
-          const closeCommands = ["fechar assistente", "encerrar assistente", "fechar o assistente", "encerrar o assistente", "desligar assistente", "parar assistente", "sair do assistente", "tchau assistente", "finalizar assistente"];
+          const closeCommands = ["fechar assistente", "encerrar assistente", "close assistant", "cerrar asistente", "stop assistant", "exit assistant", "fermer assistant"];
           if (closeCommands.some(cmd => lower.includes(cmd))) {
-            speakText("Até logo! Estou aqui quando precisar.");
+            speakText(t('assistant.iam3d_goodbye'));
             setTimeout(() => handleClose(), 2000);
             return;
           }
@@ -116,7 +125,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
       if (synthRef.current) synthRef.current.cancel();
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, []);
+  }, [speechLocale]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -259,13 +268,13 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
     if (!clean) { setState("idle"); return; }
 
     const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.lang = "pt-BR";
+    utterance.lang = speechLocale;
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
 
     const voices = synthRef.current.getVoices();
-    const ptVoice = voices.find(v => v.lang.startsWith("pt-BR")) || voices.find(v => v.lang.startsWith("pt"));
-    if (ptVoice) utterance.voice = ptVoice;
+    const matchedVoice = voices.find(v => v.lang.startsWith(speechLocale)) || voices.find(v => v.lang.startsWith(currentLang));
+    if (matchedVoice) utterance.voice = matchedVoice;
 
     utterance.onstart = () => setState("speaking");
     utterance.onend = () => setState("idle");
@@ -278,7 +287,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
     try {
       setState("calling");
       const res = await apiRequest("POST", "/api/chatbot/urgent-consultation", {
-        symptoms: symptoms || "Sintomas relatados via assistente de voz",
+        symptoms: symptoms || t('assistant.iam3d_symptoms_default'),
         urgencyLevel: "urgent",
       });
       const data = await res.json();
@@ -287,12 +296,12 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
       setActionButtons([]);
       if (data.success) {
         toast({
-          title: "Consulta Urgente Solicitada",
-          description: `Médico de plantão notificado: ${data.selectedDoctor?.name || 'médico disponível'}`,
+          title: t('assistant.iam3d_urgent_requested'),
+          description: t('assistant.iam3d_urgent_doctor_notified', { doctor: data.selectedDoctor?.name || '' }),
         });
       }
     } catch {
-      const errMsg = "Não foi possível solicitar a consulta urgente. Tente novamente.";
+      const errMsg = t('assistant.iam3d_urgent_error');
       setResponse(errMsg);
       speakText(errMsg);
     }
@@ -317,7 +326,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
 
     try {
       const endpoint = user ? "/api/chatbot/message" : "/api/chatbot/visitor-message";
-      const payload: any = { message: text };
+      const payload: any = { message: text, language: currentLang };
       if (user && conversationId) {
         payload.conversationId = conversationId;
       }
@@ -333,12 +342,12 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
       let actionType: string | null = null;
 
       if (user) {
-        aiText = data.message?.content || data.response || "Desculpe, não entendi. Pode repetir?";
+        aiText = data.message?.content || data.response || t('assistant.iam3d_not_understood');
         if (data.conversationId) setConversationId(data.conversationId);
         suggestedAppointment = data.metadata?.suggestedAppointment;
         actionType = data.metadata?.actionType;
       } else {
-        aiText = data.response || "Desculpe, não entendi. Pode repetir?";
+        aiText = data.response || t('assistant.iam3d_not_understood');
       }
 
       setResponse(aiText);
@@ -348,19 +357,19 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
 
       if (suggestedAppointment) {
         buttons.push({
-          label: `Confirmar com Dr(a). ${suggestedAppointment.doctorName}`,
+          label: t('assistant.iam3d_confirm_doctor', { name: suggestedAppointment.doctorName }),
           icon: Calendar,
           action: async () => {
             try {
               setState("processing");
               await apiRequest("POST", "/api/chatbot/confirm-appointment", suggestedAppointment);
-              const confirmMsg = `Consulta confirmada com Dr(a). ${suggestedAppointment.doctorName}!`;
+              const confirmMsg = t('assistant.iam3d_consultation_confirmed', { name: suggestedAppointment.doctorName });
               setResponse(confirmMsg);
               speakText(confirmMsg);
               setActionButtons([]);
-              toast({ title: "Consulta Confirmada", description: confirmMsg });
+              toast({ title: t('assistant.iam3d_confirm_title'), description: confirmMsg });
             } catch {
-              speakText("Não foi possível confirmar. Tente novamente.");
+              speakText(t('assistant.iam3d_confirm_error'));
             }
           },
         });
@@ -368,7 +377,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
 
       if (actionType === "urgent_consultation" && user?.role === "patient") {
         buttons.push({
-          label: "Solicitar Consulta Urgente",
+          label: t('assistant.iam3d_btn_urgent'),
           icon: Phone,
           variant: "destructive",
           action: () => handleUrgentConsultation(text),
@@ -377,7 +386,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
 
       if (actionType === "register_update") {
         buttons.push({
-          label: "Ir para Meu Perfil",
+          label: t('assistant.iam3d_btn_profile'),
           icon: UserPlus,
           action: () => handleNavigate("/profile"),
         });
@@ -385,7 +394,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
 
       if (data.type === "appointment" && !suggestedAppointment) {
         buttons.push({
-          label: "Ver Agenda",
+          label: t('assistant.iam3d_btn_schedule'),
           icon: Calendar,
           action: () => handleNavigate("/schedule"),
         });
@@ -395,7 +404,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
         const lower = text.toLowerCase();
         if (lower.includes("cadastr") || lower.includes("registr") || lower.includes("criar conta") || lower.includes("quero ser paciente")) {
           buttons.push({
-            label: "Criar Conta de Paciente",
+            label: t('assistant.iam3d_btn_register'),
             icon: UserPlus,
             action: handleRegisterAsPatient,
           });
@@ -404,7 +413,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
 
       setActionButtons(buttons);
     } catch {
-      const errMsg = "Desculpe, houve um problema. Tente novamente.";
+      const errMsg = t('assistant.iam3d_error_generic');
       setResponse(errMsg);
       speakText(errMsg);
     }
@@ -433,7 +442,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
     if (synthRef.current) synthRef.current.cancel();
     setState("idle");
     setTranscript("");
-    setResponse("Olá! Sou o IAM3D, seu assistente médico virtual. Posso ajudar com triagem de sintomas, agendamento de consultas, chamadas urgentes com médicos de plantão e muito mais. Toque no microfone para começar.");
+    setResponse(t('assistant.iam3d_greeting'));
     setActionButtons([]);
     onClose();
   };
@@ -455,18 +464,18 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
   if (!isOpen) return null;
 
   const stateLabel: Record<AssistantState, string> = {
-    idle: "Toque no microfone para falar",
-    listening: "Ouvindo...",
-    speaking: "IAM3D respondendo...",
-    processing: "Analisando...",
-    calling: "Conectando médico de plantão...",
+    idle: t('assistant.iam3d_state_idle'),
+    listening: t('assistant.iam3d_state_listening'),
+    speaking: t('assistant.iam3d_state_speaking'),
+    processing: t('assistant.iam3d_state_processing'),
+    calling: t('assistant.iam3d_state_calling'),
   };
 
   const roleCapabilities = user?.role === "doctor"
-    ? [{ label: "Diagnóstico", color: "bg-purple-500/30 text-purple-300" }, { label: "Protocolos", color: "bg-blue-500/30 text-blue-300" }, { label: "Plantão", color: "bg-amber-500/30 text-amber-300" }]
+    ? [{ label: t('assistant.iam3d_cap_diagnosis'), color: "bg-purple-500/30 text-purple-300" }, { label: t('assistant.iam3d_cap_protocols'), color: "bg-blue-500/30 text-blue-300" }, { label: t('assistant.iam3d_cap_onduty'), color: "bg-amber-500/30 text-amber-300" }]
     : user?.role === "patient"
-    ? [{ label: "Triagem", color: "bg-cyan-500/30 text-cyan-300" }, { label: "Agendar", color: "bg-green-500/30 text-green-300" }, { label: "Urgente", color: "bg-red-500/30 text-red-300" }]
-    : [{ label: "Sintomas", color: "bg-cyan-500/30 text-cyan-300" }, { label: "Agendar", color: "bg-green-500/30 text-green-300" }, { label: "Cadastrar", color: "bg-blue-500/30 text-blue-300" }];
+    ? [{ label: t('assistant.iam3d_cap_triage'), color: "bg-cyan-500/30 text-cyan-300" }, { label: t('assistant.iam3d_cap_schedule'), color: "bg-green-500/30 text-green-300" }, { label: t('assistant.iam3d_cap_urgent'), color: "bg-red-500/30 text-red-300" }]
+    : [{ label: t('assistant.iam3d_cap_symptoms'), color: "bg-cyan-500/30 text-cyan-300" }, { label: t('assistant.iam3d_cap_schedule'), color: "bg-green-500/30 text-green-300" }, { label: t('assistant.iam3d_cap_register'), color: "bg-blue-500/30 text-blue-300" }];
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-[50vh] md:top-0 z-[9999] flex flex-col bg-gradient-to-b from-[#0a0e1a] via-[#0d1526] to-[#0a0e1a] rounded-t-2xl md:rounded-none shadow-2xl">
@@ -625,7 +634,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
             className="flex items-center gap-2 mx-auto px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/60 text-xs transition-colors"
           >
             <Keyboard className="w-3.5 h-3.5" />
-            {showInput ? "Ocultar teclado" : "Digitar mensagem"}
+            {showInput ? t('assistant.iam3d_hide_keyboard') : t('assistant.iam3d_toggle_keyboard')}
           </button>
 
           {showInput && (
@@ -634,7 +643,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
                 value={manualInput}
                 onChange={(e) => setManualInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleManualSend()}
-                placeholder="Digite sua mensagem..."
+                placeholder={t('assistant.iam3d_input_placeholder')}
                 className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-cyan-400/50 rounded-xl"
                 disabled={state === "processing" || state === "calling"}
               />

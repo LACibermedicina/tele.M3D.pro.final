@@ -8,7 +8,7 @@ import {
   Video, Calendar, MessageCircle, FileText, Bot, CreditCard,
   Shield, Settings,
   Wallet, Gem, Download, Mic, Clock, BarChart3, Stethoscope, ClipboardCheck,
-  Pill, Star, ClipboardList
+  Pill, Star, ClipboardList, Ban
 } from "lucide-react";
 
 interface FaqItem {
@@ -425,8 +425,8 @@ const faqData: FaqItem[] = [
   },
   {
     category: "Bloqueio de Pacientes",
-    question: "O paciente é notificado quando é bloqueado?",
-    answer: "Quando um paciente bloqueado tenta solicitar consulta com o médico, ele recebe uma mensagem informando que não pode solicitar consultas com aquele profissional. O bloqueio é específico para o médico que o aplicou — o paciente pode solicitar consultas com outros médicos normalmente."
+    question: "O paciente bloqueado pode agendar consultas?",
+    answer: "Não. Pacientes bloqueados não podem solicitar novas consultas com o médico que aplicou o bloqueio. Ao tentar, o paciente recebe uma mensagem informando que não pode solicitar consultas com aquele profissional. O bloqueio é específico para o médico que o aplicou — o paciente pode solicitar consultas com outros médicos normalmente."
   },
   {
     category: "Assinatura Digital",
@@ -467,7 +467,7 @@ const categoryIcons: Record<string, any> = {
   "Avaliação": <Star className="h-4 w-4" />,
   "Prontuário Unificado": <ClipboardList className="h-4 w-4" />,
   "Assinatura Digital": <Shield className="h-4 w-4" />,
-  "Bloqueio de Pacientes": <Shield className="h-4 w-4" />,
+  "Bloqueio de Pacientes": <Ban className="h-4 w-4" />,
 };
 
 export default function FAQ() {
