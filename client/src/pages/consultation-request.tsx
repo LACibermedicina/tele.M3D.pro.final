@@ -871,12 +871,19 @@ export default function ConsultationRequest() {
                           <div className="flex-1">
                             <h3 className="font-semibold text-base">{doctor.name}</h3>
                             <p className="text-sm text-muted-foreground">{doctor.specialty}</p>
-                            {doctor.availability && (
-                              <div className="flex items-center gap-1 mt-1">
-                                <div className="w-2 h-2 rounded-full bg-green-500" />
-                                <span className="text-xs text-green-600">Disponível</span>
-                              </div>
-                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              {doctor.availability && (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full bg-green-500" />
+                                  <span className="text-xs text-green-600">Disponível</span>
+                                </div>
+                              )}
+                              {doctor.consultationPrice > 0 && (
+                                <span className="text-xs font-medium text-amber-600 bg-amber-50 dark:bg-amber-950 px-2 py-0.5 rounded-full">
+                                  {doctor.consultationPrice} TMC
+                                </span>
+                              )}
+                            </div>
                           </div>
                           {selectedDoctorId === doctor.id && (
                             <CheckCircle className="w-6 h-6 text-primary flex-shrink-0" />

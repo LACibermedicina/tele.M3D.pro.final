@@ -31,8 +31,9 @@ export const users = pgTable("users", {
   isOnline: boolean("is_online").default(false), // Doctor online status
   availableForImmediate: boolean("available_for_immediate").default(false), // Available for immediate consultations
   onlineSince: timestamp("online_since"), // When doctor went online
-  onDutyUntil: timestamp("on_duty_until"), // 24h on-call duty end time
-  onDutyStartedAt: timestamp("on_duty_started_at"), // When 24h on-call duty started
+  consultationPrice: integer("consultation_price").default(0),
+  onDutyUntil: timestamp("on_duty_until"),
+  onDutyStartedAt: timestamp("on_duty_started_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

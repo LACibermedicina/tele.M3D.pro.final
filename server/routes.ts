@@ -3841,12 +3841,23 @@ ${clinicalSummary}`;
         }
       }
 
-      // Calculate and charge credits for consultation duration
       if (duration && duration > 0 && consultation.patientId) {
         try {
           const config = await tmcCreditsService.getCreditConfig();
           const durationMinutes = Math.ceil(duration / 60);
-          const totalCredits = durationMinutes * config.CREDIT_PER_MINUTE;
+          
+          let totalCredits = durationMinutes * config.CREDIT_PER_MINUTE;
+          let pricingMode = 'per_minute';
+          let doctorPrice = 0;
+
+          if (consultation.doctorId) {
+            const doctorArr = await db.select().from(users).where(eq(users.id, consultation.doctorId)).limit(1);
+            if (doctorArr[0] && doctorArr[0].consultationPrice && doctorArr[0].consultationPrice > 0) {
+              doctorPrice = doctorArr[0].consultationPrice;
+              totalCredits = doctorPrice;
+              pricingMode = 'fixed_price';
+            }
+          }
           
           const patient = await storage.getPatient(consultation.patientId);
           
@@ -3863,28 +3874,48 @@ ${clinicalSummary}`;
                     functionUsed: 'video_consultation',
                     consultationId: consultation.id,
                     durationMinutes,
-                    durationSeconds: duration
+                    durationSeconds: duration,
+                    pricingMode,
+                    doctorPrice
                   }
                 );
                 
                 if (consultation.doctorId) {
-                  const commissionAmount = Math.floor((totalCredits * config.DOCTOR_COMMISSION_PERCENT) / 100);
-                  if (commissionAmount > 0) {
+                  const commissionPercent = config.CONSULTATION_COMMISSION_PERCENT ?? config.DOCTOR_COMMISSION_PERCENT;
+                  const platformFee = Math.floor((totalCredits * commissionPercent) / 100);
+                  const doctorEarnings = totalCredits - platformFee;
+                  
+                  if (doctorEarnings > 0) {
                     await tmcCreditsService.creditUser(
                       consultation.doctorId,
-                      commissionAmount,
+                      doctorEarnings,
                       'consultation_commission',
                       {
                         functionUsed: 'video_consultation_commission',
                         consultationId: consultation.id,
                         originalAmount: totalCredits,
-                        commissionPercent: config.DOCTOR_COMMISSION_PERCENT
+                        platformFee,
+                        commissionPercent,
+                        pricingMode
                       }
                     );
                   }
+
+                  if (platformFee > 0) {
+                    try {
+                      await tmcCreditsService.addToCashbox(platformFee, 'consultation_platform_fee', {
+                        consultationId: consultation.id,
+                        doctorId: consultation.doctorId,
+                        totalCharged: totalCredits,
+                        commissionPercent
+                      });
+                    } catch (cashErr) {
+                      console.warn('Cashbox update failed:', cashErr);
+                    }
+                  }
                 }
                 
-                console.log(`✅ Charged ${totalCredits} credits for ${durationMinutes} minutes consultation`);
+                console.log(`✅ Charged ${totalCredits} credits (${pricingMode}) for consultation`);
               } catch (creditError: any) {
                 console.error('Credit charging error:', creditError);
                 if (creditError.message === 'Insufficient credits') {
@@ -12146,6 +12177,7 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         whatsappNumber: z.string().max(20).optional(),
         medicalLicense: z.string().max(50).optional(),
         specialization: z.string().max(100).optional(),
+        consultationPrice: z.number().int().min(0).max(100000).optional(),
       });
       
       // Validate request body
@@ -12158,10 +12190,10 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       if (validatedData.phone !== undefined) updateData.phone = validatedData.phone;
       if (validatedData.whatsappNumber !== undefined) updateData.whatsappNumber = validatedData.whatsappNumber;
       
-      // Only allow doctors to update professional fields
       if (user.role === 'doctor') {
         if (validatedData.medicalLicense !== undefined) updateData.medicalLicense = validatedData.medicalLicense;
         if (validatedData.specialization !== undefined) updateData.specialization = validatedData.specialization;
+        if (validatedData.consultationPrice !== undefined) updateData.consultationPrice = validatedData.consultationPrice;
       }
       
       // Update user in database
@@ -12180,6 +12212,43 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       }
       console.error('Profile update error:', error);
       res.status(500).json({ message: 'Failed to update profile' });
+    }
+  });
+
+  app.patch('/api/doctor/consultation-price', requireAuth, async (req, res) => {
+    try {
+      if (!req.user || req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Apenas médicos podem definir preço de consulta' });
+      }
+      const { price } = z.object({ price: z.number().int().min(0).max(100000) }).parse(req.body);
+      await db.update(users).set({ consultationPrice: price }).where(eq(users.id, req.user.id));
+      res.json({ consultationPrice: price });
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: 'Preço inválido', errors: error.errors });
+      res.status(500).json({ message: 'Erro ao atualizar preço' });
+    }
+  });
+
+  app.get('/api/doctor/:doctorId/consultation-price', async (req, res) => {
+    try {
+      const doctor = await db.select({
+        consultationPrice: users.consultationPrice,
+        name: users.name,
+        specialization: users.specialization
+      }).from(users).where(eq(users.id, req.params.doctorId)).limit(1);
+      if (!doctor[0]) return res.status(404).json({ message: 'Médico não encontrado' });
+      const config = await tmcCreditsService.getCreditConfig();
+      const commissionPercent = config.CONSULTATION_COMMISSION_PERCENT ?? config.DOCTOR_COMMISSION_PERCENT;
+      res.json({
+        consultationPrice: doctor[0].consultationPrice || 0,
+        doctorName: doctor[0].name,
+        specialization: doctor[0].specialization,
+        platformCommissionPercent: commissionPercent,
+        pricingMode: (doctor[0].consultationPrice && doctor[0].consultationPrice > 0) ? 'fixed_price' : 'per_minute',
+        creditPerMinute: config.CREDIT_PER_MINUTE
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Erro ao buscar preço' });
     }
   });
 
@@ -16577,6 +16646,7 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         isOnline: users.isOnline,
         availableForImmediate: users.availableForImmediate,
         onlineSince: users.onlineSince,
+        consultationPrice: users.consultationPrice,
       })
         .from(users)
         .where(eq(users.role, 'doctor'));
@@ -16601,6 +16671,7 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         availableForImmediate: users.availableForImmediate,
         onlineSince: users.onlineSince,
         onDutyUntil: users.onDutyUntil,
+        consultationPrice: users.consultationPrice,
       })
         .from(users)
         .where(and(
@@ -20194,6 +20265,7 @@ async function migrateOnDutyColumns() {
   try {
     await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS on_duty_until TIMESTAMP`);
     await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS on_duty_started_at TIMESTAMP`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS consultation_price INTEGER DEFAULT 0`);
     console.log('✓ On-duty columns migrated successfully');
   } catch (error) {
     console.error('Failed to migrate on-duty columns:', error);
@@ -20573,6 +20645,14 @@ async function initializeDefaultSystemSettings() {
       settingValue: '5',
       settingType: 'number',
       description: 'Taxa de câmbio: quantidade de créditos TMC por 1 USD (padrão: 5 TMC = 1 USD)',
+      category: 'financial',
+      isEditable: true,
+    },
+    {
+      settingKey: 'consultation-commission-percent',
+      settingValue: '15',
+      settingType: 'number',
+      description: 'Taxa percentual da plataforma sobre o preço da consulta definido pelo médico (ex: 15 = 15%)',
       category: 'financial',
       isEditable: true,
     },

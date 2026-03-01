@@ -10,12 +10,13 @@ export const DEFAULT_CREDIT_CONFIG = {
   CREDIT_PER_STATISTICS: 1,
   DOCTOR_MONTHLY_CREDITS: 100,
   DOCTOR_COMMISSION_PERCENT: 30,
+  CONSULTATION_COMMISSION_PERCENT: 15,
 };
 
 // Get system credit configuration
 export async function getCreditConfig() {
   const settings = await db.select().from(systemSettings)
-    .where(sql`${systemSettings.category} = 'credits'`);
+    .where(sql`${systemSettings.category} IN ('credits', 'financial')`);
   
   const config = { ...DEFAULT_CREDIT_CONFIG };
   
@@ -162,6 +163,27 @@ export async function creditUser(
   });
   
   return newBalance;
+}
+
+export async function addToCashbox(amount: number, reason: string, metadata?: any) {
+  const existing = await db.select().from(cashbox).limit(1);
+  if (existing.length > 0) {
+    await db.update(cashbox)
+      .set({
+        balance: sql`${cashbox.balance} + ${amount}`,
+        totalRevenue: sql`${cashbox.totalRevenue} + ${amount}`,
+      })
+      .where(eq(cashbox.id, existing[0].id));
+
+    await db.insert(cashboxTransactions).values({
+      cashboxId: existing[0].id,
+      type: 'revenue',
+      amount,
+      description: reason,
+      performedBy: 'system',
+      metadata,
+    });
+  }
 }
 
 // Transfer credits with commission (e.g., doctor commission from consultation)

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Clock, Calendar, Plus, Trash2, Power, Clock3 } from "lucide-react";
+import { Clock, Calendar, Plus, Trash2, Power, Clock3, DollarSign, Info } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import PageWrapper from "@/components/layout/page-wrapper";
@@ -42,6 +42,7 @@ export default function DoctorAvailability() {
   const [availableForImmediate, setAvailableForImmediate] = useState(false);
   const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
   const [onDutyUntil, setOnDutyUntil] = useState<Date | null>(null);
+  const [consultationPrice, setConsultationPrice] = useState(0);
 
   // Fetch doctor's current schedule
   const { data: existingSchedule, isLoading } = useQuery({
@@ -75,6 +76,7 @@ export default function DoctorAvailability() {
       setIsOnline(doctorStatus.isOnline || false);
       setAvailableForImmediate(doctorStatus.availableForImmediate || false);
       setOnDutyUntil(doctorStatus.onDutyUntil ? new Date(doctorStatus.onDutyUntil) : null);
+      setConsultationPrice(doctorStatus.consultationPrice || 0);
     }
   }, [doctorStatus]);
 
@@ -143,6 +145,20 @@ export default function DoctorAvailability() {
         description: "Erro ao atualizar plantão",
         variant: "destructive",
       });
+    },
+  });
+
+  const priceMutation = useMutation({
+    mutationFn: async (price: number) => {
+      const res = await apiRequest('PATCH', '/api/doctor/consultation-price', { price });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Preço atualizado", description: "O preço da sua consulta foi salvo com sucesso" });
+      queryClient.invalidateQueries({ queryKey: ['/api/doctors'] });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Erro ao salvar preço da consulta", variant: "destructive" });
     },
   });
 
@@ -327,7 +343,58 @@ export default function DoctorAvailability() {
         </CardContent>
       </Card>
 
-      {/* Schedule Management Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Preço da Consulta
+          </CardTitle>
+          <CardDescription>
+            Defina o valor em créditos TMC que será cobrado do paciente por consulta
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-end gap-4">
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="consultation-price" className="text-base">
+                Valor por consulta (créditos TMC)
+              </Label>
+              <Input
+                id="consultation-price"
+                type="number"
+                min={0}
+                max={100000}
+                value={consultationPrice}
+                onChange={(e) => setConsultationPrice(parseInt(e.target.value) || 0)}
+                placeholder="Ex: 50"
+                className="max-w-xs"
+              />
+            </div>
+            <Button
+              onClick={() => priceMutation.mutate(consultationPrice)}
+              disabled={priceMutation.isPending}
+            >
+              {priceMutation.isPending ? 'Salvando...' : 'Salvar Preço'}
+            </Button>
+          </div>
+
+          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+              <p>
+                {consultationPrice > 0
+                  ? `O paciente pagará ${consultationPrice} créditos TMC por consulta. O sistema reterá uma taxa percentual definida pelo administrador.`
+                  : 'Quando o preço é 0, a cobrança será feita por minuto de consulta (padrão do sistema).'
+                }
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-400">
+                O valor líquido que você recebe é o preço total menos a taxa da plataforma.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
