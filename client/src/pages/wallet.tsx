@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -16,6 +16,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import WalletPayPalCheckout from "@/components/WalletPayPalCheckout";
+import { loadStripe, type Stripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+import StripeCheckoutForm from "@/components/StripeCheckoutForm";
 import {
   Wallet,
   Coins,
@@ -89,6 +92,7 @@ export default function WalletPage() {
   const [paymentMethod, setPaymentMethod] = useState<string>("paypal");
   const [checkoutStep, setCheckoutStep] = useState<"select" | "checkout">("select");
   const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [pagbankData, setPagbankData] = useState<any>(null);
   const [pagbankDocument, setPagbankDocument] = useState("");
   const [pagbankName, setPagbankName] = useState("");
@@ -97,6 +101,17 @@ export default function WalletPage() {
   const [transferUserId, setTransferUserId] = useState("");
   const [transferReason, setTransferReason] = useState("");
   const [transferOpen, setTransferOpen] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/stripe/publishable-key")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.publishableKey) {
+          setStripePromise(loadStripe(data.publishableKey));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const [linkWalletOpen, setLinkWalletOpen] = useState(false);
   const [newWalletAddress, setNewWalletAddress] = useState("");
@@ -621,35 +636,32 @@ export default function WalletPage() {
                   </>
                 )}
 
-                {(paymentMethod === "stripe" || paymentMethod === "apple_pay") && stripeClientSecret && (
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      {paymentMethod === "apple_pay"
-                        ? t("wallet_page.processing")
-                        : t("wallet_page.processing")}
-                    </p>
-                    <div className="border rounded-lg p-4 bg-muted/30">
-                      <p className="text-sm font-medium mb-2">{t("wallet_page.stripe_card")}</p>
-                      <p className="text-xs text-muted-foreground mb-3">
-                        {t("wallet_page.processing")}
-                      </p>
-                      <Button
-                        className="w-full"
-                        disabled={stripeConfirmMutation.isPending}
-                        onClick={() => {
-                          const piId = stripeClientSecret.split('_secret_')[0];
-                          stripeConfirmMutation.mutate(piId);
-                        }}
-                      >
-                        {stripeConfirmMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <Check className="h-4 w-4 mr-2" />
-                        )}
-                        {t("common.confirm")}
-                      </Button>
-                    </div>
-                  </div>
+                {(paymentMethod === "stripe" || paymentMethod === "apple_pay") && stripeClientSecret && stripePromise && (
+                  <Elements
+                    stripe={stripePromise}
+                    options={{
+                      clientSecret: stripeClientSecret,
+                      appearance: {
+                        theme: "stripe",
+                        variables: {
+                          colorPrimary: "#6366f1",
+                          borderRadius: "8px",
+                        },
+                      },
+                    }}
+                  >
+                    <StripeCheckoutForm
+                      amount={selectedPackage?.priceUsd || selectedPackage?.price || "0"}
+                      currency={(selectedPackage?.currency || "USD").toUpperCase()}
+                      credits={(selectedPackage?.credits || 0) + (selectedPackage?.bonusCredits || 0)}
+                      onSuccess={(paymentIntentId) => {
+                        stripeConfirmMutation.mutate(paymentIntentId);
+                      }}
+                      onError={(msg) => {
+                        toast({ title: t("common.error"), description: msg, variant: "destructive" });
+                      }}
+                    />
+                  </Elements>
                 )}
 
                 {paymentMethod === "pix" && pagbankData && (

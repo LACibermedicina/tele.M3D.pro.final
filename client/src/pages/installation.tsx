@@ -77,7 +77,7 @@ export default function Installation() {
                 { icon: <FileText className="h-3.5 w-3.5" />, label: "PMD v1.0 (CFM)" },
                 { icon: <Shield className="h-3.5 w-3.5" />, label: "Assinatura Digital" },
                 { icon: <Globe className="h-3.5 w-3.5" />, label: "FHIR R4 Export" },
-                { icon: <CreditCard className="h-3.5 w-3.5" />, label: "PayPal/Stripe/PIX" },
+                { icon: <CreditCard className="h-3.5 w-3.5" />, label: "PayPal/Stripe/PIX/Apple Pay" },
                 { icon: <Wallet className="h-3.5 w-3.5" />, label: "Wallet TM3D/NFTs" },
                 { icon: <Mic className="h-3.5 w-3.5" />, label: "IAM3D Voice" },
                 { icon: <Star className="h-3.5 w-3.5" />, label: "Avaliação Consultas" },
@@ -160,7 +160,9 @@ AGORA_APP_CERTIFICATE=seu_agora_certificate`} />
 PAYPAL_CLIENT_SECRET=seu_paypal_client_secret
 PAYPAL_MODE=sandbox`} />
                     <CodeBlock title="Pagamentos — Stripe (via Replit Integration)" code={`# Stripe é configurado automaticamente via Replit Integration
-# Se preferir manual:
+# Suporta: Cartão, Apple Pay, Google Pay, Stripe Link
+# O checkout usa PaymentElement com automatic_payment_methods
+# Se preferir configuração manual:
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...`} />
@@ -243,7 +245,7 @@ PAYPAL_CLIENT_ID=seu_paypal_client_id
 PAYPAL_CLIENT_SECRET=seu_paypal_client_secret
 PAYPAL_MODE=sandbox
 
-# ── Stripe (opcional) ──
+# ── Stripe (opcional — suporta Card, Apple Pay, Google Pay, Link) ──
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
@@ -387,7 +389,7 @@ echo "  - PMD v1.0 (Prontuário Digital CFM/LGPD/RGPD)"
 echo "  - Prontuário Unificado (timeline consolidada)"
 echo "  - Assinatura Digital (ICP-Brasil A3 / RSA-SHA256)"
 echo "  - Exportação FHIR R4 (BR, US, EU, Internacional)"
-echo "  - Pagamentos (PayPal, Stripe, PagBank PIX/Boleto)"
+echo "  - Pagamentos (PayPal, Stripe Card/Link/Apple Pay, PagBank PIX/Boleto)"
 echo "  - Wallet Digital (TM3D, NFTs, Broker)"
 echo "  - IAM3D Voice Assistant (STT/TTS multilíngue)"
 echo "  - Avaliação de Consultas (1-5 estrelas)"
@@ -557,7 +559,7 @@ docker-compose logs -f app`} />
                       "Definir GEMINI_API_KEY para IA médica (Google Gemini)",
                       "Configurar AGORA_APP_ID e AGORA_APP_CERTIFICATE para teleconsultas",
                       "Configurar PAYPAL_CLIENT_ID/SECRET e PAYPAL_MODE=production",
-                      "Configurar STRIPE_SECRET_KEY e STRIPE_WEBHOOK_SECRET",
+                      "Configurar Stripe (Replit Integration ou STRIPE_SECRET_KEY) — suporta Card/Link/Apple Pay/Google Pay",
                       "Configurar PAGBANK_TOKEN e PAGBANK_SANDBOX=false",
                       "Definir SESSION_SECRET com chave forte e aleatória",
                       "Definir BASE_URL com o domínio público (ex: https://med.exemplo.com)",
@@ -702,7 +704,7 @@ docker-compose logs -f app`} />
                     { name: "doctor_schedule", desc: "Horários e plantão" },
                     { name: "medical_teams", desc: "Equipes médicas" },
                     { name: "tmc_credit_packages", desc: "Pacotes de créditos TM3D" },
-                    { name: "payment_transactions", desc: "Transações (PayPal/Stripe/PagBank)" },
+                    { name: "payment_transactions", desc: "Transações (PayPal/Stripe Card/Link/Apple Pay/PagBank)" },
                     { name: "tmc_transactions", desc: "Histórico de créditos TM3D" },
                     { name: "wallet_audit_log", desc: "Auditoria de carteira" },
                     { name: "dynamic_nfts", desc: "NFTs dinâmicos (LGPD)" },

@@ -17733,13 +17733,10 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
 
       const stripe = await getUncachableStripeClient();
 
-      const paymentMethodTypes: string[] = ['card'];
-      if (paymentMethod === 'apple_pay') paymentMethodTypes.push('apple_pay' as any);
-
       const paymentIntent = await stripe.paymentIntents.create({
         amount: priceInCents,
         currency: (pkg.currency || 'usd').toLowerCase(),
-        payment_method_types: paymentMethodTypes,
+        automatic_payment_methods: { enabled: true },
         metadata: {
           userId: req.user.id,
           packageId: pkg.id,
