@@ -9124,6 +9124,51 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
     }
   });
 
+  const batchTranslateRateLimit = new Map<string, number>();
+  app.post('/api/ai/translate-batch', async (req, res) => {
+    try {
+      const clientIp = req.ip || 'unknown';
+      const now = Date.now();
+      const lastCall = batchTranslateRateLimit.get(clientIp) || 0;
+      if (now - lastCall < 2000) {
+        return res.status(429).json({ error: 'Too many requests. Please wait.' });
+      }
+      batchTranslateRateLimit.set(clientIp, now);
+      if (batchTranslateRateLimit.size > 1000) {
+        const oldEntries = [...batchTranslateRateLimit.entries()].filter(([, t]) => now - t > 60000);
+        oldEntries.forEach(([k]) => batchTranslateRateLimit.delete(k));
+      }
+
+      const { texts, targetLang, pageKey } = req.body;
+      if (!texts || !Array.isArray(texts) || !targetLang || !pageKey) {
+        return res.status(400).json({ error: 'Missing required fields: texts (array), targetLang, pageKey' });
+      }
+      if (typeof pageKey !== 'string' || pageKey.length > 100) {
+        return res.status(400).json({ error: 'Invalid pageKey' });
+      }
+      if (targetLang === 'pt') {
+        const translations: Record<string, string> = {};
+        texts.forEach((t: string) => { translations[t] = t; });
+        return res.json({ translations });
+      }
+      const validLangs = ['en', 'es', 'fr', 'de', 'it', 'zh', 'gn'];
+      if (!validLangs.includes(targetLang)) {
+        return res.status(400).json({ error: 'Unsupported target language' });
+      }
+      const maxTexts = 200;
+      const maxTextLength = 500;
+      const limitedTexts = texts
+        .slice(0, maxTexts)
+        .filter((t: any) => typeof t === 'string' && t.length > 0 && t.length <= maxTextLength);
+      const { translateBatch } = await import('./services/translation-service');
+      const translations = await translateBatch(limitedTexts, targetLang, pageKey);
+      res.json({ translations });
+    } catch (error: any) {
+      console.error('Batch translation endpoint error:', error);
+      res.status(500).json({ error: 'Batch translation failed', message: error.message });
+    }
+  });
+
   // ===== AI ANALYSIS ENDPOINTS =====
   
   // Simplified symptom analysis endpoint

@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import InactivityMonitor from "@/components/inactivity-monitor";
 import { NavigationProvider } from "@/contexts/NavigationContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { AutoTranslateWrapper } from "@/components/ui/auto-translate-wrapper";
 import Dashboard from "@/pages/dashboard";
 import Patients from "@/pages/patients";
 import PatientProfile from "@/pages/patient-profile";
@@ -120,6 +121,7 @@ function Router() {
 
       {user && !isInVideoConsultation && <QuickActionsBar userRole={user.role} />}
 
+      <AutoTranslateWrapper>
       <Switch>
         {/* Public routes */}
         <Route path="/login">
@@ -488,6 +490,7 @@ function Router() {
           <NotFound />
         </Route>
       </Switch>
+      </AutoTranslateWrapper>
       
       {/* Enhanced Footer with Quick Access */}
       <footer className="bg-card border-t border-border mt-12">

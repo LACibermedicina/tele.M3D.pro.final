@@ -9,7 +9,8 @@ const loadingLabels: Record<string, string> = {
   de: "Übersetzen...",
   it: "Traduzione...",
   ja: "翻訳中...",
-  zh: "翻译中..."
+  zh: "翻译中...",
+  gn: "Oñembohasa..."
 };
 
 interface TranslationLoadingProps {
