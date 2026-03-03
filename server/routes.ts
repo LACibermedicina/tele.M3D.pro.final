@@ -17728,14 +17728,14 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
       const [pkg] = await db.select().from(tmcCreditPackages).where(eq(tmcCreditPackages.id, packageId));
       if (!pkg) return res.status(404).json({ message: 'Package not found' });
 
-      const priceInCents = Math.round(parseFloat(pkg.price || '0') * 100);
+      const priceInCents = Math.round(parseFloat(pkg.priceUsd || '0') * 100);
       if (priceInCents <= 0) return res.status(400).json({ message: 'Invalid package price' });
 
       const stripe = await getUncachableStripeClient();
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: priceInCents,
-        currency: (pkg.currency || 'usd').toLowerCase(),
+        currency: 'usd',
         automatic_payment_methods: { enabled: true },
         metadata: {
           userId: req.user.id,
@@ -17750,8 +17750,8 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         provider: 'stripe',
         providerOrderId: paymentIntent.id,
         paymentMethod: paymentMethod || 'credit_card',
-        amount: pkg.price || '0',
-        currency: (pkg.currency || 'USD').toUpperCase(),
+        amount: pkg.priceUsd,
+        currency: 'USD',
         creditsAmount: (pkg.credits || 0) + (pkg.bonusCredits || 0),
         status: 'pending',
         stripePaymentIntentId: paymentIntent.id,
@@ -17763,8 +17763,8 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
       res.json({
         clientSecret: paymentIntent.client_secret,
         transactionId: txn.id,
-        amount: pkg.price,
-        currency: pkg.currency,
+        amount: pkg.priceUsd,
+        currency: 'USD',
         credits: (pkg.credits || 0) + (pkg.bonusCredits || 0),
       });
     } catch (error: any) {
@@ -17850,7 +17850,8 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
       const [pkg] = await db.select().from(tmcCreditPackages).where(eq(tmcCreditPackages.id, packageId));
       if (!pkg) return res.status(404).json({ message: 'Package not found' });
 
-      const priceInCents = Math.round(parseFloat(pkg.price || '0') * 100);
+      const pagbankPrice = pkg.priceBrl || pkg.priceUsd;
+      const priceInCents = Math.round(parseFloat(pagbankPrice || '0') * 100);
       if (priceInCents <= 0) return res.status(400).json({ message: 'Invalid package price' });
 
       const pagbankToken = process.env.PAGBANK_TOKEN;
@@ -17957,7 +17958,7 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         provider: 'pagbank',
         providerOrderId: orderData.id,
         paymentMethod,
-        amount: pkg.price || '0',
+        amount: pagbankPrice || '0',
         currency: 'BRL',
         creditsAmount: creditsToAdd,
         status: 'pending',
@@ -17984,7 +17985,7 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         pixQrCodeUrl: pixQrUrl,
         boletoUrl,
         boletoBarcode,
-        amount: pkg.price,
+        amount: pagbankPrice,
         currency: 'BRL',
         credits: creditsToAdd,
         expiresAt: txn.expiresAt,

@@ -22,7 +22,7 @@ The application features an Express.js backend and a React frontend, with shared
 - **Documentation:** Comprehensive role-based documentation system including installation, technical, user manual, and FAQ, with PDF export.
 - **Mobile Dashboards:** Rebuilt mobile patient dashboard with prominent "Consultar Agora" card, list-style navigation links, and compact layout. Visitor dashboard with IAM3D integration.
 - **Desktop Patient Dashboard:** Prominent "Consultar Agora" button with auto-find-first-available-doctor logic, live doctor availability count, and fallback to waiting room.
-- **Installation Guide:** Updated `install.sh` (v3.5) and `installation.tsx` page covering all modules (Pharmacy, PMD, Stripe, PagBank, Digital Signatures, FHIR R4). Environment variable reference with categorized sections.
+- **Installation Guide:** Updated `install.sh` (v4.0) and `installation.tsx` page covering all modules (Pharmacy, PMD, Stripe Elements, PagBank, Digital Signatures, FHIR R4, Clinics). Full auto-deployment script for Ubuntu/Debian with Nginx, PM2, Certbot SSL. Environment variable reference with categorized sections. Docker Compose with multi-stage build.
 
 **Technical Implementations:**
 - **Database:** PostgreSQL on Neon with Drizzle ORM.
@@ -50,7 +50,7 @@ The application features an Express.js backend and a React frontend, with shared
 - **Digital Signature Verification:** Dual-path signature verification (RSA-PSS ICP-Brasil A3, RSA-SHA256 SignatureService) with public QR code-based verification endpoint. Includes OCSP checks and audit trail.
 - **Post-Consultation Diagnostic Classification:** AI extracts syndromic diagnostic hypotheses with CID-10/11 and DSM-5/TR codes, confidence levels, and suggested exams, for doctor review.
 - **Admin Financial Management:** Admin interface for user credit balances, feature costs, credit package CRUD, exchange rates, and wallet transaction auditing. PayPal integration for credit purchases. Admin payments monitoring dashboard at `/admin/payments` with filters by provider/status/date, summary cards, and provider breakdown.
-- **Unified Payment Checkout:** Wallet purchase supports PayPal, Stripe (card/Apple Pay), and PagBank (PIX/Boleto). Payment method selection before package choice. `payment_transactions` table tracks all providers. Stripe webhook at `/api/stripe/webhook` (registered before `express.json()`). PagBank webhook at `/api/pagbank/webhook`. Stripe uses `stripe-replit-sync` for managed webhooks and schema sync.
+- **Unified Payment Checkout:** Wallet purchase supports PayPal, Stripe (Card/Link/Apple Pay/Google Pay via PaymentElement + `automatic_payment_methods`), and PagBank (PIX/Boleto). Payment method selection before package choice. `payment_transactions` table tracks all providers. Stripe webhook at `/api/stripe/webhook` (registered before `express.json()`). PagBank webhook at `/api/pagbank/webhook`. Stripe uses `stripe-replit-sync` for managed webhooks and schema sync.
 - **Reports Dashboard:** Dedicated page for doctors/admins with predefined reports on consultations, patients, financials, and doctor performance.
 - **Dynamic NFT Management:** Page for managing LGPD-compliant anonymized medical data insights as NFTs.
 - **Internal Broker:** Page for trading NFT shares and TM3D tokens with order book and trade history.
