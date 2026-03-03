@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -77,6 +78,7 @@ type TriageStep = 'input' | 'analysis' | 'select' | 'confirmed';
 type BrowseStep = 'specialties' | 'doctors' | 'confirm';
 
 export default function ConsultationRequest() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -140,18 +142,18 @@ export default function ConsultationRequest() {
       const hasDoctors = data.availableDoctors && data.availableDoctors.length > 0;
       if (!hasDoctors) {
         toast({ 
-          title: "Solicitação criada!",
-          description: "Aguarde a atribuição de um médico."
+          title: t("consultation.request_created"),
+          description: t("consultation.wait_assignment")
         });
       } else {
         toast({ 
-          title: "Análise concluída!",
-          description: "Confira o resultado e escolha um médico."
+          title: t("consultation.analysis_complete"),
+          description: t("consultation.check_result_choose_doctor", "Confira o resultado e escolha um médico.")
         });
       }
     },
     onError: (error: any) => {
-      let message = 'Tente novamente em alguns instantes.';
+      let message = t("common.retry");
       try {
         const raw = error?.message || '';
         const jsonPart = raw.includes(':') ? raw.split(': ').slice(1).join(': ') : raw;
@@ -163,7 +165,7 @@ export default function ConsultationRequest() {
         }
       }
       toast({ 
-        title: "Erro ao enviar solicitação",
+        title: t("consultation.request_error", "Erro ao enviar solicitação"),
         description: message,
         variant: "destructive" 
       });
@@ -180,15 +182,15 @@ export default function ConsultationRequest() {
     onSuccess: () => {
       setTriageStep('confirmed');
       toast({ 
-        title: "Consulta solicitada com sucesso!",
-        description: "Você receberá uma notificação quando o médico responder."
+        title: t("consultation.request_success", "Consulta solicitada com sucesso!"),
+        description: t("consultation.notification_when_doctor_responds", "Você receberá uma notificação quando o médico responder.")
       });
       setTimeout(() => navigate('/my-consultations'), 3000);
     },
     onError: () => {
       toast({ 
-        title: "Erro ao confirmar consulta", 
-        description: "Tente novamente em alguns instantes.",
+        title: t("consultation.confirm_error", "Erro ao confirmar consulta"), 
+        description: t("common.retry"),
         variant: "destructive" 
       });
     },
@@ -198,7 +200,7 @@ export default function ConsultationRequest() {
     mutationFn: async () => {
       if (!browseDoctorId) throw new Error('No doctor selected');
       const res = await apiRequest('POST', '/api/consultation-requests', {
-        symptoms: `Consulta agendada por especialidade: ${selectedSpecialty}`,
+        symptoms: `${t("consultation.scheduled_by_specialty", "Consulta agendada por especialidade")}: ${selectedSpecialty}`,
         whatsappOptIn,
         selectedDoctorId: browseDoctorId,
       });
@@ -212,22 +214,22 @@ export default function ConsultationRequest() {
         }).then(() => {
           setBrowseStep('confirm');
           toast({ 
-            title: "Consulta solicitada com sucesso!",
-            description: "Você receberá uma notificação quando o médico responder."
+            title: t("consultation.request_success", "Consulta solicitada com sucesso!"),
+            description: t("consultation.notification_when_doctor_responds", "Você receberá uma notificação quando o médico responder.")
           });
           setTimeout(() => navigate('/my-consultations'), 3000);
         }).catch(() => {
           setBrowseStep('confirm');
           toast({ 
-            title: "Solicitação criada!",
-            description: "Aguarde confirmação do médico."
+            title: t("consultation.request_created"),
+            description: t("consultation.wait_doctor_confirmation", "Aguarde confirmação do médico.")
           });
           setTimeout(() => navigate('/my-consultations'), 3000);
         });
       }
     },
     onError: (error: any) => {
-      let message = 'Tente novamente em alguns instantes.';
+      let message = t("common.retry");
       try {
         const raw = error?.message || '';
         const jsonPart = raw.includes(':') ? raw.split(': ').slice(1).join(': ') : raw;
@@ -239,7 +241,7 @@ export default function ConsultationRequest() {
         }
       }
       toast({ 
-        title: "Erro ao solicitar consulta",
+        title: t("consultation.request_error", "Erro ao solicitar consulta"),
         description: message,
         variant: "destructive" 
       });
@@ -248,7 +250,7 @@ export default function ConsultationRequest() {
 
   const handleAnalyze = () => {
     if (!symptoms.trim()) {
-      toast({ title: "Descreva seus sintomas", variant: "destructive" });
+      toast({ title: t("consultation.symptoms_desc"), variant: "destructive" });
       return;
     }
     requestMutation.mutate({ symptoms, whatsappOptIn });
@@ -289,8 +291,8 @@ export default function ConsultationRequest() {
           <Card>
             <CardContent className="p-6 text-center">
               <Shield className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-medium">Apenas pacientes podem solicitar consultas.</p>
-              <p className="text-sm text-muted-foreground mt-2">Faça login com sua conta de paciente para continuar.</p>
+              <p className="text-lg font-medium">{t("consultation.patients_only", "Apenas pacientes podem solicitar consultas.")}</p>
+              <p className="text-sm text-muted-foreground mt-2">{t("consultation.login_as_patient", "Faça login com sua conta de paciente para continuar.")}</p>
             </CardContent>
           </Card>
         </div>
@@ -321,10 +323,10 @@ export default function ConsultationRequest() {
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
             <HeartPulse className="w-7 h-7 text-primary" />
-            Solicitar Consulta
+            {t("consultation.request_title")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Escolha como deseja encontrar o médico ideal para sua consulta
+            {t("consultation.request_subtitle", "Escolha como deseja encontrar o médico ideal para sua consulta")}
           </p>
         </div>
 
@@ -339,14 +341,14 @@ export default function ConsultationRequest() {
                   <Search className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold mb-1">Buscar por Especialidade</h3>
+                  <h3 className="text-lg font-bold mb-1">{t("consultation.by_specialty")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    Navegue pelas especialidades médicas e escolha diretamente o profissional desejado
+                    {t("consultation.browse_specialties_desc", "Navegue pelas especialidades médicas e escolha diretamente o profissional desejado")}
                   </p>
                 </div>
                 <div className="flex items-center justify-center gap-1 text-primary text-sm font-medium">
                   <LayoutGrid className="w-4 h-4" />
-                  <span>Ver especialidades</span>
+                  <span>{t("consultation.view_specialties", "Ver especialidades")}</span>
                   <ArrowRight className="w-4 h-4" />
                 </div>
               </CardContent>
@@ -361,14 +363,14 @@ export default function ConsultationRequest() {
                   <Brain className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold mb-1">Triagem por Sintomas</h3>
+                  <h3 className="text-lg font-bold mb-1">{t("consultation.by_symptoms")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    Descreva seus sintomas e nossa IA recomendará o especialista mais adequado
+                    {t("consultation.triage_desc", "Descreva seus sintomas e nossa IA recomendará o especialista mais adequado")}
                   </p>
                 </div>
                 <div className="flex items-center justify-center gap-1 text-primary text-sm font-medium">
                   <MessageSquare className="w-4 h-4" />
-                  <span>Descrever sintomas</span>
+                  <span>{t("consultation.describe_symptoms", "Descrever sintomas")}</span>
                   <ArrowRight className="w-4 h-4" />
                 </div>
               </CardContent>
@@ -380,9 +382,9 @@ export default function ConsultationRequest() {
           <>
             <div className="flex items-center justify-between mb-6 px-2">
               {[
-                { num: 1, label: 'Especialidade', icon: LayoutGrid },
-                { num: 2, label: 'Médico', icon: Stethoscope },
-                { num: 3, label: 'Confirmado', icon: CalendarCheck },
+                { num: 1, label: t("consultation.specialty", "Especialidade"), icon: LayoutGrid },
+                { num: 2, label: t("common.doctor"), icon: Stethoscope },
+                { num: 3, label: t("common.confirmed"), icon: CalendarCheck },
               ].map((s, i) => {
                 const Icon = s.icon;
                 const current = getBrowseStepNum();
@@ -417,30 +419,30 @@ export default function ConsultationRequest() {
                   className="mb-2"
                 >
                   <ArrowLeft className="w-4 h-4 mr-1" />
-                  Voltar
+                  {t("common.back")}
                 </Button>
 
                 <Card className="border-2">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <LayoutGrid className="w-5 h-5 text-primary" />
-                      Escolha a Especialidade
+                      {t("consultation.choose_specialty", "Escolha a Especialidade")}
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Selecione a área médica para ver os profissionais disponíveis
+                      {t("consultation.select_medical_area", "Selecione a área médica para ver os profissionais disponíveis")}
                     </p>
                   </CardHeader>
                   <CardContent>
                     {specialtiesQuery.isLoading && (
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                        <span className="ml-2 text-sm text-muted-foreground">Carregando especialidades...</span>
+                        <span className="ml-2 text-sm text-muted-foreground">{t("consultation.loading_specialties", "Carregando especialidades...")}</span>
                       </div>
                     )}
                     {specialtiesQuery.data && specialtiesQuery.data.length === 0 && (
                       <div className="text-center py-8 text-muted-foreground">
                         <Stethoscope className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                        <p>Nenhum médico cadastrado no momento.</p>
+                        <p>{t("consultation.no_doctors_available")}</p>
                       </div>
                     )}
                     {specialtiesQuery.data && specialtiesQuery.data.length > 0 && (
@@ -458,7 +460,7 @@ export default function ConsultationRequest() {
                               <div className="flex-1">
                                 <h3 className="font-semibold text-sm">{group.specialty}</h3>
                                 <p className="text-xs text-muted-foreground">
-                                  {group.doctors.length} {group.doctors.length === 1 ? 'médico' : 'médicos'}
+                                  {group.doctors.length} {t("consultation.available_doctors")}
                                 </p>
                               </div>
                               <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -481,7 +483,7 @@ export default function ConsultationRequest() {
                   className="mb-2"
                 >
                   <ArrowLeft className="w-4 h-4 mr-1" />
-                  Voltar às especialidades
+                  {t("consultation.back_to_specialties", "Voltar às especialidades")}
                 </Button>
 
                 <Card className="border-2">
@@ -491,7 +493,7 @@ export default function ConsultationRequest() {
                       {selectedSpecialty}
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Selecione o profissional desejado
+                      {t("consultation.select_professional", "Selecione o profissional desejado")}
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -542,7 +544,7 @@ export default function ConsultationRequest() {
                     onClick={() => { setBrowseStep('specialties'); setBrowseDoctorId(null); }}
                     className="flex-1 h-12"
                   >
-                    Voltar
+                    {t("common.back")}
                   </Button>
                   <Button
                     onClick={() => browseConfirmMutation.mutate()}
@@ -553,12 +555,12 @@ export default function ConsultationRequest() {
                     {browseConfirmMutation.isPending ? (
                       <>
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Solicitando...
+                        {t("consultation.requesting", "Solicitando...")}
                       </>
                     ) : (
                       <>
                         <CalendarCheck className="w-5 h-5 mr-2" />
-                        Solicitar Consulta
+                        {t("consultation.request_title")}
                       </>
                     )}
                   </Button>
@@ -572,13 +574,13 @@ export default function ConsultationRequest() {
                   <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-4">
                     <CheckCircle className="w-8 h-8 text-white" />
                   </div>
-                  <h2 className="text-xl font-bold text-green-800 mb-2">Consulta Solicitada!</h2>
+                  <h2 className="text-xl font-bold text-green-800 mb-2">{t("consultation.request_success", "Consulta Solicitada!")}</h2>
                   <p className="text-sm text-green-700 mb-4">
-                    Sua solicitação foi enviada com sucesso. Você receberá uma notificação quando o médico responder.
+                    {t("consultation.notification_when_doctor_responds", "Sua solicitação foi enviada com sucesso. Você receberá uma notificação quando o médico responder.")}
                   </p>
                   <div className="flex items-center justify-center gap-2 text-green-600">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Redirecionando para suas consultas...</span>
+                    <span className="text-sm">{t("consultation.redirecting", "Redirecionando para suas consultas...")}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -590,10 +592,10 @@ export default function ConsultationRequest() {
           <>
             <div className="flex items-center justify-between mb-8 px-2">
               {[
-                { num: 1, label: 'Sintomas', icon: MessageSquare },
-                { num: 2, label: 'Triagem IA', icon: Brain },
-                { num: 3, label: 'Médico', icon: Stethoscope },
-                { num: 4, label: 'Confirmado', icon: CalendarCheck },
+                { num: 1, label: t("consultation.symptoms"), icon: MessageSquare },
+                { num: 2, label: t("consultation.triage_ai", "Triagem IA"), icon: Brain },
+                { num: 3, label: t("common.doctor"), icon: Stethoscope },
+                { num: 4, label: t("common.confirmed"), icon: CalendarCheck },
               ].map((s, i) => {
                 const Icon = s.icon;
                 const current = getTriageStepNum();
@@ -628,17 +630,17 @@ export default function ConsultationRequest() {
                   className="mb-4"
                 >
                   <ArrowLeft className="w-4 h-4 mr-1" />
-                  Voltar
+                  {t("common.back")}
                 </Button>
 
                 <Card className="border-2">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <MessageSquare className="w-5 h-5 text-primary" />
-                      Descreva seus sintomas
+                      {t("consultation.symptoms_desc")}
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Quanto mais detalhes, melhor será a análise da IA
+                      {t("consultation.more_details_better", "Quanto mais detalhes, melhor será a análise da IA")}
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-5">
@@ -655,7 +657,7 @@ export default function ConsultationRequest() {
                       <div className="flex items-center gap-2">
                         <MessageSquare className="w-4 h-4 text-green-600" />
                         <Label htmlFor="whatsapp-opt-in" className="cursor-pointer text-sm">
-                          Receber notificações via WhatsApp
+                          {t("consultation.whatsapp_notifications", "Receber notificações via WhatsApp")}
                         </Label>
                       </div>
                       <Switch
@@ -676,12 +678,12 @@ export default function ConsultationRequest() {
                       {requestMutation.isPending ? (
                         <>
                           <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Analisando com IA...
+                          {t("consultation.analyzing_ai", "Analisando com IA...")}
                         </>
                       ) : (
                         <>
                           <Brain className="w-5 h-5 mr-2" />
-                          Analisar Sintomas
+                          {t("consultation.analyze_symptoms", "Analisar Sintomas")}
                           <ArrowRight className="w-4 h-4 ml-2" />
                         </>
                       )}
@@ -708,7 +710,7 @@ export default function ConsultationRequest() {
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-bold text-lg">Classificação de Risco</h3>
+                              <h3 className="font-bold text-lg">{t("consultation.risk_classification", "Classificação de Risco")}</h3>
                               <TriageBadge level={triageResult.urgencyLevel} size="lg" />
                             </div>
                             <div className="flex items-center gap-2 mt-2">
@@ -738,7 +740,7 @@ export default function ConsultationRequest() {
                   <CardContent className="p-5">
                     <div className="flex items-start gap-3 mb-3">
                       <FileText className="w-5 h-5 text-primary mt-0.5" />
-                      <h3 className="font-semibold text-base">Análise Clínica</h3>
+                      <h3 className="font-semibold text-base">{t("consultation.clinical_analysis")}</h3>
                     </div>
                     <p className="text-sm leading-relaxed text-foreground/80 pl-8" data-testid="text-clinical-presentation">
                       {triageResult.clinicalPresentation}
@@ -751,7 +753,7 @@ export default function ConsultationRequest() {
                     <CardContent className="p-5">
                       <div className="flex items-start gap-3 mb-3">
                         <Activity className="w-5 h-5 text-primary mt-0.5" />
-                        <h3 className="font-semibold text-base">Achados Importantes</h3>
+                        <h3 className="font-semibold text-base">{t("consultation.key_findings", "Achados Importantes")}</h3>
                       </div>
                       <div className="space-y-2 pl-8">
                         {triageResult.keyFindings.map((finding, i) => (
@@ -770,7 +772,7 @@ export default function ConsultationRequest() {
                     <CardContent className="p-5">
                       <div className="flex items-start gap-3 mb-3">
                         <Stethoscope className="w-5 h-5 text-primary mt-0.5" />
-                        <h3 className="font-semibold text-base">Especialidades Recomendadas</h3>
+                        <h3 className="font-semibold text-base">{t("consultation.recommended_specialties", "Especialidades Recomendadas")}</h3>
                       </div>
                       <div className="flex flex-wrap gap-2 pl-8">
                         {triageResult.recommendedSpecialties.map((spec, i) => (
@@ -788,7 +790,7 @@ export default function ConsultationRequest() {
                     <CardContent className="p-5">
                       <div className="flex items-start gap-3 mb-3">
                         <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
-                        <h3 className="font-semibold text-base">Protocolos e Diretrizes Aplicadas</h3>
+                        <h3 className="font-semibold text-base">{t("consultation.protocols_applied", "Protocolos e Diretrizes Aplicadas")}</h3>
                       </div>
                       <div className="flex flex-wrap gap-2 pl-8">
                         {triageResult.protocolsApplied.map((protocol, i) => (
@@ -805,7 +807,7 @@ export default function ConsultationRequest() {
                   <TriageHelpDialog trigger={
                     <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
                       <i className="fas fa-info-circle mr-1"></i>
-                      Entenda a classificação de risco
+                      {t("consultation.understand_risk", "Entenda a classificação de risco")}
                     </Button>
                   } />
                 </div>
@@ -824,13 +826,13 @@ export default function ConsultationRequest() {
                   {triageResult.recommendedDoctors.length > 0 ? (
                     <>
                       <UserCheck className="w-5 h-5 mr-2" />
-                      Escolher Médico
+                      {t("consultation.choose_doctor", "Escolher Médico")}
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </>
                   ) : (
                     <>
                       <CalendarCheck className="w-5 h-5 mr-2" />
-                      Ver Minhas Consultas
+                      {t("consultation.my_consultations")}
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </>
                   )}
@@ -844,10 +846,10 @@ export default function ConsultationRequest() {
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <UserCheck className="w-5 h-5 text-primary" />
-                      Escolha seu Médico
+                      {t("consultation.choose_doctor", "Escolha seu Médico")}
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Selecione o profissional que deseja para sua consulta
+                      {t("consultation.select_professional", "Selecione o profissional desejado")}
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -875,7 +877,7 @@ export default function ConsultationRequest() {
                               {doctor.availability && (
                                 <div className="flex items-center gap-1">
                                   <div className="w-2 h-2 rounded-full bg-green-500" />
-                                  <span className="text-xs text-green-600">Disponível</span>
+                                  <span className="text-xs text-green-600">{t("consultation.available", "Disponível")}</span>
                                 </div>
                               )}
                               {doctor.consultationPrice > 0 && (
@@ -900,7 +902,7 @@ export default function ConsultationRequest() {
                     onClick={() => setTriageStep('analysis')}
                     className="flex-1 h-12"
                   >
-                    Voltar
+                    {t("common.back")}
                   </Button>
                   <Button
                     data-testid="button-confirm-doctor"
@@ -912,12 +914,12 @@ export default function ConsultationRequest() {
                     {confirmMutation.isPending ? (
                       <>
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Confirmando...
+                        {t("consultation.confirming", "Confirmando...")}
                       </>
                     ) : (
                       <>
                         <CalendarCheck className="w-5 h-5 mr-2" />
-                        Confirmar Consulta
+                        {t("consultation.confirm_consultation", "Confirmar Consulta")}
                       </>
                     )}
                   </Button>
@@ -931,13 +933,13 @@ export default function ConsultationRequest() {
                   <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-4">
                     <CheckCircle className="w-8 h-8 text-white" />
                   </div>
-                  <h2 className="text-xl font-bold text-green-800 mb-2">Consulta Solicitada!</h2>
+                  <h2 className="text-xl font-bold text-green-800 mb-2">{t("consultation.request_success", "Consulta Solicitada!")}</h2>
                   <p className="text-sm text-green-700 mb-4">
-                    Sua solicitação foi enviada com sucesso. Você receberá uma notificação quando o médico responder.
+                    {t("consultation.notification_when_doctor_responds", "Sua solicitação foi enviada com sucesso. Você receberá uma notificação quando o médico responder.")}
                   </p>
                   <div className="flex items-center justify-center gap-2 text-green-600">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Redirecionando para suas consultas...</span>
+                    <span className="text-sm">{t("consultation.redirecting", "Redirecionando para suas consultas...")}</span>
                   </div>
                 </CardContent>
               </Card>

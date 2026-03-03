@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import PageWrapper from "@/components/layout/page-wrapper";
@@ -65,20 +66,22 @@ function TransactionIcon({ type }: { type: string }) {
 }
 
 function TransactionLabel({ type }: { type: string }) {
-  const labels: Record<string, { text: string; color: string }> = {
-    credit: { text: "Crédito", color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" },
-    debit: { text: "Débito", color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" },
-    transfer: { text: "Transferência", color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" },
-    recharge: { text: "Recarga", color: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300" },
-    purchase: { text: "Compra", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300" },
-    commission: { text: "Comissão", color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
-    bonus: { text: "Bônus", color: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" },
+  const { t } = useTranslation();
+  const labels: Record<string, { textKey: string; color: string }> = {
+    credit: { textKey: "wallet_page.credit", color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" },
+    debit: { textKey: "wallet_page.debit", color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" },
+    transfer: { textKey: "wallet_page.transfer_type", color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" },
+    recharge: { textKey: "wallet_page.recharge", color: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300" },
+    purchase: { textKey: "wallet_page.purchase", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300" },
+    commission: { textKey: "referrals.commission", color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
+    bonus: { textKey: "wallet_page.credit", color: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" },
   };
-  const label = labels[type] || { text: type, color: "bg-gray-100 text-gray-700" };
-  return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${label.color}`}>{label.text}</span>;
+  const label = labels[type] || { textKey: "", color: "bg-gray-100 text-gray-700" };
+  return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${label.color}`}>{label.textKey ? t(label.textKey) : type}</span>;
 }
 
 export default function WalletPage() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { user } = useAuth();
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
@@ -149,10 +152,10 @@ export default function WalletPage() {
       setNewWalletType("");
       setNewWalletNetwork("");
       setNewWalletLabel("");
-      toast({ title: "Carteira vinculada", description: "Carteira externa vinculada com sucesso!" });
+      toast({ title: t("wallet_page.link_wallet"), description: t("common.success") });
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -163,10 +166,10 @@ export default function WalletPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/external-wallets"] });
       setDeleteWalletId(null);
-      toast({ title: "Carteira removida", description: "Carteira externa removida com sucesso!" });
+      toast({ title: t("common.remove"), description: t("common.success") });
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -180,10 +183,10 @@ export default function WalletPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/tmc/balance"] });
       setWithdrawWalletId("");
       setWithdrawAmount("");
-      toast({ title: "Saque solicitado", description: "Sua solicitação de saque foi enviada!" });
+      toast({ title: t("wallet_page.withdrawal_request"), description: t("common.success") });
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -198,7 +201,7 @@ export default function WalletPage() {
       setCheckoutStep("checkout");
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: "Falha ao criar ordem: " + error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -212,7 +215,7 @@ export default function WalletPage() {
       setCheckoutStep("checkout");
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: "Falha ao criar pagamento Stripe: " + error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -233,7 +236,7 @@ export default function WalletPage() {
       if (data.transactionId) setPollingTxnId(data.transactionId);
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: "Falha ao criar pagamento PagBank: " + error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -246,10 +249,10 @@ export default function WalletPage() {
       resetCheckout();
       queryClient.invalidateQueries({ queryKey: ["/api/tmc/balance"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tmc/transactions"] });
-      toast({ title: "Créditos adicionados!", description: data.message || `${data.creditsAdded} créditos adicionados!` });
+      toast({ title: t("wallet_page.credits"), description: data.message || t("common.success") });
     },
     onError: (error: Error) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -285,7 +288,7 @@ export default function WalletPage() {
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Falha na transferência");
+        throw new Error(error.message || t("common.error"));
       }
       return response.json();
     },
@@ -296,19 +299,19 @@ export default function WalletPage() {
       setTransferUserId("");
       setTransferReason("");
       setTransferOpen(false);
-      toast({ title: "Transferência realizada", description: "Créditos TM3D transferidos com sucesso!" });
+      toast({ title: t("wallet_page.transfer"), description: t("common.success") });
     },
     onError: (error: any) => {
-      toast({ title: "Erro", description: error.message || "Falha na transferência", variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message || t("common.error"), variant: "destructive" });
     },
   });
 
   const handleTransfer = () => {
     if (!transferUserId || !transferAmount || parseInt(transferAmount) <= 0) {
-      toast({ title: "Dados inválidos", description: "Preencha todos os campos corretamente.", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("common.required_field"), variant: "destructive" });
       return;
     }
-    transferMutation.mutate({ toUserId: transferUserId, amount: parseInt(transferAmount), reason: transferReason || "Transferência entre usuários" });
+    transferMutation.mutate({ toUserId: transferUserId, amount: parseInt(transferAmount), reason: transferReason || t("wallet_page.transfer") });
   };
 
   const isAdmin = user?.role === 'admin';
@@ -318,11 +321,11 @@ export default function WalletPage() {
   const totalCommissions = transactions.filter((t: any) => t.type === "commission").reduce((sum: number, t: any) => sum + Math.abs(t.amount || 0), 0);
 
   const featureCosts = [
-    { name: "Consulta por Vídeo", cost: 50, icon: Zap },
-    { name: "Consulta WhatsApp", cost: 10, icon: Send },
-    { name: "Análise de Exames IA", cost: 15, icon: Shield },
-    { name: "Assistente IA", cost: 5, icon: Star },
-    { name: "Assinatura Digital", cost: 20, icon: Check },
+    { name: t("video.title"), cost: 50, icon: Zap },
+    { name: "WhatsApp", cost: 10, icon: Send },
+    { name: t("medical.exam"), cost: 15, icon: Shield },
+    { name: t("navigation.ai_assistant"), cost: 5, icon: Star },
+    { name: t("medical.digital_signature"), cost: 20, icon: Check },
   ];
 
   return (
@@ -333,8 +336,8 @@ export default function WalletPage() {
           <Wallet className="h-7 w-7 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Carteira Digital</h1>
-          <p className="text-sm text-muted-foreground">Gerencie seus créditos TM3D e realize compras via PayPal</p>
+          <h1 className="text-2xl font-bold">{t("wallet_page.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("wallet_page.credits")}</p>
         </div>
       </div>
 
@@ -343,7 +346,7 @@ export default function WalletPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Saldo Atual</p>
+                <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">{t("wallet_page.balance")}</p>
                 <p className="text-3xl font-bold text-blue-800 dark:text-blue-200 mt-1">
                   {balanceLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : `${balance?.balance || 0} TM3D`}
                 </p>
@@ -359,7 +362,7 @@ export default function WalletPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-green-600 dark:text-green-400 font-medium">Total Recebido</p>
+                <p className="text-sm text-green-600 dark:text-green-400 font-medium">{t("common.total")}</p>
                 <p className="text-3xl font-bold text-green-800 dark:text-green-200 mt-1">
                   +{totalCredits} TM3D
                 </p>
@@ -376,7 +379,7 @@ export default function WalletPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-orange-600 dark:text-orange-400 font-medium">
-                  {user?.role === "doctor" ? "Comissões" : "Total Gasto"}
+                  {user?.role === "doctor" ? t("referrals.commission") : t("common.total")}
                 </p>
                 <p className="text-3xl font-bold text-orange-800 dark:text-orange-200 mt-1">
                   {user?.role === "doctor" ? `+${totalCommissions}` : `-${totalDebits}`} TM3D
@@ -398,29 +401,29 @@ export default function WalletPage() {
         <TabsList className={`grid w-full max-w-3xl ${isAdmin ? 'grid-cols-6' : 'grid-cols-2'}`}>
           <TabsTrigger value="comprar" className="flex items-center gap-1.5">
             <ShoppingCart className="h-4 w-4" />
-            <span className="hidden sm:inline">Comprar</span>
+            <span className="hidden sm:inline">{t("wallet_page.buy_credits")}</span>
           </TabsTrigger>
           <TabsTrigger value="historico" className="flex items-center gap-1.5">
             <History className="h-4 w-4" />
-            <span className="hidden sm:inline">Histórico</span>
+            <span className="hidden sm:inline">{t("wallet_page.history")}</span>
           </TabsTrigger>
           {isAdmin && (
             <>
               <TabsTrigger value="transferir" className="flex items-center gap-1.5">
                 <Send className="h-4 w-4" />
-                <span className="hidden sm:inline">Transferir</span>
+                <span className="hidden sm:inline">{t("wallet_page.transfer")}</span>
               </TabsTrigger>
               <TabsTrigger value="custos" className="flex items-center gap-1.5">
                 <Info className="h-4 w-4" />
-                <span className="hidden sm:inline">Custos</span>
+                <span className="hidden sm:inline">{t("admin_page.feature_costs")}</span>
               </TabsTrigger>
               <TabsTrigger value="carteira-externa" className="flex items-center gap-1.5">
                 <ExternalLink className="h-4 w-4" />
-                <span className="hidden sm:inline">Externa</span>
+                <span className="hidden sm:inline">{t("wallet_page.external_wallet")}</span>
               </TabsTrigger>
               <TabsTrigger value="auditoria" className="flex items-center gap-1.5">
                 <FileText className="h-4 w-4" />
-                <span className="hidden sm:inline">Auditoria</span>
+                <span className="hidden sm:inline">{t("medical_records.audit_log")}</span>
               </TabsTrigger>
             </>
           )}
@@ -430,25 +433,25 @@ export default function WalletPage() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Pacotes de Créditos</h2>
+              <h2 className="text-lg font-semibold">{t("admin_page.credit_packages")}</h2>
             </div>
             <Badge variant="outline" className="text-xs">
-              Taxa: 1 USD = {exchangeRate?.rate || 5} TM3D
+              {t("admin_page.exchange_rates")}: 1 USD = {exchangeRate?.rate || 5} TM3D
             </Badge>
           </div>
 
           {checkoutStep === "select" && (
             <Card className="mb-4">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Método de Pagamento</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("wallet_page.payment_method")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   {[
-                    { id: "paypal", label: "PayPal", icon: "💳" },
-                    { id: "stripe", label: "Cartão (Stripe)", icon: "💳" },
-                    { id: "pix", label: "PIX", icon: "⚡" },
-                    { id: "boleto", label: "Boleto", icon: "📄" },
+                    { id: "paypal", label: t("wallet_page.paypal"), icon: "💳" },
+                    { id: "stripe", label: t("wallet_page.stripe_card"), icon: "💳" },
+                    { id: "pix", label: t("wallet_page.pix"), icon: "⚡" },
+                    { id: "boleto", label: t("wallet_page.boleto"), icon: "📄" },
                     { id: "apple_pay", label: "Apple Pay", icon: "🍎" },
                   ].map((pm) => (
                     <Button
@@ -466,7 +469,7 @@ export default function WalletPage() {
                 {(paymentMethod === "pix" || paymentMethod === "boleto") && (
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs">CPF</Label>
+                      <Label className="text-xs">{t("common.type")}</Label>
                       <Input
                         placeholder="000.000.000-00"
                         value={pagbankDocument}
@@ -475,9 +478,9 @@ export default function WalletPage() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Nome completo</Label>
+                      <Label className="text-xs">{t("common.name")}</Label>
                       <Input
-                        placeholder="Nome no documento"
+                        placeholder={t("common.name")}
                         value={pagbankName}
                         onChange={(e) => setPagbankName(e.target.value)}
                         className="h-8 text-sm"
@@ -513,14 +516,14 @@ export default function WalletPage() {
                   >
                     {pkg.isPromotional && (
                       <div className="absolute -top-2 left-4 px-2 py-0.5 bg-amber-500 text-white text-xs font-bold rounded">
-                        PROMOÇÃO
+                        {t("wallet_page.purchase")}
                       </div>
                     )}
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-lg">{pkg.name}</CardTitle>
                         {pkg.bonusCredits > 0 && (
-                          <Badge className="bg-emerald-500 text-white">+{pkg.bonusCredits} bônus</Badge>
+                          <Badge className="bg-emerald-500 text-white">+{pkg.bonusCredits}</Badge>
                         )}
                       </div>
                       <CardDescription className="text-xs">{pkg.description}</CardDescription>
@@ -536,13 +539,13 @@ export default function WalletPage() {
                         <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-2">
                             <Coins className="h-4 w-4 text-amber-500" />
-                            <span className="font-medium">{totalCredits} créditos</span>
+                            <span className="font-medium">{totalCredits} TM3D</span>
                           </div>
-                          <span className="text-xs text-muted-foreground">${costPerCredit}/crédito</span>
+                          <span className="text-xs text-muted-foreground">${costPerCredit}/TM3D</span>
                         </div>
                         {pkg.bonusCredits > 0 && (
                           <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                            {pkg.credits} base + {pkg.bonusCredits} bônus
+                            {pkg.credits} + {pkg.bonusCredits}
                           </p>
                         )}
                         <Button
@@ -556,12 +559,12 @@ export default function WalletPage() {
                           ) : (
                             <>
                               <ShoppingCart className="h-4 w-4 mr-1" />
-                              {paymentMethod === "paypal" ? "Comprar via PayPal" :
-                               paymentMethod === "stripe" ? "Comprar via Cartão" :
-                               paymentMethod === "pix" ? "Comprar via PIX" :
-                               paymentMethod === "boleto" ? "Comprar via Boleto" :
-                               paymentMethod === "apple_pay" ? "Comprar via Apple Pay" :
-                               "Comprar"}
+                              {paymentMethod === "paypal" ? t("wallet_page.buy_credits") :
+                               paymentMethod === "stripe" ? t("wallet_page.buy_credits") :
+                               paymentMethod === "pix" ? t("wallet_page.buy_credits") :
+                               paymentMethod === "boleto" ? t("wallet_page.buy_credits") :
+                               paymentMethod === "apple_pay" ? t("wallet_page.buy_credits") :
+                               t("wallet_page.buy_credits")}
                             </>
                           )}
                         </Button>
@@ -579,21 +582,21 @@ export default function WalletPage() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <CreditCard className="h-5 w-5" />
-                    Finalizar Pagamento
+                    {t("wallet_page.processing")}
                   </CardTitle>
                   <Button variant="ghost" size="sm" onClick={resetCheckout}>
-                    Cancelar
+                    {t("common.cancel")}
                   </Button>
                 </div>
                 <CardDescription>
-                  {selectedPackage.name} — {selectedPackage.credits + (selectedPackage.bonusCredits || 0)} créditos por ${selectedPackage.priceUsd}
+                  {selectedPackage.name} — {selectedPackage.credits + (selectedPackage.bonusCredits || 0)} TM3D — ${selectedPackage.priceUsd}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {paymentMethod === "paypal" && paypalOrderId && (
                   <>
                     <p className="text-sm text-muted-foreground">
-                      Complete o pagamento com PayPal para receber seus créditos instantaneamente.
+                      {t("wallet_page.processing")}
                     </p>
                     <WalletPayPalCheckout
                       amount={selectedPackage.priceUsd}
@@ -604,15 +607,15 @@ export default function WalletPage() {
                         queryClient.invalidateQueries({ queryKey: ["/api/tmc/balance"] });
                         queryClient.invalidateQueries({ queryKey: ["/api/tmc/transactions"] });
                         toast({
-                          title: "Créditos adicionados!",
-                          description: data.message || "Seus créditos foram adicionados com sucesso.",
+                          title: t("wallet_page.credits"),
+                          description: data.message || t("common.success"),
                         });
                       }}
                       onError={(errorMsg) => {
-                        toast({ title: "Erro no pagamento", description: errorMsg, variant: "destructive" });
+                        toast({ title: t("common.error"), description: errorMsg, variant: "destructive" });
                       }}
                       onCancel={() => {
-                        toast({ title: "Pagamento cancelado", description: "O pagamento foi cancelado." });
+                        toast({ title: t("common.cancelled"), description: t("common.cancelled") });
                       }}
                     />
                   </>
@@ -622,13 +625,13 @@ export default function WalletPage() {
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
                       {paymentMethod === "apple_pay"
-                        ? "Confirme o pagamento com Apple Pay."
-                        : "Insira os dados do seu cartão para completar o pagamento."}
+                        ? t("wallet_page.processing")
+                        : t("wallet_page.processing")}
                     </p>
                     <div className="border rounded-lg p-4 bg-muted/30">
-                      <p className="text-sm font-medium mb-2">Pagamento via Stripe</p>
+                      <p className="text-sm font-medium mb-2">{t("wallet_page.stripe_card")}</p>
                       <p className="text-xs text-muted-foreground mb-3">
-                        Seu pagamento será processado de forma segura pelo Stripe.
+                        {t("wallet_page.processing")}
                       </p>
                       <Button
                         className="w-full"
@@ -643,7 +646,7 @@ export default function WalletPage() {
                         ) : (
                           <Check className="h-4 w-4 mr-2" />
                         )}
-                        Confirmar Pagamento
+                        {t("common.confirm")}
                       </Button>
                     </div>
                   </div>
@@ -652,7 +655,7 @@ export default function WalletPage() {
                 {paymentMethod === "pix" && pagbankData && (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Escaneie o QR Code ou copie o código PIX para efetuar o pagamento.
+                      {t("wallet_page.pix")}
                     </p>
                     {pagbankData.pixQrCodeUrl && (
                       <div className="flex justify-center">
@@ -665,7 +668,7 @@ export default function WalletPage() {
                     )}
                     {pagbankData.pixCode && (
                       <div className="space-y-2">
-                        <Label className="text-xs">Código PIX (Copia e Cola)</Label>
+                        <Label className="text-xs">{t("wallet_page.pix")}</Label>
                         <div className="flex gap-2">
                           <Input
                             readOnly
@@ -677,20 +680,20 @@ export default function WalletPage() {
                             variant="outline"
                             onClick={() => {
                               navigator.clipboard.writeText(pagbankData.pixCode);
-                              toast({ title: "Copiado!", description: "Código PIX copiado." });
+                              toast({ title: t("common.copied_to_clipboard") });
                             }}
                           >
-                            Copiar
+                            {t("common.copy")}
                           </Button>
                         </div>
                       </div>
                     )}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
-                      <span>Expira em 30 minutos</span>
+                      <span>30 min</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Seus créditos serão adicionados automaticamente após a confirmação do pagamento.
+                      {t("wallet_page.processing")}
                     </p>
                   </div>
                 )}
@@ -698,11 +701,11 @@ export default function WalletPage() {
                 {paymentMethod === "boleto" && pagbankData && (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Use o boleto bancário para efetuar o pagamento. O prazo de compensação é de até 3 dias úteis.
+                      {t("wallet_page.boleto")}
                     </p>
                     {pagbankData.boletoBarcode && (
                       <div className="space-y-2">
-                        <Label className="text-xs">Código de Barras</Label>
+                        <Label className="text-xs">{t("wallet_page.boleto")}</Label>
                         <div className="flex gap-2">
                           <Input
                             readOnly
@@ -714,10 +717,10 @@ export default function WalletPage() {
                             variant="outline"
                             onClick={() => {
                               navigator.clipboard.writeText(pagbankData.boletoBarcode);
-                              toast({ title: "Copiado!", description: "Código de barras copiado." });
+                              toast({ title: t("common.copied_to_clipboard") });
                             }}
                           >
-                            Copiar
+                            {t("common.copy")}
                           </Button>
                         </div>
                       </div>
@@ -729,15 +732,15 @@ export default function WalletPage() {
                         onClick={() => window.open(pagbankData.boletoUrl, '_blank')}
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
-                        Abrir Boleto PDF
+                        {t("common.open")} PDF
                       </Button>
                     )}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
-                      <span>Vencimento em 3 dias</span>
+                      <span>3 {t("common.date")}</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Seus créditos serão adicionados após a compensação bancária.
+                      {t("wallet_page.processing")}
                     </p>
                   </div>
                 )}
@@ -749,7 +752,7 @@ export default function WalletPage() {
         <TabsContent value="historico" className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <History className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Histórico de Transações</h2>
+            <h2 className="text-lg font-semibold">{t("wallet_page.history")}</h2>
           </div>
 
           {transactionsLoading ? (
@@ -760,8 +763,8 @@ export default function WalletPage() {
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Clock className="h-12 w-12 text-gray-300 mb-3" />
-                <p className="text-muted-foreground">Nenhuma transação registrada</p>
-                <p className="text-sm text-gray-400 mt-1">Suas movimentações de créditos aparecerão aqui.</p>
+                <p className="text-muted-foreground">{t("wallet_page.no_transactions")}</p>
+                <p className="text-sm text-gray-400 mt-1">{t("common.no_data")}</p>
               </CardContent>
             </Card>
           ) : (
@@ -791,7 +794,7 @@ export default function WalletPage() {
                           {isCredit(tx.type) ? "+" : "-"}{Math.abs(tx.amount)} TM3D
                         </span>
                         {tx.balanceAfter != null && (
-                          <p className="text-xs text-muted-foreground">Saldo: {tx.balanceAfter} TM3D</p>
+                          <p className="text-xs text-muted-foreground">{t("wallet_page.balance")}: {tx.balanceAfter} TM3D</p>
                         )}
                       </div>
                     </div>
@@ -805,27 +808,27 @@ export default function WalletPage() {
         {isAdmin && (<TabsContent value="transferir" className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Send className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Transferir Créditos</h2>
+            <h2 className="text-lg font-semibold">{t("wallet_page.transfer")}</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Enviar Créditos TM3D</CardTitle>
-                <CardDescription>Transfira créditos para outro usuário da plataforma</CardDescription>
+                <CardTitle className="text-base">{t("wallet_page.transfer")}</CardTitle>
+                <CardDescription>{t("wallet_page.credits")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="tr-user">ID do destinatário</Label>
+                  <Label htmlFor="tr-user">{t("wallet_page.recipient")}</Label>
                   <Input
                     id="tr-user"
                     value={transferUserId}
                     onChange={(e) => setTransferUserId(e.target.value)}
-                    placeholder="Cole o ID do usuário"
+                    placeholder="ID"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="tr-amount">Quantidade de créditos</Label>
+                  <Label htmlFor="tr-amount">{t("wallet_page.amount")}</Label>
                   <Input
                     id="tr-amount"
                     type="number"
@@ -836,12 +839,12 @@ export default function WalletPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="tr-reason">Motivo (opcional)</Label>
+                  <Label htmlFor="tr-reason">{t("common.description")}</Label>
                   <Input
                     id="tr-reason"
                     value={transferReason}
                     onChange={(e) => setTransferReason(e.target.value)}
-                    placeholder="Ex: Pagamento de serviço"
+                    placeholder={t("common.description")}
                   />
                 </div>
                 <Button
@@ -854,7 +857,7 @@ export default function WalletPage() {
                   ) : (
                     <Send className="h-4 w-4 mr-1" />
                   )}
-                  Transferir Créditos
+                  {t("wallet_page.transfer")}
                 </Button>
               </CardContent>
             </Card>
@@ -865,12 +868,12 @@ export default function WalletPage() {
                   <div className="flex items-start gap-3">
                     <Info className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
                     <div className="text-sm space-y-2">
-                      <p className="font-medium text-blue-700 dark:text-blue-300">Como transferir créditos</p>
+                      <p className="font-medium text-blue-700 dark:text-blue-300">{t("wallet_page.transfer")}</p>
                       <ul className="text-blue-600 dark:text-blue-400 space-y-1 text-xs">
-                        <li>1. Solicite o ID do usuário destinatário</li>
-                        <li>2. Informe a quantidade de créditos desejada</li>
-                        <li>3. A transferência é instantânea e irreversível</li>
-                        <li>4. O saldo do destinatário é atualizado imediatamente</li>
+                        <li>1. {t("wallet_page.recipient")}</li>
+                        <li>2. {t("wallet_page.amount")}</li>
+                        <li>3. {t("wallet_page.transfer_type")}</li>
+                        <li>4. {t("wallet_page.balance")}</li>
                       </ul>
                     </div>
                   </div>
@@ -879,7 +882,7 @@ export default function WalletPage() {
 
               <Card>
                 <CardContent className="pt-6">
-                  <p className="text-sm font-medium mb-2">Seu ID de Usuário</p>
+                  <p className="text-sm font-medium mb-2">ID</p>
                   <div className="flex items-center gap-2">
                     <code className="text-xs bg-muted px-3 py-2 rounded flex-1 truncate">{user?.id || "—"}</code>
                     <Button
@@ -887,14 +890,14 @@ export default function WalletPage() {
                       size="sm"
                       onClick={() => {
                         navigator.clipboard.writeText(user?.id || "");
-                        toast({ title: "ID copiado!" });
+                        toast({ title: t("common.copied_to_clipboard") });
                       }}
                     >
-                      Copiar
+                      {t("common.copy")}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Compartilhe este ID para receber transferências de outros usuários.
+                    {t("common.share")}
                   </p>
                 </CardContent>
               </Card>
@@ -905,7 +908,7 @@ export default function WalletPage() {
         {isAdmin && (<TabsContent value="custos" className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Info className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Custos das Funcionalidades</h2>
+            <h2 className="text-lg font-semibold">{t("admin_page.feature_costs")}</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -931,11 +934,9 @@ export default function WalletPage() {
               <div className="flex items-start gap-3">
                 <Coins className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
                 <div className="text-sm">
-                  <p className="font-medium text-amber-700 dark:text-amber-300 mb-1">Créditos promocionais</p>
+                  <p className="font-medium text-amber-700 dark:text-amber-300 mb-1">{t("wallet_page.credits")}</p>
                   <p className="text-amber-600 dark:text-amber-400 text-xs">
-                    Novos usuários recebem 10 créditos promocionais ao criar a conta. 
-                    Médicos recebem comissões de 30% sobre consultas realizadas. 
-                    Pesquisadores podem adquirir pacotes com bônus exclusivos.
+                    {t("wallet_page.buy_credits")}
                   </p>
                 </div>
               </div>
@@ -947,23 +948,23 @@ export default function WalletPage() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <ExternalLink className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Carteira Externa</h2>
+              <h2 className="text-lg font-semibold">{t("wallet_page.external_wallet")}</h2>
             </div>
             <Dialog open={linkWalletOpen} onOpenChange={setLinkWalletOpen}>
               <DialogTrigger asChild>
                 <Button size="sm">
                   <Plus className="h-4 w-4 mr-1" />
-                  Vincular Carteira
+                  {t("wallet_page.link_wallet")}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Vincular Carteira Externa</DialogTitle>
-                  <DialogDescription>Adicione uma carteira externa para receber saques.</DialogDescription>
+                  <DialogTitle>{t("wallet_page.link_wallet")}</DialogTitle>
+                  <DialogDescription>{t("wallet_page.external_wallet")}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="wallet-address">Endereço da Carteira</Label>
+                    <Label htmlFor="wallet-address">{t("wallet_page.external_wallet")}</Label>
                     <Input
                       id="wallet-address"
                       value={newWalletAddress}
@@ -972,23 +973,23 @@ export default function WalletPage() {
                     />
                   </div>
                   <div>
-                    <Label>Tipo</Label>
+                    <Label>{t("common.type")}</Label>
                     <Select value={newWalletType} onValueChange={setNewWalletType}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione o tipo" />
+                        <SelectValue placeholder={t("common.select")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="metamask">MetaMask</SelectItem>
                         <SelectItem value="walletconnect">WalletConnect</SelectItem>
-                        <SelectItem value="custom">Personalizada</SelectItem>
+                        <SelectItem value="custom">{t("common.options")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label>Rede</Label>
+                    <Label>{t("common.options")}</Label>
                     <Select value={newWalletNetwork} onValueChange={setNewWalletNetwork}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione a rede" />
+                        <SelectValue placeholder={t("common.select")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="tm3d">TM3D</SelectItem>
@@ -998,12 +999,12 @@ export default function WalletPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="wallet-label">Rótulo (opcional)</Label>
+                    <Label htmlFor="wallet-label">{t("common.name")}</Label>
                     <Input
                       id="wallet-label"
                       value={newWalletLabel}
                       onChange={(e) => setNewWalletLabel(e.target.value)}
-                      placeholder="Ex: Minha carteira principal"
+                      placeholder={t("common.name")}
                     />
                   </div>
                   <Button
@@ -1017,7 +1018,7 @@ export default function WalletPage() {
                     disabled={linkWalletMutation.isPending || !newWalletAddress || !newWalletType || !newWalletNetwork}
                   >
                     {linkWalletMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-                    Vincular
+                    {t("wallet_page.link_wallet")}
                   </Button>
                 </div>
               </DialogContent>
@@ -1032,8 +1033,8 @@ export default function WalletPage() {
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <ExternalLink className="h-12 w-12 text-gray-300 mb-3" />
-                <p className="text-muted-foreground">Nenhuma carteira externa vinculada</p>
-                <p className="text-sm text-gray-400 mt-1">Vincule uma carteira para realizar saques.</p>
+                <p className="text-muted-foreground">{t("common.no_data")}</p>
+                <p className="text-sm text-gray-400 mt-1">{t("wallet_page.link_wallet")}</p>
               </CardContent>
             </Card>
           ) : (
@@ -1044,8 +1045,8 @@ export default function WalletPage() {
                     <div className="flex items-start justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <p className="text-sm font-medium truncate">{w.label || "Carteira"}</p>
-                          {w.isDefault && <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs">Padrão</Badge>}
+                          <p className="text-sm font-medium truncate">{w.label || t("wallet_page.external_wallet")}</p>
+                          {w.isDefault && <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs">{t("common.active")}</Badge>}
                         </div>
                         <p className="text-xs text-muted-foreground font-mono truncate">{w.address}</p>
                         <div className="flex items-center gap-2 mt-2">
@@ -1061,18 +1062,18 @@ export default function WalletPage() {
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Remover Carteira</DialogTitle>
-                            <DialogDescription>Tem certeza que deseja remover esta carteira externa? Esta ação não pode ser desfeita.</DialogDescription>
+                            <DialogTitle>{t("common.remove")}</DialogTitle>
+                            <DialogDescription>{t("common.confirm")}</DialogDescription>
                           </DialogHeader>
                           <div className="flex gap-2 justify-end">
-                            <Button variant="outline" onClick={() => setDeleteWalletId(null)}>Cancelar</Button>
+                            <Button variant="outline" onClick={() => setDeleteWalletId(null)}>{t("common.cancel")}</Button>
                             <Button
                               variant="destructive"
                               onClick={() => deleteWalletMutation.mutate(w.id)}
                               disabled={deleteWalletMutation.isPending}
                             >
                               {deleteWalletMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
-                              Remover
+                              {t("common.remove")}
                             </Button>
                           </div>
                         </DialogContent>
@@ -1088,16 +1089,16 @@ export default function WalletPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <ArrowUpCircle className="h-5 w-5" />
-                Solicitar Saque
+                {t("wallet_page.withdrawal_request")}
               </CardTitle>
-              <CardDescription>Solicite a transferência de créditos para sua carteira externa (taxa de 2%).</CardDescription>
+              <CardDescription>{t("wallet_page.withdrawal")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label>Carteira de Destino</Label>
+                <Label>{t("wallet_page.external_wallet")}</Label>
                 <Select value={withdrawWalletId} onValueChange={setWithdrawWalletId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione a carteira" />
+                    <SelectValue placeholder={t("common.select")} />
                   </SelectTrigger>
                   <SelectContent>
                     {externalWallets.map((w: any) => (
@@ -1107,7 +1108,7 @@ export default function WalletPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="withdraw-amount">Valor (TM3D)</Label>
+                <Label htmlFor="withdraw-amount">{t("wallet_page.amount")} (TM3D)</Label>
                 <Input
                   id="withdraw-amount"
                   type="number"
@@ -1122,15 +1123,15 @@ export default function WalletPage() {
                   <CardContent className="pt-4 pb-4">
                     <div className="text-sm space-y-1">
                       <div className="flex justify-between">
-                        <span>Valor solicitado:</span>
+                        <span>{t("wallet_page.amount")}:</span>
                         <span className="font-medium">{parseFloat(withdrawAmount)} TM3D</span>
                       </div>
                       <div className="flex justify-between text-orange-600">
-                        <span>Taxa (2%):</span>
+                        <span>{t("admin_page.exchange_rates")} (2%):</span>
                         <span className="font-medium">-{(parseFloat(withdrawAmount) * 0.02).toFixed(2)} TM3D</span>
                       </div>
                       <div className="border-t pt-1 flex justify-between font-semibold">
-                        <span>Valor líquido:</span>
+                        <span>{t("common.total")}:</span>
                         <span className="text-green-600">{(parseFloat(withdrawAmount) * 0.98).toFixed(2)} TM3D</span>
                       </div>
                     </div>
@@ -1143,7 +1144,7 @@ export default function WalletPage() {
                 disabled={withdrawMutation.isPending || !withdrawWalletId || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
               >
                 {withdrawMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowUpCircle className="h-4 w-4 mr-1" />}
-                Solicitar Saque
+                {t("wallet_page.withdrawal_request")}
               </Button>
             </CardContent>
           </Card>
@@ -1151,7 +1152,7 @@ export default function WalletPage() {
           <div className="mt-4">
             <div className="flex items-center gap-2 mb-3">
               <History className="h-5 w-5 text-primary" />
-              <h3 className="text-base font-semibold">Histórico de Saques</h3>
+              <h3 className="text-base font-semibold">{t("wallet_page.history")}</h3>
             </div>
             {withdrawalsLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -1161,7 +1162,7 @@ export default function WalletPage() {
               <Card className="border-dashed">
                 <CardContent className="flex flex-col items-center justify-center py-8">
                   <Clock className="h-10 w-10 text-gray-300 mb-2" />
-                  <p className="text-muted-foreground text-sm">Nenhum saque realizado</p>
+                  <p className="text-muted-foreground text-sm">{t("common.no_data")}</p>
                 </CardContent>
               </Card>
             ) : (
@@ -1170,11 +1171,11 @@ export default function WalletPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Valor</TableHead>
-                        <TableHead>Taxa</TableHead>
-                        <TableHead>Líquido</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>{t("common.date")}</TableHead>
+                        <TableHead>{t("wallet_page.amount")}</TableHead>
+                        <TableHead>{t("admin_page.exchange_rates")}</TableHead>
+                        <TableHead>{t("common.total")}</TableHead>
+                        <TableHead>{t("common.status")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1193,9 +1194,9 @@ export default function WalletPage() {
                               w.status === "completed" ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" :
                               "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
                             }>
-                              {w.status === "pending" ? "Pendente" :
-                               w.status === "processing" ? "Processando" :
-                               w.status === "completed" ? "Concluído" : "Falhou"}
+                              {w.status === "pending" ? t("common.pending") :
+                               w.status === "processing" ? t("wallet_page.processing") :
+                               w.status === "completed" ? t("common.completed") : t("common.error")}
                             </Badge>
                           </TableCell>
                         </TableRow>
@@ -1212,24 +1213,24 @@ export default function WalletPage() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Auditoria</h2>
+              <h2 className="text-lg font-semibold">{t("medical_records.audit_log")}</h2>
             </div>
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={auditFilterType} onValueChange={setAuditFilterType}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filtrar por tipo" />
+                  <SelectValue placeholder={t("common.filter")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="credit">Crédito</SelectItem>
-                  <SelectItem value="debit">Débito</SelectItem>
-                  <SelectItem value="transfer">Transferência</SelectItem>
-                  <SelectItem value="recharge">Recarga</SelectItem>
-                  <SelectItem value="purchase">Compra</SelectItem>
-                  <SelectItem value="commission">Comissão</SelectItem>
-                  <SelectItem value="bonus">Bônus</SelectItem>
-                  <SelectItem value="withdrawal">Saque</SelectItem>
+                  <SelectItem value="all">{t("common.all")}</SelectItem>
+                  <SelectItem value="credit">{t("wallet_page.credit")}</SelectItem>
+                  <SelectItem value="debit">{t("wallet_page.debit")}</SelectItem>
+                  <SelectItem value="transfer">{t("wallet_page.transfer_type")}</SelectItem>
+                  <SelectItem value="recharge">{t("wallet_page.recharge")}</SelectItem>
+                  <SelectItem value="purchase">{t("wallet_page.purchase")}</SelectItem>
+                  <SelectItem value="commission">{t("referrals.commission")}</SelectItem>
+                  <SelectItem value="bonus">{t("wallet_page.credit")}</SelectItem>
+                  <SelectItem value="withdrawal">{t("wallet_page.withdrawal")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1240,28 +1241,28 @@ export default function WalletPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                  Resumo Semanal
+                  {t("pharmacy_page.weekly_report")}
                 </CardTitle>
-                <CardDescription>{weeklyReport.period || "Últimos 7 dias"}</CardDescription>
+                <CardDescription>{weeklyReport.period || t("common.week")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <p className="text-xs text-muted-foreground">Total Créditos</p>
+                    <p className="text-xs text-muted-foreground">{t("wallet_page.credit")}</p>
                     <p className="text-lg font-bold text-green-600">+{weeklyReport.totalCredits || 0} TM3D</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Total Débitos</p>
+                    <p className="text-xs text-muted-foreground">{t("wallet_page.debit")}</p>
                     <p className="text-lg font-bold text-red-600">-{weeklyReport.totalDebits || 0} TM3D</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Variação Líquida</p>
+                    <p className="text-xs text-muted-foreground">{t("common.total")}</p>
                     <p className={`text-lg font-bold ${(weeklyReport.netChange || 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
                       {(weeklyReport.netChange || 0) >= 0 ? "+" : ""}{weeklyReport.netChange || 0} TM3D
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Saldo Atual</p>
+                    <p className="text-xs text-muted-foreground">{t("wallet_page.balance")}</p>
                     <p className="text-lg font-bold text-blue-600">{weeklyReport.currentBalance || 0} TM3D</p>
                   </div>
                 </div>
@@ -1277,7 +1278,7 @@ export default function WalletPage() {
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <FileText className="h-12 w-12 text-gray-300 mb-3" />
-                <p className="text-muted-foreground">Nenhum registro de auditoria</p>
+                <p className="text-muted-foreground">{t("common.no_data")}</p>
               </CardContent>
             </Card>
           ) : (
@@ -1286,13 +1287,13 @@ export default function WalletPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Ação</TableHead>
-                      <TableHead>Valor</TableHead>
-                      <TableHead>Saldo Antes</TableHead>
-                      <TableHead>Saldo Depois</TableHead>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead>Ator</TableHead>
+                      <TableHead>{t("common.date")}</TableHead>
+                      <TableHead>{t("common.actions")}</TableHead>
+                      <TableHead>{t("wallet_page.amount")}</TableHead>
+                      <TableHead>{t("wallet_page.balance")}</TableHead>
+                      <TableHead>{t("wallet_page.balance")}</TableHead>
+                      <TableHead>{t("common.description")}</TableHead>
+                      <TableHead>{t("common.name")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1314,7 +1315,7 @@ export default function WalletPage() {
                           <TableCell className="text-xs">{entry.balanceBefore ?? "—"} TM3D</TableCell>
                           <TableCell className="text-xs">{entry.balanceAfter ?? "—"} TM3D</TableCell>
                           <TableCell className="text-xs max-w-[200px] truncate">{entry.description || "—"}</TableCell>
-                          <TableCell className="text-xs">{entry.actorRole || "Sistema"}</TableCell>
+                          <TableCell className="text-xs">{entry.actorRole || t("dashboard.system_status")}</TableCell>
                         </TableRow>
                       ))}
                   </TableBody>

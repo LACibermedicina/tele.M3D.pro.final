@@ -23,6 +23,7 @@ import PageWrapper from "@/components/layout/page-wrapper";
 import PatientExportDialog from "@/components/patient-export-dialog";
 import origamiHeroImage from "@assets/image_1759773239051.png";
 import { FileText, Shield, Download, Plus, Search, Pencil, History, Globe, FileJson, FileSpreadsheet, FileCode, ClipboardList, User, Stethoscope, Activity, Lock, CheckCircle2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const medicalRecordSchema = z.object({
   patientId: z.string().min(1, "Paciente é obrigatório"),
@@ -49,6 +50,7 @@ type MedicalRecordFormData = z.infer<typeof medicalRecordSchema>;
 type PMDCreateFormData = z.infer<typeof pmdCreateSchema>;
 
 export default function MedicalRecords() {
+  const { t } = useTranslation();
   const urlParams = new URLSearchParams(window.location.search);
   const initialPatientId = urlParams.get('patientId');
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(initialPatientId);
@@ -71,7 +73,7 @@ export default function MedicalRecords() {
 
   useEffect(() => {
     if (user && !isDoctor) {
-      setLocation('/patient-records');
+      setLocation('/records');
     }
   }, [user, isDoctor, setLocation]);
 
@@ -136,15 +138,15 @@ export default function MedicalRecords() {
         form.setValue('treatment', response.analysis.treatment || '');
         form.setValue('prescription', response.analysis.prescription || '');
         toast({
-          title: "Análise IA Concluída",
-          description: "Os campos foram preenchidos com as sugestões da IA.",
+          title: t("medical_records.ai_analysis"),
+          description: t("medical_records.ai_suggestions_applied"),
         });
       }
     },
     onError: () => {
       toast({
-        title: "Erro na Análise",
-        description: "Erro ao gerar análise IA. Tente novamente.",
+        title: t("common.error"),
+        description: t("medical_records.ai_analysis") + " - " + t("common.error"),
         variant: "destructive",
       });
     },
@@ -157,15 +159,15 @@ export default function MedicalRecords() {
       }),
     onSuccess: (response: any) => {
       toast({
-        title: "Prescrição Assinada Digitalmente",
-        description: `Assinatura digital criada. Audit Hash: ${response.auditHash?.substring(0, 8)}...`,
+        title: t("prescriptions_page.digital_signature"),
+        description: `Audit Hash: ${response.auditHash?.substring(0, 8)}...`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/medical-records'] });
     },
     onError: (error: any) => {
       toast({
-        title: "Erro na Assinatura Digital",
-        description: error.message || "Erro ao assinar prescrição.",
+        title: t("common.error"),
+        description: error.message || t("prescriptions_page.digital_signature"),
         variant: "destructive",
       });
     },
@@ -174,7 +176,7 @@ export default function MedicalRecords() {
   const createPmdMutation = useMutation({
     mutationFn: (data: any) => apiRequest('POST', '/api/pmd/create', data),
     onSuccess: (response: any) => {
-      toast({ title: "PMD Criado", description: "Prontuário PMD v1.0 criado com sucesso." });
+      toast({ title: t("medical_records.pmd_create"), description: t("common.success") });
       setIsPmdDialogOpen(false);
       pmdForm.reset();
       queryClient.invalidateQueries({ queryKey: ['/api/medical-records'] });
@@ -182,7 +184,7 @@ export default function MedicalRecords() {
       if (response.id) setSelectedPmdId(response.id);
     },
     onError: () => {
-      toast({ title: "Erro", description: "Erro ao criar prontuário PMD.", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("medical_records.pmd_create") + " - " + t("common.error"), variant: "destructive" });
     },
   });
 
@@ -190,13 +192,13 @@ export default function MedicalRecords() {
     mutationFn: (data: { id: string; campo: string; valor: string }) =>
       apiRequest('PATCH', `/api/pmd/${data.id}`, { campo: data.campo, valor: data.valor }),
     onSuccess: () => {
-      toast({ title: "Atualizado", description: "Campo atualizado com log de auditoria." });
+      toast({ title: t("common.update"), description: t("medical_records.audit_log") });
       setEditingField(null);
       setEditValue("");
       queryClient.invalidateQueries({ queryKey: ['/api/pmd', selectedPmdId] });
     },
     onError: () => {
-      toast({ title: "Erro", description: "Erro ao atualizar campo.", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("common.update") + " - " + t("common.error"), variant: "destructive" });
     },
   });
 
@@ -204,24 +206,24 @@ export default function MedicalRecords() {
     mutationFn: (data: { id: string; descricao: string }) =>
       apiRequest('PATCH', `/api/pmd/${data.id}`, { evolucao: { descricao: data.descricao } }),
     onSuccess: () => {
-      toast({ title: "Evolução Adicionada", description: "Nova evolução registrada no prontuário." });
+      toast({ title: t("medical_records.evolution"), description: t("common.success") });
       setEvolucaoText("");
       queryClient.invalidateQueries({ queryKey: ['/api/pmd', selectedPmdId] });
     },
     onError: () => {
-      toast({ title: "Erro", description: "Erro ao adicionar evolução.", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("medical_records.evolution") + " - " + t("common.error"), variant: "destructive" });
     },
   });
 
   const convertPmdMutation = useMutation({
     mutationFn: (id: string) => apiRequest('PATCH', `/api/pmd/${id}/convert`, {}),
     onSuccess: (response: any) => {
-      toast({ title: "Convertido", description: "Prontuário convertido para PMD v1.0." });
+      toast({ title: t("common.success"), description: "PMD v1.0" });
       queryClient.invalidateQueries({ queryKey: ['/api/medical-records'] });
       if (response.id) setSelectedPmdId(response.id);
     },
     onError: () => {
-      toast({ title: "Erro", description: "Erro ao converter prontuário.", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("common.error"), variant: "destructive" });
     },
   });
 
@@ -307,9 +309,9 @@ export default function MedicalRecords() {
             <Textarea value={editValue} onChange={e => setEditValue(e.target.value)} rows={3} />
             <div className="flex gap-2">
               <Button size="sm" onClick={saveEdit} disabled={editPmdMutation.isPending}>
-                {editPmdMutation.isPending ? 'Salvando...' : 'Salvar'}
+                {editPmdMutation.isPending ? t("common.loading") : t("common.save")}
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setEditingField(null)}>Cancelar</Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingField(null)}>{t("common.cancel")}</Button>
             </div>
           </div>
         ) : (
@@ -325,10 +327,10 @@ export default function MedicalRecords() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
-            Prontuário Médico Digital
+            {t("medical_records.pmd_title")}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            PMD v1.0 — Conforme CFM/LGPD/RGPD
+            PMD v1.0 — CFM/LGPD/RGPD
           </p>
         </div>
         <div className="flex items-center space-x-2 flex-wrap gap-2">
@@ -340,7 +342,7 @@ export default function MedicalRecords() {
           )}
           <Badge variant="secondary" className="px-3 py-1">
             <Shield className="w-3 h-3 mr-1" />
-            Dados Criptografados
+            {t("security.data_protection")}
           </Badge>
           {isDoctor && selectedPatient && (
             <>
@@ -348,14 +350,14 @@ export default function MedicalRecords() {
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <Plus className="w-4 h-4 mr-1" />
-                    Novo PMD
+                    {t("medical_records.pmd_create")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <FileText className="w-5 h-5" />
-                      Criar Prontuário PMD v1.0 — {selectedPatient?.name}
+                      {t("medical_records.pmd_create")} — {selectedPatient?.name}
                     </DialogTitle>
                   </DialogHeader>
                   <Form {...pmdForm}>
@@ -363,8 +365,8 @@ export default function MedicalRecords() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <FormField control={pmdForm.control} name="nome_mae" render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Nome da Mãe</FormLabel>
-                            <FormControl><Input placeholder="Nome completo da mãe" {...field} /></FormControl>
+                            <FormLabel>{t("medical_records.mother_name") || "Nome da Mãe"}</FormLabel>
+                            <FormControl><Input placeholder={t("medical_records.mother_name") || "Nome da Mãe"} {...field} /></FormControl>
                           </FormItem>
                         )} />
                         <FormField control={pmdForm.control} name="cpf" render={({ field }) => (
@@ -376,57 +378,57 @@ export default function MedicalRecords() {
                         <FormField control={pmdForm.control} name="rg" render={({ field }) => (
                           <FormItem>
                             <FormLabel>RG</FormLabel>
-                            <FormControl><Input placeholder="Documento de identidade" {...field} /></FormControl>
+                            <FormControl><Input placeholder="RG" {...field} /></FormControl>
                           </FormItem>
                         )} />
                         <FormField control={pmdForm.control} name="sus_card" render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Cartão SUS</FormLabel>
-                            <FormControl><Input placeholder="Número do cartão SUS" {...field} /></FormControl>
+                            <FormLabel>{t("medical_records.sus_card") || "Cartão SUS"}</FormLabel>
+                            <FormControl><Input placeholder={t("medical_records.sus_card") || "Cartão SUS"} {...field} /></FormControl>
                           </FormItem>
                         )} />
                       </div>
                       <FormField control={pmdForm.control} name="endereco" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Endereço</FormLabel>
-                          <FormControl><Input placeholder="Endereço completo" {...field} /></FormControl>
+                          <FormLabel>{t("medical_records.address") || "Endereço"}</FormLabel>
+                          <FormControl><Input placeholder={t("medical_records.address") || "Endereço"} {...field} /></FormControl>
                         </FormItem>
                       )} />
                       <FormField control={pmdForm.control} name="anamnese" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Anamnese *</FormLabel>
-                          <FormControl><Textarea placeholder="Queixa principal, história da doença atual..." rows={3} {...field} /></FormControl>
+                          <FormLabel>{t("medical_records.anamnesis")} *</FormLabel>
+                          <FormControl><Textarea placeholder={t("medical_records.anamnesis")} rows={3} {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <FormField control={pmdForm.control} name="historico" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Histórico</FormLabel>
-                          <FormControl><Textarea placeholder="Antecedentes pessoais, familiares, cirúrgicos..." rows={2} {...field} /></FormControl>
+                          <FormLabel>{t("medical_records.clinical_history")}</FormLabel>
+                          <FormControl><Textarea placeholder={t("medical_records.clinical_history")} rows={2} {...field} /></FormControl>
                         </FormItem>
                       )} />
                       <FormField control={pmdForm.control} name="exames" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Exames</FormLabel>
-                          <FormControl><Textarea placeholder="Exames solicitados ou resultados..." rows={2} {...field} /></FormControl>
+                          <FormLabel>{t("medical_records.exams")}</FormLabel>
+                          <FormControl><Textarea placeholder={t("medical_records.exams")} rows={2} {...field} /></FormControl>
                         </FormItem>
                       )} />
                       <FormField control={pmdForm.control} name="diagnostico" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Diagnóstico</FormLabel>
-                          <FormControl><Textarea placeholder="Diagnóstico clínico..." rows={2} {...field} /></FormControl>
+                          <FormLabel>{t("medical.diagnosis")}</FormLabel>
+                          <FormControl><Textarea placeholder={t("medical.diagnosis")} rows={2} {...field} /></FormControl>
                         </FormItem>
                       )} />
                       <FormField control={pmdForm.control} name="tratamento" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Tratamento</FormLabel>
-                          <FormControl><Textarea placeholder="Plano terapêutico..." rows={2} {...field} /></FormControl>
+                          <FormLabel>{t("medical_records.treatment")}</FormLabel>
+                          <FormControl><Textarea placeholder={t("medical_records.treatment")} rows={2} {...field} /></FormControl>
                         </FormItem>
                       )} />
                       <div className="flex justify-end space-x-2 pt-2">
-                        <Button type="button" variant="outline" onClick={() => setIsPmdDialogOpen(false)}>Cancelar</Button>
+                        <Button type="button" variant="outline" onClick={() => setIsPmdDialogOpen(false)}>{t("common.cancel")}</Button>
                         <Button type="submit" disabled={createPmdMutation.isPending}>
-                          {createPmdMutation.isPending ? 'Criando...' : 'Criar PMD v1.0'}
+                          {createPmdMutation.isPending ? t("common.loading") : t("medical_records.pmd_create")}
                         </Button>
                       </div>
                     </form>
@@ -438,48 +440,48 @@ export default function MedicalRecords() {
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
                     <Plus className="w-4 h-4 mr-1" />
-                    Legado
+                    {t("medical_records.legacy") || "Legado"}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>Novo Prontuário (Legado) - {selectedPatient?.name}</DialogTitle>
+                    <DialogTitle>{t("medical_records.new_record")} - {selectedPatient?.name}</DialogTitle>
                   </DialogHeader>
                   <Form {...form}>
                     <form className="space-y-4">
                       <FormField control={form.control} name="symptoms" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Sintomas</FormLabel>
-                          <FormControl><Textarea placeholder="Descreva os sintomas..." {...field} /></FormControl>
+                          <FormLabel>{t("medical.symptoms")}</FormLabel>
+                          <FormControl><Textarea placeholder={t("medical.symptoms")} {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <div className="flex items-center space-x-2">
                         <Button type="button" variant="outline" onClick={handleAnalyzeSymptoms} disabled={analyzeSymptomsMutation.isPending}>
-                          {analyzeSymptomsMutation.isPending ? "Analisando..." : "Analisar com IA"}
+                          {analyzeSymptomsMutation.isPending ? t("common.loading") : t("medical_records.ai_analysis")}
                         </Button>
                       </div>
                       <FormField control={form.control} name="diagnosis" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Diagnóstico</FormLabel>
-                          <FormControl><Textarea placeholder="Diagnóstico médico..." {...field} /></FormControl>
+                          <FormLabel>{t("medical.diagnosis")}</FormLabel>
+                          <FormControl><Textarea placeholder={t("medical.diagnosis")} {...field} /></FormControl>
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="treatment" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Tratamento</FormLabel>
-                          <FormControl><Textarea placeholder="Plano de tratamento..." {...field} /></FormControl>
+                          <FormLabel>{t("medical_records.treatment")}</FormLabel>
+                          <FormControl><Textarea placeholder={t("medical_records.treatment")} {...field} /></FormControl>
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="prescription" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Prescrição</FormLabel>
-                          <FormControl><Textarea placeholder="Prescrição médica..." {...field} /></FormControl>
+                          <FormLabel>{t("medical.prescription")}</FormLabel>
+                          <FormControl><Textarea placeholder={t("medical.prescription")} {...field} /></FormControl>
                         </FormItem>
                       )} />
                       <div className="flex justify-end space-x-2">
-                        <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                        <Button type="submit">Salvar Prontuário</Button>
+                        <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>{t("common.cancel")}</Button>
+                        <Button type="submit">{t("common.save")}</Button>
                       </div>
                     </form>
                   </Form>
@@ -496,12 +498,12 @@ export default function MedicalRecords() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <User className="w-4 h-4" />
-                Pacientes
+                {t("patients_page.title")}
               </CardTitle>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar paciente..."
+                  placeholder={t("patients_page.search_patients")}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
@@ -543,8 +545,8 @@ export default function MedicalRecords() {
               <CardContent>
                 <div className="text-center">
                   <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">Selecione um Paciente</h3>
-                  <p className="text-muted-foreground">Escolha um paciente para visualizar ou criar prontuários PMD</p>
+                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">{t("common.select")} {t("common.patient")}</h3>
+                  <p className="text-muted-foreground">{t("patients_page.title")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -564,13 +566,13 @@ export default function MedicalRecords() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={accessLevel === 'total' ? 'default' : accessLevel === 'criador' ? 'secondary' : 'outline'}>
-                        {accessLevel === 'total' ? 'Acesso Total' : accessLevel === 'criador' ? 'Médico Criador' : 'Leitura'}
+                        {accessLevel === 'total' ? t("common.total") : accessLevel === 'criador' ? t("common.doctor") : t("common.view")}
                       </Badge>
                       <Button variant="outline" size="sm" onClick={() => setIsPmdExportOpen(true)}>
                         <Download className="w-4 h-4 mr-1" />
-                        Exportar
+                        {t("common.export")}
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedPmdId(null)}>Voltar</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedPmdId(null)}>{t("common.back")}</Button>
                     </div>
                   </div>
                 </CardHeader>
@@ -581,19 +583,19 @@ export default function MedicalRecords() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <User className="w-4 h-4" />
-                      Dados do Paciente
+                      {t("patients.patient_info")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm space-y-1">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                      <span className="text-muted-foreground">Nome:</span><span>{pmd.paciente?.nome}</span>
-                      <span className="text-muted-foreground">Data Nasc.:</span><span>{pmd.paciente?.dt_nasc || '—'}</span>
-                      <span className="text-muted-foreground">Sexo:</span><span>{pmd.paciente?.sexo || '—'}</span>
-                      <span className="text-muted-foreground">Contato:</span><span>{pmd.paciente?.contato || '—'}</span>
-                      <span className="text-muted-foreground">Endereço:</span><span>{pmd.paciente?.endereco || '—'}</span>
-                      {pmd.paciente?.nome_mae && (<><span className="text-muted-foreground">Nome da Mãe:</span><span>{pmd.paciente.nome_mae}</span></>)}
+                      <span className="text-muted-foreground">{t("common.name")}:</span><span>{pmd.paciente?.nome}</span>
+                      <span className="text-muted-foreground">{t("patients_page.date_of_birth")}:</span><span>{pmd.paciente?.dt_nasc || '—'}</span>
+                      <span className="text-muted-foreground">{t("patients_page.gender")}:</span><span>{pmd.paciente?.sexo || '—'}</span>
+                      <span className="text-muted-foreground">{t("common.phone")}:</span><span>{pmd.paciente?.contato || '—'}</span>
+                      <span className="text-muted-foreground">{t("medical_records.address") || "Endereço"}:</span><span>{pmd.paciente?.endereco || '—'}</span>
+                      {pmd.paciente?.nome_mae && (<><span className="text-muted-foreground">{t("medical_records.mother_name") || "Nome da Mãe"}:</span><span>{pmd.paciente.nome_mae}</span></>)}
                       {pmd.paciente?.cpf && (<><span className="text-muted-foreground">CPF:</span><span>{pmd.paciente.cpf}</span></>)}
-                      {pmd.paciente?.sus_card && (<><span className="text-muted-foreground">Cartão SUS:</span><span>{pmd.paciente.sus_card}</span></>)}
+                      {pmd.paciente?.sus_card && (<><span className="text-muted-foreground">{t("medical_records.sus_card") || "Cartão SUS"}:</span><span>{pmd.paciente.sus_card}</span></>)}
                     </div>
                   </CardContent>
                 </Card>
@@ -602,7 +604,7 @@ export default function MedicalRecords() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <Shield className="w-4 h-4" />
-                      Conformidade
+                      {t("medical_records.compliance") || "Conformidade"}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm space-y-2">
@@ -620,7 +622,7 @@ export default function MedicalRecords() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Lock className="w-4 h-4 text-blue-600" />
-                      <span>Dados Criptografados</span>
+                      <span>{t("security.data_protection")}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -630,15 +632,15 @@ export default function MedicalRecords() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Stethoscope className="w-4 h-4" />
-                    Dados Clínicos
+                    {t("medical_records.clinical_data") || "Dados Clínicos"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {renderPmdField('Anamnese', 'clinico.anamnese', pmd.clinico?.anamnese, ClipboardList)}
-                  {renderPmdField('Histórico', 'clinico.historico', pmd.clinico?.historico, History)}
-                  {renderPmdField('Exames', 'clinico.exames', pmd.clinico?.exames, Activity)}
-                  {renderPmdField('Diagnóstico', 'clinico.diagnostico', pmd.clinico?.diagnostico, Stethoscope)}
-                  {renderPmdField('Tratamento', 'clinico.tratamento', pmd.clinico?.tratamento, FileText)}
+                  {renderPmdField(t("medical_records.anamnesis"), 'clinico.anamnese', pmd.clinico?.anamnese, ClipboardList)}
+                  {renderPmdField(t("medical_records.clinical_history"), 'clinico.historico', pmd.clinico?.historico, History)}
+                  {renderPmdField(t("medical_records.exams"), 'clinico.exames', pmd.clinico?.exames, Activity)}
+                  {renderPmdField(t("medical.diagnosis"), 'clinico.diagnostico', pmd.clinico?.diagnostico, Stethoscope)}
+                  {renderPmdField(t("medical_records.treatment"), 'clinico.tratamento', pmd.clinico?.tratamento, FileText)}
                 </CardContent>
               </Card>
 
@@ -646,7 +648,7 @@ export default function MedicalRecords() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Activity className="w-4 h-4" />
-                    Evoluções ({pmd.clinico?.evolucoes?.length || 0})
+                    {t("medical_records.evolution")} ({pmd.clinico?.evolucoes?.length || 0})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -663,12 +665,12 @@ export default function MedicalRecords() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground mb-4">Nenhuma evolução registrada.</p>
+                    <p className="text-sm text-muted-foreground mb-4">{t("common.no_data")}</p>
                   )}
                   {canEdit && (
                     <div className="space-y-2 border-t border-border pt-3">
                       <Textarea
-                        placeholder="Nova evolução clínica..."
+                        placeholder={t("medical_records.evolution")}
                         value={evolucaoText}
                         onChange={e => setEvolucaoText(e.target.value)}
                         rows={2}
@@ -678,7 +680,7 @@ export default function MedicalRecords() {
                         onClick={() => selectedPmdId && addEvolucaoMutation.mutate({ id: selectedPmdId, descricao: evolucaoText })}
                         disabled={!evolucaoText.trim() || addEvolucaoMutation.isPending}
                       >
-                        {addEvolucaoMutation.isPending ? 'Salvando...' : 'Adicionar Evolução'}
+                        {addEvolucaoMutation.isPending ? t("common.loading") : t("common.add") + " " + t("medical_records.evolution")}
                       </Button>
                     </div>
                   )}
@@ -690,7 +692,7 @@ export default function MedicalRecords() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <History className="w-4 h-4" />
-                      Log de Auditoria ({pmd.logs.length})
+                      {t("medical_records.audit_log")} ({pmd.logs.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -699,10 +701,10 @@ export default function MedicalRecords() {
                         <thead>
                           <tr className="border-b border-border">
                             <th className="text-left py-2 px-2 text-muted-foreground font-medium">Timestamp</th>
-                            <th className="text-left py-2 px-2 text-muted-foreground font-medium">Usuário</th>
-                            <th className="text-left py-2 px-2 text-muted-foreground font-medium">Ação</th>
-                            <th className="text-left py-2 px-2 text-muted-foreground font-medium">Anterior</th>
-                            <th className="text-left py-2 px-2 text-muted-foreground font-medium">Novo</th>
+                            <th className="text-left py-2 px-2 text-muted-foreground font-medium">{t("common.name")}</th>
+                            <th className="text-left py-2 px-2 text-muted-foreground font-medium">{t("common.actions")}</th>
+                            <th className="text-left py-2 px-2 text-muted-foreground font-medium">{t("medical_records.previous") || "Anterior"}</th>
+                            <th className="text-left py-2 px-2 text-muted-foreground font-medium">{t("medical_records.new_value") || "Novo"}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -731,12 +733,12 @@ export default function MedicalRecords() {
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <Download className="w-5 h-5" />
-                      Exportar PMD
+                      {t("common.export")} PMD
                     </DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium mb-1 block">Locale / Regulamentação</label>
+                      <label className="text-sm font-medium mb-1 block">{t("medical_records.export_locale")}</label>
                       <Select value={exportLocale} onValueChange={setExportLocale}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -753,7 +755,7 @@ export default function MedicalRecords() {
                       </Select>
                     </div>
                     <div>
-                      <label className="text-sm font-medium mb-1 block">Formato</label>
+                      <label className="text-sm font-medium mb-1 block">{t("medical_records.export_format")}</label>
                       <Select value={exportFormat} onValueChange={setExportFormat}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -778,10 +780,10 @@ export default function MedicalRecords() {
                       {exportLocale === 'USA' && 'Includes: HIPAA, Provider NPI — HIPAA Compliant'}
                     </div>
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setIsPmdExportOpen(false)}>Cancelar</Button>
+                      <Button variant="outline" onClick={() => setIsPmdExportOpen(false)}>{t("common.cancel")}</Button>
                       <Button onClick={handlePmdExport}>
                         <Download className="w-4 h-4 mr-1" />
-                        Exportar
+                        {t("common.export")}
                       </Button>
                     </div>
                   </div>
@@ -808,7 +810,7 @@ export default function MedicalRecords() {
                     </div>
                     <Badge variant="secondary">
                       <Shield className="w-3 h-3 mr-1" />
-                      Seguro
+                      {t("security.secure_access")}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -818,15 +820,15 @@ export default function MedicalRecords() {
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="unified">
                     <History className="w-4 h-4 mr-1" />
-                    Unificado
+                    {t("medical_records.unified")}
                   </TabsTrigger>
                   <TabsTrigger value="records">
                     <FileText className="w-4 h-4 mr-1" />
-                    Prontuários
+                    {t("medical_records.records")}
                   </TabsTrigger>
                   <TabsTrigger value="exams">
                     <Activity className="w-4 h-4 mr-1" />
-                    Exames
+                    {t("medical_records.exams")}
                   </TabsTrigger>
                   <TabsTrigger value="pmd">
                     <Shield className="w-4 h-4 mr-1" />
@@ -844,8 +846,8 @@ export default function MedicalRecords() {
                       <CardContent className="py-12">
                         <div className="text-center">
                           <History className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                          <h3 className="text-lg font-semibold text-muted-foreground mb-2">Nenhum Registro</h3>
-                          <p className="text-muted-foreground">Este paciente ainda não possui registros médicos</p>
+                          <h3 className="text-lg font-semibold text-muted-foreground mb-2">{t("medical_records.no_records")}</h3>
+                          <p className="text-muted-foreground">{t("common.no_data")}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -857,22 +859,22 @@ export default function MedicalRecords() {
                             <div className="flex items-center gap-4 text-sm">
                               <span className="flex items-center gap-1.5">
                                 <Stethoscope className="w-4 h-4 text-blue-600" />
-                                <strong>{unifiedData.summary.totalConsultations}</strong> consultas
+                                <strong>{unifiedData.summary.totalConsultations}</strong> {t("medical_records.consultations")}
                               </span>
                               <span className="flex items-center gap-1.5">
                                 <FileText className="w-4 h-4 text-emerald-600" />
-                                <strong>{unifiedData.summary.totalRecords}</strong> prontuários
+                                <strong>{unifiedData.summary.totalRecords}</strong> {t("medical_records.records")}
                               </span>
                               <span className="flex items-center gap-1.5">
                                 <Activity className="w-4 h-4 text-purple-600" />
-                                <strong>{unifiedData.summary.totalExams}</strong> exames
+                                <strong>{unifiedData.summary.totalExams}</strong> {t("medical_records.exams")}
                               </span>
                               <span className="flex items-center gap-1.5">
                                 <ClipboardList className="w-4 h-4 text-amber-600" />
-                                <strong>{unifiedData.summary.totalPrescriptions}</strong> prescrições
+                                <strong>{unifiedData.summary.totalPrescriptions}</strong> {t("medical_records.prescriptions_label")}
                               </span>
                             </div>
-                            <Badge variant="secondary">{unifiedData.summary.totalDays} dias com registros</Badge>
+                            <Badge variant="secondary">{unifiedData.summary.totalDays} {t("medical_records.by_date")}</Badge>
                           </div>
                         </CardContent>
                       </Card>
@@ -916,21 +918,21 @@ export default function MedicalRecords() {
                                       <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2">
                                           <Stethoscope className="w-4 h-4 text-blue-600" />
-                                          <span className="font-medium text-sm">Consulta</span>
+                                          <span className="font-medium text-sm">{t("medical.appointment")}</span>
                                           <Badge variant="secondary" className="text-xs">
-                                            {consult.type === 'consultation' ? 'Consulta' :
-                                             consult.type === 'followup' ? 'Retorno' :
-                                             consult.type === 'emergency' ? 'Emergência' : consult.type}
+                                            {consult.type === 'consultation' ? t("medical.appointment") :
+                                             consult.type === 'followup' ? t("schedule.followup") :
+                                             consult.type === 'emergency' ? t("medical.emergency") : consult.type}
                                           </Badge>
                                           <Badge className={`text-xs ${
                                             consult.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
                                             consult.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                                             'bg-yellow-100 text-yellow-800'
                                           }`}>
-                                            {consult.status === 'completed' ? 'Concluída' :
-                                             consult.status === 'cancelled' ? 'Cancelada' :
-                                             consult.status === 'scheduled' ? 'Agendada' :
-                                             consult.status === 'in-progress' ? 'Em andamento' : consult.status}
+                                            {consult.status === 'completed' ? t("common.completed") :
+                                             consult.status === 'cancelled' ? t("common.cancelled") :
+                                             consult.status === 'scheduled' ? t("common.confirmed") :
+                                             consult.status === 'in-progress' ? t("common.active") : consult.status}
                                           </Badge>
                                         </div>
                                         <span className="text-xs text-muted-foreground">
@@ -952,19 +954,19 @@ export default function MedicalRecords() {
                                       <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2">
                                           <FileText className="w-4 h-4 text-emerald-600" />
-                                          <span className="font-medium text-sm">Prontuário</span>
+                                          <span className="font-medium text-sm">{t("medical_records.records")}</span>
                                           {rec.hasPmd && (
                                             <Badge className="bg-emerald-600 text-xs cursor-pointer" onClick={() => setSelectedPmdId(rec.id)}>
                                               PMD v1.0
                                             </Badge>
                                           )}
                                           {rec.digitalSignature && (
-                                            <Badge variant="outline" className="text-green-600 text-xs">Assinado</Badge>
+                                            <Badge variant="outline" className="text-green-600 text-xs">{t("prescriptions_page.verified")}</Badge>
                                           )}
                                           {rec.isEncrypted && (
                                             <Badge variant="outline" className="text-blue-600 text-xs">
                                               <Lock className="w-3 h-3 mr-0.5" />
-                                              Cripto
+                                              {t("security.encryption")}
                                             </Badge>
                                           )}
                                         </div>
@@ -976,31 +978,31 @@ export default function MedicalRecords() {
                                       <div className="space-y-2 text-sm">
                                         {rec.symptoms && (
                                           <div>
-                                            <span className="font-medium text-xs text-muted-foreground">Anamnese / Sintomas:</span>
+                                            <span className="font-medium text-xs text-muted-foreground">{t("medical_records.anamnesis")} / {t("medical.symptoms")}:</span>
                                             <p className="mt-0.5">{rec.symptoms}</p>
                                           </div>
                                         )}
                                         {rec.diagnosis && (
                                           <div>
-                                            <span className="font-medium text-xs text-muted-foreground">Diagnóstico:</span>
+                                            <span className="font-medium text-xs text-muted-foreground">{t("medical.diagnosis")}:</span>
                                             <p className="mt-0.5">{rec.diagnosis}</p>
                                           </div>
                                         )}
                                         {rec.treatment && (
                                           <div>
-                                            <span className="font-medium text-xs text-muted-foreground">Tratamento:</span>
+                                            <span className="font-medium text-xs text-muted-foreground">{t("medical_records.treatment")}:</span>
                                             <p className="mt-0.5">{rec.treatment}</p>
                                           </div>
                                         )}
                                         {rec.historico && (
                                           <div>
-                                            <span className="font-medium text-xs text-muted-foreground">Histórico:</span>
+                                            <span className="font-medium text-xs text-muted-foreground">{t("medical_records.clinical_history")}:</span>
                                             <p className="mt-0.5">{rec.historico}</p>
                                           </div>
                                         )}
                                         {rec.prescription && (
                                           <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2 mt-1">
-                                            <span className="font-medium text-xs text-muted-foreground">Prescrição:</span>
+                                            <span className="font-medium text-xs text-muted-foreground">{t("medical.prescription")}:</span>
                                             <p className="mt-0.5">{rec.prescription}</p>
                                           </div>
                                         )}
@@ -1008,7 +1010,7 @@ export default function MedicalRecords() {
                                           <div className="mt-2 border-t border-border pt-2">
                                             <span className="font-medium text-xs text-muted-foreground flex items-center gap-1">
                                               <Activity className="w-3 h-3" />
-                                              Evoluções ({rec.evolucoes.length}):
+                                              {t("medical_records.evolution")} ({rec.evolucoes.length}):
                                             </span>
                                             <div className="space-y-1.5 mt-1.5">
                                               {rec.evolucoes.map((ev: any, idx: number) => (
@@ -1025,7 +1027,7 @@ export default function MedicalRecords() {
                                         )}
                                         {rec.diagnosticHypotheses && rec.diagnosticHypotheses.length > 0 && (
                                           <div className="mt-2">
-                                            <span className="font-medium text-xs text-muted-foreground">Hipóteses Diagnósticas (IA):</span>
+                                            <span className="font-medium text-xs text-muted-foreground">{t("chatbot.diagnostic_hypotheses")} (IA):</span>
                                             <div className="flex flex-wrap gap-1.5 mt-1">
                                               {rec.diagnosticHypotheses.map((h: any, i: number) => (
                                                 <Badge key={i} variant="outline" className="text-xs">
@@ -1045,11 +1047,11 @@ export default function MedicalRecords() {
                                     <CardContent className="py-3 px-4">
                                       <div className="flex items-center gap-2">
                                         <ClipboardList className="w-4 h-4 text-amber-600" />
-                                        <span className="font-medium text-sm">Prescrição</span>
+                                        <span className="font-medium text-sm">{t("medical.prescription")}</span>
                                         <Badge className={`text-xs ${
                                           rx.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                                         }`}>
-                                          {rx.status === 'active' ? 'Ativa' : rx.status}
+                                          {rx.status === 'active' ? t("common.active") : rx.status}
                                         </Badge>
                                       </div>
                                       {rx.diagnosis && <p className="text-sm mt-1 text-muted-foreground">{rx.diagnosis}</p>}
@@ -1100,12 +1102,12 @@ export default function MedicalRecords() {
                       <CardContent className="py-12">
                         <div className="text-center">
                           <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                          <h3 className="text-lg font-semibold text-muted-foreground mb-2">Nenhum Prontuário</h3>
-                          <p className="text-muted-foreground mb-4">Este paciente ainda não possui prontuários</p>
+                          <h3 className="text-lg font-semibold text-muted-foreground mb-2">{t("medical_records.no_records")}</h3>
+                          <p className="text-muted-foreground mb-4">{t("common.no_data")}</p>
                           {isDoctor && (
                             <Button onClick={() => setIsPmdDialogOpen(true)}>
                               <Plus className="w-4 h-4 mr-1" />
-                              Criar PMD v1.0
+                              {t("medical_records.pmd_create")}
                             </Button>
                           )}
                         </div>
@@ -1131,16 +1133,16 @@ export default function MedicalRecords() {
                                 )}
                                 {!record.pmdData && isDoctor && (
                                   <Button size="sm" variant="outline" className="text-xs" onClick={() => convertPmdMutation.mutate(record.id)} disabled={convertPmdMutation.isPending}>
-                                    Converter PMD
+                                    {t("medical_records.pmd_create")}
                                   </Button>
                                 )}
                                 {record.digitalSignature && (
-                                  <Badge variant="outline" className="text-green-600 text-xs">Assinado</Badge>
+                                  <Badge variant="outline" className="text-green-600 text-xs">{t("prescriptions_page.verified")}</Badge>
                                 )}
                                 {record.isEncrypted && (
                                   <Badge variant="outline" className="text-blue-600 text-xs">
                                     <Lock className="w-3 h-3 mr-1" />
-                                    Cripto
+                                    {t("security.encryption")}
                                   </Badge>
                                 )}
                               </div>
@@ -1150,32 +1152,32 @@ export default function MedicalRecords() {
                             <div className="space-y-3">
                               {record.symptoms && (
                                 <div>
-                                  <h4 className="font-medium text-sm text-muted-foreground mb-1">Sintomas / Anamnese</h4>
+                                  <h4 className="font-medium text-sm text-muted-foreground mb-1">{t("medical.symptoms")} / {t("medical_records.anamnesis")}</h4>
                                   <p className="text-sm">{record.symptoms}</p>
                                 </div>
                               )}
                               {record.diagnosis && (
                                 <div>
-                                  <h4 className="font-medium text-sm text-muted-foreground mb-1">Diagnóstico</h4>
+                                  <h4 className="font-medium text-sm text-muted-foreground mb-1">{t("medical.diagnosis")}</h4>
                                   <p className="text-sm">{record.diagnosis}</p>
                                 </div>
                               )}
                               {record.treatment && (
                                 <div>
-                                  <h4 className="font-medium text-sm text-muted-foreground mb-1">Tratamento</h4>
+                                  <h4 className="font-medium text-sm text-muted-foreground mb-1">{t("medical_records.treatment")}</h4>
                                   <p className="text-sm">{record.treatment}</p>
                                 </div>
                               )}
                               {record.prescription && (
                                 <div>
                                   <div className="flex items-center justify-between mb-2">
-                                    <h4 className="font-medium text-sm text-muted-foreground">Prescrição</h4>
+                                    <h4 className="font-medium text-sm text-muted-foreground">{t("medical.prescription")}</h4>
                                     {!record.digitalSignature ? (
                                       <Button size="sm" variant="outline" onClick={() => signPrescriptionMutation.mutate(record.id)} disabled={signPrescriptionMutation.isPending} className="text-xs">
-                                        {signPrescriptionMutation.isPending ? "Assinando..." : "Assinar FIPS 140-2"}
+                                        {signPrescriptionMutation.isPending ? t("common.loading") : t("prescriptions_page.digital_signature")}
                                       </Button>
                                     ) : (
-                                      <Badge variant="outline" className="text-green-600 text-xs">Assinado FIPS 140-2</Badge>
+                                      <Badge variant="outline" className="text-green-600 text-xs">{t("prescriptions_page.signature_verified")}</Badge>
                                     )}
                                   </div>
                                   <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
@@ -1185,7 +1187,7 @@ export default function MedicalRecords() {
                               )}
                               {record.diagnosticHypotheses && (
                                 <div>
-                                  <h4 className="font-medium text-sm text-muted-foreground mb-2">Hipóteses Diagnósticas (IA)</h4>
+                                  <h4 className="font-medium text-sm text-muted-foreground mb-2">{t("chatbot.diagnostic_hypotheses")} (IA)</h4>
                                   <div className="space-y-2">
                                     {record.diagnosticHypotheses.map((h: any, i: number) => (
                                       <div key={i} className="flex items-center justify-between text-sm bg-muted/30 p-2 rounded">
@@ -1210,8 +1212,8 @@ export default function MedicalRecords() {
                       <CardContent className="py-12">
                         <div className="text-center">
                           <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                          <h3 className="text-lg font-semibold text-muted-foreground mb-2">Nenhum Exame</h3>
-                          <p className="text-muted-foreground">Este paciente ainda não possui resultados de exames</p>
+                          <h3 className="text-lg font-semibold text-muted-foreground mb-2">{t("medical_records.exams")}</h3>
+                          <p className="text-muted-foreground">{t("common.no_data")}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -1228,7 +1230,7 @@ export default function MedicalRecords() {
                                 </p>
                               </div>
                               {exam.analyzedByAI && (
-                                <Badge variant="outline" className="text-purple-600">Analisado por IA</Badge>
+                                <Badge variant="outline" className="text-purple-600">{t("medical_records.ai_analysis")}</Badge>
                               )}
                             </div>
                           </CardHeader>
@@ -1236,7 +1238,7 @@ export default function MedicalRecords() {
                             <div className="space-y-4">
                               {exam.results && (
                                 <div>
-                                  <h4 className="font-medium text-sm text-muted-foreground mb-2">Resultados</h4>
+                                  <h4 className="font-medium text-sm text-muted-foreground mb-2">{t("medical.result")}</h4>
                                   <div className="grid grid-cols-2 gap-4 text-sm">
                                     {Object.entries(exam.results).map(([key, value]: [string, any]) => (
                                       <div key={key} className="flex justify-between">
@@ -1249,7 +1251,7 @@ export default function MedicalRecords() {
                               )}
                               {exam.abnormalValues && exam.abnormalValues.length > 0 && (
                                 <div>
-                                  <h4 className="font-medium text-sm text-muted-foreground mb-2 text-destructive">Valores Alterados</h4>
+                                  <h4 className="font-medium text-sm text-muted-foreground mb-2 text-destructive">{t("medical_records.abnormal_values") || "Valores Alterados"}</h4>
                                   <div className="space-y-2">
                                     {exam.abnormalValues.map((abnormal: any, index: number) => (
                                       <div key={index} className="flex items-center justify-between text-sm bg-destructive/10 p-2 rounded">
@@ -1285,13 +1287,13 @@ export default function MedicalRecords() {
                           <CardContent className="py-12">
                             <div className="text-center">
                               <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                              <h3 className="text-lg font-semibold text-muted-foreground mb-2">Nenhum PMD v1.0</h3>
-                              <p className="text-muted-foreground mb-4">Crie um novo prontuário no formato PMD v1.0 ou converta um existente</p>
+                              <h3 className="text-lg font-semibold text-muted-foreground mb-2">{t("medical_records.no_records")} PMD v1.0</h3>
+                              <p className="text-muted-foreground mb-4">{t("medical_records.pmd_create")}</p>
                               {isDoctor && (
                                 <div className="flex justify-center gap-2">
                                   <Button onClick={() => setIsPmdDialogOpen(true)}>
                                     <Plus className="w-4 h-4 mr-1" />
-                                    Criar PMD
+                                    {t("medical_records.pmd_create")}
                                   </Button>
                                 </div>
                               )}

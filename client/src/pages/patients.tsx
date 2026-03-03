@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
+import { useTranslation } from "react-i18next";
 
 const patientFormSchema = insertPatientSchema.extend({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -27,6 +28,7 @@ const patientFormSchema = insertPatientSchema.extend({
 type PatientFormData = z.infer<typeof patientFormSchema>;
 
 export default function Patients() {
+  const { t } = useTranslation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -61,8 +63,8 @@ export default function Patients() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
       toast({
-        title: "Sucesso",
-        description: "Paciente cadastrado com sucesso!",
+        title: t("common.success"),
+        description: t("patients_page.registered_success"),
       });
       setIsDialogOpen(false);
       form.reset();
@@ -82,8 +84,8 @@ export default function Patients() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
       toast({
-        title: "Sucesso",
-        description: "Paciente atualizado com sucesso!",
+        title: t("common.success"),
+        description: t("patients_page.updated_success"),
       });
       setIsEditDialogOpen(false);
       setEditingPatient(null);
@@ -104,8 +106,8 @@ export default function Patients() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
       toast({
-        title: "Sucesso",
-        description: "Paciente removido com sucesso!",
+        title: t("common.success"),
+        description: t("common.remove") + " - " + t("common.success").toLowerCase(),
       });
     },
     onError: (error) => {
@@ -154,7 +156,7 @@ export default function Patients() {
   };
 
   const handleDeletePatient = (patient: Patient) => {
-    if (confirm(`Tem certeza que deseja remover o paciente ${patient.name}? Esta ação não pode ser desfeita.`)) {
+    if (confirm(`${t("common.confirm")} - ${patient.name}?`)) {
       deletePatientMutation.mutate(patient.id);
     }
   };
@@ -164,8 +166,8 @@ export default function Patients() {
       apiRequest('POST', '/api/whatsapp/invite-consultation', data),
     onSuccess: () => {
       toast({
-        title: "Convite Enviado!",
-        description: "O paciente receberá o convite via WhatsApp em breve.",
+        title: t("common.send") + "!",
+        description: t("patients_page.whatsapp_invite_sent"),
       });
       setIsWhatsAppInviteOpen(false);
       setSelectedPatient(null);
@@ -193,8 +195,8 @@ export default function Patients() {
   const handleSendInvite = () => {
     if (!selectedPatient || !inviteDate || !inviteTime) {
       toast({
-        title: "Campos Obrigatórios",
-        description: "Por favor, preencha data e hora da consulta.",
+        title: t("common.required_field"),
+        description: t("common.date") + " / " + t("common.time"),
         variant: "destructive",
       });
       return;
@@ -226,19 +228,19 @@ export default function Patients() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Pacientes</h1>
-          <p className="text-muted-foreground">Gerencie os dados dos seus pacientes</p>
+          <h1 className="text-3xl font-bold text-foreground">{t("patients_page.title")}</h1>
+          <p className="text-muted-foreground">{t("patients.title")}</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button className="btn-medical-primary" data-testid="button-new-patient">
               <i className="fas fa-plus mr-2"></i>
-              Novo Paciente
+              {t("patients_page.new_patient")}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Cadastrar Novo Paciente</DialogTitle>
+              <DialogTitle>{t("patients_page.new_patient")}</DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -247,9 +249,9 @@ export default function Patients() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nome Completo</FormLabel>
+                      <FormLabel>{t("ui.full_name")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Digite o nome completo" {...field} value={field.value || ""} data-testid="input-patient-name" />
+                        <Input placeholder={t("ui.fullname_placeholder")} {...field} value={field.value || ""} data-testid="input-patient-name" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -260,9 +262,9 @@ export default function Patients() {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Telefone</FormLabel>
+                      <FormLabel>{t("common.phone")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="(11) 99999-9999" {...field} data-testid="input-patient-phone" />
+                        <Input placeholder={t("ui.phone_placeholder")} {...field} data-testid="input-patient-phone" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -273,9 +275,9 @@ export default function Patients() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>{t("common.email")}</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="email@exemplo.com" {...field} value={field.value || ""} data-testid="input-patient-email" />
+                        <Input type="email" placeholder={t("ui.email_placeholder")} {...field} value={field.value || ""} data-testid="input-patient-email" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -287,9 +289,9 @@ export default function Patients() {
                     name="gender"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Gênero</FormLabel>
+                        <FormLabel>{t("patients_page.gender")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Masculino/Feminino" {...field} value={field.value || ""} data-testid="input-patient-gender" />
+                          <Input placeholder={t("patients_page.select_gender")} {...field} value={field.value || ""} data-testid="input-patient-gender" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -300,9 +302,9 @@ export default function Patients() {
                     name="bloodType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tipo Sanguíneo</FormLabel>
+                        <FormLabel>{t("patients_page.blood_type")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="O+, A-, etc." {...field} value={field.value || ""} data-testid="input-patient-blood-type" />
+                          <Input placeholder={t("patients_page.select_blood_type")} {...field} value={field.value || ""} data-testid="input-patient-blood-type" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -314,9 +316,9 @@ export default function Patients() {
                   name="allergies"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Alergias</FormLabel>
+                      <FormLabel>{t("patients_page.allergies")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Liste as alergias conhecidas" {...field} value={field.value || ""} data-testid="input-patient-allergies" />
+                        <Input placeholder={t("patients_page.allergies")} {...field} value={field.value || ""} data-testid="input-patient-allergies" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -329,14 +331,14 @@ export default function Patients() {
                     onClick={() => setIsDialogOpen(false)}
                     data-testid="button-cancel-patient"
                   >
-                    Cancelar
+                    {t("common.cancel")}
                   </Button>
                   <Button 
                     type="submit" 
                     disabled={createPatientMutation.isPending}
                     data-testid="button-save-patient"
                   >
-                    {createPatientMutation.isPending ? "Salvando..." : "Salvar"}
+                    {createPatientMutation.isPending ? t("common.loading") : t("common.save")}
                   </Button>
                 </div>
               </form>
@@ -348,7 +350,7 @@ export default function Patients() {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Editar Paciente</DialogTitle>
+              <DialogTitle>{t("common.edit")} {t("common.patient")}</DialogTitle>
             </DialogHeader>
             <Form {...editForm}>
               <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
@@ -357,9 +359,9 @@ export default function Patients() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nome Completo</FormLabel>
+                      <FormLabel>{t("ui.full_name")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Digite o nome completo" {...field} value={field.value || ""} data-testid="input-edit-patient-name" />
+                        <Input placeholder={t("ui.fullname_placeholder")} {...field} value={field.value || ""} data-testid="input-edit-patient-name" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -370,9 +372,9 @@ export default function Patients() {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Telefone</FormLabel>
+                      <FormLabel>{t("common.phone")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="(11) 99999-9999" {...field} data-testid="input-edit-patient-phone" />
+                        <Input placeholder={t("ui.phone_placeholder")} {...field} data-testid="input-edit-patient-phone" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -383,9 +385,9 @@ export default function Patients() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>{t("common.email")}</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="email@exemplo.com" {...field} value={field.value || ""} data-testid="input-edit-patient-email" />
+                        <Input type="email" placeholder={t("ui.email_placeholder")} {...field} value={field.value || ""} data-testid="input-edit-patient-email" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -397,9 +399,9 @@ export default function Patients() {
                     name="gender"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Gênero</FormLabel>
+                        <FormLabel>{t("patients_page.gender")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Masculino/Feminino" {...field} value={field.value || ""} data-testid="input-edit-patient-gender" />
+                          <Input placeholder={t("patients_page.select_gender")} {...field} value={field.value || ""} data-testid="input-edit-patient-gender" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -410,9 +412,9 @@ export default function Patients() {
                     name="bloodType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tipo Sanguíneo</FormLabel>
+                        <FormLabel>{t("patients_page.blood_type")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="O+, A-, etc." {...field} value={field.value || ""} data-testid="input-edit-patient-blood-type" />
+                          <Input placeholder={t("patients_page.select_blood_type")} {...field} value={field.value || ""} data-testid="input-edit-patient-blood-type" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -424,9 +426,9 @@ export default function Patients() {
                   name="allergies"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Alergias</FormLabel>
+                      <FormLabel>{t("patients_page.allergies")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Liste as alergias conhecidas" {...field} value={field.value || ""} data-testid="input-edit-patient-allergies" />
+                        <Input placeholder={t("patients_page.allergies")} {...field} value={field.value || ""} data-testid="input-edit-patient-allergies" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -442,14 +444,14 @@ export default function Patients() {
                     }}
                     data-testid="button-cancel-edit-patient"
                   >
-                    Cancelar
+                    {t("common.cancel")}
                   </Button>
                   <Button 
                     type="submit" 
                     disabled={updatePatientMutation.isPending}
                     data-testid="button-save-edit-patient"
                   >
-                    {updatePatientMutation.isPending ? "Salvando..." : "Salvar Alterações"}
+                    {updatePatientMutation.isPending ? t("common.loading") : t("common.save")}
                   </Button>
                 </div>
               </form>
@@ -460,7 +462,7 @@ export default function Patients() {
 
       <div className="mb-6">
         <Input
-          placeholder="Buscar pacientes por nome ou telefone..."
+          placeholder={t("patients_page.search_patients")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-md"
@@ -472,9 +474,9 @@ export default function Patients() {
         {filteredPatients.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <i className="fas fa-users text-6xl text-muted-foreground mb-4"></i>
-            <h3 className="text-lg font-semibold text-muted-foreground mb-2">Nenhum paciente encontrado</h3>
+            <h3 className="text-lg font-semibold text-muted-foreground mb-2">{t("patients_page.no_patients")}</h3>
             <p className="text-muted-foreground">
-              {searchTerm ? "Tente um termo diferente." : "Cadastre seu primeiro paciente para começar."}
+              {searchTerm ? t("common.no_results") : t("patients_page.no_patients")}
             </p>
           </div>
         ) : (
@@ -496,7 +498,7 @@ export default function Patients() {
                     size="icon"
                     onClick={() => handleWhatsAppInvite(patient)}
                     className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                    title="Convidar para consulta via WhatsApp"
+                    title={t("patients_page.whatsapp_invite") || "WhatsApp"}
                     data-testid={`button-whatsapp-invite-${patient.id}`}
                   >
                     <MessageCircle className="h-5 w-5" />
@@ -538,7 +540,7 @@ export default function Patients() {
                     data-testid={`button-view-patient-${patient.id}`}
                   >
                     <i className="fas fa-eye mr-2"></i>
-                    Ver Detalhes
+                    {t("common.details")}
                   </Button>
                   <Button 
                     variant="default" 
@@ -547,7 +549,7 @@ export default function Patients() {
                     data-testid={`button-records-patient-${patient.id}`}
                   >
                     <i className="fas fa-file-medical mr-2"></i>
-                    Prontuário
+                    {t("navigation.records")}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -556,7 +558,7 @@ export default function Patients() {
                     data-testid={`button-edit-patient-${patient.id}`}
                   >
                     <i className="fas fa-edit mr-2"></i>
-                    Editar
+                    {t("common.edit")}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -566,7 +568,7 @@ export default function Patients() {
                     data-testid={`button-delete-patient-${patient.id}`}
                   >
                     <i className="fas fa-trash mr-2"></i>
-                    Remover
+                    {t("common.remove")}
                   </Button>
                 </div>
               </CardContent>
@@ -581,20 +583,20 @@ export default function Patients() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-green-600" />
-              Convidar via WhatsApp
+              {t("patients_page.whatsapp_invite") || "WhatsApp"}
             </DialogTitle>
           </DialogHeader>
           
           {selectedPatient && (
             <div className="space-y-4">
               <div className="bg-muted p-3 rounded-lg">
-                <p className="text-sm font-medium">Paciente: {selectedPatient.name}</p>
+                <p className="text-sm font-medium">{t("common.patient")}: {selectedPatient.name}</p>
                 <p className="text-xs text-muted-foreground">{selectedPatient.phone}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="invite-date">Data da Consulta</Label>
+                  <Label htmlFor="invite-date">{t("common.date")}</Label>
                   <div className="relative">
                     <Input
                       id="invite-date"
@@ -609,7 +611,7 @@ export default function Patients() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="invite-time">Horário</Label>
+                  <Label htmlFor="invite-time">{t("common.time")}</Label>
                   <Input
                     id="invite-time"
                     type="time"
@@ -621,12 +623,12 @@ export default function Patients() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="invite-message">Mensagem Personalizada</Label>
+                <Label htmlFor="invite-message">{t("common.description")}</Label>
                 <Textarea
                   id="invite-message"
                   value={inviteMessage}
                   onChange={(e) => setInviteMessage(e.target.value)}
-                  placeholder="Digite uma mensagem para o paciente..."
+                  placeholder={t("common.notes")}
                   rows={4}
                   data-testid="textarea-invite-message"
                 />
@@ -635,7 +637,7 @@ export default function Patients() {
               <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
                 <MessageCircle className="h-4 w-4 text-green-600" />
                 <p className="text-xs text-green-700 dark:text-green-400">
-                  O convite será enviado via WhatsApp automaticamente
+                  {t("patients_page.whatsapp_auto_send") || "WhatsApp"}
                 </p>
               </div>
 
@@ -648,7 +650,7 @@ export default function Patients() {
                   }}
                   data-testid="button-cancel-invite"
                 >
-                  Cancelar
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   onClick={handleSendInvite}
@@ -657,7 +659,7 @@ export default function Patients() {
                   data-testid="button-send-invite"
                 >
                   <MessageCircle className="h-4 w-4 mr-2" />
-                  {sendWhatsAppInviteMutation.isPending ? "Enviando..." : "Enviar Convite"}
+                  {sendWhatsAppInviteMutation.isPending ? t("common.loading") : t("common.send")}
                 </Button>
               </div>
             </div>
