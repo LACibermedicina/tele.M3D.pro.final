@@ -417,94 +417,94 @@ export default function Header() {
   const navGroups = [
     {
       category: "principal",
-      label: "Principal",
+      label: t("navigation.group_principal"),
       items: [
-        { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, faIcon: "fas fa-chart-line", roles: ["admin", "doctor", "patient"] },
-        { path: "/assistant", label: "Assistente IA", icon: BrainCircuit, faIcon: "fas fa-robot", roles: ["admin", "doctor", "patient"] },
+        { path: "/dashboard", label: t("navigation.dashboard"), icon: LayoutDashboard, faIcon: "fas fa-chart-line", roles: ["admin", "doctor", "patient"] },
+        { path: "/assistant", label: t("navigation.ai_assistant"), icon: BrainCircuit, faIcon: "fas fa-robot", roles: ["admin", "doctor", "patient"] },
       ],
     },
     {
       category: "clinico",
-      label: "Clínico",
+      label: t("navigation.group_clinico"),
       items: [
-        { path: "/patients", label: "Pacientes", icon: Users, faIcon: "fas fa-users", roles: ["admin", "doctor"] },
-        { path: "/schedule", label: "Agenda", icon: CalendarClock, faIcon: "fas fa-calendar-alt", roles: ["admin", "doctor"] },
-        { path: "/records", label: "Prontuários", icon: FileText, faIcon: "fas fa-file-medical", roles: ["admin", "doctor"] },
-        { path: "/prescriptions", label: "Prescrições", icon: ClipboardList, faIcon: "fas fa-prescription-bottle-alt", roles: ["admin", "doctor"] },
-        { path: "/inter-consultation", label: "Interconsulta", icon: Stethoscope, faIcon: "fas fa-user-md", roles: ["doctor"] },
-        { path: "/doctor-notes", label: "Anotações", icon: StickyNote, faIcon: "fas fa-sticky-note", roles: ["doctor"] },
-        { path: "/doctor-referrals", label: "Indicações", icon: UserPlus, faIcon: "fas fa-user-plus", roles: ["doctor"] },
+        { path: "/patients", label: t("navigation.patients"), icon: Users, faIcon: "fas fa-users", roles: ["admin", "doctor"] },
+        { path: "/schedule", label: t("navigation.schedule"), icon: CalendarClock, faIcon: "fas fa-calendar-alt", roles: ["admin", "doctor"] },
+        { path: "/records", label: t("navigation.records"), icon: FileText, faIcon: "fas fa-file-medical", roles: ["admin", "doctor"] },
+        { path: "/prescriptions", label: t("navigation.prescriptions"), icon: ClipboardList, faIcon: "fas fa-prescription-bottle-alt", roles: ["admin", "doctor"] },
+        { path: "/inter-consultation", label: t("navigation.inter_consultation"), icon: Stethoscope, faIcon: "fas fa-user-md", roles: ["doctor"] },
+        { path: "/doctor-notes", label: t("navigation.doctor_notes"), icon: StickyNote, faIcon: "fas fa-sticky-note", roles: ["doctor"] },
+        { path: "/doctor-referrals", label: t("navigation.doctor_referrals"), icon: UserPlus, faIcon: "fas fa-user-plus", roles: ["doctor"] },
       ],
     },
     {
       category: "paciente",
-      label: "Consultas",
+      label: t("navigation.group_consultas"),
       items: [
-        { path: "/consultation-request", label: "Solicitar Consulta", icon: Stethoscope, faIcon: "fas fa-stethoscope", roles: ["patient"] },
-        { path: "/immediate-consultation", label: "Sala de Espera", icon: Video, faIcon: "fas fa-hospital", roles: ["patient"] },
-        { path: "/my-consultations", label: "Minhas Consultas", icon: CalendarClock, faIcon: "fas fa-calendar-check", roles: ["patient"] },
+        { path: "/consultation-request", label: t("navigation.consultation_request"), icon: Stethoscope, faIcon: "fas fa-stethoscope", roles: ["patient"] },
+        { path: "/immediate-consultation", label: t("navigation.waiting_room"), icon: Video, faIcon: "fas fa-hospital", roles: ["patient"] },
+        { path: "/my-consultations", label: t("navigation.my_consultations"), icon: CalendarClock, faIcon: "fas fa-calendar-check", roles: ["patient"] },
       ],
     },
     {
       category: "revisao",
-      label: "Revisão & Diagnóstico",
+      label: t("navigation.group_revisao"),
       items: [
-        { path: "/incomplete-consultations", label: "Pendências", icon: AlertCircle, faIcon: "fas fa-exclamation-circle", roles: ["doctor"] },
-        { path: "/post-consultation-review", label: "Revisão Pós-Consulta", icon: ClipboardList, faIcon: "fas fa-clipboard-check", roles: ["doctor"] },
-        { path: "/diagnostic-review", label: "Inferências Diagnósticas", icon: Microscope, faIcon: "fas fa-microscope", roles: ["doctor"] },
+        { path: "/incomplete-consultations", label: t("navigation.incomplete_consultations"), icon: AlertCircle, faIcon: "fas fa-exclamation-circle", roles: ["doctor"] },
+        { path: "/post-consultation-review", label: t("navigation.post_consultation_review"), icon: ClipboardList, faIcon: "fas fa-clipboard-check", roles: ["doctor"] },
+        { path: "/diagnostic-review", label: t("navigation.diagnostic_review"), icon: Microscope, faIcon: "fas fa-microscope", roles: ["doctor"] },
       ],
     },
     {
       category: "comunicacao",
-      label: "Comunicação & IA",
+      label: t("navigation.group_comunicacao"),
       items: [
-        { path: "/whatsapp", label: "WhatsApp IA", icon: MessageCircle, faIcon: "fab fa-whatsapp", roles: ["admin", "doctor"] },
-        { path: "/medical-references", label: "Referências Médicas", icon: BookOpenCheck, faIcon: "fas fa-file-pdf", roles: ["admin", "doctor"] },
-        { path: "/coffee-room", label: "Cafeteria Virtual", icon: Coffee, faIcon: "fas fa-mug-hot", roles: ["doctor"] },
+        { path: "/whatsapp", label: t("navigation.whatsapp"), icon: MessageCircle, faIcon: "fab fa-whatsapp", roles: ["admin", "doctor"] },
+        { path: "/medical-references", label: t("navigation.medical_references"), icon: BookOpenCheck, faIcon: "fas fa-file-pdf", roles: ["admin", "doctor"] },
+        { path: "/coffee-room", label: t("navigation.coffee_room"), icon: Coffee, faIcon: "fas fa-mug-hot", roles: ["doctor"] },
       ],
     },
     {
       category: "financeiro",
-      label: "Financeiro & Blockchain",
+      label: t("navigation.group_financeiro"),
       items: [
-        { path: "/wallet", label: "Carteira Digital", icon: Wallet, faIcon: "fas fa-wallet", roles: ["doctor", "patient", "admin", "researcher"] },
-        { path: "/nft-management", label: "NFTs Dinâmicos", icon: Gem, faIcon: "fas fa-gem", roles: ["admin", "doctor", "researcher"] },
-        { path: "/broker", label: "Broker", icon: TrendingUp, faIcon: "fas fa-exchange-alt", roles: ["admin", "doctor", "patient", "researcher"] },
+        { path: "/wallet", label: t("navigation.wallet"), icon: Wallet, faIcon: "fas fa-wallet", roles: ["doctor", "patient", "admin", "researcher"] },
+        { path: "/nft-management", label: t("navigation.nft_management"), icon: Gem, faIcon: "fas fa-gem", roles: ["admin", "doctor", "researcher"] },
+        { path: "/broker", label: t("navigation.broker"), icon: TrendingUp, faIcon: "fas fa-exchange-alt", roles: ["admin", "doctor", "patient", "researcher"] },
       ],
     },
     {
       category: "relatorios",
-      label: "Relatórios & Analytics",
+      label: t("navigation.group_relatorios"),
       items: [
-        { path: "/epidemiological-reports", label: "Epidemiologia", icon: Activity, faIcon: "fas fa-chart-area", roles: ["admin", "doctor"] },
-        { path: "/reports", label: "Relatórios", icon: FileBarChart, faIcon: "fas fa-file-chart-line", roles: ["admin", "doctor"] },
-        { path: "/analytics", label: "Analytics", icon: BarChart3, faIcon: "fas fa-chart-bar", roles: ["admin"] },
+        { path: "/epidemiological-reports", label: t("navigation.epidemiology"), icon: Activity, faIcon: "fas fa-chart-area", roles: ["admin", "doctor"] },
+        { path: "/reports", label: t("navigation.reports"), icon: FileBarChart, faIcon: "fas fa-file-chart-line", roles: ["admin", "doctor"] },
+        { path: "/analytics", label: t("navigation.analytics"), icon: BarChart3, faIcon: "fas fa-chart-bar", roles: ["admin"] },
       ],
     },
     {
       category: "farmacia",
-      label: "Farmácia",
+      label: t("navigation.group_farmacia"),
       items: [
-        { path: "/pharmacy", label: "Painel Farmácia", icon: Pill, faIcon: "fas fa-pills", roles: ["pharmacist", "admin"] },
+        { path: "/pharmacy", label: t("navigation.pharmacy"), icon: Pill, faIcon: "fas fa-pills", roles: ["pharmacist", "admin"] },
       ],
     },
     {
       category: "admin",
-      label: "Administração",
+      label: t("navigation.group_admin"),
       items: [
         { path: "/admin", label: t("navigation.admin"), icon: Shield, faIcon: "fas fa-shield-alt", roles: ["admin"] },
-        { path: "/admin/payments", label: "Pagamentos", icon: CreditCard, faIcon: "fas fa-credit-card", roles: ["admin"] },
+        { path: "/admin/payments", label: t("navigation.payments"), icon: CreditCard, faIcon: "fas fa-credit-card", roles: ["admin"] },
       ],
     },
   ];
 
   if (user?.role === 'patient' && hasActivePrescriptions) {
     const patientGroup = navGroups.find(g => g.category === 'paciente');
-    if (patientGroup) patientGroup.items.push({ path: "/prescriptions", label: "Minhas Prescrições", icon: Pill, faIcon: "fas fa-pills", roles: ["patient"] });
+    if (patientGroup) patientGroup.items.push({ path: "/prescriptions", label: t("navigation.my_prescriptions"), icon: Pill, faIcon: "fas fa-pills", roles: ["patient"] });
   }
   if (user?.role === 'patient') {
     const patientGroup = navGroups.find(g => g.category === 'paciente');
-    if (patientGroup) patientGroup.items.push({ path: "/records", label: hasRecords ? "Meu Prontuário" : "Minhas Solicitações", icon: hasRecords ? FileText : ClipboardList, faIcon: hasRecords ? "fas fa-file-medical" : "fas fa-clipboard-list", roles: ["patient"] });
+    if (patientGroup) patientGroup.items.push({ path: "/records", label: hasRecords ? t("navigation.records") : t("navigation.consultation_request"), icon: hasRecords ? FileText : ClipboardList, faIcon: hasRecords ? "fas fa-file-medical" : "fas fa-clipboard-list", roles: ["patient"] });
   }
 
   const allNavItems = navGroups.flatMap(g => g.items);

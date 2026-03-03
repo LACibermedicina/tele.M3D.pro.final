@@ -44,6 +44,8 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
+    supportedLngs: ['pt', 'en', 'es', 'fr', 'it', 'de', 'zh', 'gn'],
+    load: 'languageOnly',
     fallbackLng: 'pt',
     debug: false,
     
@@ -58,6 +60,7 @@ i18n
     },
     
     cleanCode: true,
+    nonExplicitSupportedLngs: false,
     
     react: {
       useSuspense: false,
