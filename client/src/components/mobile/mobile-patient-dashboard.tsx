@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext"
 import { Link } from "wouter"
 import { useQuery } from "@tanstack/react-query"
+import { useTranslation } from "react-i18next"
 
 interface ConsultationsData {
   upcoming: any[];
@@ -39,6 +40,7 @@ interface MobilePatientDashboardProps {
 
 export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardProps) {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const { data: consultations } = useQuery<ConsultationsData>({
     queryKey: ['/api/my-consultations'],
@@ -71,18 +73,18 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold truncate">{user?.name || "Paciente"}</h1>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="outline" className="text-[10px] h-5">Verificado</Badge>
+              <Badge variant="outline" className="text-[10px] h-5">{t('patient_dashboard.verified')}</Badge>
               <span>{wallet?.balance ?? 0} TM3D</span>
             </div>
           </div>
           <div className="flex gap-2 text-center">
             <div className="px-2">
               <div className="text-lg font-bold text-medical-primary">{upcomingCount}</div>
-              <div className="text-[10px] text-muted-foreground">Próximas</div>
+              <div className="text-[10px] text-muted-foreground">{t('patient_dashboard.upcoming')}</div>
             </div>
             <div className="px-2">
               <div className="text-lg font-bold text-medical-secondary">{videoHistoryCount}</div>
-              <div className="text-[10px] text-muted-foreground">Histórico</div>
+              <div className="text-[10px] text-muted-foreground">{t('patient_dashboard.history')}</div>
             </div>
           </div>
         </div>
@@ -95,9 +97,9 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
                   <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
                     <Zap className="w-5 h-5" />
                   </div>
-                  <h2 className="text-sm font-bold leading-tight">Consultar Agora</h2>
+                  <h2 className="text-sm font-bold leading-tight">{t('patient_dashboard.consult_now')}</h2>
                 </div>
-                <p className="text-white/80 text-[10px]">Médico disponível</p>
+                <p className="text-white/80 text-[10px]">{t('patient_dashboard.available_doctor')}</p>
               </CardContent>
             </Card>
           </Link>
@@ -108,7 +110,7 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
                   <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
                     <Ambulance className="w-5 h-5" />
                   </div>
-                  <h2 className="text-sm font-bold leading-tight">Pronto Atendimento</h2>
+                  <h2 className="text-sm font-bold leading-tight">{t('patient_dashboard.urgent_care')}</h2>
                 </div>
                 <div className="flex items-center gap-1">
                   <Coins className="w-3 h-3 text-white/80" />
@@ -126,8 +128,8 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
                 <Stethoscope className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium">Solicitar Consulta</span>
-                <p className="text-xs text-muted-foreground">Agendar ou triagem por sintomas</p>
+                <span className="text-sm font-medium">{t('patient_dashboard.request_consultation')}</span>
+                <p className="text-xs text-muted-foreground">{t('patient_dashboard.schedule_or_triage')}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
             </div>
@@ -139,8 +141,8 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
                 <Calendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium">Minhas Consultas</span>
-                <p className="text-xs text-muted-foreground">Agendadas e histórico</p>
+                <span className="text-sm font-medium">{t('patient_dashboard.my_consultations')}</span>
+                <p className="text-xs text-muted-foreground">{t('patient_dashboard.scheduled_and_history')}</p>
               </div>
               {upcomingCount > 0 && <Badge className="bg-purple-500 text-white text-[10px] h-5">{upcomingCount}</Badge>}
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -153,8 +155,8 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
                 <FileText className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium">Prontuários</span>
-                <p className="text-xs text-muted-foreground">Registros médicos</p>
+                <span className="text-sm font-medium">{t('patient_dashboard.medical_records_label')}</span>
+                <p className="text-xs text-muted-foreground">{t('patient_dashboard.medical_records_desc')}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
             </div>
@@ -166,8 +168,8 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
                 <Pill className="w-5 h-5 text-orange-600 dark:text-orange-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium">Prescrições</span>
-                <p className="text-xs text-muted-foreground">Medicamentos e receitas</p>
+                <span className="text-sm font-medium">{t('patient_dashboard.prescriptions_label')}</span>
+                <p className="text-xs text-muted-foreground">{t('patient_dashboard.prescriptions_desc')}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
             </div>
@@ -182,8 +184,8 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
               <Brain className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-medium">Assistente IAM3D</span>
-              <p className="text-xs text-muted-foreground">Triagem e orientações por IA</p>
+              <span className="text-sm font-medium">{t('patient_dashboard.iam3d_assistant')}</span>
+              <p className="text-xs text-muted-foreground">{t('patient_dashboard.iam3d_desc')}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
@@ -195,7 +197,7 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold flex items-center gap-1.5">
                   <Clock className="w-4 h-4 text-medical-primary" />
-                  Próximas Consultas
+                  {t('patient_dashboard.upcoming_consultations')}
                 </h2>
                 <Badge variant="secondary" className="text-[10px] h-5">{upcomingCount}</Badge>
               </div>
@@ -218,7 +220,7 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
                   {appointment.status === 'in_progress' && (
                     <Link href={`/consultation-session/${appointment.id}`}>
                       <Button size="sm" className="h-7 text-xs" data-testid={`button-join-${appointment.id}`}>
-                        Entrar
+                        {t('patient_dashboard.join')}
                       </Button>
                     </Link>
                   )}
@@ -239,7 +241,7 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
           >
             <Phone className="w-4 h-4 mr-2" />
             <span className="font-bold text-sm">192 SAMU</span>
-            <span className="text-xs opacity-90 ml-1">- Emergência 24h</span>
+            <span className="text-xs opacity-90 ml-1">- {t('patient_dashboard.emergency_samu')}</span>
           </Button>
         </a>
       </div>

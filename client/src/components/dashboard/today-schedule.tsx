@@ -16,6 +16,7 @@ import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 import { Video, VideoOff, Plus, Search, Loader2, Calendar, User, Clock } from "lucide-react";
 
 type Appointment = typeof appointments.$inferSelect & {
@@ -27,6 +28,7 @@ export default function TodaySchedule() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const { t } = useTranslation();
   
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
@@ -334,7 +336,7 @@ export default function TodaySchedule() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Agenda de Hoje</CardTitle>
+          <CardTitle>{t('patient_dashboard.today_schedule')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
@@ -350,7 +352,7 @@ export default function TodaySchedule() {
     <Card data-testid="card-today-schedule">
       <CardHeader className="border-b border-border">
         <div className="flex items-center justify-between">
-          <CardTitle>Agenda de Hoje</CardTitle>
+          <CardTitle>{t('patient_dashboard.today_schedule')}</CardTitle>
           <div className="flex gap-2">
             {user?.role === 'doctor' && (
               <Button 
@@ -363,12 +365,12 @@ export default function TodaySchedule() {
                 {isOfficeOpen ? (
                   <>
                     <VideoOff className="h-4 w-4 mr-2" />
-                    Fechar Consultório
+                    {t('patient_dashboard.close_office')}
                   </>
                 ) : (
                   <>
                     <Video className="h-4 w-4 mr-2" />
-                    Abrir Consultório
+                    {t('patient_dashboard.open_office')}
                   </>
                 )}
               </Button>
@@ -384,7 +386,7 @@ export default function TodaySchedule() {
               data-testid="button-new-appointment"
             >
               <Plus className="h-4 w-4 mr-2" />
-              {user?.role === 'patient' ? 'Solicitar Consulta' : 'Nova Consulta'}
+              {user?.role === 'patient' ? t('patient_dashboard.request_consultation') : t('patient_dashboard.new_consultation')}
             </Button>
           </div>
         </div>
@@ -394,10 +396,10 @@ export default function TodaySchedule() {
           <div className="text-center py-8">
             <i className="fas fa-calendar-day text-4xl text-muted-foreground mb-3"></i>
             <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-              Nenhuma consulta hoje
+              {t('patient_dashboard.no_consultations_today')}
             </h3>
             <p className="text-muted-foreground">
-              Sua agenda está livre para hoje.
+              {t('patient_dashboard.schedule_free_today')}
             </p>
           </div>
         ) : (
@@ -415,7 +417,7 @@ export default function TodaySchedule() {
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-1">
                     <p className="font-medium" data-testid={`appointment-patient-${appointment.id}`}>
-                      {appointment.patient?.name || "Paciente não identificado"}
+                      {appointment.patient?.name || t('patient_dashboard.patient_unidentified')}
                     </p>
                     {appointment.aiScheduled && (
                       <Badge className="bg-purple-100 text-purple-800 text-xs">
