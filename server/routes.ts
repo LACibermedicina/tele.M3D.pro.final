@@ -1581,6 +1581,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/appointments/completed/:doctorId', async (req: any, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+      if (req.user.role !== 'admin' && req.user.id !== req.params.doctorId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      const { from, to } = req.query;
+      const fromDate = from ? new Date(from as string) : new Date();
+      const toDate = to ? new Date(to as string) : new Date();
+      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+        return res.status(400).json({ message: 'Invalid date parameters' });
+      }
+      fromDate.setHours(0, 0, 0, 0);
+      toDate.setHours(23, 59, 59, 999);
+
+      const completedAppts = await db.select()
+        .from(appointments)
+        .where(and(
+          eq(appointments.doctorId, req.params.doctorId),
+          eq(appointments.status, 'completed'),
+          gte(appointments.scheduledAt, fromDate),
+          lte(appointments.scheduledAt, toDate)
+        ))
+        .orderBy(desc(appointments.scheduledAt));
+
+      const patientIds = [...new Set(completedAppts.map(a => a.patientId).filter(Boolean))];
+      const patientMap: Record<string, any> = {};
+      for (const pid of patientIds) {
+        if (pid) {
+          try {
+            const p = await storage.getPatient(pid);
+            if (p) patientMap[pid] = p;
+          } catch {}
+        }
+      }
+
+      const enriched = completedAppts.map(a => ({
+        ...a,
+        patientName: a.patientId && patientMap[a.patientId] ? patientMap[a.patientId].name : 'Paciente não identificado',
+        patient: a.patientId && patientMap[a.patientId] ? { id: patientMap[a.patientId].id, name: patientMap[a.patientId].name } : undefined,
+      }));
+
+      res.json(enriched);
+    } catch (error) {
+      console.error('Completed appointments error:', error);
+      res.status(500).json({ message: 'Failed to get completed appointments' });
+    }
+  });
+
+  app.get('/api/appointments/upcoming/:doctorId', async (req: any, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+      if (req.user.role !== 'admin' && req.user.id !== req.params.doctorId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      const now = new Date();
+      const { days } = req.query;
+      const daysNum = Math.min(Math.max(parseInt(days as string) || 30, 1), 90);
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + daysNum);
+
+      const upcomingAppts = await db.select()
+        .from(appointments)
+        .where(and(
+          eq(appointments.doctorId, req.params.doctorId),
+          inArray(appointments.status, ['scheduled', 'confirmed']),
+          gte(appointments.scheduledAt, now),
+          lte(appointments.scheduledAt, endDate)
+        ))
+        .orderBy(appointments.scheduledAt);
+
+      const patientIds = [...new Set(upcomingAppts.map(a => a.patientId).filter(Boolean))];
+      const patientMap: Record<string, any> = {};
+      for (const pid of patientIds) {
+        if (pid) {
+          try {
+            const p = await storage.getPatient(pid);
+            if (p) patientMap[pid] = p;
+          } catch {}
+        }
+      }
+
+      const enriched = upcomingAppts.map(a => ({
+        ...a,
+        patientName: a.patientId && patientMap[a.patientId] ? patientMap[a.patientId].name : 'Paciente não identificado',
+        patient: a.patientId && patientMap[a.patientId] ? { id: patientMap[a.patientId].id, name: patientMap[a.patientId].name } : undefined,
+      }));
+
+      res.json(enriched);
+    } catch (error) {
+      console.error('Upcoming appointments error:', error);
+      res.status(500).json({ message: 'Failed to get upcoming appointments' });
+    }
+  });
+
   app.get('/api/appointments/patient/:patientId', async (req: any, res) => {
     try {
       if (!req.user) {
