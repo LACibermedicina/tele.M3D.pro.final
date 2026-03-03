@@ -1970,6 +1970,53 @@ export const insertClinicConsultationLogSchema = createInsertSchema(clinicConsul
 export type InsertClinicConsultationLog = z.infer<typeof insertClinicConsultationLogSchema>;
 export type ClinicConsultationLog = typeof clinicConsultationLogs.$inferSelect;
 
+// Doctor Transfer Requests — multi-party workflow for changing attending doctor
+export const doctorTransferRequests = pgTable("doctor_transfer_requests", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultationRequestId: uuid("consultation_request_id").references(() => consultationRequests.id),
+  requestingDoctorId: uuid("requesting_doctor_id").references(() => users.id).notNull(),
+  originalDoctorId: uuid("original_doctor_id").references(() => users.id).notNull(),
+  patientId: uuid("patient_id").references(() => patients.id).notNull(),
+  status: text("status").notNull().default("pending_original_doctor"),
+  reason: text("reason"),
+  originalDoctorApproved: boolean("original_doctor_approved"),
+  originalDoctorResponseAt: timestamp("original_doctor_response_at"),
+  patientApproved: boolean("patient_approved"),
+  patientResponseAt: timestamp("patient_response_at"),
+  completedAt: timestamp("completed_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDoctorTransferRequestSchema = createInsertSchema(doctorTransferRequests).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDoctorTransferRequest = z.infer<typeof insertDoctorTransferRequestSchema>;
+export type DoctorTransferRequest = typeof doctorTransferRequests.$inferSelect;
+
+// Data Access Requests — consent-based data sharing between doctors/patients
+export const dataAccessRequests = pgTable("data_access_requests", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  requestingDoctorId: uuid("requesting_doctor_id").references(() => users.id).notNull(),
+  patientId: uuid("patient_id").references(() => patients.id).notNull(),
+  responsibleDoctorId: uuid("responsible_doctor_id").references(() => users.id),
+  accessType: text("access_type").notNull().default("summary"),
+  status: text("status").notNull().default("pending_doctor"),
+  reason: text("reason"),
+  doctorApprovedAt: timestamp("doctor_approved_at"),
+  patientApprovedAt: timestamp("patient_approved_at"),
+  rejectedAt: timestamp("rejected_at"),
+  rejectedBy: text("rejected_by"),
+  expiresAt: timestamp("expires_at"),
+  scope: jsonb("scope"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDataAccessRequestSchema = createInsertSchema(dataAccessRequests).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDataAccessRequest = z.infer<typeof insertDataAccessRequestSchema>;
+export type DataAccessRequest = typeof dataAccessRequests.$inferSelect;
+
 // TMC system types
 export interface TmcBalance {
   userId: string;

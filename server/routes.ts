@@ -14,13 +14,13 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, doctorTransferRequests, dataAccessRequests } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
 import { z } from "zod";
 import { db } from "./db";
-import { eq, desc, sql, and, or, isNotNull, inArray, gte, lte, lt } from "drizzle-orm";
+import { eq, desc, sql, and, or, isNotNull, isNull, inArray, gte, lte, lt } from "drizzle-orm";
 import { generateAgoraToken, getAgoraAppId } from "./agora";
 
 // TMC Credit System Validation Schemas
@@ -88,6 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migrateDoctorPatientBlocks();
   await migratePaymentTransactions();
   await migrateClinicTables();
+  await migrateDoctorTransferAndDataAccessTables();
   await initStripeSync();
   
   // Initialize default doctor if not exists and get the actual ID
@@ -20432,6 +20433,846 @@ ${combinedText.slice(0, 8000)}`;
     }
   });
 
+  // ============ WAITING ROOM MANAGEMENT ============
+
+  app.get('/api/waiting-room', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'doctor' && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
+      }
+
+      const waitingRequests = await db.select({
+        request: consultationRequests,
+        patient: patients,
+        patientUser: users,
+      }).from(consultationRequests)
+        .innerJoin(patients, eq(consultationRequests.patientId, patients.id))
+        .innerJoin(users, eq(patients.userId, users.id))
+        .where(
+          and(
+            inArray(consultationRequests.status, ['pending', 'accepted']),
+            isNull(consultationRequests.scheduledAppointmentId)
+          )
+        )
+        .orderBy(desc(consultationRequests.createdAt));
+
+      const transferRequests = await db.select().from(doctorTransferRequests)
+        .where(inArray(doctorTransferRequests.status, ['pending_original_doctor', 'pending_patient']));
+
+      const result = await Promise.all(waitingRequests.map(async (wr) => {
+        let assignedDoctor = null;
+        if (wr.request.selectedDoctorId) {
+          const [doc] = await db.select().from(users).where(eq(users.id, wr.request.selectedDoctorId));
+          if (doc) assignedDoctor = { id: doc.id, name: doc.name, specialization: doc.specialization };
+        }
+        const activeTransfer = transferRequests.find(t => t.consultationRequestId === wr.request.id);
+        return {
+          id: wr.request.id,
+          patientName: wr.patientUser.name,
+          patientId: wr.request.patientId,
+          patientUserId: wr.patientUser.id,
+          symptoms: wr.request.symptoms,
+          urgencyLevel: wr.request.urgencyLevel,
+          clinicalPresentation: wr.request.clinicalPresentation,
+          status: wr.request.status,
+          assignedDoctor,
+          waitingSince: wr.request.createdAt,
+          transfer: activeTransfer ? {
+            id: activeTransfer.id,
+            status: activeTransfer.status,
+            requestingDoctorId: activeTransfer.requestingDoctorId,
+          } : null,
+        };
+      }));
+
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to fetch waiting room:', error);
+      res.status(500).json({ message: 'Erro ao buscar sala de espera' });
+    }
+  });
+
+  app.post('/api/waiting-room/:requestId/transfer', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'doctor') return res.status(403).json({ message: 'Apenas médicos' });
+
+      const { requestId } = req.params;
+      const { reason } = req.body;
+
+      const [request] = await db.select().from(consultationRequests).where(eq(consultationRequests.id, requestId));
+      if (!request) return res.status(404).json({ message: 'Solicitação não encontrada' });
+      if (!request.selectedDoctorId) return res.status(400).json({ message: 'Nenhum médico atribuído para transferir' });
+      if (request.selectedDoctorId === user.id) return res.status(400).json({ message: 'Você já é o médico atribuído' });
+
+      const existingTransfer = await db.select().from(doctorTransferRequests)
+        .where(and(
+          eq(doctorTransferRequests.consultationRequestId, requestId),
+          inArray(doctorTransferRequests.status, ['pending_original_doctor', 'pending_patient'])
+        ));
+      if (existingTransfer.length > 0) return res.status(400).json({ message: 'Já existe uma transferência pendente' });
+
+      const [transfer] = await db.insert(doctorTransferRequests).values({
+        consultationRequestId: requestId,
+        requestingDoctorId: user.id,
+        originalDoctorId: request.selectedDoctorId,
+        patientId: request.patientId,
+        status: 'pending_original_doctor',
+        reason: reason || null,
+      }).returning();
+
+      await db.insert(pendingNotifications).values({
+        userId: request.selectedDoctorId,
+        type: 'doctor_transfer_request',
+        title: 'Solicitação de Transferência de Paciente',
+        message: `Dr(a). ${user.name} solicita transferência de paciente. Motivo: ${reason || 'Não informado'}`,
+        metadata: { transferId: transfer.id, requestingDoctorName: user.name, reason },
+      });
+
+      broadcastToUser(request.selectedDoctorId, {
+        type: 'doctor_transfer_request',
+        data: { transferId: transfer.id, requestingDoctorId: user.id, requestingDoctorName: user.name, consultationRequestId: requestId, reason },
+      });
+
+      res.json({ message: 'Solicitação de transferência enviada', transfer });
+    } catch (error) {
+      console.error('Failed to create transfer request:', error);
+      res.status(500).json({ message: 'Erro ao solicitar transferência' });
+    }
+  });
+
+  app.patch('/api/doctor-transfer/:transferId/doctor-response', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const { transferId } = req.params;
+      const { approved } = req.body;
+
+      const [transfer] = await db.select().from(doctorTransferRequests).where(eq(doctorTransferRequests.id, transferId));
+      if (!transfer) return res.status(404).json({ message: 'Transferência não encontrada' });
+      if (transfer.originalDoctorId !== user.id) return res.status(403).json({ message: 'Apenas o médico original pode responder' });
+      if (transfer.status !== 'pending_original_doctor') return res.status(400).json({ message: 'Transferência já respondida' });
+
+      if (approved) {
+        await db.update(doctorTransferRequests).set({
+          status: 'pending_patient',
+          originalDoctorApproved: true,
+          originalDoctorResponseAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(doctorTransferRequests.id, transferId));
+
+        const [patient] = await db.select().from(patients).where(eq(patients.id, transfer.patientId));
+        if (patient?.userId) {
+          const [requestingDoc] = await db.select().from(users).where(eq(users.id, transfer.requestingDoctorId));
+          await db.insert(pendingNotifications).values({
+            userId: patient.userId,
+            type: 'patient_transfer_request',
+            title: 'Solicitação de Transferência de Médico',
+            message: `Dr(a). ${requestingDoc?.name || 'Outro médico'} deseja assumir seu atendimento. Deseja aceitar?`,
+            metadata: { transferId, requestingDoctorName: requestingDoc?.name, originalDoctorName: user.name },
+          });
+          broadcastToUser(patient.userId, {
+            type: 'patient_transfer_request',
+            data: { transferId, requestingDoctorName: requestingDoc?.name, originalDoctorName: user.name },
+          });
+        }
+
+        res.json({ message: 'Transferência aprovada, aguardando confirmação do paciente' });
+      } else {
+        await db.update(doctorTransferRequests).set({
+          status: 'rejected_by_doctor',
+          originalDoctorApproved: false,
+          originalDoctorResponseAt: new Date(),
+          completedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(doctorTransferRequests.id, transferId));
+
+        await db.insert(pendingNotifications).values({
+          userId: transfer.requestingDoctorId,
+          type: 'doctor_transfer_response',
+          title: 'Transferência Recusada',
+          message: `Dr(a). ${user.name} recusou a transferência de paciente.`,
+          metadata: { transferId, originalDoctorName: user.name },
+        });
+        broadcastToUser(transfer.requestingDoctorId, {
+          type: 'doctor_transfer_response',
+          data: { transferId, approved: false, originalDoctorName: user.name },
+        });
+
+        res.json({ message: 'Transferência recusada' });
+      }
+    } catch (error) {
+      console.error('Failed to process doctor transfer response:', error);
+      res.status(500).json({ message: 'Erro ao processar resposta' });
+    }
+  });
+
+  app.patch('/api/doctor-transfer/:transferId/patient-response', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const { transferId } = req.params;
+      const { approved } = req.body;
+
+      const [transfer] = await db.select().from(doctorTransferRequests).where(eq(doctorTransferRequests.id, transferId));
+      if (!transfer) return res.status(404).json({ message: 'Transferência não encontrada' });
+
+      const [patient] = await db.select().from(patients).where(eq(patients.id, transfer.patientId));
+      if (!patient || patient.userId !== user.id) return res.status(403).json({ message: 'Apenas o paciente pode responder' });
+      if (transfer.status !== 'pending_patient') return res.status(400).json({ message: 'Transferência não está aguardando paciente' });
+
+      if (approved) {
+        await db.update(doctorTransferRequests).set({
+          status: 'approved',
+          patientApproved: true,
+          patientResponseAt: new Date(),
+          completedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(doctorTransferRequests.id, transferId));
+
+        if (transfer.consultationRequestId) {
+          await db.update(consultationRequests).set({
+            selectedDoctorId: transfer.requestingDoctorId,
+            updatedAt: new Date(),
+          }).where(eq(consultationRequests.id, transfer.consultationRequestId));
+        }
+
+        const [requestingDoc] = await db.select().from(users).where(eq(users.id, transfer.requestingDoctorId));
+        const [originalDoc] = await db.select().from(users).where(eq(users.id, transfer.originalDoctorId));
+
+        await db.insert(pendingNotifications).values({
+          userId: transfer.requestingDoctorId,
+          type: 'doctor_transfer_response',
+          title: 'Transferência Aprovada',
+          message: `Paciente ${user.name} aceitou a transferência. Você é o novo médico responsável.`,
+          metadata: { transferId, patientName: user.name },
+        });
+        broadcastToUser(transfer.requestingDoctorId, {
+          type: 'doctor_transfer_response',
+          data: { transferId, approved: true, patientName: user.name },
+        });
+
+        await db.insert(pendingNotifications).values({
+          userId: transfer.originalDoctorId,
+          type: 'doctor_transfer_response',
+          title: 'Transferência Concluída',
+          message: `Paciente ${user.name} foi transferido para Dr(a). ${requestingDoc?.name}.`,
+          metadata: { transferId, requestingDoctorName: requestingDoc?.name },
+        });
+        broadcastToUser(transfer.originalDoctorId, {
+          type: 'doctor_transfer_response',
+          data: { transferId, approved: true, requestingDoctorName: requestingDoc?.name },
+        });
+
+        res.json({ message: 'Transferência concluída com sucesso' });
+      } else {
+        await db.update(doctorTransferRequests).set({
+          status: 'rejected_by_patient',
+          patientApproved: false,
+          patientResponseAt: new Date(),
+          completedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(doctorTransferRequests.id, transferId));
+
+        await db.insert(pendingNotifications).values({
+          userId: transfer.requestingDoctorId,
+          type: 'doctor_transfer_response',
+          title: 'Transferência Recusada pelo Paciente',
+          message: `Paciente recusou a transferência.`,
+          metadata: { transferId },
+        });
+        broadcastToUser(transfer.requestingDoctorId, { type: 'doctor_transfer_response', data: { transferId, approved: false } });
+
+        await db.insert(pendingNotifications).values({
+          userId: transfer.originalDoctorId,
+          type: 'doctor_transfer_response',
+          title: 'Transferência Recusada pelo Paciente',
+          message: `Paciente recusou a transferência solicitada.`,
+          metadata: { transferId },
+        });
+        broadcastToUser(transfer.originalDoctorId, { type: 'doctor_transfer_response', data: { transferId, approved: false } });
+
+        res.json({ message: 'Transferência recusada pelo paciente' });
+      }
+    } catch (error) {
+      console.error('Failed to process patient transfer response:', error);
+      res.status(500).json({ message: 'Erro ao processar resposta do paciente' });
+    }
+  });
+
+  app.get('/api/doctor-transfer/pending', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const transfers = await db.select().from(doctorTransferRequests)
+        .where(
+          and(
+            inArray(doctorTransferRequests.status, ['pending_original_doctor', 'pending_patient']),
+            or(
+              eq(doctorTransferRequests.requestingDoctorId, user.id),
+              eq(doctorTransferRequests.originalDoctorId, user.id)
+            )
+          )
+        )
+        .orderBy(desc(doctorTransferRequests.createdAt));
+
+      const result = await Promise.all(transfers.map(async (t) => {
+        const [reqDoc] = await db.select().from(users).where(eq(users.id, t.requestingDoctorId));
+        const [origDoc] = await db.select().from(users).where(eq(users.id, t.originalDoctorId));
+        const [pat] = await db.select().from(patients).where(eq(patients.id, t.patientId));
+        let patientUser = null;
+        if (pat?.userId) {
+          const [pu] = await db.select().from(users).where(eq(users.id, pat.userId));
+          patientUser = pu;
+        }
+        return {
+          ...t,
+          requestingDoctorName: reqDoc?.name,
+          originalDoctorName: origDoc?.name,
+          patientName: patientUser?.name,
+        };
+      }));
+
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to fetch pending transfers:', error);
+      res.status(500).json({ message: 'Erro ao buscar transferências pendentes' });
+    }
+  });
+
+  // ============ DATA ACCESS REQUESTS ============
+
+  app.post('/api/data-access/request', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'doctor') return res.status(403).json({ message: 'Apenas médicos' });
+
+      const { patientId, accessType, reason } = req.body;
+      if (!patientId) return res.status(400).json({ message: 'ID do paciente obrigatório' });
+
+      const [patient] = await db.select().from(patients).where(eq(patients.id, patientId));
+      if (!patient) return res.status(404).json({ message: 'Paciente não encontrado' });
+
+      if (patient.primaryDoctorId === user.id) {
+        return res.status(400).json({ message: 'Você já é o médico responsável' });
+      }
+
+      const existing = await db.select().from(dataAccessRequests)
+        .where(and(
+          eq(dataAccessRequests.requestingDoctorId, user.id),
+          eq(dataAccessRequests.patientId, patientId),
+          inArray(dataAccessRequests.status, ['pending_doctor', 'pending_patient', 'approved']),
+        ));
+      if (existing.length > 0) {
+        const active = existing.find(e => e.status === 'approved' && (!e.expiresAt || new Date(e.expiresAt) > new Date()));
+        if (active) return res.status(400).json({ message: 'Você já possui acesso aprovado' });
+        const pending = existing.find(e => e.status === 'pending_doctor' || e.status === 'pending_patient');
+        if (pending) return res.status(400).json({ message: 'Já existe uma solicitação pendente' });
+      }
+
+      const responsibleDoctorId = patient.primaryDoctorId || null;
+      const initialStatus = responsibleDoctorId ? 'pending_doctor' : 'pending_patient';
+
+      const [accessReq] = await db.insert(dataAccessRequests).values({
+        requestingDoctorId: user.id,
+        patientId,
+        responsibleDoctorId,
+        accessType: accessType || 'summary',
+        status: initialStatus,
+        reason: reason || null,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      }).returning();
+
+      if (responsibleDoctorId) {
+        await db.insert(pendingNotifications).values({
+          userId: responsibleDoctorId,
+          type: 'data_access_request',
+          title: 'Solicitação de Acesso a Dados',
+          message: `Dr(a). ${user.name} solicita acesso aos dados de um paciente sob sua responsabilidade. Tipo: ${accessType || 'resumo'}`,
+          metadata: { accessRequestId: accessReq.id, requestingDoctorName: user.name, accessType, responseType: 'doctor' },
+        });
+        broadcastToUser(responsibleDoctorId, {
+          type: 'data_access_request',
+          data: { accessRequestId: accessReq.id, requestingDoctorName: user.name, accessType, responseType: 'doctor' },
+        });
+      } else if (patient.userId) {
+        await db.insert(pendingNotifications).values({
+          userId: patient.userId,
+          type: 'data_access_request',
+          title: 'Solicitação de Acesso aos Seus Dados',
+          message: `Dr(a). ${user.name} solicita acesso aos seus dados médicos. Tipo: ${accessType || 'resumo'}`,
+          metadata: { accessRequestId: accessReq.id, requestingDoctorName: user.name, accessType, responseType: 'patient' },
+        });
+        broadcastToUser(patient.userId, {
+          type: 'data_access_request',
+          data: { accessRequestId: accessReq.id, requestingDoctorName: user.name, accessType, responseType: 'patient' },
+        });
+      }
+
+      res.json({ message: 'Solicitação de acesso enviada', accessRequest: accessReq });
+    } catch (error) {
+      console.error('Failed to create data access request:', error);
+      res.status(500).json({ message: 'Erro ao solicitar acesso' });
+    }
+  });
+
+  app.patch('/api/data-access/:id/doctor-response', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const { approved } = req.body;
+
+      const [accessReq] = await db.select().from(dataAccessRequests).where(eq(dataAccessRequests.id, id));
+      if (!accessReq) return res.status(404).json({ message: 'Solicitação não encontrada' });
+      if (accessReq.responsibleDoctorId !== user.id) return res.status(403).json({ message: 'Apenas o médico responsável' });
+      if (accessReq.status !== 'pending_doctor') return res.status(400).json({ message: 'Solicitação já respondida' });
+
+      if (approved) {
+        await db.update(dataAccessRequests).set({
+          status: 'pending_patient',
+          doctorApprovedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(dataAccessRequests.id, id));
+
+        const [patient] = await db.select().from(patients).where(eq(patients.id, accessReq.patientId));
+        if (patient?.userId) {
+          const [reqDoc] = await db.select().from(users).where(eq(users.id, accessReq.requestingDoctorId));
+          await db.insert(pendingNotifications).values({
+            userId: patient.userId,
+            type: 'data_access_request',
+            title: 'Solicitação de Acesso aos Seus Dados',
+            message: `Dr(a). ${reqDoc?.name} solicita acesso aos seus dados. Seu médico responsável (Dr(a). ${user.name}) já aprovou. Deseja autorizar?`,
+            metadata: { accessRequestId: id, requestingDoctorName: reqDoc?.name, responsibleDoctorName: user.name, responseType: 'patient' },
+          });
+          broadcastToUser(patient.userId, {
+            type: 'data_access_request',
+            data: { accessRequestId: id, requestingDoctorName: reqDoc?.name, responseType: 'patient' },
+          });
+        }
+        res.json({ message: 'Aprovado, aguardando consentimento do paciente' });
+      } else {
+        await db.update(dataAccessRequests).set({
+          status: 'rejected',
+          rejectedAt: new Date(),
+          rejectedBy: 'responsible_doctor',
+          updatedAt: new Date(),
+        }).where(eq(dataAccessRequests.id, id));
+
+        await db.insert(pendingNotifications).values({
+          userId: accessReq.requestingDoctorId,
+          type: 'data_access_response',
+          title: 'Acesso Negado',
+          message: `Dr(a). ${user.name} negou o acesso aos dados do paciente.`,
+          metadata: { accessRequestId: id },
+        });
+        broadcastToUser(accessReq.requestingDoctorId, {
+          type: 'data_access_response',
+          data: { accessRequestId: id, approved: false },
+        });
+        res.json({ message: 'Acesso negado' });
+      }
+    } catch (error) {
+      console.error('Failed to process doctor data access response:', error);
+      res.status(500).json({ message: 'Erro ao processar resposta' });
+    }
+  });
+
+  app.patch('/api/data-access/:id/patient-response', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const { approved } = req.body;
+
+      const [accessReq] = await db.select().from(dataAccessRequests).where(eq(dataAccessRequests.id, id));
+      if (!accessReq) return res.status(404).json({ message: 'Solicitação não encontrada' });
+
+      const [patient] = await db.select().from(patients).where(eq(patients.id, accessReq.patientId));
+      if (!patient || patient.userId !== user.id) return res.status(403).json({ message: 'Apenas o paciente' });
+      if (accessReq.status !== 'pending_patient') return res.status(400).json({ message: 'Solicitação não aguarda consentimento do paciente' });
+
+      if (approved) {
+        await db.update(dataAccessRequests).set({
+          status: 'approved',
+          patientApprovedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(dataAccessRequests.id, id));
+
+        await db.insert(pendingNotifications).values({
+          userId: accessReq.requestingDoctorId,
+          type: 'data_access_response',
+          title: 'Acesso Aprovado',
+          message: `Paciente ${user.name} autorizou acesso aos dados médicos.`,
+          metadata: { accessRequestId: id, patientName: user.name },
+        });
+        broadcastToUser(accessReq.requestingDoctorId, {
+          type: 'data_access_response',
+          data: { accessRequestId: id, approved: true, patientName: user.name },
+        });
+        res.json({ message: 'Acesso autorizado' });
+      } else {
+        await db.update(dataAccessRequests).set({
+          status: 'rejected',
+          rejectedAt: new Date(),
+          rejectedBy: 'patient',
+          updatedAt: new Date(),
+        }).where(eq(dataAccessRequests.id, id));
+
+        await db.insert(pendingNotifications).values({
+          userId: accessReq.requestingDoctorId,
+          type: 'data_access_response',
+          title: 'Acesso Negado pelo Paciente',
+          message: `Paciente negou acesso aos dados médicos.`,
+          metadata: { accessRequestId: id },
+        });
+        broadcastToUser(accessReq.requestingDoctorId, {
+          type: 'data_access_response',
+          data: { accessRequestId: id, approved: false },
+        });
+        res.json({ message: 'Acesso negado pelo paciente' });
+      }
+    } catch (error) {
+      console.error('Failed to process patient data access response:', error);
+      res.status(500).json({ message: 'Erro ao processar resposta' });
+    }
+  });
+
+  app.get('/api/data-access/requests', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      let requests;
+
+      if (user.role === 'doctor') {
+        requests = await db.select().from(dataAccessRequests)
+          .where(or(
+            eq(dataAccessRequests.requestingDoctorId, user.id),
+            eq(dataAccessRequests.responsibleDoctorId, user.id)
+          ))
+          .orderBy(desc(dataAccessRequests.createdAt));
+      } else if (user.role === 'patient') {
+        const [patient] = await db.select().from(patients).where(eq(patients.userId, user.id));
+        if (!patient) return res.json([]);
+        requests = await db.select().from(dataAccessRequests)
+          .where(eq(dataAccessRequests.patientId, patient.id))
+          .orderBy(desc(dataAccessRequests.createdAt));
+      } else if (user.role === 'admin') {
+        requests = await db.select().from(dataAccessRequests)
+          .orderBy(desc(dataAccessRequests.createdAt))
+          .limit(100);
+      } else {
+        return res.json([]);
+      }
+
+      const result = await Promise.all(requests.map(async (r) => {
+        const [reqDoc] = await db.select().from(users).where(eq(users.id, r.requestingDoctorId));
+        const [pat] = await db.select().from(patients).where(eq(patients.id, r.patientId));
+        let patientUser = null;
+        if (pat?.userId) {
+          const [pu] = await db.select().from(users).where(eq(users.id, pat.userId));
+          patientUser = pu;
+        }
+        let respDoc = null;
+        if (r.responsibleDoctorId) {
+          const [rd] = await db.select().from(users).where(eq(users.id, r.responsibleDoctorId));
+          respDoc = rd;
+        }
+        return {
+          ...r,
+          requestingDoctorName: reqDoc?.name,
+          patientName: patientUser?.name,
+          responsibleDoctorName: respDoc?.name,
+        };
+      }));
+
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to fetch data access requests:', error);
+      res.status(500).json({ message: 'Erro ao buscar solicitações' });
+    }
+  });
+
+  app.get('/api/data-access/check/:patientId', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'doctor' && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito' });
+      }
+
+      const { patientId } = req.params;
+      const [patient] = await db.select().from(patients).where(eq(patients.id, patientId));
+      if (!patient) return res.status(404).json({ message: 'Paciente não encontrado' });
+
+      if (user.role === 'admin') return res.json({ hasAccess: true, accessLevel: 'full', reason: 'admin' });
+      if (patient.primaryDoctorId === user.id) return res.json({ hasAccess: true, accessLevel: 'full', reason: 'primary_doctor' });
+
+      const hasAppointment = await db.select().from(appointments)
+        .where(and(
+          eq(appointments.patientId, patientId),
+          eq(appointments.doctorId, user.id),
+          inArray(appointments.status, ['scheduled', 'in_progress'])
+        )).limit(1);
+      if (hasAppointment.length > 0) return res.json({ hasAccess: true, accessLevel: 'full', reason: 'active_appointment' });
+
+      const approved = await db.select().from(dataAccessRequests)
+        .where(and(
+          eq(dataAccessRequests.requestingDoctorId, user.id),
+          eq(dataAccessRequests.patientId, patientId),
+          eq(dataAccessRequests.status, 'approved'),
+        )).limit(1);
+
+      if (approved.length > 0) {
+        const req = approved[0];
+        if (req.expiresAt && new Date(req.expiresAt) < new Date()) {
+          return res.json({ hasAccess: false, accessLevel: 'none', reason: 'expired' });
+        }
+        return res.json({ hasAccess: true, accessLevel: req.accessType, reason: 'approved_request' });
+      }
+
+      const pending = await db.select().from(dataAccessRequests)
+        .where(and(
+          eq(dataAccessRequests.requestingDoctorId, user.id),
+          eq(dataAccessRequests.patientId, patientId),
+          inArray(dataAccessRequests.status, ['pending_doctor', 'pending_patient']),
+        )).limit(1);
+
+      res.json({
+        hasAccess: false,
+        accessLevel: 'none',
+        reason: pending.length > 0 ? 'pending_request' : 'no_access',
+        pendingRequestId: pending[0]?.id || null,
+      });
+    } catch (error) {
+      console.error('Failed to check data access:', error);
+      res.status(500).json({ message: 'Erro ao verificar acesso' });
+    }
+  });
+
+  app.patch('/api/patients/:id/preferred-doctor', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const { doctorId } = req.body;
+
+      const [patient] = await db.select().from(patients).where(eq(patients.id, id));
+      if (!patient) return res.status(404).json({ message: 'Paciente não encontrado' });
+      if (patient.userId !== user.id && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas o próprio paciente ou admin' });
+      }
+
+      if (doctorId) {
+        const [doctor] = await db.select().from(users).where(and(eq(users.id, doctorId), eq(users.role, 'doctor')));
+        if (!doctor) return res.status(404).json({ message: 'Médico não encontrado' });
+      }
+
+      await db.update(patients).set({
+        primaryDoctorId: doctorId || null,
+      }).where(eq(patients.id, id));
+
+      res.json({ message: 'Médico responsável atualizado' });
+    } catch (error) {
+      console.error('Failed to update preferred doctor:', error);
+      res.status(500).json({ message: 'Erro ao atualizar médico responsável' });
+    }
+  });
+
+  // ============ ENHANCED CLINICAL HISTORY ============
+
+  app.get('/api/clinical-history/:patientId', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const { patientId } = req.params;
+
+      const [patient] = await db.select().from(patients).where(eq(patients.id, patientId));
+      if (!patient) return res.status(404).json({ message: 'Paciente não encontrado' });
+
+      let accessLevel = 'none';
+      if (user.role === 'admin') accessLevel = 'full';
+      else if (user.role === 'patient' && patient.userId === user.id) accessLevel = 'full';
+      else if (user.role === 'doctor') {
+        if (patient.primaryDoctorId === user.id) accessLevel = 'full';
+        else {
+          const hasAppt = await db.select().from(appointments)
+            .where(and(eq(appointments.patientId, patientId), eq(appointments.doctorId, user.id)))
+            .limit(1);
+          if (hasAppt.length > 0) accessLevel = 'full';
+          else {
+            const approved = await db.select().from(dataAccessRequests)
+              .where(and(
+                eq(dataAccessRequests.requestingDoctorId, user.id),
+                eq(dataAccessRequests.patientId, patientId),
+                eq(dataAccessRequests.status, 'approved'),
+              )).limit(1);
+            if (approved.length > 0 && (!approved[0].expiresAt || new Date(approved[0].expiresAt) > new Date())) {
+              accessLevel = approved[0].accessType || 'summary';
+            }
+          }
+        }
+      }
+
+      if (accessLevel === 'none') {
+        return res.status(403).json({ message: 'Sem acesso aos dados deste paciente' });
+      }
+
+      let patientUser = null;
+      if (patient.userId) {
+        const [pu] = await db.select().from(users).where(eq(users.id, patient.userId));
+        patientUser = pu;
+      }
+
+      const patientConsultations = await db.select({
+        appointment: appointments,
+        doctorName: users.name,
+      }).from(appointments)
+        .innerJoin(users, eq(appointments.doctorId, users.id))
+        .where(eq(appointments.patientId, patientId))
+        .orderBy(desc(appointments.scheduledAt));
+
+      const patientRecords = await db.select().from(medicalRecords)
+        .where(eq(medicalRecords.patientId, patientId))
+        .orderBy(desc(medicalRecords.createdAt));
+
+      const patientPrescriptions = await db.select().from(prescriptions)
+        .where(eq(prescriptions.patientId, patientId))
+        .orderBy(desc(prescriptions.createdAt));
+
+      const patientExams = await db.select().from(examResults)
+        .where(eq(examResults.patientId, patientId))
+        .orderBy(desc(examResults.createdAt));
+
+      const patientDiagnostics = await db.select().from(diagnosticInferences)
+        .where(eq(diagnosticInferences.patientId, patientId))
+        .orderBy(desc(diagnosticInferences.createdAt));
+
+      if (accessLevel === 'summary') {
+        const conditions = patientDiagnostics.map(d => ({
+          hypotheses: d.hypotheses,
+          confidence: d.overallConfidence,
+          date: d.createdAt,
+        }));
+
+        return res.json({
+          accessLevel: 'summary',
+          patient: {
+            name: patientUser?.name,
+            dateOfBirth: patient.dateOfBirth,
+            gender: patient.gender,
+          },
+          summary: {
+            totalConsultations: patientConsultations.length,
+            lastVisit: patientConsultations[0]?.appointment.scheduledAt || null,
+            activeConditions: conditions.slice(0, 5),
+            medicationCount: patientPrescriptions.length,
+            examCount: patientExams.length,
+            allergies: patient.allergies,
+          },
+        });
+      }
+
+      const timeline: any[] = [];
+
+      patientConsultations.forEach(c => {
+        timeline.push({
+          type: 'consultation',
+          date: c.appointment.scheduledAt,
+          data: {
+            id: c.appointment.id,
+            status: c.appointment.status,
+            doctorName: c.doctorName,
+            notes: c.appointment.notes,
+            type: c.appointment.type,
+          },
+        });
+      });
+
+      patientRecords.forEach(r => {
+        timeline.push({
+          type: 'medical_record',
+          date: r.createdAt,
+          data: {
+            id: r.id,
+            diagnosis: r.diagnosis,
+            treatment: r.treatment,
+            notes: r.notes,
+            pmdData: r.pmdData,
+          },
+        });
+      });
+
+      patientPrescriptions.forEach(p => {
+        timeline.push({
+          type: 'prescription',
+          date: p.createdAt,
+          data: {
+            id: p.id,
+            status: p.status,
+            notes: p.notes,
+          },
+        });
+      });
+
+      patientExams.forEach(e => {
+        timeline.push({
+          type: 'exam',
+          date: e.createdAt,
+          data: {
+            id: e.id,
+            examType: e.examType,
+            results: e.results,
+            abnormalValues: e.abnormalValues,
+          },
+        });
+      });
+
+      patientDiagnostics.forEach(d => {
+        timeline.push({
+          type: 'diagnostic',
+          date: d.createdAt,
+          data: {
+            id: d.id,
+            hypotheses: d.hypotheses,
+            overallConfidence: d.overallConfidence,
+            reviewStatus: d.reviewStatus,
+            needsReview: d.needsReview,
+          },
+        });
+      });
+
+      timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      const groupedTimeline: Record<string, any[]> = {};
+      timeline.forEach(item => {
+        const dateKey = new Date(item.date).toISOString().split('T')[0];
+        if (!groupedTimeline[dateKey]) groupedTimeline[dateKey] = [];
+        groupedTimeline[dateKey].push(item);
+      });
+
+      res.json({
+        accessLevel: 'full',
+        patient: {
+          id: patient.id,
+          name: patientUser?.name,
+          dateOfBirth: patient.dateOfBirth,
+          gender: patient.gender,
+          bloodType: patient.bloodType,
+          allergies: patient.allergies,
+          medicalHistory: patient.medicalHistory,
+          emergencyContact: patient.emergencyContact,
+          primaryDoctorId: patient.primaryDoctorId,
+        },
+        summary: {
+          totalConsultations: patientConsultations.length,
+          totalRecords: patientRecords.length,
+          totalPrescriptions: patientPrescriptions.length,
+          totalExams: patientExams.length,
+          totalDiagnostics: patientDiagnostics.length,
+          lastVisit: patientConsultations[0]?.appointment.scheduledAt || null,
+          allergies: patient.allergies,
+        },
+        timeline: groupedTimeline,
+      });
+    } catch (error) {
+      console.error('Failed to fetch clinical history:', error);
+      res.status(500).json({ message: 'Erro ao buscar histórico clínico' });
+    }
+  });
+
   return httpServer;
 }
 
@@ -20695,6 +21536,53 @@ async function migrateClinicTables() {
     console.log('✓ Clinic tables migrated successfully');
   } catch (error) {
     console.error('Failed to migrate clinic tables:', error);
+  }
+}
+
+async function migrateDoctorTransferAndDataAccessTables() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS doctor_transfer_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        consultation_request_id UUID REFERENCES consultation_requests(id),
+        requesting_doctor_id UUID NOT NULL REFERENCES users(id),
+        original_doctor_id UUID NOT NULL REFERENCES users(id),
+        patient_id UUID NOT NULL REFERENCES patients(id),
+        status TEXT NOT NULL DEFAULT 'pending_original_doctor',
+        reason TEXT,
+        original_doctor_approved BOOLEAN,
+        original_doctor_response_at TIMESTAMP,
+        patient_approved BOOLEAN,
+        patient_response_at TIMESTAMP,
+        completed_at TIMESTAMP,
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS data_access_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        requesting_doctor_id UUID NOT NULL REFERENCES users(id),
+        patient_id UUID NOT NULL REFERENCES patients(id),
+        responsible_doctor_id UUID REFERENCES users(id),
+        access_type TEXT NOT NULL DEFAULT 'summary',
+        status TEXT NOT NULL DEFAULT 'pending_doctor',
+        reason TEXT,
+        doctor_approved_at TIMESTAMP,
+        patient_approved_at TIMESTAMP,
+        rejected_at TIMESTAMP,
+        rejected_by TEXT,
+        expires_at TIMESTAMP,
+        scope JSONB,
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    console.log('✓ Doctor transfer and data access tables migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate doctor transfer/data access tables:', error);
   }
 }
 

@@ -66,6 +66,7 @@ import Broker from "@/pages/broker";
 import ClinicsPage from "@/pages/clinics";
 import Reports from "@/pages/reports";
 import NftManagement from "@/pages/nft-management";
+import WaitingRoom from "@/pages/waiting-room";
 import UrgentAlertOverlay from "@/components/notifications/urgent-alert-overlay";
 import Header from "@/components/layout/header";
 import FloatingChatbot from "@/components/ui/floating-chatbot";
@@ -440,6 +441,13 @@ function Router() {
           <ProtectedRoute requiredRoles={['doctor', 'admin']}>
             <Header />
             <EpidemiologicalReports />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/waiting-room">
+          <ProtectedRoute requiredRoles={['doctor', 'admin']}>
+            <Header />
+            <WaitingRoom />
           </ProtectedRoute>
         </Route>
 

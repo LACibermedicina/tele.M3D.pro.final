@@ -65,6 +65,9 @@ export default function MedicalRecords() {
   const [exportFormat, setExportFormat] = useState<string>("PDF");
   const [evolucaoText, setEvolucaoText] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isAccessRequestDialogOpen, setIsAccessRequestDialogOpen] = useState(false);
+  const [accessRequestType, setAccessRequestType] = useState<string>("summary");
+  const [accessRequestReason, setAccessRequestReason] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -95,6 +98,27 @@ export default function MedicalRecords() {
   const { data: unifiedData, isLoading: unifiedLoading } = useQuery<any>({
     queryKey: ['/api/medical-records', selectedPatientId, 'unified'],
     enabled: !!selectedPatientId && isDoctor,
+  });
+
+  const { data: dataAccessCheck } = useQuery<any>({
+    queryKey: ['/api/data-access/check', selectedPatientId],
+    queryFn: () => fetch(`/api/data-access/check/${selectedPatientId}`, { credentials: 'include' }).then(r => r.json()),
+    enabled: !!selectedPatientId && isDoctor,
+  });
+
+  const dataAccessRequestMutation = useMutation({
+    mutationFn: (data: { patientId: string; accessType: string; reason: string }) =>
+      apiRequest('POST', '/api/data-access/request', data),
+    onSuccess: () => {
+      toast({ title: "Solicitação enviada", description: "Aguardando aprovação do médico responsável" });
+      setIsAccessRequestDialogOpen(false);
+      setAccessRequestReason("");
+      setAccessRequestType("summary");
+      queryClient.invalidateQueries({ queryKey: ['/api/data-access/check', selectedPatientId] });
+    },
+    onError: (error: any) => {
+      toast({ title: t("common.error"), description: error.message || "Erro ao solicitar acesso", variant: "destructive" });
+    },
   });
 
   const { data: pmdDetail, isLoading: pmdLoading } = useQuery({
@@ -231,6 +255,11 @@ export default function MedicalRecords() {
   const filteredPatients = (patients as any[] || []).filter((patient: any) =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const hasFullAccess = dataAccessCheck?.hasAccess && dataAccessCheck?.accessLevel === 'full';
+  const hasSummaryAccess = dataAccessCheck?.hasAccess && dataAccessCheck?.accessLevel === 'summary';
+  const hasNoAccess = dataAccessCheck && !dataAccessCheck.hasAccess;
+  const isPendingAccess = dataAccessCheck?.reason === 'pending_request';
 
   const handleAnalyzeSymptoms = () => {
     const symptoms = form.getValues('symptoms');
@@ -531,6 +560,11 @@ export default function MedicalRecords() {
                           <p className="text-xs text-destructive truncate">{patient.allergies}</p>
                         )}
                       </div>
+                      {isDoctor && patient.primaryDoctorId !== user?.id ? (
+                        <Lock className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      ) : (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                      )}
                     </div>
                   </div>
                 ))}
@@ -789,6 +823,168 @@ export default function MedicalRecords() {
                   </div>
                 </DialogContent>
               </Dialog>
+            </div>
+          ) : hasNoAccess && !isPendingAccess ? (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-14 h-14 bg-primary/20 rounded-full flex items-center justify-center">
+                        <User className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold">{selectedPatient.name}</h2>
+                        <div className="flex items-center space-x-3 text-sm text-muted-foreground">
+                          <span>{selectedPatient.phone}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+              <Card className="border-destructive/30">
+                <CardContent className="py-8">
+                  <div className="text-center space-y-4">
+                    <Lock className="w-12 h-12 text-destructive mx-auto" />
+                    <h3 className="text-lg font-semibold">Acesso restrito</h3>
+                    <p className="text-muted-foreground">Você não é o médico responsável deste paciente</p>
+                    <Button onClick={() => setIsAccessRequestDialogOpen(true)}>
+                      <Lock className="w-4 h-4 mr-1" />
+                      Solicitar Acesso
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+              <Dialog open={isAccessRequestDialogOpen} onOpenChange={setIsAccessRequestDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Solicitar Acesso aos Dados</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Tipo de Acesso</label>
+                      <Select value={accessRequestType} onValueChange={setAccessRequestType}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="summary">Resumo (dados básicos)</SelectItem>
+                          <SelectItem value="full">Completo (todos os dados)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Motivo da Solicitação</label>
+                      <Textarea
+                        placeholder="Descreva o motivo para acessar os dados deste paciente..."
+                        value={accessRequestReason}
+                        onChange={(e) => setAccessRequestReason(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setIsAccessRequestDialogOpen(false)}>{t("common.cancel")}</Button>
+                      <Button
+                        onClick={() => {
+                          if (!selectedPatientId) return;
+                          dataAccessRequestMutation.mutate({
+                            patientId: selectedPatientId,
+                            accessType: accessRequestType,
+                            reason: accessRequestReason,
+                          });
+                        }}
+                        disabled={dataAccessRequestMutation.isPending}
+                      >
+                        {dataAccessRequestMutation.isPending ? t("common.loading") : "Enviar Solicitação"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          ) : isPendingAccess ? (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-14 h-14 bg-primary/20 rounded-full flex items-center justify-center">
+                        <User className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold">{selectedPatient.name}</h2>
+                        <div className="flex items-center space-x-3 text-sm text-muted-foreground">
+                          <span>{selectedPatient.phone}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-amber-600 border-amber-300">
+                      Aguardando aprovação
+                    </Badge>
+                  </div>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardContent className="py-8">
+                  <div className="text-center space-y-3">
+                    <Lock className="w-12 h-12 text-amber-500 mx-auto" />
+                    <h3 className="text-lg font-semibold">Solicitação Pendente</h3>
+                    <p className="text-muted-foreground">Sua solicitação de acesso está aguardando aprovação do médico responsável ou do paciente.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : hasSummaryAccess ? (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-14 h-14 bg-primary/20 rounded-full flex items-center justify-center">
+                        <User className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold">{selectedPatient.name}</h2>
+                        <div className="flex items-center space-x-3 text-sm text-muted-foreground">
+                          <span>{selectedPatient.phone}</span>
+                          {selectedPatient.bloodType && (<><span>•</span><span>{selectedPatient.bloodType}</span></>)}
+                          {selectedPatient.gender && (<><span>•</span><span>{selectedPatient.gender}</span></>)}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-blue-600 border-blue-300">
+                      Acesso Resumido
+                    </Badge>
+                  </div>
+                </CardHeader>
+              </Card>
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="py-3">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-4 text-sm">
+                      {unifiedData?.summary && (
+                        <>
+                          <span className="flex items-center gap-1.5">
+                            <Stethoscope className="w-4 h-4 text-blue-600" />
+                            <strong>{unifiedData.summary.totalConsultations}</strong> {t("medical_records.consultations")}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <FileText className="w-4 h-4 text-emerald-600" />
+                            <strong>{unifiedData.summary.totalRecords}</strong> {t("medical_records.records")}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Activity className="w-4 h-4 text-purple-600" />
+                            <strong>{unifiedData.summary.totalExams}</strong> {t("medical_records.exams")}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <Badge variant="secondary">
+                      <Lock className="w-3 h-3 mr-1" />
+                      Acesso limitado — registros detalhados não disponíveis
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           ) : (
             <div className="space-y-6">
