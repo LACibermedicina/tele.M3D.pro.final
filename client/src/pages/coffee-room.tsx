@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useMediaCleanupOnUnmount } from "@/hooks/use-media-guard";
 import { Coffee, Video, VideoOff, Users, Send, MessageCircle } from "lucide-react";
 import AgoraRTC, { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack } from "agora-rtc-sdk-ng";
 import PageWrapper from "@/components/layout/page-wrapper";
@@ -14,6 +15,7 @@ import origamiHeroImage from "@assets/image_1759773239051.png";
 export default function CoffeeRoom() {
   const { user } = useAuth();
   const { toast } = useToast();
+  useMediaCleanupOnUnmount('coffee-room');
   
   const [agoraClient, setAgoraClient] = useState<IAgoraRTCClient | null>(null);
   const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);

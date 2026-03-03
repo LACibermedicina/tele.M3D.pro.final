@@ -56,6 +56,7 @@ The application features an Express.js backend and a React frontend, with shared
 - **External Wallet Integration:** Tab in wallet for linking MetaMask/WalletConnect and managing withdrawal requests.
 - **Wallet Audit Log:** Comprehensive transaction auditing with action type filtering and weekly reports.
 - **Inactivity Detection & Auto-Logout:** Configurable inactivity timeout with prompt and auto-logout.
+- **Media Permission Guard:** Centralized camera/microphone lifecycle management. On login, users are prompted to confirm media is paused until needed. Media is automatically released when navigating away from video/voice pages. Uses `useMediaCleanupOnUnmount` hook and `MediaPermissionGuard` component. Integrated across all media-using pages: video consultations, patient consultations, consultation sessions, doctor office, coffee room, voice assistant, AI assistant, and floating chatbot.
 - **Patient Data Export (HL7 FHIR R4):** Standardized patient data export compliant with international healthcare standards in JSON or PDF, with de-identification options.
 - **Pharmacy Integration System:** Comprehensive pharmacy module with pharmacist user role, prescription verification, dispensing, and LGPD-compliant reporting.
 - **PMD v1.0 (Prontuário Médico Digital):** CFM/LGPD/RGPD-compliant structured medical records with versioning and audit logs.

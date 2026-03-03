@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import InactivityMonitor from "@/components/inactivity-monitor";
+import MediaPermissionGuard from "@/components/media-permission-guard";
 import { NavigationProvider } from "@/contexts/NavigationContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { AutoTranslateWrapper } from "@/components/ui/auto-translate-wrapper";
@@ -582,6 +583,7 @@ function App() {
                 <TooltipProvider>
                   <Toaster />
                   <InactivityMonitor />
+                  <MediaPermissionGuard />
                   <Router />
                 </TooltipProvider>
               </VoiceAssistantProvider>

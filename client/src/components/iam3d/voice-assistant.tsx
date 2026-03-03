@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
+import { registerMediaFeature, unregisterMediaFeature } from "@/hooks/use-media-guard";
 
 const iam3dLangMap: Record<string, string> = {
   pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR', it: 'it-IT', de: 'de-DE', zh: 'zh-CN', gn: 'pt-BR',
@@ -132,11 +133,14 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
       if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
       if (synthRef.current) synthRef.current.cancel();
       setState("idle");
+      unregisterMediaFeature('voice-assistant');
       return;
     }
+    registerMediaFeature('voice-assistant');
     drawSphere();
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      unregisterMediaFeature('voice-assistant');
     };
   }, [isOpen, state]);
 

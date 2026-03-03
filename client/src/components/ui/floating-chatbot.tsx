@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { registerMediaFeature, unregisterMediaFeature } from '@/hooks/use-media-guard';
 import { MessageCircle, X, Send, Brain, Calendar, Stethoscope, Minimize2, Maximize2, ClipboardList, Users, Activity, FileText, HeartPulse, BarChart3, Mic, MicOff, Volume2, VolumeX, AudioLines } from 'lucide-react';
 
 interface SuggestedAppointment {
@@ -126,11 +127,13 @@ export default function FloatingChatbot() {
 
       recognition.onend = () => {
         setIsListening(false);
+        unregisterMediaFeature('floating-chatbot-voice');
       };
 
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
+        unregisterMediaFeature('floating-chatbot-voice');
         if (event.error === 'not-allowed') {
           toast({
             title: 'Microfone bloqueado',
@@ -154,6 +157,7 @@ export default function FloatingChatbot() {
       if (synthRef.current) {
         synthRef.current.cancel();
       }
+      unregisterMediaFeature('floating-chatbot-voice');
     };
   }, []);
 
@@ -188,10 +192,12 @@ export default function FloatingChatbot() {
     if (isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
+      unregisterMediaFeature('floating-chatbot-voice');
     } else {
       setCurrentMessage('');
       recognitionRef.current.start();
       setIsListening(true);
+      registerMediaFeature('floating-chatbot-voice');
     }
   };
 

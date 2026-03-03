@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useMediaCleanupOnUnmount } from '@/hooks/use-media-guard';
 import AgoraRTC, {
   IAgoraRTCClient,
   IAgoraRTCRemoteUser,
@@ -83,6 +84,7 @@ export default function VideoConsultation() {
   const { messages: wsMessages } = useWebSocket();
   const patientId = params?.patientId || '';
   const [consultationId, setConsultationId] = useState<string>('');
+  useMediaCleanupOnUnmount('video-consultation');
 
   const [client, setClient] = useState<IAgoraRTCClient | null>(null);
   const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);

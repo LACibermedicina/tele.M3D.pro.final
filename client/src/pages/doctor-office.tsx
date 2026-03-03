@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useMediaCleanupOnUnmount } from "@/hooks/use-media-guard";
 import { apiRequest } from "@/lib/queryClient";
 import { Stethoscope, UserPlus, Copy, Link as LinkIcon, Users, Video, VideoOff, X } from "lucide-react";
 import AgoraRTC, { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack } from "agora-rtc-sdk-ng";
@@ -19,6 +20,7 @@ export default function DoctorOffice() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  useMediaCleanupOnUnmount('doctor-office');
   
   const [isOfficeOpen, setIsOfficeOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
