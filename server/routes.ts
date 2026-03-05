@@ -14,7 +14,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, doctorTransferRequests, dataAccessRequests } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, doctorTransferRequests, dataAccessRequests, adminAccessControls } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
@@ -89,6 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migratePaymentTransactions();
   await migrateClinicTables();
   await migrateDoctorTransferAndDataAccessTables();
+  await migrateAdminAccessControls();
   await initStripeSync();
   
   // Initialize default doctor if not exists and get the actual ID
@@ -99,6 +100,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Seed credit packages and feature costs
   await initializeCreditPackagesAndCosts();
+  
+  // Initialize root superuser and access controls
+  await initializeRootSuperuser();
+  await initializeDefaultAccessControls();
   
   // Initialize scheduling service
   const schedulingService = new SchedulingService(storage);
@@ -9664,6 +9669,12 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       });
       
+      // Auto-replenish root superuser credits on login
+      if (user.username === 'root') {
+        await db.update(users).set({ tmcCredits: 999999999 }).where(eq(users.id, user.id));
+        user.tmcCredits = 999999999;
+      }
+      
       // Auto-activate doctors on 24h duty when they login
       if (user.role === 'doctor' && user.onDutyUntil && new Date(user.onDutyUntil) > new Date()) {
         await db.update(users)
@@ -13830,6 +13841,12 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       if (userId === user.id) {
         return res.status(400).json({ message: 'Cannot block your own account' });
       }
+      
+      // Protect root superuser
+      const targetUser = await storage.getUser(userId);
+      if (targetUser?.username === 'root') {
+        return res.status(403).json({ message: 'Cannot block root superuser' });
+      }
 
       const blockedUser = await storage.blockUser(userId, user.id, reason);
 
@@ -13925,6 +13942,171 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     } catch (error) {
       console.error('Admin user unblock error:', error);
       res.status(500).json({ message: 'Failed to unblock user' });
+    }
+  });
+
+  // ===== ADMIN ACCESS CONTROLS =====
+
+  app.get('/api/admin/access-controls', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Admin only' });
+      const controls = await db.select().from(adminAccessControls).orderBy(adminAccessControls.category);
+      res.json(controls);
+    } catch (error) {
+      console.error('Get access controls error:', error);
+      res.status(500).json({ message: 'Failed to get access controls' });
+    }
+  });
+
+  app.put('/api/admin/access-controls/:key', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Admin only' });
+      const { key } = req.params;
+      const { controlValue, affectedRoles, description } = req.body;
+      const updateData: any = { updatedBy: user.id, updatedAt: new Date() };
+      if (controlValue !== undefined) updateData.controlValue = String(controlValue);
+      if (affectedRoles !== undefined) updateData.affectedRoles = affectedRoles;
+      if (description !== undefined) updateData.description = description;
+      const [updated] = await db.update(adminAccessControls).set(updateData).where(eq(adminAccessControls.controlKey, key)).returning();
+      if (!updated) return res.status(404).json({ message: 'Control not found' });
+      res.json(updated);
+    } catch (error) {
+      console.error('Update access control error:', error);
+      res.status(500).json({ message: 'Failed to update access control' });
+    }
+  });
+
+  app.post('/api/admin/access-controls', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Admin only' });
+      const { controlKey, controlValue, controlType, category, affectedRoles, description } = req.body;
+      if (!controlKey) return res.status(400).json({ message: 'controlKey is required' });
+      const [created] = await db.insert(adminAccessControls).values({
+        controlKey, controlValue: controlValue || 'true', controlType: controlType || 'boolean',
+        category: category || 'access', affectedRoles: affectedRoles || [],
+        description, updatedBy: user.id,
+      }).returning();
+      res.json(created);
+    } catch (error) {
+      console.error('Create access control error:', error);
+      res.status(500).json({ message: 'Failed to create access control' });
+    }
+  });
+
+  app.delete('/api/admin/access-controls/:key', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Admin only' });
+      const { key } = req.params;
+      const [deleted] = await db.delete(adminAccessControls).where(eq(adminAccessControls.controlKey, key)).returning();
+      if (!deleted) return res.status(404).json({ message: 'Control not found' });
+      res.json({ message: 'Control deleted' });
+    } catch (error) {
+      console.error('Delete access control error:', error);
+      res.status(500).json({ message: 'Failed to delete access control' });
+    }
+  });
+
+  app.get('/api/access-controls/check', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.username === 'root') {
+        const allControls = await db.select().from(adminAccessControls);
+        const result: Record<string, boolean> = {};
+        for (const c of allControls) { result[c.controlKey] = true; }
+        return res.json({ controls: result, isRoot: true, creditGate: { allowed: true, minimum: 0, current: user.tmcCredits || 999999999, message: '' } });
+      }
+      const allControls = await db.select().from(adminAccessControls);
+      const result: Record<string, boolean> = {};
+      for (const ctrl of allControls) {
+        if (ctrl.controlType === 'boolean') {
+          const isEnabled = ctrl.controlValue === 'true';
+          const rolesAffected = ctrl.affectedRoles || [];
+          if (rolesAffected.length === 0) {
+            result[ctrl.controlKey] = isEnabled;
+          } else {
+            result[ctrl.controlKey] = rolesAffected.includes(user.role) ? isEnabled : true;
+          }
+        }
+      }
+      const minCreditsCtrl = allControls.find(c => c.controlKey === 'minimum_credits_required');
+      const minCreditsMsg = allControls.find(c => c.controlKey === 'minimum_credits_alert_message');
+      const minCredits = minCreditsCtrl ? parseInt(minCreditsCtrl.controlValue) || 0 : 0;
+      const currentCredits = user.tmcCredits || 0;
+      const creditAllowed = user.role === 'admin' || currentCredits >= minCredits;
+      res.json({
+        controls: result,
+        isRoot: false,
+        creditGate: {
+          allowed: creditAllowed,
+          minimum: minCredits,
+          current: currentCredits,
+          message: !creditAllowed ? (minCreditsMsg?.controlValue || 'Créditos insuficientes') : '',
+        }
+      });
+    } catch (error) {
+      console.error('Check access controls error:', error);
+      res.status(500).json({ message: 'Failed to check access controls' });
+    }
+  });
+
+  app.post('/api/admin/users/bulk-action', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Admin only' });
+      const { action, role, isTestUser: filterTest } = req.body;
+      if (!action || !['block', 'unblock', 'mark_test', 'unmark_test'].includes(action)) {
+        return res.status(400).json({ message: 'Invalid action' });
+      }
+      let conditions: any[] = [];
+      if (role) conditions.push(eq(users.role, role));
+      if (filterTest !== undefined) conditions.push(eq(users.isTestUser, filterTest));
+      conditions.push(sql`username != 'root'`);
+      const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+      let updateData: any = {};
+      if (action === 'block') updateData = { isBlocked: true, blockedBy: user.id };
+      else if (action === 'unblock') updateData = { isBlocked: false, blockedBy: null };
+      else if (action === 'mark_test') updateData = { isTestUser: true };
+      else if (action === 'unmark_test') updateData = { isTestUser: false };
+      const result = await db.update(users).set(updateData).where(whereClause!).returning({ id: users.id });
+      res.json({ message: `${action} applied to ${result.length} users`, count: result.length });
+    } catch (error) {
+      console.error('Bulk action error:', error);
+      res.status(500).json({ message: 'Failed to perform bulk action' });
+    }
+  });
+
+  app.patch('/api/admin/users/:id/test-status', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Admin only' });
+      const { id } = req.params;
+      const targetUser = await storage.getUser(id);
+      if (!targetUser) return res.status(404).json({ message: 'User not found' });
+      if (targetUser.username === 'root') return res.status(403).json({ message: 'Cannot modify root user' });
+      const { isTestUser: newStatus } = req.body;
+      const [updated] = await db.update(users).set({ isTestUser: !!newStatus }).where(eq(users.id, id)).returning();
+      const { password: _, ...safeUser } = updated;
+      res.json(safeUser);
+    } catch (error) {
+      console.error('Update test status error:', error);
+      res.status(500).json({ message: 'Failed to update test status' });
+    }
+  });
+
+  app.post('/api/admin/suspend-test-users', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Admin only' });
+      const result = await db.update(users).set({ isBlocked: true, blockedBy: user.id })
+        .where(and(eq(users.isTestUser, true), sql`username != 'root'`)).returning({ id: users.id });
+      res.json({ message: `${result.length} test users suspended`, count: result.length });
+    } catch (error) {
+      console.error('Suspend test users error:', error);
+      res.status(500).json({ message: 'Failed to suspend test users' });
     }
   });
 
@@ -16375,6 +16557,16 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     } catch (error) {
       console.error('Get system settings error:', error);
       res.status(500).json({ message: 'Failed to get system settings' });
+    }
+  });
+
+  app.get('/api/access-controls/public/registration', async (_req: Request, res: Response) => {
+    try {
+      const ctrl = await db.select().from(adminAccessControls)
+        .where(eq(adminAccessControls.controlKey, 'registration_enabled')).limit(1);
+      res.json({ enabled: ctrl.length > 0 ? ctrl[0].controlValue === 'true' : true });
+    } catch {
+      res.json({ enabled: true });
     }
   });
 
@@ -20533,9 +20725,10 @@ ${combinedText.slice(0, 8000)}`;
   app.get('/api/waiting-room', requireAuth, async (req: any, res) => {
     try {
       const user = req.user as User;
-      if (user.role !== 'doctor' && user.role !== 'admin') {
-        return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
+      if (!['doctor', 'admin', 'patient', 'visitor'].includes(user.role)) {
+        return res.status(403).json({ message: 'Acesso não permitido' });
       }
+      const isStaff = user.role === 'doctor' || user.role === 'admin';
 
       const waitingRequests = await db.select({
         request: consultationRequests,
@@ -20562,6 +20755,25 @@ ${combinedText.slice(0, 8000)}`;
           if (doc) assignedDoctor = { id: doc.id, name: doc.name, specialization: doc.specialization };
         }
         const activeTransfer = transferRequests.find(t => t.consultationRequestId === wr.request.id);
+
+        if (!isStaff) {
+          const isOwn = wr.patientUser.id === user.id;
+          return {
+            id: wr.request.id,
+            patientName: isOwn ? wr.patientUser.name : 'Paciente',
+            patientId: isOwn ? wr.request.patientId : '',
+            patientUserId: '',
+            symptoms: isOwn ? wr.request.symptoms : '',
+            urgencyLevel: wr.request.urgencyLevel,
+            clinicalPresentation: '',
+            status: wr.request.status,
+            assignedDoctor: assignedDoctor ? { id: '', name: assignedDoctor.name, specialization: assignedDoctor.specialization } : null,
+            waitingSince: wr.request.createdAt,
+            transfer: null,
+            isOwnRequest: isOwn,
+          };
+        }
+
         return {
           id: wr.request.id,
           patientName: wr.patientUser.name,
@@ -21678,6 +21890,85 @@ async function migrateDoctorTransferAndDataAccessTables() {
     console.log('✓ Doctor transfer and data access tables migrated successfully');
   } catch (error) {
     console.error('Failed to migrate doctor transfer/data access tables:', error);
+  }
+}
+
+async function migrateAdminAccessControls() {
+  try {
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_test_user BOOLEAN DEFAULT false`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS admin_access_controls (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        control_key TEXT NOT NULL UNIQUE,
+        control_value TEXT NOT NULL DEFAULT 'enabled',
+        control_type TEXT NOT NULL DEFAULT 'boolean',
+        category TEXT NOT NULL DEFAULT 'access',
+        affected_roles TEXT[] DEFAULT ARRAY[]::text[],
+        description TEXT,
+        updated_by UUID REFERENCES users(id),
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    console.log('✓ Admin access controls table migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate admin access controls:', error);
+  }
+}
+
+async function initializeRootSuperuser() {
+  try {
+    const existingRoot = await storage.getUserByUsername('root');
+    if (!existingRoot) {
+      const hashedPassword = crypto.createHash('sha256').update('arcano').digest('hex');
+      await storage.createUser({
+        username: 'root',
+        password: hashedPassword,
+        role: 'admin',
+        name: 'Root Superadmin',
+        email: 'root@telemedicine.system',
+        phone: '+00 000 000-0000',
+      });
+      const rootUser = await storage.getUserByUsername('root');
+      if (rootUser) {
+        await db.update(users).set({ tmcCredits: 999999999, isTestUser: false }).where(eq(users.id, rootUser.id));
+      }
+      console.log('✓ Root superuser created successfully');
+    } else {
+      await db.update(users).set({ tmcCredits: 999999999, isTestUser: false }).where(eq(users.id, existingRoot.id));
+      console.log('✓ Root superuser verified');
+    }
+  } catch (error) {
+    console.error('Failed to initialize root superuser:', error);
+  }
+}
+
+async function initializeDefaultAccessControls() {
+  try {
+    const existing = await db.select().from(adminAccessControls).limit(1);
+    if (existing.length > 0) return;
+
+    const defaults = [
+      { controlKey: 'registration_enabled', controlValue: 'true', controlType: 'boolean', category: 'registration', affectedRoles: [] as string[], description: 'Permitir cadastro de novos usuários' },
+      { controlKey: 'site_access_enabled', controlValue: 'true', controlType: 'boolean', category: 'access', affectedRoles: [] as string[], description: 'Acesso geral ao site (desativar bloqueia todos exceto admin)' },
+      { controlKey: 'minimum_credits_required', controlValue: '0', controlType: 'number', category: 'credits', affectedRoles: ['patient', 'doctor', 'visitor'] as string[], description: 'Quantidade mínima de créditos para acessar o sistema' },
+      { controlKey: 'minimum_credits_alert_message', controlValue: 'Você não possui créditos suficientes para acessar esta funcionalidade. Recarregue seus créditos TMC.', controlType: 'string', category: 'credits', affectedRoles: [] as string[], description: 'Mensagem exibida quando o usuário não atinge o mínimo de créditos' },
+      { controlKey: 'access_patients', controlValue: 'true', controlType: 'boolean', category: 'access', affectedRoles: [] as string[], description: 'Acesso à área de pacientes' },
+      { controlKey: 'access_records', controlValue: 'true', controlType: 'boolean', category: 'access', affectedRoles: [] as string[], description: 'Acesso aos prontuários médicos' },
+      { controlKey: 'access_prescriptions', controlValue: 'true', controlType: 'boolean', category: 'access', affectedRoles: [] as string[], description: 'Acesso às prescrições' },
+      { controlKey: 'access_consultations', controlValue: 'true', controlType: 'boolean', category: 'access', affectedRoles: [] as string[], description: 'Acesso às consultas' },
+      { controlKey: 'access_wallet', controlValue: 'true', controlType: 'boolean', category: 'access', affectedRoles: [] as string[], description: 'Acesso à carteira digital' },
+      { controlKey: 'access_reports', controlValue: 'true', controlType: 'boolean', category: 'access', affectedRoles: [] as string[], description: 'Acesso aos relatórios' },
+      { controlKey: 'access_admin', controlValue: 'true', controlType: 'boolean', category: 'access', affectedRoles: ['admin'] as string[], description: 'Acesso ao painel administrativo' },
+      { controlKey: 'access_pharmacy', controlValue: 'true', controlType: 'boolean', category: 'access', affectedRoles: [] as string[], description: 'Acesso ao módulo de farmácia' },
+      { controlKey: 'access_schedule', controlValue: 'true', controlType: 'boolean', category: 'access', affectedRoles: [] as string[], description: 'Acesso à agenda' },
+    ];
+
+    for (const ctrl of defaults) {
+      await db.insert(adminAccessControls).values(ctrl).onConflictDoNothing();
+    }
+    console.log('✓ Default access controls seeded (13 controls)');
+  } catch (error) {
+    console.error('Failed to seed default access controls:', error);
   }
 }
 

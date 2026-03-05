@@ -29,6 +29,7 @@ import {
   Timer,
   UserCheck,
   Loader2,
+  Video,
 } from "lucide-react";
 
 interface WaitingPatient {
@@ -43,6 +44,7 @@ interface WaitingPatient {
   assignedDoctor: { id: string; name: string; specialization?: string } | null;
   waitingSince: string;
   transfer: { id: string; status: string; requestingDoctorId: string } | null;
+  isOwnRequest?: boolean;
 }
 
 function WaitTimer({ since }: { since: string }) {
@@ -80,6 +82,7 @@ export default function WaitingRoom() {
   const [, setLocation] = useLocation();
   const { messages } = useWebSocket();
 
+  const isStaff = user?.role === 'doctor' || user?.role === 'admin';
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [transferReason, setTransferReason] = useState("");
   const [selectedRequest, setSelectedRequest] = useState<WaitingPatient | null>(null);
@@ -185,6 +188,13 @@ export default function WaitingRoom() {
     };
   }, [waitingPatients]);
 
+  const myPosition = useMemo(() => {
+    if (!sorted || isStaff) return null;
+    const idx = sorted.findIndex((p) => p.isOwnRequest);
+    if (idx === -1) return null;
+    return { position: idx + 1, total: sorted.length, request: sorted[idx] };
+  }, [sorted, isStaff]);
+
   return (
     <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -195,7 +205,7 @@ export default function WaitingRoom() {
               Sala de Espera
             </h1>
             <p className="text-muted-foreground">
-              Pacientes aguardando atendimento em tempo real
+              {isStaff ? 'Pacientes aguardando atendimento em tempo real' : 'Acompanhe sua posição na fila de atendimento'}
             </p>
           </div>
           <Button
@@ -244,6 +254,41 @@ export default function WaitingRoom() {
           </Card>
         </div>
 
+        {!isStaff && myPosition && (
+          <Card className="mb-6 border-primary/30 bg-primary/5">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <span className="text-2xl font-bold text-primary">{myPosition.position}º</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground">Sua posição na fila</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {myPosition.position === 1 ? 'Você é o próximo a ser atendido!' : `${myPosition.position - 1} paciente(s) antes de você`} 
+                    {' '}— Total na fila: {myPosition.total}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <TriageBadge level={myPosition.request.urgencyLevel} size="sm" />
+                    <WaitTimer since={myPosition.request.waitingSince} />
+                    {myPosition.request.status === 'accepted' && (
+                      <Badge className="text-xs bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300">
+                        <UserCheck className="h-3 w-3 mr-1" />
+                        Aceito pelo médico
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                {myPosition.request.status === 'accepted' && (
+                  <Button size="sm" onClick={() => setLocation('/my-consultations')}>
+                    <Video className="h-4 w-4 mr-1" />
+                    Ir para Consulta
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -266,10 +311,10 @@ export default function WaitingRoom() {
             <CardContent className="py-16 text-center">
               <UserCheck className="h-16 w-16 mx-auto text-muted-foreground/40 mb-4" />
               <h3 className="text-lg font-semibold text-muted-foreground mb-1">
-                Nenhum paciente na sala de espera
+                {isStaff ? 'Nenhum paciente na sala de espera' : 'Você não está na fila de espera'}
               </h3>
               <p className="text-sm text-muted-foreground">
-                Quando pacientes solicitarem consulta, aparecerão aqui.
+                {isStaff ? 'Quando pacientes solicitarem consulta, aparecerão aqui.' : 'Solicite uma consulta para entrar na fila de atendimento.'}
               </p>
             </CardContent>
           </Card>
@@ -342,41 +387,62 @@ export default function WaitingRoom() {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
-                          {patient.status === "pending" && (
-                            <Button
-                              size="sm"
-                              onClick={() => acceptMutation.mutate(patient.id)}
-                              disabled={acceptMutation.isPending}
-                            >
-                              {acceptMutation.isPending ? (
-                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                              ) : (
-                                <Play className="h-4 w-4 mr-1" />
+                          {isStaff ? (
+                            <>
+                              {patient.status === "pending" && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => acceptMutation.mutate(patient.id)}
+                                  disabled={acceptMutation.isPending}
+                                >
+                                  {acceptMutation.isPending ? (
+                                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                  ) : (
+                                    <Play className="h-4 w-4 mr-1" />
+                                  )}
+                                  Aceitar
+                                </Button>
                               )}
-                              Aceitar
-                            </Button>
-                          )}
-                          {!isMyPatient &&
-                            patient.assignedDoctor &&
-                            !hasActiveTransfer && (
+                              {!isMyPatient &&
+                                patient.assignedDoctor &&
+                                !hasActiveTransfer && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleTransferClick(patient)}
+                                    className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                                  >
+                                    <ArrowRightLeft className="h-4 w-4 mr-1" />
+                                    Transferir para Mim
+                                  </Button>
+                                )}
                               <Button
                                 size="sm"
-                                variant="outline"
-                                onClick={() => handleTransferClick(patient)}
-                                className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                                variant="ghost"
+                                onClick={() => setLocation(`/patients/${patient.patientId}`)}
                               >
-                                <ArrowRightLeft className="h-4 w-4 mr-1" />
-                                Transferir para Mim
+                                <Eye className="h-4 w-4 mr-1" />
+                                Perfil
                               </Button>
-                            )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setLocation(`/patients/${patient.patientId}`)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            Perfil
-                          </Button>
+                            </>
+                          ) : (
+                            <>
+                              {patient.isOwnRequest && (
+                                <Badge className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
+                                  Sua solicitação
+                                </Badge>
+                              )}
+                              {patient.isOwnRequest && patient.status === "accepted" && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => setLocation('/my-consultations')}
+                                >
+                                  <Video className="h-4 w-4 mr-1" />
+                                  Ir para Consulta
+                                </Button>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                     </CardContent>

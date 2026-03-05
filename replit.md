@@ -63,12 +63,14 @@ The application features an Express.js backend and a React frontend, with shared
 - **Consultation Rating:** Patients can rate completed video consultations (1-5 stars + optional feedback).
 - **Prontuário Unificado (Unified Record):** Consolidates all patient data into a single timeline view organized by day.
 - **Clinic Management System:** Multi-clinic support with shared patients/records, revenue sharing, and patient discounts, including clinic creation, member management, and patient binding.
-- **Waiting Room Management:** Doctor-facing waiting room page showing all patients with pending/accepted requests, with live updates and urgency badges.
+- **Waiting Room Management:** Doctor-facing waiting room page showing all patients with pending/accepted requests, with live updates and urgency badges. Patients and visitors can access the waiting room to see their queue position, wait time, and status with privacy-preserving data (other patients' details hidden).
 - **Doctor Transfer Workflow:** Multi-party consent flow for transferring patients between doctors with status tracking and notifications.
 - **Data Access Control & Consent:** Consent-based medical data sharing between doctors with two-step approval for access requests (summary or full access).
 - **Clinical History Compilation:** Comprehensive clinical history endpoint compiling all patient interactions into a grouped timeline.
 - **Preferred Doctor Management:** Patients can set/change their primary doctor.
 - **Internationalization (i18n):** Dual-layer translation system using `react-i18next` for static translations and AI-powered auto-translation for dynamic content.
+- **Admin Access Control System:** Administrative panel with independent control over site access, registration, per-section page access (patients, records, prescriptions, consultations, wallet, reports, pharmacy, schedule), minimum credit enforcement with custom alert messages, test user management with bulk suspension, and user group bulk actions. Uses `admin_access_controls` table and `AccessGate` / `RegistrationGate` frontend components.
+- **Root Superuser Profile:** Protected superuser account (username: `root`) with maximum credits (auto-replenished on login), immunity from blocking/modification, bypass of all access controls and credit gates, and visual "Superusuário" badge throughout the admin interface.
 
 ## External Dependencies
 - **Database:** PostgreSQL (Neon)

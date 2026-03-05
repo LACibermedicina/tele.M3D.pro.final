@@ -34,6 +34,7 @@ export const users = pgTable("users", {
   consultationPrice: integer("consultation_price").default(0),
   onDutyUntil: timestamp("on_duty_until"),
   onDutyStartedAt: timestamp("on_duty_started_at"),
+  isTestUser: boolean("is_test_user").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -459,6 +460,18 @@ export const systemSettings = pgTable("system_settings", {
   isEditable: boolean("is_editable").default(true),
   updatedBy: uuid("updated_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const adminAccessControls = pgTable("admin_access_controls", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  controlKey: text("control_key").notNull().unique(),
+  controlValue: text("control_value").notNull().default("enabled"),
+  controlType: text("control_type").notNull().default("boolean"),
+  category: text("category").notNull().default("access"),
+  affectedRoles: text("affected_roles").array().default(sql`ARRAY[]::text[]`),
+  description: text("description"),
+  updatedBy: uuid("updated_by").references(() => users.id),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -1301,6 +1314,11 @@ export const insertSystemSettingsSchema = createInsertSchema(systemSettings).omi
   updatedAt: true,
 });
 
+export const insertAdminAccessControlSchema = createInsertSchema(adminAccessControls).omit({
+  id: true,
+  updatedAt: true,
+});
+
 // Prescription system insert schemas
 export const insertMedicationSchema = createInsertSchema(medications).omit({
   id: true,
@@ -1480,6 +1498,8 @@ export type InsertSupportConfig = z.infer<typeof insertSupportConfigSchema>;
 
 export type SystemSettings = typeof systemSettings.$inferSelect;
 export type InsertSystemSettings = z.infer<typeof insertSystemSettingsSchema>;
+export type AdminAccessControl = typeof adminAccessControls.$inferSelect;
+export type InsertAdminAccessControl = z.infer<typeof insertAdminAccessControlSchema>;
 
 // Prescription system types
 export type Medication = typeof medications.$inferSelect;
