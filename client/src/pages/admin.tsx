@@ -582,7 +582,19 @@ export default function AdminPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
-                            <Badge variant={user.isBlocked ? 'destructive' : 'default'}>
+                            <Badge
+                              variant={user.isBlocked ? 'destructive' : 'default'}
+                              className={user.username !== 'root' ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}
+                              onClick={() => {
+                                if (user.username === 'root') return;
+                                if (user.isBlocked) {
+                                  unblockUserMutation.mutate(user.id);
+                                } else {
+                                  blockUserMutation.mutate({ userId: user.id, reason: 'Inativo por questões administrativas' });
+                                }
+                              }}
+                              title={user.username === 'root' ? 'Superusuário root — não pode ser desativado' : user.isBlocked ? 'Clique para ativar' : 'Clique para desativar'}
+                            >
                               {user.isBlocked ? 'Inativo' : 'Ativo'}
                             </Badge>
                             {user.isProtected && (
