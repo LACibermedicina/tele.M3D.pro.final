@@ -14134,53 +14134,85 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         });
       }
 
-      // Delete all data in correct order (respecting foreign key constraints)
-      // Leaf-level tables first, then work up the dependency chain
-      await db.delete(consultationNotes);
-      await db.delete(chatbotConversations);
-      await db.delete(whatsappMessages);
-      await db.delete(diagnosticInferences);
-      await db.delete(consultationAccessTokens);
-      await db.delete(walletAuditLog);
-      await db.delete(digitalSignatures);
-      await db.delete(signatureVerifications);
-      await db.delete(digitalKeys);
-      await db.delete(pharmacyDispensing);
-      await db.delete(pharmacyReports);
-      await db.delete(clinicConsultationLogs);
-      await db.delete(clinicPatientBindings);
-      await db.delete(clinicMembers);
-      await db.delete(clinics);
-      await db.delete(interConsultations);
-      await db.delete(doctorPatientBlocks);
-      await db.delete(paymentTransactions);
-      await db.delete(pendingNotifications);
-      await db.delete(medicalTeamMembers);
-      await db.delete(medicalTeams);
-      await db.delete(dynamicNfts);
-      await db.delete(nftOwnership);
-      await db.delete(brokerOrders);
-      await db.delete(brokerTrades);
-      await db.delete(externalWallets);
-      await db.delete(withdrawalRequests);
-      await db.delete(paypalOrders);
-      await db.delete(cashboxTransactions);
-      await db.delete(cashbox);
+      // Delete all data tables in FK-safe order using raw SQL for completeness
+      const tablesToClear = [
+        // Leaf-level / no FK dependents
+        'consultation_notes',
+        'consultation_recordings',
+        'consultation_sessions',
+        'chatbot_conversations',
+        'chatbot_references',
+        'whatsapp_messages',
+        'diagnostic_inferences',
+        'consultation_access_tokens',
+        'wallet_audit_log',
+        'digital_signatures',
+        'signature_verifications',
+        'digital_keys',
+        'pharmacy_dispensing',
+        'pharmacy_reports',
+        'clinic_consultation_logs',
+        'clinic_patient_bindings',
+        'clinic_members',
+        'clinics',
+        'inter_consultations',
+        'doctor_patient_blocks',
+        'payment_transactions',
+        'pending_notifications',
+        'medical_team_members',
+        'team_notes',
+        'medical_teams',
+        'dynamic_nfts',
+        'nft_ownership',
+        'broker_orders',
+        'broker_trades',
+        'external_wallets',
+        'withdrawal_requests',
+        'paypal_orders',
+        'cashbox_transactions',
+        'cashbox',
+        'tm3d_supply',
+        'error_logs',
+        'collaborator_api_keys',
+        'collaborator_integrations',
+        'collaborators',
+        'doctor_notes',
+        'doctor_schedule',
+        'doctor_transfer_requests',
+        'data_access_requests',
+        'hospital_referrals',
+        'clinical_assets',
+        'clinical_interviews',
+        'patient_notes',
+        'post_consultation_items',
+        'drug_interactions',
+        'lab_orders',
+        'lab_templates',
+        'prescription_shares',
+        // Tables referencing medical_records
+        'exam_results',
+        'prescription_items',
+        'prescription_templates',
+        'prescriptions',
+        'medications',
+        // Tables referencing appointments (before appointments)
+        'video_consultations',
+        'tmc_transactions',
+        'consultation_requests',
+        'medical_records',
+        // Tables referencing patients (before patients)
+        'patient_chat_threads',
+        'appointments',
+        'patients',
+      ];
 
-      // Tables referencing medicalRecords
-      await db.delete(examResults);
-      await db.delete(prescriptionItems);
-      await db.delete(prescriptions);
-
-      // Tables referencing appointments (must come before appointments)
-      await db.delete(videoConsultations);
-      await db.delete(tmcTransactions);
-      await db.delete(consultationRequests);
-      await db.delete(medicalRecords);
-
-      // Now safe to delete appointments and patients
-      await db.delete(appointments);
-      await db.delete(patients);
+      for (const table of tablesToClear) {
+        try {
+          await db.execute(sql.raw(`DELETE FROM "${table}"`));
+        } catch (e: any) {
+          console.warn(`Warning: could not clear table ${table}: ${e.message}`);
+        }
+      }
       
       // Delete all users except the current admin and protected users
       await db.delete(users).where(
