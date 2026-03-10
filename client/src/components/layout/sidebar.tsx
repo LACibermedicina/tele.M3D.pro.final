@@ -56,15 +56,8 @@ function SidebarContent() {
       roles: ['patient'],
     },
     {
-      path: "/waiting-room",
-      label: "Sala de Espera",
-      icon: Headphones,
-      description: "Acompanhe sua posição na fila",
-      roles: ['patient', 'visitor'],
-    },
-    {
       path: "/immediate-consultation",
-      label: "Consulta Imediata",
+      label: "Sala de Espera",
       icon: Headphones,
       description: "Consulta imediata com médico online",
       roles: ['patient'],

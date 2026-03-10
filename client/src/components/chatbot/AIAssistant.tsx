@@ -10,7 +10,6 @@ import { FormattedText } from "@/components/ui/formatted-text";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
-import { registerMediaFeature, unregisterMediaFeature } from "@/hooks/use-media-guard";
 
 const langToSpeechLocale: Record<string, string> = {
   pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR', it: 'it-IT', de: 'de-DE', zh: 'zh-CN', gn: 'pt-BR',
@@ -83,13 +82,9 @@ export function AIAssistant({ open, onOpenChange, initialContext, mode = 'genera
         }
       };
 
-      recognition.onend = () => {
-        setIsListening(false);
-        unregisterMediaFeature('ai-assistant-voice');
-      };
+      recognition.onend = () => setIsListening(false);
       recognition.onerror = (event: any) => {
         setIsListening(false);
-        unregisterMediaFeature('ai-assistant-voice');
         if (event.error === 'not-allowed') {
           toast({ title: t('assistant.mic_blocked'), description: t('assistant.mic_allow'), variant: 'destructive' });
         }
@@ -102,7 +97,6 @@ export function AIAssistant({ open, onOpenChange, initialContext, mode = 'genera
     return () => {
       if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
       if (synthRef.current) synthRef.current.cancel();
-      unregisterMediaFeature('ai-assistant-voice');
     };
   }, [speechLocale]);
 
@@ -111,12 +105,10 @@ export function AIAssistant({ open, onOpenChange, initialContext, mode = 'genera
     if (isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
-      unregisterMediaFeature('ai-assistant-voice');
     } else {
       setInput('');
       recognitionRef.current.start();
       setIsListening(true);
-      registerMediaFeature('ai-assistant-voice');
     }
   };
 

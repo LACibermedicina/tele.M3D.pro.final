@@ -6,11 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import InactivityMonitor from "@/components/inactivity-monitor";
-import MediaPermissionGuard from "@/components/media-permission-guard";
 import { NavigationProvider } from "@/contexts/NavigationContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import AccessGate, { RegistrationGate } from "@/components/access-gate";
-import { AutoTranslateWrapper } from "@/components/ui/auto-translate-wrapper";
 import Dashboard from "@/pages/dashboard";
 import Patients from "@/pages/patients";
 import PatientProfile from "@/pages/patient-profile";
@@ -68,7 +65,6 @@ import Broker from "@/pages/broker";
 import ClinicsPage from "@/pages/clinics";
 import Reports from "@/pages/reports";
 import NftManagement from "@/pages/nft-management";
-import WaitingRoom from "@/pages/waiting-room";
 import UrgentAlertOverlay from "@/components/notifications/urgent-alert-overlay";
 import Header from "@/components/layout/header";
 import FloatingChatbot from "@/components/ui/floating-chatbot";
@@ -124,7 +120,6 @@ function Router() {
 
       {user && !isInVideoConsultation && <QuickActionsBar userRole={user.role} />}
 
-      <AutoTranslateWrapper>
       <Switch>
         {/* Public routes */}
         <Route path="/login">
@@ -146,34 +141,24 @@ function Router() {
         
         {/* Registration routes - public */}
         <Route path="/register">
-          <RegistrationGate>
-            <Header />
-            <RegisterSelect />
-          </RegistrationGate>
+          <Header />
+          <RegisterSelect />
         </Route>
         <Route path="/register/patient">
-          <RegistrationGate>
-            <Header />
-            <PatientRegister />
-          </RegistrationGate>
+          <Header />
+          <PatientRegister />
         </Route>
         <Route path="/register/doctor">
-          <RegistrationGate>
-            <Header />
-            <DoctorRegister />
-          </RegistrationGate>
+          <Header />
+          <DoctorRegister />
         </Route>
         <Route path="/register/admin">
-          <RegistrationGate>
-            <Header />
-            <AdminRegister />
-          </RegistrationGate>
+          <Header />
+          <AdminRegister />
         </Route>
         <Route path="/register/pharmacist">
-          <RegistrationGate>
-            <Header />
-            <PharmacistRegister />
-          </RegistrationGate>
+          <Header />
+          <PharmacistRegister />
         </Route>
         
         {/* Features page - public */}
@@ -224,28 +209,22 @@ function Router() {
         
         <Route path="/patients/:id">
           <ProtectedRoute requiredRoles={['doctor', 'admin']}>
-            <AccessGate controlKey="access_patients">
-              <Header />
-              <PatientProfile />
-            </AccessGate>
+            <Header />
+            <PatientProfile />
           </ProtectedRoute>
         </Route>
         
         <Route path="/patients">
           <ProtectedRoute requiredRoles={['doctor', 'admin']}>
-            <AccessGate controlKey="access_patients">
-              <Header />
-              <Patients />
-            </AccessGate>
+            <Header />
+            <Patients />
           </ProtectedRoute>
         </Route>
         
         <Route path="/schedule">
           <ProtectedRoute requiredRoles={['doctor', 'admin']}>
-            <AccessGate controlKey="access_schedule">
-              <Header />
-              <Schedule />
-            </AccessGate>
+            <Header />
+            <Schedule />
           </ProtectedRoute>
         </Route>
         
@@ -258,19 +237,15 @@ function Router() {
         
         <Route path="/records">
           <ProtectedRoute requiredRoles={['doctor', 'admin', 'patient']}>
-            <AccessGate controlKey="access_records">
-              <Header />
-              <RecordsRouter />
-            </AccessGate>
+            <Header />
+            <RecordsRouter />
           </ProtectedRoute>
         </Route>
         
         <Route path="/prescriptions">
           <ProtectedRoute requiredRoles={['doctor', 'admin', 'patient']}>
-            <AccessGate controlKey="access_prescriptions">
-              <Header />
-              <Prescriptions />
-            </AccessGate>
+            <Header />
+            <Prescriptions />
           </ProtectedRoute>
         </Route>
         
@@ -297,10 +272,8 @@ function Router() {
 
         <Route path="/reports">
           <ProtectedRoute requiredRoles={['doctor', 'admin']}>
-            <AccessGate controlKey="access_reports">
-              <Header />
-              <Reports />
-            </AccessGate>
+            <Header />
+            <Reports />
           </ProtectedRoute>
         </Route>
         
@@ -360,10 +333,8 @@ function Router() {
         
         <Route path="/wallet">
           <ProtectedRoute requiredRoles={['doctor', 'patient', 'admin', 'researcher']}>
-            <AccessGate controlKey="access_wallet">
-              <Header />
-              <WalletPage />
-            </AccessGate>
+            <Header />
+            <WalletPage />
           </ProtectedRoute>
         </Route>
         
@@ -470,13 +441,6 @@ function Router() {
           </ProtectedRoute>
         </Route>
 
-        <Route path="/waiting-room">
-          <ProtectedRoute requiredRoles={['doctor', 'admin', 'patient', 'visitor']}>
-            <Header />
-            <WaitingRoom />
-          </ProtectedRoute>
-        </Route>
-
         <Route path="/incomplete-consultations">
           <ProtectedRoute requiredRoles={['doctor', 'admin']}>
             <Header />
@@ -493,19 +457,15 @@ function Router() {
 
         <Route path="/pharmacy/reports">
           <ProtectedRoute requiredRoles={['pharmacist', 'admin']}>
-            <AccessGate controlKey="access_pharmacy">
-              <Header />
-              <PharmacyReportsPage />
-            </AccessGate>
+            <Header />
+            <PharmacyReportsPage />
           </ProtectedRoute>
         </Route>
 
         <Route path="/pharmacy">
           <ProtectedRoute requiredRoles={['pharmacist', 'admin']}>
-            <AccessGate controlKey="access_pharmacy">
-              <Header />
-              <PharmacyDashboard />
-            </AccessGate>
+            <Header />
+            <PharmacyDashboard />
           </ProtectedRoute>
         </Route>
 
@@ -528,7 +488,6 @@ function Router() {
           <NotFound />
         </Route>
       </Switch>
-      </AutoTranslateWrapper>
       
       {/* Enhanced Footer with Quick Access */}
       <footer className="bg-card border-t border-border mt-12">
@@ -612,7 +571,6 @@ function App() {
                 <TooltipProvider>
                   <Toaster />
                   <InactivityMonitor />
-                  <MediaPermissionGuard />
                   <Router />
                 </TooltipProvider>
               </VoiceAssistantProvider>

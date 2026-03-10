@@ -47,10 +47,10 @@ export default function Header() {
     onSuccess: (data) => {
       const totalCancelled = (data.cancelled || 0) + (data.cancelledInterConsultations || 0);
       toast({
-        title: t("schedule_page.schedule_clean"),
+        title: "Agenda Limpa",
         description: totalCancelled > 0
-          ? `${data.cancelled} consulta(s) e ${data.cancelledInterConsultations || 0} interconsulta(s) canceladas.`
-          : t("schedule_page.no_appointments"),
+          ? `${data.cancelled} consulta(s) e ${data.cancelledInterConsultations || 0} interconsulta(s) canceladas. Todas as partes foram notificadas.`
+          : "Não havia consultas agendadas para cancelar.",
       });
       setShowClearScheduleConfirm(false);
     },
@@ -132,12 +132,12 @@ export default function Header() {
 
   const getDisplayName = () => {
     if (!user) return '';
-    if (user.role === 'visitor') return t('user.role_visitor');
+    if (user.role === 'visitor') return 'Visitante';
     return user.name;
   };
 
   const getShortName = (fullName: string) => {
-    if (user?.role === 'visitor') return t('user.role_visitor');
+    if (user?.role === 'visitor') return 'Visitante';
     const names = fullName.trim().split(' ');
     if (names.length <= 2) return fullName;
     return `${names[0]} ${names[1]}`;
@@ -207,20 +207,20 @@ export default function Header() {
       if (supportConfig.whatsappNumber && supportConfig.supportChatbotEnabled) {
         // Open WhatsApp directly with support number
         // Privacy-conscious message without PII in URL
-        const supportMessage = t("support.contact");
+        const supportMessage = `Olá! Preciso de suporte no sistema Tele<M3D>.`;
         const whatsappUrl = `https://wa.me/55${supportConfig.whatsappNumber}?text=${encodeURIComponent(supportMessage)}`;
         
         // Try to open WhatsApp
         window.open(whatsappUrl, '_blank');
         
         toast({
-          title: t("support.whatsapp_opened"),
-          description: t("support.whatsapp_opened_desc"),
+          title: "WhatsApp Aberto",
+          description: "Chat do WhatsApp foi aberto para contato direto com suporte!",
         });
         
         // Also send internal notification for tracking
         await apiRequest('POST', '/api/support/contact', {
-          message: t("support.contact"),
+          message: 'Usuário abriu WhatsApp para suporte direto',
           userInfo: {
             name: user?.name,
             email: user?.email,
@@ -232,7 +232,7 @@ export default function Header() {
       } else {
         // Fallback to old method if WhatsApp not available
         const response: any = await apiRequest('POST', '/api/support/contact', {
-          message: t("support.contact"),
+          message: 'Solicitação de suporte através da interface do sistema',
           userInfo: {
             name: user?.name,
             email: user?.email,
@@ -242,14 +242,14 @@ export default function Header() {
         });
 
         toast({
-          title: t("support.contacted"),
-          description: response.message || t("support.message_sent"),
+          title: "Suporte Contactado",
+          description: response.message || "Mensagem enviada com sucesso!",
         });
 
         if (response.method === 'whatsapp' && response.autoResponse) {
           setTimeout(() => {
             toast({
-              title: t("support.auto_response"),
+              title: "Resposta Automática",
               description: response.autoResponse,
             });
           }, 1000);
@@ -257,8 +257,8 @@ export default function Header() {
       }
     } catch (error) {
       toast({
-        title: t("support.error"),
-        description: t("support.error_desc"),
+        title: "Erro no Suporte",
+        description: "Não foi possível contatar o suporte. Tente novamente.",
         variant: "destructive",
       });
     }
@@ -287,8 +287,8 @@ export default function Header() {
           }
 
           toast({
-            title: t("support.emergency"),
-            description: response.message || t("support.emergency_contact"),
+            title: "Emergência Médica",
+            description: response.message || "Contato de emergência acionado",
           });
         }, async () => {
           // Fallback without location
@@ -306,8 +306,8 @@ export default function Header() {
           }
 
           toast({
-            title: t("support.emergency"),
-            description: response.message || t("support.emergency_contact"),
+            title: "Emergência Médica",
+            description: response.message || "Contato de emergência acionado",
           });
         });
       } else {
@@ -326,14 +326,14 @@ export default function Header() {
         }
 
         toast({
-          title: t("support.emergency"),
-          description: response.message || t("support.emergency_contact"),
+          title: "Emergência Médica",
+          description: response.message || "Contato de emergência acionado",
         });
       }
     } catch (error) {
       toast({
-        title: t("support.emergency_error"),
-        description: t("support.emergency_error_desc"),
+        title: "Erro na Emergência",
+        description: "Não foi possível acionar o contato de emergência. Tente novamente.",
         variant: "destructive",
       });
     }
@@ -358,7 +358,7 @@ export default function Header() {
       case 'patient':
         return t('roles.patient');
       case 'pharmacist':
-        return t('common.pharmacist');
+        return 'Farmacêutico';
       default:
         return role;
     }
@@ -417,94 +417,94 @@ export default function Header() {
   const navGroups = [
     {
       category: "principal",
-      label: t("navigation.group_principal"),
+      label: "Principal",
       items: [
-        { path: "/dashboard", label: t("navigation.dashboard"), icon: LayoutDashboard, faIcon: "fas fa-chart-line", roles: ["admin", "doctor", "patient"] },
-        { path: "/assistant", label: t("navigation.ai_assistant"), icon: BrainCircuit, faIcon: "fas fa-robot", roles: ["admin", "doctor", "patient"] },
+        { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, faIcon: "fas fa-chart-line", roles: ["admin", "doctor", "patient"] },
+        { path: "/assistant", label: "Assistente IA", icon: BrainCircuit, faIcon: "fas fa-robot", roles: ["admin", "doctor", "patient"] },
       ],
     },
     {
       category: "clinico",
-      label: t("navigation.group_clinico"),
+      label: "Clínico",
       items: [
-        { path: "/patients", label: t("navigation.patients"), icon: Users, faIcon: "fas fa-users", roles: ["admin", "doctor"] },
-        { path: "/schedule", label: t("navigation.schedule"), icon: CalendarClock, faIcon: "fas fa-calendar-alt", roles: ["admin", "doctor"] },
-        { path: "/records", label: t("navigation.records"), icon: FileText, faIcon: "fas fa-file-medical", roles: ["admin", "doctor"] },
-        { path: "/prescriptions", label: t("navigation.prescriptions"), icon: ClipboardList, faIcon: "fas fa-prescription-bottle-alt", roles: ["admin", "doctor"] },
-        { path: "/inter-consultation", label: t("navigation.inter_consultation"), icon: Stethoscope, faIcon: "fas fa-user-md", roles: ["doctor"] },
-        { path: "/doctor-notes", label: t("navigation.doctor_notes"), icon: StickyNote, faIcon: "fas fa-sticky-note", roles: ["doctor"] },
-        { path: "/doctor-referrals", label: t("navigation.doctor_referrals"), icon: UserPlus, faIcon: "fas fa-user-plus", roles: ["doctor"] },
+        { path: "/patients", label: "Pacientes", icon: Users, faIcon: "fas fa-users", roles: ["admin", "doctor"] },
+        { path: "/schedule", label: "Agenda", icon: CalendarClock, faIcon: "fas fa-calendar-alt", roles: ["admin", "doctor"] },
+        { path: "/records", label: "Prontuários", icon: FileText, faIcon: "fas fa-file-medical", roles: ["admin", "doctor"] },
+        { path: "/prescriptions", label: "Prescrições", icon: ClipboardList, faIcon: "fas fa-prescription-bottle-alt", roles: ["admin", "doctor"] },
+        { path: "/inter-consultation", label: "Interconsulta", icon: Stethoscope, faIcon: "fas fa-user-md", roles: ["doctor"] },
+        { path: "/doctor-notes", label: "Anotações", icon: StickyNote, faIcon: "fas fa-sticky-note", roles: ["doctor"] },
+        { path: "/doctor-referrals", label: "Indicações", icon: UserPlus, faIcon: "fas fa-user-plus", roles: ["doctor"] },
       ],
     },
     {
       category: "paciente",
-      label: t("navigation.group_consultas"),
+      label: "Consultas",
       items: [
-        { path: "/consultation-request", label: t("navigation.consultation_request"), icon: Stethoscope, faIcon: "fas fa-stethoscope", roles: ["patient"] },
-        { path: "/immediate-consultation", label: t("navigation.waiting_room"), icon: Video, faIcon: "fas fa-hospital", roles: ["patient"] },
-        { path: "/my-consultations", label: t("navigation.my_consultations"), icon: CalendarClock, faIcon: "fas fa-calendar-check", roles: ["patient"] },
+        { path: "/consultation-request", label: "Solicitar Consulta", icon: Stethoscope, faIcon: "fas fa-stethoscope", roles: ["patient"] },
+        { path: "/immediate-consultation", label: "Sala de Espera", icon: Video, faIcon: "fas fa-hospital", roles: ["patient"] },
+        { path: "/my-consultations", label: "Minhas Consultas", icon: CalendarClock, faIcon: "fas fa-calendar-check", roles: ["patient"] },
       ],
     },
     {
       category: "revisao",
-      label: t("navigation.group_revisao"),
+      label: "Revisão & Diagnóstico",
       items: [
-        { path: "/incomplete-consultations", label: t("navigation.incomplete_consultations"), icon: AlertCircle, faIcon: "fas fa-exclamation-circle", roles: ["doctor"] },
-        { path: "/post-consultation-review", label: t("navigation.post_consultation_review"), icon: ClipboardList, faIcon: "fas fa-clipboard-check", roles: ["doctor"] },
-        { path: "/diagnostic-review", label: t("navigation.diagnostic_review"), icon: Microscope, faIcon: "fas fa-microscope", roles: ["doctor"] },
+        { path: "/incomplete-consultations", label: "Pendências", icon: AlertCircle, faIcon: "fas fa-exclamation-circle", roles: ["doctor"] },
+        { path: "/post-consultation-review", label: "Revisão Pós-Consulta", icon: ClipboardList, faIcon: "fas fa-clipboard-check", roles: ["doctor"] },
+        { path: "/diagnostic-review", label: "Inferências Diagnósticas", icon: Microscope, faIcon: "fas fa-microscope", roles: ["doctor"] },
       ],
     },
     {
       category: "comunicacao",
-      label: t("navigation.group_comunicacao"),
+      label: "Comunicação & IA",
       items: [
-        { path: "/whatsapp", label: t("navigation.whatsapp"), icon: MessageCircle, faIcon: "fab fa-whatsapp", roles: ["admin", "doctor"] },
-        { path: "/medical-references", label: t("navigation.medical_references"), icon: BookOpenCheck, faIcon: "fas fa-file-pdf", roles: ["admin", "doctor"] },
-        { path: "/coffee-room", label: t("navigation.coffee_room"), icon: Coffee, faIcon: "fas fa-mug-hot", roles: ["doctor"] },
+        { path: "/whatsapp", label: "WhatsApp IA", icon: MessageCircle, faIcon: "fab fa-whatsapp", roles: ["admin", "doctor"] },
+        { path: "/medical-references", label: "Referências Médicas", icon: BookOpenCheck, faIcon: "fas fa-file-pdf", roles: ["admin", "doctor"] },
+        { path: "/coffee-room", label: "Cafeteria Virtual", icon: Coffee, faIcon: "fas fa-mug-hot", roles: ["doctor"] },
       ],
     },
     {
       category: "financeiro",
-      label: t("navigation.group_financeiro"),
+      label: "Financeiro & Blockchain",
       items: [
-        { path: "/wallet", label: t("navigation.wallet"), icon: Wallet, faIcon: "fas fa-wallet", roles: ["doctor", "patient", "admin", "researcher"] },
-        { path: "/nft-management", label: t("navigation.nft_management"), icon: Gem, faIcon: "fas fa-gem", roles: ["admin", "doctor", "researcher"] },
-        { path: "/broker", label: t("navigation.broker"), icon: TrendingUp, faIcon: "fas fa-exchange-alt", roles: ["admin", "doctor", "patient", "researcher"] },
+        { path: "/wallet", label: "Carteira Digital", icon: Wallet, faIcon: "fas fa-wallet", roles: ["doctor", "patient", "admin", "researcher"] },
+        { path: "/nft-management", label: "NFTs Dinâmicos", icon: Gem, faIcon: "fas fa-gem", roles: ["admin", "doctor", "researcher"] },
+        { path: "/broker", label: "Broker", icon: TrendingUp, faIcon: "fas fa-exchange-alt", roles: ["admin", "doctor", "patient", "researcher"] },
       ],
     },
     {
       category: "relatorios",
-      label: t("navigation.group_relatorios"),
+      label: "Relatórios & Analytics",
       items: [
-        { path: "/epidemiological-reports", label: t("navigation.epidemiology"), icon: Activity, faIcon: "fas fa-chart-area", roles: ["admin", "doctor"] },
-        { path: "/reports", label: t("navigation.reports"), icon: FileBarChart, faIcon: "fas fa-file-chart-line", roles: ["admin", "doctor"] },
-        { path: "/analytics", label: t("navigation.analytics"), icon: BarChart3, faIcon: "fas fa-chart-bar", roles: ["admin"] },
+        { path: "/epidemiological-reports", label: "Epidemiologia", icon: Activity, faIcon: "fas fa-chart-area", roles: ["admin", "doctor"] },
+        { path: "/reports", label: "Relatórios", icon: FileBarChart, faIcon: "fas fa-file-chart-line", roles: ["admin", "doctor"] },
+        { path: "/analytics", label: "Analytics", icon: BarChart3, faIcon: "fas fa-chart-bar", roles: ["admin"] },
       ],
     },
     {
       category: "farmacia",
-      label: t("navigation.group_farmacia"),
+      label: "Farmácia",
       items: [
-        { path: "/pharmacy", label: t("navigation.pharmacy"), icon: Pill, faIcon: "fas fa-pills", roles: ["pharmacist", "admin"] },
+        { path: "/pharmacy", label: "Painel Farmácia", icon: Pill, faIcon: "fas fa-pills", roles: ["pharmacist", "admin"] },
       ],
     },
     {
       category: "admin",
-      label: t("navigation.group_admin"),
+      label: "Administração",
       items: [
         { path: "/admin", label: t("navigation.admin"), icon: Shield, faIcon: "fas fa-shield-alt", roles: ["admin"] },
-        { path: "/admin/payments", label: t("navigation.payments"), icon: CreditCard, faIcon: "fas fa-credit-card", roles: ["admin"] },
+        { path: "/admin/payments", label: "Pagamentos", icon: CreditCard, faIcon: "fas fa-credit-card", roles: ["admin"] },
       ],
     },
   ];
 
   if (user?.role === 'patient' && hasActivePrescriptions) {
     const patientGroup = navGroups.find(g => g.category === 'paciente');
-    if (patientGroup) patientGroup.items.push({ path: "/prescriptions", label: t("navigation.my_prescriptions"), icon: Pill, faIcon: "fas fa-pills", roles: ["patient"] });
+    if (patientGroup) patientGroup.items.push({ path: "/prescriptions", label: "Minhas Prescrições", icon: Pill, faIcon: "fas fa-pills", roles: ["patient"] });
   }
   if (user?.role === 'patient') {
     const patientGroup = navGroups.find(g => g.category === 'paciente');
-    if (patientGroup) patientGroup.items.push({ path: "/records", label: hasRecords ? t("navigation.records") : t("navigation.consultation_request"), icon: hasRecords ? FileText : ClipboardList, faIcon: hasRecords ? "fas fa-file-medical" : "fas fa-clipboard-list", roles: ["patient"] });
+    if (patientGroup) patientGroup.items.push({ path: "/records", label: hasRecords ? "Meu Prontuário" : "Minhas Solicitações", icon: hasRecords ? FileText : ClipboardList, faIcon: hasRecords ? "fas fa-file-medical" : "fas fa-clipboard-list", roles: ["patient"] });
   }
 
   const allNavItems = navGroups.flatMap(g => g.items);
@@ -998,8 +998,8 @@ export default function Header() {
                 >
                   <BookOpen className="mr-3 h-5 w-5 text-purple-500" />
                   <div>
-                    <p className="font-semibold">{t("navigation.documentation", "Documentação")}</p>
-                    <p className="text-xs text-muted-foreground">{t("navigation.guides_tutorials", "Guias e tutoriais")}</p>
+                    <p className="font-semibold">Documentação</p>
+                    <p className="text-xs text-muted-foreground">Guias e tutoriais</p>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
@@ -1008,8 +1008,8 @@ export default function Header() {
                 >
                   <BookOpen className="mr-3 h-5 w-5 text-blue-500" />
                   <div>
-                    <p className="font-semibold">{t("navigation.user_manual", "Manual do Usuário")}</p>
-                    <p className="text-xs text-muted-foreground">{t("navigation.full_guide", "Guia completo de uso")}</p>
+                    <p className="font-semibold">Manual do Usuário</p>
+                    <p className="text-xs text-muted-foreground">Guia completo de uso</p>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
@@ -1018,8 +1018,8 @@ export default function Header() {
                 >
                   <HelpCircle className="mr-3 h-5 w-5 text-pink-500" />
                   <div>
-                    <p className="font-semibold">{t("navigation.faq", "FAQ")}</p>
-                    <p className="text-xs text-muted-foreground">{t("navigation.faq_desc", "Perguntas frequentes")}</p>
+                    <p className="font-semibold">FAQ</p>
+                    <p className="text-xs text-muted-foreground">Perguntas frequentes</p>
                   </div>
                 </DropdownMenuItem>
                 {user?.role === 'admin' && (
@@ -1029,8 +1029,8 @@ export default function Header() {
                   >
                     <Terminal className="mr-3 h-5 w-5 text-green-500" />
                     <div>
-                      <p className="font-semibold">{t("navigation.installation", "Instalação")}</p>
-                      <p className="text-xs text-muted-foreground">{t("navigation.installation_script", "Script de instalação")}</p>
+                      <p className="font-semibold">Instalação</p>
+                      <p className="text-xs text-muted-foreground">Script de instalação</p>
                     </div>
                   </DropdownMenuItem>
                 )}
@@ -1045,8 +1045,8 @@ export default function Header() {
                     >
                       <Stethoscope className="mr-3 h-5 w-5 text-blue-500 animate-pulse" />
                       <div>
-                        <p className="font-semibold text-blue-600 dark:text-blue-400">{t("schedule_page.open_office")}</p>
-                        <p className="text-xs text-muted-foreground">{t("navigation.consultation_room", "Sala de atendimento")}</p>
+                        <p className="font-semibold text-blue-600 dark:text-blue-400">Abrir Consultório</p>
+                        <p className="text-xs text-muted-foreground">Sala de atendimento</p>
                       </div>
                     </DropdownMenuItem>
                     
@@ -1060,8 +1060,8 @@ export default function Header() {
                     >
                       <CalendarX2 className="mr-3 h-5 w-5 text-red-500" />
                       <div>
-                        <p className="font-semibold text-red-600 dark:text-red-400">{t("schedule_page.schedule_clean")}</p>
-                        <p className="text-xs text-muted-foreground">{t("schedule_page.cancel_all")}</p>
+                        <p className="font-semibold text-red-600 dark:text-red-400">Limpar Agenda</p>
+                        <p className="text-xs text-muted-foreground">Cancelar todas as consultas</p>
                       </div>
                     </DropdownMenuItem>
                   </>
@@ -1075,8 +1075,8 @@ export default function Header() {
                 >
                   <Ambulance className="mr-3 h-5 w-5 text-red-500" />
                   <div>
-                    <p className="font-semibold text-red-600 dark:text-red-400">{t("support.emergency")}</p>
-                    <p className="text-xs text-muted-foreground">{t("support.emergency_contact")}</p>
+                    <p className="font-semibold text-red-600 dark:text-red-400">Emergência Médica</p>
+                    <p className="text-xs text-muted-foreground">Contato de emergência</p>
                   </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -1088,7 +1088,7 @@ export default function Header() {
                   type="text"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder={t("common.email")}
+                  placeholder="Email"
                   className={`w-32 px-2 py-1 bg-transparent text-xs focus:outline-none transition-all ${getTextColor()} ${useWhiteIcons ? 'placeholder:text-white/40 focus:placeholder:text-white/60' : 'placeholder:text-gray-400 focus:placeholder:text-gray-500'}`}
                   data-testid="input-quick-login-email"
                   disabled={isLoggingIn}
@@ -1098,7 +1098,7 @@ export default function Header() {
                   type="password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder={t("ui.password")}
+                  placeholder="Senha"
                   className={`w-24 px-2 py-1 bg-transparent text-xs focus:outline-none transition-all ${getTextColor()} ${useWhiteIcons ? 'placeholder:text-white/40 focus:placeholder:text-white/60' : 'placeholder:text-gray-400 focus:placeholder:text-gray-500'}`}
                   data-testid="input-quick-login-password"
                   disabled={isLoggingIn}
@@ -1138,7 +1138,7 @@ export default function Header() {
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{voiceMode ? t("navigation.deactivate_iam3d", "Desativar IAM3D") : t("navigation.activate_iam3d", "Ativar IAM3D")}</p>
+                  <p>{voiceMode ? "Desativar IAM3D" : "Ativar IAM3D"}</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -1195,9 +1195,9 @@ export default function Header() {
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>
                       <div>
-                        <p className="font-semibold">{user.role === 'visitor' ? t('user.role_visitor') : user.name}</p>
+                        <p className="font-semibold">{user.role === 'visitor' ? 'Visitante' : user.name}</p>
                         <p className="text-xs text-muted-foreground font-normal">
-                          {user.role === 'visitor' ? t('user.guest') : (user.email || user.username)}
+                          {user.role === 'visitor' ? 'Acesso visitante' : (user.email || user.username)}
                         </p>
                       </div>
                     </DropdownMenuLabel>
@@ -1233,8 +1233,8 @@ export default function Header() {
                       data-testid="button-info-visitor"
                       onClick={() => {
                         toast({
-                          title: t("support.system_info"),
-                          description: t("support.system_info_desc"),
+                          title: "ℹ️ Informações Gerais",
+                          description: "Tele<M3D> - Sistema de Telemedicina com IA",
                         });
                         navigate('/features');
                       }}
@@ -1246,7 +1246,7 @@ export default function Header() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-blue-500 text-white font-medium px-3 py-2 shadow-lg">
-                    <p className="text-white">{t("support.system_info")}</p>
+                    <p className="text-white">Informações do Sistema</p>
                   </TooltipContent>
                 </Tooltip>
 
@@ -1259,8 +1259,8 @@ export default function Header() {
                       data-testid="button-emergency-visitor"
                       onClick={() => {
                         toast({
-                          title: t("support.emergency"),
-                          description: t("support.emergency_info"),
+                          title: "🚨 Emergência Médica",
+                          description: "Em caso de emergência, ligue 192 (SAMU) ou 193 (Bombeiros)",
                           variant: "destructive",
                         });
                         window.open('tel:192', '_blank');
@@ -1273,7 +1273,7 @@ export default function Header() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-destructive text-white font-medium px-3 py-2 shadow-lg">
-                    <p className="text-white">{t("support.emergency")}</p>
+                    <p className="text-white">Emergência Médica</p>
                   </TooltipContent>
                 </Tooltip>
 
@@ -1293,7 +1293,7 @@ export default function Header() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
-                    <p className="text-white">{t("ui.register_tab")}</p>
+                    <p className="text-white">Cadastrar</p>
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -1320,15 +1320,15 @@ export default function Header() {
                 <CalendarX2 className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-foreground">{t("schedule_page.schedule_clean")}</h3>
-                <p className="text-sm text-muted-foreground">{t("common.warning")}</p>
+                <h3 className="text-lg font-bold text-foreground">Limpar Agenda</h3>
+                <p className="text-sm text-muted-foreground">Ação irreversível</p>
               </div>
             </div>
             <p className="text-sm text-muted-foreground mb-2">
-              {t("schedule_page.cancel_all_confirm")}
+              Esta ação irá cancelar <span className="font-semibold text-foreground">todas as consultas agendadas</span> e <span className="font-semibold text-foreground">interconsultas pendentes</span>.
             </p>
             <p className="text-sm text-muted-foreground mb-6">
-              {t("schedule_page.patient_notified", "Todos os pacientes e médicos envolvidos serão notificados sobre o cancelamento.")}
+              Todos os pacientes e médicos envolvidos serão notificados sobre o cancelamento.
             </p>
             <div className="flex gap-3 justify-end">
               <Button
@@ -1336,7 +1336,7 @@ export default function Header() {
                 onClick={() => setShowClearScheduleConfirm(false)}
                 disabled={clearScheduleMutation.isPending}
               >
-                {t("common.cancel")}
+                Cancelar
               </Button>
               <Button
                 variant="destructive"
@@ -1347,12 +1347,12 @@ export default function Header() {
                 {clearScheduleMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("common.loading")}
+                    Limpando...
                   </>
                 ) : (
                   <>
                     <CalendarX2 className="mr-2 h-4 w-4" />
-                    {t("common.confirm")}
+                    Confirmar Limpeza
                   </>
                 )}
               </Button>
@@ -1456,7 +1456,7 @@ export default function Header() {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="bg-destructive text-white font-medium px-3 py-1.5">
-                  <p className="text-white text-xs">{t("auth.logout")}</p>
+                  <p className="text-white text-xs">Sair</p>
                 </TooltipContent>
               </Tooltip>
             ) : (
@@ -1467,7 +1467,7 @@ export default function Header() {
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-muted shrink-0">
                   <LogOut className="h-3.5 w-3.5" />
                 </div>
-                <span className="font-medium text-xs">{t("auth.logout")}</span>
+                <span className="font-medium text-xs">Sair</span>
               </div>
             )}
           </nav>

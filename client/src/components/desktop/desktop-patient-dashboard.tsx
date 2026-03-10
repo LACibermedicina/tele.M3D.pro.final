@@ -8,7 +8,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useTranslation } from "react-i18next";
 import TodaySchedule from "@/components/dashboard/today-schedule";
 import { type DashboardStats } from "@shared/schema";
 
@@ -35,7 +34,6 @@ interface PricingInfo {
 export function DesktopPatientDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [isSearchingDoctor, setIsSearchingDoctor] = useState(false);
 
@@ -144,12 +142,12 @@ export function DesktopPatientDashboard() {
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold">
-                  {isSearchingDoctor ? t('patient_dashboard.searching') : t('patient_dashboard.consult_now')}
+                  {isSearchingDoctor ? "Buscando..." : "Consultar Agora"}
                 </h2>
                 <p className="text-white/80 text-xs mt-0.5">
                   {isSearchingDoctor
-                    ? t('patient_dashboard.connecting_doctor')
-                    : t('patient_dashboard.consult_available_doctor')
+                    ? "Conectando ao médico..."
+                    : "Consulta com médico disponível"
                   }
                 </p>
               </div>
@@ -162,10 +160,10 @@ export function DesktopPatientDashboard() {
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-300 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-400"></span>
                     </span>
-                    <span className="text-xs font-medium">{availableCount} {availableCount > 1 ? t('patient_dashboard.doctors') : t('patient_dashboard.doctor')}</span>
+                    <span className="text-xs font-medium">{availableCount} médico{availableCount > 1 ? 's' : ''}</span>
                   </>
                 ) : (
-                  <Badge className="bg-white/20 text-white border-0 text-[10px]">{t('patient_dashboard.see_available')}</Badge>
+                  <Badge className="bg-white/20 text-white border-0 text-[10px]">Ver disponíveis</Badge>
                 )}
               </div>
               {(() => {
@@ -191,14 +189,14 @@ export function DesktopPatientDashboard() {
                   <Ambulance className="w-7 h-7" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-bold">{t('patient_dashboard.urgent_care')}</h2>
+                  <h2 className="text-lg font-bold">Pronto Atendimento</h2>
                   <p className="text-white/80 text-xs mt-0.5">
-                    {t('patient_dashboard.urgent_waiting_room')}
+                    Sala de espera urgente — preço fixo
                   </p>
                 </div>
               </div>
               <div className="mt-3 flex items-center justify-between">
-                <span className="text-xs text-white/70">{t('patient_dashboard.price_set_by_admin')}</span>
+                <span className="text-xs text-white/70">Preço definido pelo administrador</span>
                 <Badge className="bg-white/25 text-white border-0 text-xs font-semibold">
                   <Coins className="w-3 h-3 mr-1" />
                   {pricing?.urgentConsultationPrice ?? 30} TMC
@@ -214,7 +212,7 @@ export function DesktopPatientDashboard() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">{t('patient_dashboard.my_consultations')}</p>
+                    <p className="text-sm text-muted-foreground">Minhas Consultas</p>
                     <p className="text-2xl font-bold" data-testid="text-my-appointments">
                       {stats.todayConsultations || 0}
                     </p>
@@ -229,7 +227,7 @@ export function DesktopPatientDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      {hasRecords ? t('patient_dashboard.my_records') : t('patient_dashboard.my_requests')}
+                      {hasRecords ? 'Meus Registros' : 'Minhas Solicitações'}
                     </p>
                     <p className="text-2xl font-bold" data-testid="text-my-records">
                       {hasRecords ? (stats.secureRecords || 0) : (stats.todayConsultations || 0)}
@@ -247,7 +245,7 @@ export function DesktopPatientDashboard() {
         )}
 
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">{t('patient_dashboard.quick_access')}</h2>
+          <h2 className="text-lg font-semibold">Acesso Rápido</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Link href="/consultation-request">
               <Button
@@ -255,7 +253,7 @@ export function DesktopPatientDashboard() {
                 data-testid="button-consultation-request"
               >
                 <Stethoscope className="w-6 h-6" />
-                <span className="font-medium">{t('patient_dashboard.request_consultation')}</span>
+                <span className="font-medium">Solicitar Consulta</span>
               </Button>
             </Link>
 
@@ -266,7 +264,7 @@ export function DesktopPatientDashboard() {
                 data-testid="button-waiting-room"
               >
                 <Video className="w-6 h-6" />
-                <span className="font-medium">{t('patient_dashboard.waiting_room')}</span>
+                <span className="font-medium">Sala de Espera</span>
               </Button>
             </Link>
 
@@ -277,7 +275,7 @@ export function DesktopPatientDashboard() {
                 data-testid="button-my-consultations"
               >
                 <CalendarCheck className="w-6 h-6" />
-                <span className="font-medium">{t('patient_dashboard.my_consultations')}</span>
+                <span className="font-medium">Minhas Consultas</span>
               </Button>
             </Link>
 
@@ -293,7 +291,7 @@ export function DesktopPatientDashboard() {
                   <ClipboardList className="w-6 h-6" />
                 )}
                 <span className="font-medium">
-                  {hasRecords ? t('patient_dashboard.my_medical_record') : t('patient_dashboard.my_requests')}
+                  {hasRecords ? 'Meu Prontuário' : 'Minhas Solicitações'}
                 </span>
               </Button>
             </Link>
@@ -305,7 +303,7 @@ export function DesktopPatientDashboard() {
                 data-testid="button-agenda"
               >
                 <Calendar className="w-6 h-6" />
-                <span className="font-medium">{t('patient_dashboard.my_agenda')}</span>
+                <span className="font-medium">Minha Agenda</span>
               </Button>
             </Link>
 
@@ -317,7 +315,7 @@ export function DesktopPatientDashboard() {
                   data-testid="button-prescriptions"
                 >
                   <Pill className="w-6 h-6" />
-                  <span className="font-medium">{t('patient_dashboard.my_prescriptions')}</span>
+                  <span className="font-medium">Minhas Prescrições</span>
                 </Button>
               </Link>
             )}

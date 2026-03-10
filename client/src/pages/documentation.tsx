@@ -56,18 +56,14 @@ import {
   Pill,
   ClipboardList,
   Zap,
-  Globe,
-  Building,
-  Stethoscope,
-  Clipboard,
-  StickyNote
+  Globe
 } from "lucide-react";
 
 const docLabels = {
   back: "Voltar",
   pageTitle: "Documentação do Sistema Tele<M3D>",
   pageSubtitle: "Manual completo de recursos, funcionalidades e guias de uso",
-  updatedAt: "Atualizado em Março 2026",
+  updatedAt: "Atualizado em Fevereiro 2026",
   version: "Versão 3.5",
   printBtn: "Documentação Completa para Impressão",
   dashboardTitle: "Dashboard Intuitivo",
@@ -230,16 +226,6 @@ export default function Documentation() {
           title: "Geração de Lista de Medicamentos por IA",
           description: "Planos de tratamento completos gerados por IA a partir de diagnóstico, sintomas e histórico",
           features: ["Geração automática de tratamento", "Baseado em diagnóstico/sintomas", "Considera histórico do paciente", "Interações medicamentosas verificadas"]
-        },
-        {
-          title: "Workflow Pós-Consulta com IA",
-          description: "IA auto-gera prescrições, exames, encaminhamentos e follow-up a partir de notas clínicas com revisão obrigatória do médico",
-          features: ["Auto-geração de prescrições/exames", "Encaminhamentos e follow-up", "Análise de interações medicamentosas", "Revisão obrigatória do médico", "Consultas incompletas rastreadas"]
-        },
-        {
-          title: "AutoTranslate com IA",
-          description: "Tradução automática de conteúdo hardcoded via DOM traversal + MutationObserver usando Gemini AI com fallback OpenAI",
-          features: ["DOM text node traversal", "MutationObserver para conteúdo dinâmico", "Batch translate via Gemini/OpenAI", "Cache em memória + localStorage", "Tradução transparente ao usuário"]
         }
       ]
     },
@@ -299,16 +285,6 @@ export default function Documentation() {
           title: "Notificações em Tempo Real",
           description: "Sistema de notificações push e em tempo real via WebSocket",
           features: ["WebSocket", "Alertas importantes", "Histórico completo", "Configurável"]
-        },
-        {
-          title: "Notas Médicas",
-          description: "Interface estilo macOS Notes para anotações clínicas com pastas, busca, fixação e labels coloridos",
-          features: ["Interface macOS Notes", "Pastas e organização", "Busca e fixação (pin)", "Labels coloridos", "Auto-save"]
-        },
-        {
-          title: "Relatórios Epidemiológicos",
-          description: "Análise IA de dados clínicos para insights epidemiológicos usando códigos MeSH e CID",
-          features: ["Análise por IA (Gemini)", "Códigos MeSH e CID", "Insights epidemiológicos", "Relatórios exportáveis"]
         }
       ]
     },
@@ -319,8 +295,8 @@ export default function Documentation() {
       items: [
         {
           title: "Checkout Unificado de Pagamentos",
-          description: "Múltiplos métodos de pagamento: PayPal, Stripe Elements (Card/Link/Apple Pay/Google Pay) e PagBank (PIX/Boleto)",
-          features: ["PayPal Checkout seguro", "Stripe Elements (Card/Link/Apple Pay/Google Pay)", "PagBank (PIX/Boleto)", "automatic_payment_methods via stripe-replit-sync", "6 pacotes de crédito", "Recibos automáticos"]
+          description: "Múltiplos métodos de pagamento: PayPal, Stripe (cartão/Apple Pay) e PagBank (PIX/Boleto)",
+          features: ["PayPal Checkout seguro", "Stripe (cartão/Apple Pay)", "PagBank (PIX/Boleto)", "6 pacotes de crédito", "Recibos automáticos"]
         },
         {
           title: "Carteira Digital",
@@ -390,16 +366,6 @@ export default function Documentation() {
           title: "Bloqueio de Pacientes",
           description: "Médicos podem bloquear pacientes de solicitar consultas",
           features: ["Bloqueio por médico", "Desbloqueio disponível", "Impede novas solicitações", "Registro de bloqueio"]
-        },
-        {
-          title: "Gestão de Clínicas",
-          description: "Sistema multi-clínica com pacientes/registros compartilhados, revenue sharing e descontos para pacientes",
-          features: ["Criar/gerenciar clínicas", "Código de convite 8 caracteres", "Associar médicos e vincular pacientes", "Desconto configurável (padrão 30%)", "Comissão do proprietário (padrão 15%)", "Convites multi-canal (WebSocket, WhatsApp, email, SMS)"]
-        },
-        {
-          title: "Programa de Indicação Médica",
-          description: "Sistema de indicações entre médicos com rastreamento e comissões por encaminhamentos",
-          features: ["Indicações entre médicos", "Rastreamento de encaminhamentos", "Comissões por indicação", "Relatórios de performance"]
         }
       ]
     },
@@ -501,19 +467,19 @@ export default function Documentation() {
   const technicalSpecs = [
     {
       title: "Arquitetura Frontend",
-      items: ["React 18 com TypeScript", "Tailwind CSS + shadcn/ui", "Wouter para roteamento", "TanStack Query v5", "Web Speech API (IAM3D)", "i18next (8 idiomas)", "AutoTranslate via Gemini AI"]
+      items: ["React 18 com TypeScript", "Tailwind CSS + shadcn/ui", "Wouter para roteamento", "TanStack Query v5", "Web Speech API (IAM3D)", "i18next (8 idiomas)"]
     },
     {
       title: "Arquitetura Backend",
-      items: ["Node.js com Express.js", "PostgreSQL (Neon)", "Drizzle ORM", "WebSocket para real-time", "70+ tabelas no banco", "80+ rotas de API", "17 serviços no servidor", "JWT autenticação"]
+      items: ["Node.js com Express", "PostgreSQL (Neon)", "Drizzle ORM", "WebSocket para real-time", "61+ tabelas"]
     },
     {
       title: "Integrações",
-      items: ["Google Gemini 2.0 Flash", "OpenAI GPT-4o-mini (fallback)", "Agora.io WebRTC Video SDK", "PayPal Checkout", "Stripe Elements (automatic_payment_methods)", "stripe-replit-sync", "PagBank (PIX/Boleto)", "HL7 FHIR R4 Export"]
+      items: ["Google Gemini 2.0 Flash", "OpenAI GPT-4o-mini (fallback)", "Agora.io Video SDK", "PayPal Checkout", "Stripe Checkout", "PagBank (PIX/Boleto)", "HL7 FHIR R4 Export"]
     },
     {
       title: "Segurança",
-      items: ["HTTPS/TLS 1.3", "Criptografia AES-256", "RBAC granular", "LGPD/HIPAA/GDPR", "FHIR R4 compliance", "Assinatura Digital RSA-PSS/RSA-SHA256", "Detecção de inatividade"]
+      items: ["HTTPS/TLS 1.3", "Criptografia AES-256", "RBAC granular", "LGPD/HIPAA/GDPR", "FHIR R4 compliance"]
     }
   ];
 
@@ -530,9 +496,7 @@ export default function Documentation() {
         "Como exportar dados médicos (FHIR R4 - direito LGPD)",
         "Como funciona a detecção de inatividade",
         "Como avaliar uma consulta (1-5 estrelas + feedback)",
-        "Como usar o botão Consultar Agora",
-        "Como vincular-se a uma clínica (desconto automático)",
-        "Como usar a carteira digital e créditos"
+        "Como usar o botão Consultar Agora"
       ]
     },
     {
@@ -551,10 +515,7 @@ export default function Documentation() {
         "Como visualizar o Prontuário Unificado",
         "Como bloquear/desbloquear pacientes",
         "Como gerar lista de medicamentos por IA",
-        "Como verificar prescrições na farmácia",
-        "Como usar o Programa de Indicação Médica",
-        "Como gerenciar equipes médicas e inter-consultas",
-        "Como acessar relatórios epidemiológicos"
+        "Como verificar prescrições na farmácia"
       ]
     },
     {
@@ -569,9 +530,7 @@ export default function Documentation() {
         "Como auditar transações financeiras",
         "Como gerenciar conformidade FHIR e exportação",
         "Como monitorar pagamentos (Stripe/PagBank/PayPal)",
-        "Como gerenciar farmacêuticos",
-        "Como gerenciar clínicas e associados",
-        "Como configurar o sistema de indicações"
+        "Como gerenciar farmacêuticos"
       ]
     },
     {

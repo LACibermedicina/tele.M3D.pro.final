@@ -3,14 +3,42 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertTriangle } from "lucide-react";
-import { releaseAllMediaStreams } from "@/hooks/use-media-guard";
 
 const RESPONSE_TIMEOUT_MS = 3 * 60 * 1000;
 const DEFAULT_INACTIVITY_MS = 30 * 60 * 1000;
 const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click"];
 
 function disconnectAllMediaServices() {
-  releaseAllMediaStreams();
+  try {
+    const tracks = document.querySelectorAll("video, audio");
+    tracks.forEach((el) => {
+      const mediaEl = el as HTMLVideoElement | HTMLAudioElement;
+      if (mediaEl.srcObject) {
+        const stream = mediaEl.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+        mediaEl.srcObject = null;
+      }
+      mediaEl.pause();
+    });
+  } catch {}
+
+  try {
+    if ((window as any).__agoraClient) {
+      (window as any).__agoraClient.leave();
+      (window as any).__agoraClient = null;
+    }
+  } catch {}
+
+  try {
+    if ((window as any).__agoraLocalVideoTrack) {
+      (window as any).__agoraLocalVideoTrack.close();
+      (window as any).__agoraLocalVideoTrack = null;
+    }
+    if ((window as any).__agoraLocalAudioTrack) {
+      (window as any).__agoraLocalAudioTrack.close();
+      (window as any).__agoraLocalAudioTrack = null;
+    }
+  } catch {}
 }
 
 export { disconnectAllMediaServices };

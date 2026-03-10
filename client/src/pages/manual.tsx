@@ -179,14 +179,7 @@ Os links temporários são seguros e possuem tempo de expiração configurável 
 - 🇨🇳 中文 (ZH)
 - 🇵🇾 Guaraní (GN)
 
-O chatbot e o assistente de voz IAM3D também respondem no idioma selecionado. O reconhecimento de voz (STT) e a síntese de fala (TTS) são ajustados automaticamente para o locale correspondente.
-
-**Sistema de Tradução Automática (AutoTranslate):**
-O Tele<M3D> utiliza um sistema duplo de tradução:
-1. **Traduções Estáticas**: 986 chaves em 23 namespaces pré-traduzidas para todos os 8 idiomas
-2. **AutoTranslate IA**: Textos dinâmicos e conteúdo gerado são traduzidos automaticamente pela IA (Google Gemini) em tempo real
-3. **Cache Inteligente**: Traduções são cacheadas em memória e localStorage por página e idioma, evitando re-traduções
-4. **Indicador de Carregamento**: Uma sobreposição sutil aparece durante a tradução automática para indicar que o conteúdo está sendo processado`
+O chatbot e o assistente de voz IAM3D também respondem no idioma selecionado. O reconhecimento de voz (STT) e a síntese de fala (TTS) são ajustados automaticamente para o locale correspondente.`
       }
     ]
   }
@@ -342,18 +335,9 @@ Acesse a exportação pelo menu do seu perfil ou na página de prontuários.`
         text: `O sistema utiliza créditos TM3D (Tele-Medicina Credits) para funcionalidades:
 
 - **Saldo**: Visualize seu saldo atual de TM3D
-- **Comprar Créditos**: Adquira pacotes de créditos escolhendo entre os métodos de pagamento disponíveis
+- **Comprar Créditos**: Adquira pacotes via PayPal, Stripe (cartão/Apple Pay) ou PagBank (PIX/Boleto)
 - **Transferências**: Envie créditos para outros usuários
 - **Histórico**: Veja todas as transações com detalhes (data, tipo, valor, saldo)
-
-**Métodos de Pagamento Disponíveis:**
-- **PayPal**: Checkout rápido com conta PayPal
-- **Stripe Elements**: Cartão de crédito/débito com formulário seguro integrado
-- **Apple Pay**: Pagamento por Apple Pay em dispositivos compatíveis (via Stripe)
-- **Google Pay**: Pagamento por Google Pay em dispositivos compatíveis (via Stripe)
-- **Link by Stripe**: Checkout acelerado com dados salvos
-- **PagBank PIX**: Pagamento instantâneo via QR Code PIX (Brasil)
-- **PagBank Boleto**: Geração de boleto bancário para pagamento (Brasil)
 
 Custos das principais funcionalidades:
 - Teleconsulta por Vídeo: 50 TM3D
@@ -434,25 +418,6 @@ O IAM3D exibe um badge de segurança com seu nível de acesso (paciente) para ga
 - **Preferências**: Configurar idioma e notificações
 
 Mantenha seus dados atualizados para garantir um atendimento mais preciso.`
-      }
-    ]
-  },
-  {
-    id: "p-clinic-binding",
-    title: "Vínculo com Clínicas",
-    icon: <Briefcase className="h-5 w-5" />,
-    content: [
-      {
-        title: "Associando-se a uma Clínica",
-        text: `O sistema de clínicas permite que pacientes se vinculem a clínicas para obter benefícios:
-
-- **Código de Convite**: Insira o código de 8 caracteres fornecido pela clínica para se vincular
-- **Desconto em Consultas**: Ao se vincular, você pode receber descontos (padrão 30%) em consultas com médicos da clínica
-- **Múltiplas Clínicas**: Vincule-se a mais de uma clínica simultaneamente
-- **Desvincular**: Você pode se desvincular a qualquer momento pela página de Clínicas
-- **Visão Geral**: Veja todas as clínicas às quais está vinculado, seus médicos e benefícios
-
-Acesse "Clínicas" no menu para gerenciar seus vínculos e verificar descontos disponíveis.`
       }
     ]
   },
@@ -947,65 +912,6 @@ Disponível durante a criação de prescrições e no fluxo pós-consulta.`
     ]
   },
   {
-    id: "d-referral-program",
-    title: "Programa de Indicação",
-    icon: <Share2 className="h-5 w-5" />,
-    content: [
-      {
-        title: "Indicação de Médicos",
-        text: `O Programa de Indicação permite que médicos convidem colegas para a plataforma:
-
-- **Gerar Link de Indicação**: Crie um link personalizado para compartilhar com colegas médicos
-- **Código de Referência**: Cada médico possui um código único de indicação
-- **Acompanhamento**: Veja quantos médicos se registraram através do seu link
-- **Bonificação**: Receba créditos TM3D como bonificação quando um médico indicado se registra e realiza sua primeira consulta
-- **Histórico**: Visualize o histórico completo de indicações e bonificações recebidas
-
-Acesse "Indicações" no menu para gerenciar seu programa de indicação e compartilhar seu código.`
-      }
-    ]
-  },
-  {
-    id: "d-digital-signature",
-    title: "Assinatura Digital",
-    icon: <Shield className="h-5 w-5" />,
-    content: [
-      {
-        title: "Verificação de Assinatura Digital",
-        text: `O sistema suporta assinatura digital dupla para prescrições e documentos:
-
-- **RSA-PSS ICP-Brasil A3**: Assinatura com certificado digital ICP-Brasil padrão A3 (token/smartcard)
-- **RSA-SHA256 SignatureService**: Assinatura digital interna do sistema com chave gerenciada
-- **Verificação Pública**: Qualquer pessoa pode verificar a autenticidade via QR Code na prescrição
-- **OCSP**: Verificação do status de revogação do certificado em tempo real
-- **Audit Trail**: Registro completo de todas as assinaturas realizadas com timestamp e IP
-
-Cada prescrição gerada inclui um QR Code que direciona para o endpoint público de verificação, confirmando autenticidade, CRM do médico e integridade do documento.`
-      }
-    ]
-  },
-  {
-    id: "d-clinic-management",
-    title: "Gestão de Clínicas",
-    icon: <Briefcase className="h-5 w-5" />,
-    content: [
-      {
-        title: "Criando e Gerenciando Clínicas",
-        text: `O módulo de Clínicas permite que médicos criem e gerenciem clínicas virtuais:
-
-- **Criar Clínica**: Defina nome, descrição e configurações da clínica
-- **Código de Convite**: Gere códigos de 8 caracteres para convidar pacientes
-- **Médicos Associados**: Convide outros médicos para se associarem à clínica
-- **Pacientes Vinculados**: Visualize pacientes que se vincularam via código de convite
-- **Desconto Configurável**: Defina o percentual de desconto para pacientes vinculados (padrão 30%)
-- **Comissão do Proprietário**: Configure a comissão do proprietário da clínica (padrão 15%)
-- **Canais de Convite**: Envie convites via WebSocket, WhatsApp, e-mail, SMS ou notificação da plataforma
-
-Acesse "Clínicas" no menu para criar ou gerenciar suas clínicas.`
-      }
-    ]
-  },
-  {
     id: "d-incomplete",
     title: "Consultas Incompletas",
     icon: <AlertTriangle className="h-5 w-5" />,
@@ -1203,47 +1109,6 @@ Os farmacêuticos possuem um dashboard dedicado com funcionalidades específicas
     ]
   },
   {
-    id: "a-clinics-overview",
-    title: "Visão Geral de Clínicas",
-    icon: <Briefcase className="h-5 w-5" />,
-    content: [
-      {
-        title: "Administração de Clínicas",
-        text: `O painel administrativo de clínicas oferece visão completa de todas as clínicas:
-
-- **Lista de Clínicas**: Visualize todas as clínicas registradas com status, proprietário e métricas
-- **Médicos e Pacientes**: Veja a quantidade de médicos associados e pacientes vinculados a cada clínica
-- **Receita e Comissões**: Acompanhe a receita gerada por clínica e comissões distribuídas
-- **Descontos**: Monitore descontos aplicados e impacto financeiro
-- **Códigos de Convite**: Gerencie códigos de convite ativos e expirados
-- **Auditoria**: Acesse logs de atividades por clínica
-
-Use esta visão para monitorar a saúde financeira e operacional de todas as clínicas da plataforma.`
-      }
-    ]
-  },
-  {
-    id: "a-analytics",
-    title: "Analytics e Métricas",
-    icon: <BarChart3 className="h-5 w-5" />,
-    content: [
-      {
-        title: "Dashboard Analítico",
-        text: `O módulo de Analytics fornece métricas detalhadas do sistema:
-
-- **Uso da Plataforma**: Usuários ativos diários/semanais/mensais, sessões e tempo médio
-- **Teleconsultas**: Volume de consultas por período, duração média, taxa de conclusão
-- **Triagem IA**: Distribuição de classificações Manchester, acurácia da IA
-- **Financeiro**: Receita por provedor (PayPal, Stripe, PagBank), ticket médio, conversão
-- **Retenção**: Taxa de retorno de pacientes, churn de médicos
-- **IA e Chatbot**: Volume de interações, satisfação, tópicos mais consultados
-- **Exportação**: Exporte dados analíticos em CSV ou PDF para análise externa
-
-Acesse "Analytics" no menu administrativo para visualizar todas as métricas em tempo real.`
-      }
-    ]
-  },
-  {
     id: "a-installation",
     title: "Guia de Instalação",
     icon: <Settings className="h-5 w-5" />,
@@ -1268,7 +1133,7 @@ Variáveis de ambiente necessárias:
 - PMD_AUDIT_ENABLED (opcional): Habilitar audit logs do PMD
 - AI_INTEGRATIONS_OPENAI_API_KEY (opcional): Fallback OpenAI
 
-O sistema utiliza 70+ tabelas no PostgreSQL e migra automaticamente na inicialização.`
+O sistema utiliza 61 tabelas no PostgreSQL e migra automaticamente na inicialização.`
       }
     ]
   }
@@ -1494,9 +1359,7 @@ export default function Manual() {
             <Badge variant="outline">PMD v1.0</Badge>
             <Badge variant="outline">Farmácia</Badge>
             <Badge variant="outline">Stripe/PagBank</Badge>
-            <Badge variant="outline">70+ Tabelas</Badge>
-            <Badge variant="outline">Clínicas</Badge>
-            <Badge variant="outline">8 Idiomas</Badge>
+            <Badge variant="outline">61 Tabelas</Badge>
           </div>
         </div>
 

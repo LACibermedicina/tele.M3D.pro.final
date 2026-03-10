@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -60,7 +59,6 @@ type QuickAction = {
 
 export default function MedicalAssistant() {
   const { user } = useAuth();
-  const { t } = useTranslation();
   const { toast } = useToast();
   const [inputMessage, setInputMessage] = useState('');
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
@@ -105,8 +103,8 @@ export default function MedicalAssistant() {
     },
     onError: (error: any) => {
       toast({
-        title: t('common.error'),
-        description: error.message || t('assistant_page.error_message'),
+        title: 'Erro ao enviar mensagem',
+        description: error.message || 'Não foi possível processar sua pergunta.',
         variant: 'destructive',
       });
     },
@@ -149,130 +147,130 @@ export default function MedicalAssistant() {
       quickActions: QuickAction[];
     }> = {
       patient: {
-        title: t('assistant_page.title'),
-        subtitle: t('assistant_page.subtitle'),
+        title: 'Assistente de Saúde AI',
+        subtitle: 'Tire dúvidas sobre sintomas e receba orientações personalizadas',
         gradient: 'from-orange-500 via-amber-500 to-yellow-500',
         quickActions: [
           {
             icon: <Calendar className="w-5 h-5" />,
-            label: t('assistant.qa_schedule'),
-            prompt: t('assistant.qa_schedule_msg'),
+            label: 'Agendar Consulta',
+            prompt: 'Quero agendar uma consulta médica',
             color: 'bg-blue-500/20 hover:bg-blue-500/30'
           },
           {
             icon: <Stethoscope className="w-5 h-5" />,
-            label: t('assistant.qa_triage'),
-            prompt: t('assistant.qa_triage_msg'),
+            label: 'Verificar Sintomas',
+            prompt: 'Estou com alguns sintomas e gostaria de orientação',
             color: 'bg-purple-500/20 hover:bg-purple-500/30'
           },
           {
             icon: <FileText className="w-5 h-5" />,
-            label: t('patients.medical_history'),
-            prompt: t('assistant.qa_my_appointments_msg'),
+            label: 'Histórico Médico',
+            prompt: 'Quero acessar meu histórico médico completo',
             color: 'bg-green-500/20 hover:bg-green-500/30'
           },
           {
             icon: <Pill className="w-5 h-5" />,
-            label: t('navigation.my_prescriptions'),
-            prompt: t('assistant.qa_my_appointments_msg'),
+            label: 'Minhas Receitas',
+            prompt: 'Mostrar minhas receitas e prescrições médicas',
             color: 'bg-pink-500/20 hover:bg-pink-500/30'
           },
           {
             icon: <Activity className="w-5 h-5" />,
-            label: t('medical.exam'),
-            prompt: t('assistant.qa_my_appointments_msg'),
+            label: 'Exames Recentes',
+            prompt: 'Ver resultados dos meus exames mais recentes',
             color: 'bg-cyan-500/20 hover:bg-cyan-500/30'
           },
           {
             icon: <ClipboardList className="w-5 h-5" />,
-            label: t('assistant_page.disclaimer', 'Orientações Gerais'),
-            prompt: t('assistant.qa_triage_msg'),
+            label: 'Orientações Gerais',
+            prompt: 'Preciso de orientações sobre saúde e bem-estar',
             color: 'bg-indigo-500/20 hover:bg-indigo-500/30'
           }
         ]
       },
       doctor: {
-        title: t('assistant_page.title'),
-        subtitle: t('assistant_page.subtitle'),
+        title: 'Assistente Médico AI',
+        subtitle: 'Suporte clínico avançado com análise diagnóstica e literatura médica',
         gradient: 'from-blue-600 via-cyan-500 to-teal-500',
         quickActions: [
           {
             icon: <Brain className="w-5 h-5" />,
-            label: t('assistant.qa_clinical'),
-            prompt: t('assistant.qa_clinical_msg'),
+            label: 'Análise Diagnóstica',
+            prompt: 'Analisar caso clínico com diagnósticos diferenciais',
             color: 'bg-purple-500/20 hover:bg-purple-500/30'
           },
           {
             icon: <FileText className="w-5 h-5" />,
-            label: t('assistant.qa_protocols'),
-            prompt: t('assistant.qa_protocols_msg'),
+            label: 'Protocolos Clínicos',
+            prompt: 'Consultar protocolos e guidelines para tratamento',
             color: 'bg-blue-500/20 hover:bg-blue-500/30'
           },
           {
             icon: <Pill className="w-5 h-5" />,
-            label: t('medical.medication'),
-            prompt: t('assistant.qa_protocols_msg'),
+            label: 'Interações Medicamentosas',
+            prompt: 'Verificar interações medicamentosas e contraindicações',
             color: 'bg-red-500/20 hover:bg-red-500/30'
           },
           {
             icon: <ClipboardList className="w-5 h-5" />,
-            label: t('medical.prescription'),
-            prompt: t('assistant.qa_clinical_msg'),
+            label: 'Criar Prescrição',
+            prompt: 'Auxiliar na criação de prescrição médica',
             color: 'bg-green-500/20 hover:bg-green-500/30'
           },
           {
             icon: <BookOpenCheck className="w-5 h-5" />,
-            label: t('medical.knowledge_base'),
-            prompt: t('assistant.qa_protocols_msg'),
+            label: 'Literatura Médica',
+            prompt: 'Buscar evidências científicas recentes sobre um tema',
             color: 'bg-amber-500/20 hover:bg-amber-500/30'
           },
           {
             icon: <Activity className="w-5 h-5" />,
-            label: t('medical.exam'),
-            prompt: t('assistant.qa_clinical_msg'),
+            label: 'Análise de Exames',
+            prompt: 'Interpretar resultados de exames laboratoriais',
             color: 'bg-cyan-500/20 hover:bg-cyan-500/30'
           }
         ]
       },
       admin: {
-        title: t('assistant_page.title'),
-        subtitle: t('assistant_page.subtitle'),
+        title: 'Assistente Administrativo AI',
+        subtitle: 'Análise de dados, relatórios e gestão do sistema',
         gradient: 'from-purple-600 via-pink-500 to-red-500',
         quickActions: [
           {
             icon: <BarChart3 className="w-5 h-5" />,
-            label: t('navigation.reports'),
-            prompt: t('assistant.qa_stats_msg'),
+            label: 'Relatórios de Análise',
+            prompt: 'Gerar relatório estatístico do sistema',
             color: 'bg-blue-500/20 hover:bg-blue-500/30'
           },
           {
             icon: <Users className="w-5 h-5" />,
-            label: t('navigation.patients'),
-            prompt: t('assistant.qa_stats_msg'),
+            label: 'Gestão de Usuários',
+            prompt: 'Analisar estatísticas de usuários e atividades',
             color: 'bg-purple-500/20 hover:bg-purple-500/30'
           },
           {
             icon: <TrendingUp className="w-5 h-5" />,
-            label: t('assistant.qa_stats'),
-            prompt: t('assistant.qa_stats_msg'),
+            label: 'Performance do Sistema',
+            prompt: 'Análise de performance e uso do sistema',
             color: 'bg-green-500/20 hover:bg-green-500/30'
           },
           {
             icon: <Database className="w-5 h-5" />,
-            label: t('dashboard.database'),
-            prompt: t('assistant.qa_stats_msg'),
+            label: 'Análise de Dados',
+            prompt: 'Consultar dados agregados e insights',
             color: 'bg-cyan-500/20 hover:bg-cyan-500/30'
           },
           {
             icon: <Shield className="w-5 h-5" />,
-            label: t('security.data_protection'),
-            prompt: t('assistant.qa_stats_msg'),
+            label: 'Segurança e Compliance',
+            prompt: 'Verificar status de segurança e conformidade',
             color: 'bg-red-500/20 hover:bg-red-500/30'
           },
           {
             icon: <Settings className="w-5 h-5" />,
-            label: t('auth.settings'),
-            prompt: t('assistant.qa_stats_msg'),
+            label: 'Configurações',
+            prompt: 'Ajustar configurações e parâmetros do sistema',
             color: 'bg-amber-500/20 hover:bg-amber-500/30'
           }
         ]
@@ -289,7 +287,7 @@ export default function MedicalAssistant() {
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-orange-100 via-amber-50 to-yellow-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">{t('common.loading')}</p>
+          <p className="text-muted-foreground">Carregando assistente...</p>
         </div>
       </div>
     );
@@ -330,8 +328,8 @@ export default function MedicalAssistant() {
                     <Sparkles className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg">{t('dashboard.quick_actions')}</h3>
-                    <p className="text-xs text-muted-foreground">{t('common.select_option')}</p>
+                    <h3 className="font-bold text-lg">Ações Rápidas</h3>
+                    <p className="text-xs text-muted-foreground">Escolha uma opção abaixo</p>
                   </div>
                 </div>
                 
@@ -363,7 +361,7 @@ export default function MedicalAssistant() {
                     <div className="flex-1">
                       <p className="font-semibold text-sm">{user?.name}</p>
                       <Badge variant="secondary" className="text-xs">
-                        {user?.role === 'doctor' ? t('roles.doctor') : user?.role === 'admin' ? t('roles.admin') : t('roles.patient')}
+                        {user?.role === 'doctor' ? 'Médico' : user?.role === 'admin' ? 'Administrador' : 'Paciente'}
                       </Badge>
                     </div>
                   </div>
@@ -376,19 +374,19 @@ export default function MedicalAssistant() {
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <Brain className="w-5 h-5 text-primary" />
-                  <h3 className="font-bold">{t('dashboard.system_status')}</h3>
+                  <h3 className="font-bold">Status da IA</h3>
                 </div>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">{t('common.type')}</span>
+                    <span className="text-sm text-muted-foreground">Modelo</span>
                     <Badge>Gemini 1.5 Flash</Badge>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">{t('navigation.medical_references')}</span>
+                    <span className="text-sm text-muted-foreground">Referências</span>
                     <span className="text-sm font-semibold">{conversation?.referencesUsed?.length || 0} PDFs</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">{t('dashboard.whatsapp_messages', 'Mensagens')}</span>
+                    <span className="text-sm text-muted-foreground">Mensagens</span>
                     <span className="text-sm font-semibold">{conversation?.messages?.length || 0}</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -414,9 +412,13 @@ export default function MedicalAssistant() {
                         <div className={`w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br ${config.gradient} flex items-center justify-center shadow-2xl animate-pulse`}>
                           <Sparkles className="w-10 h-10 text-white" />
                         </div>
-                        <h3 className="text-xl font-bold mb-3">{t('assistant_page.title')}</h3>
+                        <h3 className="text-xl font-bold mb-3">Bem-vindo ao Assistente AI</h3>
                         <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                          {t('assistant_page.subtitle')}
+                          {user?.role === 'doctor'
+                            ? 'Faça perguntas sobre diagnósticos, tratamentos, guidelines médicos ou literatura científica.'
+                            : user?.role === 'admin'
+                            ? 'Consulte análises, relatórios e estatísticas do sistema.'
+                            : 'Tire suas dúvidas sobre saúde, agende consultas e acesse seu histórico médico.'}
                         </p>
                         <div className="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
                           {config.quickActions.slice(0, 3).map((action, i) => (
@@ -458,7 +460,7 @@ export default function MedicalAssistant() {
                               <div className="mt-4 pt-4 border-t border-white/20 dark:border-gray-600/20">
                                 <div className="flex items-center gap-2 text-xs opacity-80">
                                   <FileText className="w-4 h-4" />
-                                  <span>{t('navigation.medical_references')} ({message.referencesUsed.length})</span>
+                                  <span>Baseado em {message.referencesUsed.length} referência(s) médica(s)</span>
                                 </div>
                               </div>
                             )}
@@ -488,7 +490,7 @@ export default function MedicalAssistant() {
                         <div className="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm rounded-2xl p-5 border border-white/40 dark:border-gray-600/40 shadow-md">
                           <div className="flex items-center gap-3 text-sm">
                             <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                            <span className="text-muted-foreground">{t('assistant_page.thinking')}</span>
+                            <span className="text-muted-foreground">Analisando com IA médica...</span>
                           </div>
                         </div>
                       </div>
@@ -505,7 +507,13 @@ export default function MedicalAssistant() {
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyDown={handleKeyPress}
-                      placeholder={t('assistant_page.placeholder')}
+                      placeholder={
+                        user?.role === 'doctor'
+                          ? 'Digite sua pergunta médica...'
+                          : user?.role === 'admin'
+                          ? 'Consultar dados ou relatórios...'
+                          : 'Digite sua dúvida de saúde...'
+                      }
                       disabled={sendMessageMutation.isPending}
                       className="flex-1 h-12 bg-white/80 dark:bg-gray-700/80 border-2 border-primary/20 focus:border-primary/60 rounded-xl shadow-sm"
                       data-testid="input-chat-message"
@@ -525,7 +533,13 @@ export default function MedicalAssistant() {
                   </div>
                   
                   <div className="mt-3 text-xs text-muted-foreground text-center">
-                    <span>⚠️ {t('assistant_page.disclaimer')}</span>
+                    {user?.role === 'doctor' ? (
+                      <span>💡 Respostas baseadas em guidelines médicos e literatura científica</span>
+                    ) : user?.role === 'admin' ? (
+                      <span>📊 Análises e relatórios gerados com inteligência artificial</span>
+                    ) : (
+                      <span>⚠️ Este assistente fornece orientações gerais. Em emergências, procure atendimento médico</span>
+                    )}
                   </div>
                 </div>
               </CardContent>

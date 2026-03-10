@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { appointments } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,15 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek } from "date-fns";
+import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTranslation } from "react-i18next";
-import { Video, VideoOff, Plus, Search, Loader2, Calendar, User, Clock, CheckCircle, ChevronLeft, ChevronRight, FileText, UserCircle, Star } from "lucide-react";
+import { Video, VideoOff, Plus, Search, Loader2, Calendar, User, Clock } from "lucide-react";
 
 type Appointment = typeof appointments.$inferSelect & {
   patient?: { name: string; id: string };
@@ -29,9 +27,7 @@ export default function TodaySchedule() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const { user } = useAuth();
-  const { t } = useTranslation();
   
-  const [activeTab, setActiveTab] = useState("today");
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
   const [newAppointmentDialogOpen, setNewAppointmentDialogOpen] = useState(false);
@@ -47,43 +43,9 @@ export default function TodaySchedule() {
   const [newApptNotes, setNewApptNotes] = useState("");
   const [patientSearch, setPatientSearch] = useState("");
 
-  const [completedDateFrom, setCompletedDateFrom] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [completedDateTo, setCompletedDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [calendarMonth, setCalendarMonth] = useState(new Date());
-
-  const { data: allTodayAppointments, isLoading } = useQuery<Appointment[]>({
+  const { data: appointments, isLoading } = useQuery<Appointment[]>({
     queryKey: user?.id ? ['/api/appointments/today', user.id] : ['appointments-today-placeholder'],
     enabled: !!user?.id,
-  });
-
-  const activeAppointments = useMemo(() => {
-    return (allTodayAppointments || []).filter((a: any) => 
-      a.status !== 'completed' && a.status !== 'cancelled' && a.status !== 'rescheduled'
-    );
-  }, [allTodayAppointments]);
-
-  const todayCompletedAppointments = useMemo(() => {
-    return (allTodayAppointments || []).filter((a: any) => a.status === 'completed');
-  }, [allTodayAppointments]);
-
-  const { data: completedAppointments, isLoading: completedLoading } = useQuery<Appointment[]>({
-    queryKey: user?.id ? ['/api/appointments/completed', user.id, completedDateFrom, completedDateTo] : ['completed-placeholder'],
-    queryFn: async () => {
-      const res = await fetch(`/api/appointments/completed/${user!.id}?from=${completedDateFrom}&to=${completedDateTo}`);
-      if (!res.ok) throw new Error('Failed to fetch');
-      return res.json();
-    },
-    enabled: !!user?.id && activeTab === 'completed',
-  });
-
-  const { data: upcomingAppointments, isLoading: upcomingLoading } = useQuery<Appointment[]>({
-    queryKey: user?.id ? ['/api/appointments/upcoming', user.id] : ['upcoming-placeholder'],
-    queryFn: async () => {
-      const res = await fetch(`/api/appointments/upcoming/${user!.id}?days=30`);
-      if (!res.ok) throw new Error('Failed to fetch');
-      return res.json();
-    },
-    enabled: !!user?.id && activeTab === 'calendar',
   });
 
   const updateAppointmentMutation = useMutation({
@@ -92,11 +54,11 @@ export default function TodaySchedule() {
       return await response.json();
     },
     onSuccess: () => {
+      // Invalidate the today appointments query
       if (user?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/appointments/today', user.id] });
-        queryClient.invalidateQueries({ queryKey: ['/api/appointments/completed', user.id] });
-        queryClient.invalidateQueries({ queryKey: ['/api/appointments/upcoming', user.id] });
       }
+      // Also invalidate general appointments queries
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
     },
   });
@@ -107,10 +69,11 @@ export default function TodaySchedule() {
       return await response.json();
     },
     onSuccess: () => {
+      // Invalidate the today appointments query
       if (user?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/appointments/today', user.id] });
-        queryClient.invalidateQueries({ queryKey: ['/api/appointments/upcoming', user.id] });
       }
+      // Also invalidate general appointments queries
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
     },
   });
@@ -121,10 +84,11 @@ export default function TodaySchedule() {
       return await response.json();
     },
     onSuccess: () => {
+      // Invalidate the today appointments query
       if (user?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/appointments/today', user.id] });
-        queryClient.invalidateQueries({ queryKey: ['/api/appointments/completed', user.id] });
       }
+      // Also invalidate general appointments queries
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
     },
   });
@@ -149,7 +113,6 @@ export default function TodaySchedule() {
     onSuccess: () => {
       if (user?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/appointments/today', user.id] });
-        queryClient.invalidateQueries({ queryKey: ['/api/appointments/upcoming', user.id] });
       }
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
       setNewAppointmentDialogOpen(false);
@@ -205,6 +168,7 @@ export default function TodaySchedule() {
     setNewAppointmentDialogOpen(true);
   };
 
+  // Doctor office toggle mutations
   const toggleOfficeMutation = useMutation({
     mutationFn: async (open: boolean) => {
       const endpoint = open ? '/api/doctor-office/open' : '/api/doctor-office/close';
@@ -230,6 +194,7 @@ export default function TodaySchedule() {
     },
   });
 
+  // Check initial office status
   useEffect(() => {
     if (user?.id && user.role === 'doctor') {
       apiRequest('GET', `/api/doctor-office/status/${user.id}`, null)
@@ -241,10 +206,16 @@ export default function TodaySchedule() {
 
   const handleStartConsultation = (appointmentId: string) => {
     updateAppointmentMutation.mutate(
-      { id: appointmentId, data: { status: 'in-progress' } },
+      {
+        id: appointmentId,
+        data: { status: 'in-progress' }
+      },
       {
         onSuccess: () => {
-          toast({ title: "Consulta iniciada", description: "A consulta está agora em andamento." });
+          toast({
+            title: "Consulta iniciada",
+            description: "A consulta está agora em andamento.",
+          });
         }
       }
     );
@@ -252,25 +223,34 @@ export default function TodaySchedule() {
 
   const handleCompleteConsultation = (appointmentId: string) => {
     updateAppointmentMutation.mutate(
-      { id: appointmentId, data: { status: 'completed' } },
+      {
+        id: appointmentId,
+        data: { status: 'completed' }
+      },
       {
         onSuccess: () => {
-          toast({ title: "Consulta finalizada", description: "A consulta foi concluída com sucesso." });
+          toast({
+            title: "Consulta finalizada",
+            description: "A consulta foi concluída com sucesso.",
+          });
         }
       }
     );
   };
   
   const handleEnterVideoCall = (appointment: any) => {
+    // Navigate to video consultation page
     navigate(`/consultation/video/${appointment.patientId}`);
   };
   
   const handleOpenChat = (appointment: any) => {
+    // Navigate to WhatsApp page (could be enhanced to pre-select patient)
     navigate('/whatsapp');
   };
   
   const handleOpenReschedule = (appointment: any) => {
     setSelectedAppointment(appointment);
+    // Set default to 1 day ahead
     const defaultDate = format(addDays(new Date(appointment.scheduledAt), 1), "yyyy-MM-dd'T'HH:mm");
     setNewScheduledDate(defaultDate);
     setRescheduleDialogOpen(true);
@@ -334,7 +314,10 @@ export default function TodaySchedule() {
           setSelectedAppointment(null);
           setRating(0);
           setFeedback("");
-          toast({ title: "Avaliação enviada", description: "Obrigado pela sua avaliação!" });
+          toast({
+            title: "Avaliação enviada",
+            description: "Obrigado pela sua avaliação!",
+          });
         },
         onError: (error: any) => {
           toast({
@@ -347,38 +330,11 @@ export default function TodaySchedule() {
     );
   };
 
-  const calendarDays = useMemo(() => {
-    const monthStart = startOfMonth(calendarMonth);
-    const monthEnd = endOfMonth(calendarMonth);
-    const calStart = startOfWeek(monthStart, { locale: ptBR });
-    const calEnd = endOfWeek(monthEnd, { locale: ptBR });
-    return eachDayOfInterval({ start: calStart, end: calEnd });
-  }, [calendarMonth]);
-
-  const appointmentsByDay = useMemo(() => {
-    const map: Record<string, Appointment[]> = {};
-    (upcomingAppointments || []).forEach((a: any) => {
-      const key = format(new Date(a.scheduledAt), "yyyy-MM-dd");
-      if (!map[key]) map[key] = [];
-      map[key].push(a);
-    });
-    return map;
-  }, [upcomingAppointments]);
-
-  const getAppointmentTypeLabel = (type: string) => {
-    switch (type) {
-      case 'consultation': return 'Consulta de Rotina';
-      case 'followup': return 'Retorno';
-      case 'emergency': return 'Emergência';
-      default: return type;
-    }
-  };
-
   if (isLoading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{t('patient_dashboard.today_schedule')}</CardTitle>
+          <CardTitle>Agenda de Hoje</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
@@ -389,126 +345,12 @@ export default function TodaySchedule() {
     );
   }
 
-  const renderAppointmentItem = (appointment: any, showDate = false) => (
-    <div
-      key={appointment.id}
-      className="flex items-center space-x-4 p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
-      data-testid={`appointment-item-${appointment.id}`}
-    >
-      <div className="text-primary font-medium text-lg min-w-[60px]">
-        {format(new Date(appointment.scheduledAt), "HH:mm")}
-        {showDate && (
-          <div className="text-xs text-muted-foreground font-normal">
-            {format(new Date(appointment.scheduledAt), "dd/MM")}
-          </div>
-        )}
-      </div>
-      
-      <div className="flex-1">
-        <div className="flex items-center space-x-2 mb-1">
-          <button
-            onClick={() => {
-              if (appointment.patient?.id) navigate(`/patients/${appointment.patient.id}`);
-            }}
-            className="font-medium hover:text-primary hover:underline transition-colors cursor-pointer text-left"
-            data-testid={`appointment-patient-${appointment.id}`}
-          >
-            {appointment.patient?.name || t('patient_dashboard.patient_unidentified')}
-          </button>
-          {appointment.aiScheduled && (
-            <Badge className="bg-purple-100 text-purple-800 text-xs">
-              <i className="fas fa-robot mr-1"></i>
-              IA
-            </Badge>
-          )}
-        </div>
-        <p className="text-sm text-muted-foreground" data-testid={`appointment-type-${appointment.id}`}>
-          {getAppointmentTypeLabel(appointment.type)}
-        </p>
-        {appointment.notes && (
-          <p className="text-xs text-muted-foreground mt-1" data-testid={`appointment-notes-${appointment.id}`}>
-            {appointment.notes}
-          </p>
-        )}
-      </div>
-
-      <div className="flex items-center space-x-2">
-        {appointment.status === 'scheduled' && (
-          <>
-            <Button variant="default" size="sm" onClick={() => handleEnterVideoCall(appointment)} data-testid={`button-enter-${appointment.id}`} className="bg-blue-600 hover:bg-blue-700 text-white">
-              <i className="fas fa-video mr-1"></i>
-              Entrar
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleOpenChat(appointment)} data-testid={`button-chat-${appointment.id}`}>
-              <i className="fas fa-comments mr-1"></i>
-              Chat
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleOpenReschedule(appointment)} data-testid={`button-reschedule-${appointment.id}`}>
-              <i className="fas fa-calendar-alt mr-1"></i>
-              Reagendar
-            </Button>
-          </>
-        )}
-        
-        {appointment.status === 'in-progress' && (
-          <>
-            <Button variant="outline" size="sm" onClick={() => handleOpenChat(appointment)} data-testid={`button-chat-inprogress-${appointment.id}`}>
-              <i className="fas fa-comments mr-1"></i>
-              Chat
-            </Button>
-            <Button size="sm" onClick={() => handleCompleteConsultation(appointment.id)} data-testid={`button-complete-${appointment.id}`}>
-              <i className="fas fa-check mr-1"></i>
-              Finalizar
-            </Button>
-          </>
-        )}
-
-        {appointment.status === 'completed' && (
-          <>
-            {appointment.rating ? (
-              <div className="flex items-center space-x-2">
-                <Badge className="bg-green-100 text-green-800">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Concluído
-                </Badge>
-                <div className="flex items-center text-yellow-500">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className={`h-3 w-3 ${i < appointment.rating ? 'fill-current' : 'opacity-30'}`} />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <Badge className="bg-green-100 text-green-800">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Concluído
-                </Badge>
-                {user?.role === 'patient' && (
-                  <Button variant="outline" size="sm" onClick={() => handleOpenRating(appointment)} data-testid={`button-rate-${appointment.id}`}>
-                    <Star className="h-3 w-3 mr-1" />
-                    Avaliar
-                  </Button>
-                )}
-              </div>
-            )}
-            {user?.role === 'doctor' && appointment.patient?.id && (
-              <Button variant="ghost" size="sm" onClick={() => navigate(`/patients/${appointment.patient.id}`)} className="text-primary">
-                <UserCircle className="h-4 w-4 mr-1" />
-                Perfil
-              </Button>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <>
     <Card data-testid="card-today-schedule">
       <CardHeader className="border-b border-border">
         <div className="flex items-center justify-between">
-          <CardTitle>{t('patient_dashboard.today_schedule')}</CardTitle>
+          <CardTitle>Agenda de Hoje</CardTitle>
           <div className="flex gap-2">
             {user?.role === 'doctor' && (
               <Button 
@@ -521,12 +363,12 @@ export default function TodaySchedule() {
                 {isOfficeOpen ? (
                   <>
                     <VideoOff className="h-4 w-4 mr-2" />
-                    {t('patient_dashboard.close_office')}
+                    Fechar Consultório
                   </>
                 ) : (
                   <>
                     <Video className="h-4 w-4 mr-2" />
-                    {t('patient_dashboard.open_office')}
+                    Abrir Consultório
                   </>
                 )}
               </Button>
@@ -542,281 +384,156 @@ export default function TodaySchedule() {
               data-testid="button-new-appointment"
             >
               <Plus className="h-4 w-4 mr-2" />
-              {user?.role === 'patient' ? t('patient_dashboard.request_consultation') : t('patient_dashboard.new_consultation')}
+              {user?.role === 'patient' ? 'Solicitar Consulta' : 'Nova Consulta'}
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-0">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full justify-start rounded-none border-b bg-transparent h-auto p-0">
-            <TabsTrigger value="today" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3">
-              <Clock className="h-4 w-4 mr-2" />
-              Agenda de Hoje
-              {activeAppointments.length > 0 && (
-                <Badge variant="secondary" className="ml-2 h-5 min-w-[20px] px-1.5">
-                  {activeAppointments.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="completed" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Consultas Realizadas
-              {todayCompletedAppointments.length > 0 && (
-                <Badge variant="secondary" className="ml-2 h-5 min-w-[20px] px-1.5 bg-green-100 text-green-800">
-                  {todayCompletedAppointments.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            {user?.role === 'doctor' && (
-              <TabsTrigger value="calendar" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3">
-                <Calendar className="h-4 w-4 mr-2" />
-                Agenda de Consultas
-              </TabsTrigger>
-            )}
-          </TabsList>
-
-          <TabsContent value="today" className="p-6 mt-0">
-            {activeAppointments.length === 0 ? (
-              <div className="text-center py-8">
-                <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                  {t('patient_dashboard.no_consultations_today')}
-                </h3>
-                <p className="text-muted-foreground">
-                  {t('patient_dashboard.schedule_free_today')}
-                </p>
-                {todayCompletedAppointments.length > 0 && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {todayCompletedAppointments.length} consulta(s) realizada(s) hoje — veja na aba "Consultas Realizadas"
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {activeAppointments.map((appointment: any) => renderAppointmentItem(appointment))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="completed" className="p-6 mt-0">
-            <div className="flex flex-wrap items-end gap-3 mb-4 pb-4 border-b">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">De</Label>
-                <Input
-                  type="date"
-                  value={completedDateFrom}
-                  onChange={(e) => setCompletedDateFrom(e.target.value)}
-                  className="w-[150px] h-9"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Até</Label>
-                <Input
-                  type="date"
-                  value={completedDateTo}
-                  onChange={(e) => setCompletedDateTo(e.target.value)}
-                  className="w-[150px] h-9"
-                />
-              </div>
-              <div className="flex gap-1">
-                <Button variant="outline" size="sm" className="h-9" onClick={() => {
-                  const today = format(new Date(), "yyyy-MM-dd");
-                  setCompletedDateFrom(today);
-                  setCompletedDateTo(today);
-                }}>
-                  Hoje
-                </Button>
-                <Button variant="outline" size="sm" className="h-9" onClick={() => {
-                  const d = new Date();
-                  d.setDate(d.getDate() - 7);
-                  setCompletedDateFrom(format(d, "yyyy-MM-dd"));
-                  setCompletedDateTo(format(new Date(), "yyyy-MM-dd"));
-                }}>
-                  7 dias
-                </Button>
-                <Button variant="outline" size="sm" className="h-9" onClick={() => {
-                  const d = new Date();
-                  d.setDate(d.getDate() - 30);
-                  setCompletedDateFrom(format(d, "yyyy-MM-dd"));
-                  setCompletedDateTo(format(new Date(), "yyyy-MM-dd"));
-                }}>
-                  30 dias
-                </Button>
-              </div>
-            </div>
-
-            {completedLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : (completedAppointments || []).length === 0 ? (
-              <div className="text-center py-8">
-                <CheckCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                  Nenhuma consulta realizada
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Não há consultas concluídas no período selecionado.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  {(completedAppointments || []).length} consulta(s) realizada(s)
-                </p>
-                {(completedAppointments || []).map((appointment: any) => (
-                  <div
-                    key={appointment.id}
-                    className="flex items-center space-x-4 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-100 dark:border-green-900/30"
-                  >
-                    <div className="text-center min-w-[60px]">
-                      <div className="text-primary font-medium text-lg">
-                        {format(new Date(appointment.scheduledAt), "HH:mm")}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {format(new Date(appointment.scheduledAt), "dd/MM")}
-                      </div>
-                    </div>
-                    
-                    <div className="flex-1">
-                      <button
-                        onClick={() => {
-                          if (appointment.patient?.id) navigate(`/patients/${appointment.patient.id}`);
-                        }}
-                        className="font-medium hover:text-primary hover:underline transition-colors cursor-pointer text-left"
-                      >
-                        {appointment.patient?.name || 'Paciente não identificado'}
-                      </button>
-                      <p className="text-sm text-muted-foreground">
-                        {getAppointmentTypeLabel(appointment.type)}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {appointment.rating && (
-                        <div className="flex items-center text-yellow-500">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} className={`h-3 w-3 ${i < appointment.rating ? 'fill-current' : 'opacity-30'}`} />
-                          ))}
-                        </div>
-                      )}
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Concluído
-                      </Badge>
-                      {user?.role === 'doctor' && appointment.patient?.id && (
-                        <Button variant="ghost" size="sm" onClick={() => navigate(`/patients/${appointment.patient.id}`)} className="text-primary">
-                          <UserCircle className="h-4 w-4 mr-1" />
-                          Perfil
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          {user?.role === 'doctor' && (
-            <TabsContent value="calendar" className="p-6 mt-0">
-              <div className="flex items-center justify-between mb-4">
-                <Button variant="ghost" size="sm" onClick={() => {
-                  const prev = new Date(calendarMonth);
-                  prev.setMonth(prev.getMonth() - 1);
-                  setCalendarMonth(prev);
-                }}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <h3 className="font-semibold text-lg capitalize">
-                  {format(calendarMonth, "MMMM yyyy", { locale: ptBR })}
-                </h3>
-                <Button variant="ghost" size="sm" onClick={() => {
-                  const next = new Date(calendarMonth);
-                  next.setMonth(next.getMonth() + 1);
-                  setCalendarMonth(next);
-                }}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {upcomingLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <CardContent className="p-6">
+        {!(appointments || []).length ? (
+          <div className="text-center py-8">
+            <i className="fas fa-calendar-day text-4xl text-muted-foreground mb-3"></i>
+            <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+              Nenhuma consulta hoje
+            </h3>
+            <p className="text-muted-foreground">
+              Sua agenda está livre para hoje.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {(appointments || []).map((appointment: any) => (
+              <div
+                key={appointment.id}
+                className="flex items-center space-x-4 p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
+                data-testid={`appointment-item-${appointment.id}`}
+              >
+                <div className="text-primary font-medium text-lg min-w-[60px]">
+                  {format(new Date(appointment.scheduledAt), "HH:mm")}
                 </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-7 gap-px mb-1">
-                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                      <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
-                        {day}
-                      </div>
-                    ))}
+                
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <p className="font-medium" data-testid={`appointment-patient-${appointment.id}`}>
+                      {appointment.patient?.name || "Paciente não identificado"}
+                    </p>
+                    {appointment.aiScheduled && (
+                      <Badge className="bg-purple-100 text-purple-800 text-xs">
+                        <i className="fas fa-robot mr-1"></i>
+                        IA
+                      </Badge>
+                    )}
                   </div>
-                  <div className="grid grid-cols-7 gap-px">
-                    {calendarDays.map((day, idx) => {
-                      const dayKey = format(day, "yyyy-MM-dd");
-                      const dayAppts = appointmentsByDay[dayKey] || [];
-                      const isCurrentMonth = day.getMonth() === calendarMonth.getMonth();
-                      return (
-                        <div
-                          key={idx}
-                          className={`min-h-[80px] p-1 border rounded-md ${
-                            isToday(day) ? 'bg-primary/5 border-primary/30' :
-                            isCurrentMonth ? 'bg-background border-border' :
-                            'bg-muted/30 border-transparent'
-                          }`}
-                        >
-                          <div className={`text-xs font-medium mb-1 ${
-                            isToday(day) ? 'text-primary' :
-                            isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/50'
-                          }`}>
-                            {format(day, "d")}
-                          </div>
-                          {dayAppts.slice(0, 3).map((appt: any) => (
-                            <button
-                              key={appt.id}
-                              onClick={() => {
-                                if (appt.patient?.id) navigate(`/patients/${appt.patient.id}`);
-                              }}
-                              className="w-full text-left text-[10px] leading-tight mb-0.5 px-1 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary truncate transition-colors cursor-pointer"
-                              title={`${format(new Date(appt.scheduledAt), "HH:mm")} - ${appt.patient?.name || 'Paciente'}`}
-                            >
-                              {format(new Date(appt.scheduledAt), "HH:mm")} {appt.patient?.name?.split(' ')[0] || ''}
-                            </button>
-                          ))}
-                          {dayAppts.length > 3 && (
-                            <div className="text-[10px] text-muted-foreground px-1">
-                              +{dayAppts.length - 3} mais
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {(upcomingAppointments || []).length > 0 && (
-                    <div className="mt-6 space-y-3">
-                      <h4 className="font-semibold text-sm flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-primary" />
-                        Próximas Consultas
-                      </h4>
-                      {(upcomingAppointments || []).slice(0, 10).map((appointment: any) => renderAppointmentItem(appointment, true))}
-                      {(upcomingAppointments || []).length > 10 && (
-                        <p className="text-sm text-muted-foreground text-center">
-                          e mais {(upcomingAppointments || []).length - 10} consultas agendadas
-                        </p>
-                      )}
-                    </div>
+                  <p className="text-sm text-muted-foreground" data-testid={`appointment-type-${appointment.id}`}>
+                    {appointment.type === 'consultation' ? 'Consulta de Rotina' :
+                     appointment.type === 'followup' ? 'Retorno' :
+                     appointment.type === 'emergency' ? 'Emergência' : appointment.type}
+                  </p>
+                  {appointment.notes && (
+                    <p className="text-xs text-muted-foreground mt-1" data-testid={`appointment-notes-${appointment.id}`}>
+                      {appointment.notes}
+                    </p>
                   )}
-                </>
-              )}
-            </TabsContent>
-          )}
-        </Tabs>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  {appointment.status === 'scheduled' && (
+                    <>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleEnterVideoCall(appointment)}
+                        data-testid={`button-enter-${appointment.id}`}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <i className="fas fa-video mr-1"></i>
+                        Entrar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenChat(appointment)}
+                        data-testid={`button-chat-${appointment.id}`}
+                      >
+                        <i className="fas fa-comments mr-1"></i>
+                        Chat
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenReschedule(appointment)}
+                        data-testid={`button-reschedule-${appointment.id}`}
+                      >
+                        <i className="fas fa-calendar-alt mr-1"></i>
+                        Reagendar
+                      </Button>
+                    </>
+                  )}
+                  
+                  {appointment.status === 'in-progress' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenChat(appointment)}
+                        data-testid={`button-chat-inprogress-${appointment.id}`}
+                      >
+                        <i className="fas fa-comments mr-1"></i>
+                        Chat
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleCompleteConsultation(appointment.id)}
+                        data-testid={`button-complete-${appointment.id}`}
+                      >
+                        <i className="fas fa-check mr-1"></i>
+                        Finalizar
+                      </Button>
+                    </>
+                  )}
+
+                  {appointment.status === 'completed' && (
+                    <>
+                      {appointment.rating ? (
+                        <div className="flex items-center space-x-2">
+                          <Badge className="bg-green-100 text-green-800">
+                            <i className="fas fa-check mr-1"></i>
+                            Concluído
+                          </Badge>
+                          <div className="flex items-center text-yellow-500">
+                            {[...Array(5)].map((_, i) => (
+                              <i key={i} className={`fas fa-star ${i < appointment.rating ? '' : 'opacity-30'}`}></i>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Badge className="bg-green-100 text-green-800">
+                            <i className="fas fa-check mr-1"></i>
+                            Concluído
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenRating(appointment)}
+                            data-testid={`button-rate-${appointment.id}`}
+                          >
+                            <i className="fas fa-star mr-1"></i>
+                            Avaliar
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
     
+    {/* Reschedule Dialog */}
     <Dialog open={rescheduleDialogOpen} onOpenChange={setRescheduleDialogOpen}>
       <DialogContent data-testid="dialog-reschedule">
         <DialogHeader>
@@ -844,16 +561,25 @@ export default function TodaySchedule() {
           )}
         </div>
         <div className="flex justify-end space-x-2">
-          <Button variant="outline" onClick={() => setRescheduleDialogOpen(false)} data-testid="button-cancel-reschedule">
+          <Button 
+            variant="outline" 
+            onClick={() => setRescheduleDialogOpen(false)}
+            data-testid="button-cancel-reschedule"
+          >
             Cancelar
           </Button>
-          <Button onClick={handleReschedule} disabled={rescheduleAppointmentMutation.isPending} data-testid="button-confirm-reschedule">
+          <Button 
+            onClick={handleReschedule}
+            disabled={rescheduleAppointmentMutation.isPending}
+            data-testid="button-confirm-reschedule"
+          >
             {rescheduleAppointmentMutation.isPending ? "Reagendando..." : "Confirmar"}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
 
+    {/* New Appointment Dialog */}
     <Dialog open={newAppointmentDialogOpen} onOpenChange={setNewAppointmentDialogOpen}>
       <DialogContent className="sm:max-w-lg" data-testid="dialog-new-appointment">
         <DialogHeader>
@@ -970,7 +696,11 @@ export default function TodaySchedule() {
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => setNewAppointmentDialogOpen(false)} data-testid="button-cancel-new-appointment">
+          <Button
+            variant="outline"
+            onClick={() => setNewAppointmentDialogOpen(false)}
+            data-testid="button-cancel-new-appointment"
+          >
             Cancelar
           </Button>
           <Button
@@ -994,6 +724,7 @@ export default function TodaySchedule() {
       </DialogContent>
     </Dialog>
 
+    {/* Rating Dialog */}
     <Dialog open={ratingDialogOpen} onOpenChange={setRatingDialogOpen}>
       <DialogContent data-testid="dialog-rating">
         <DialogHeader>
@@ -1013,7 +744,9 @@ export default function TodaySchedule() {
                   className="transition-transform hover:scale-110"
                   data-testid={`button-star-${star}`}
                 >
-                  <Star className={`h-8 w-8 ${star <= rating ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} />
+                  <i 
+                    className={`fas fa-star text-3xl ${star <= rating ? 'text-yellow-500' : 'text-gray-300'}`}
+                  ></i>
                 </button>
               ))}
             </div>
@@ -1037,10 +770,18 @@ export default function TodaySchedule() {
           )}
         </div>
         <div className="flex justify-end space-x-2">
-          <Button variant="outline" onClick={() => setRatingDialogOpen(false)} data-testid="button-cancel-rating">
+          <Button 
+            variant="outline" 
+            onClick={() => setRatingDialogOpen(false)}
+            data-testid="button-cancel-rating"
+          >
             Cancelar
           </Button>
-          <Button onClick={handleSubmitRating} disabled={rateAppointmentMutation.isPending || rating === 0} data-testid="button-submit-rating">
+          <Button 
+            onClick={handleSubmitRating}
+            disabled={rateAppointmentMutation.isPending || rating === 0}
+            data-testid="button-submit-rating"
+          >
             {rateAppointmentMutation.isPending ? "Enviando..." : "Enviar Avaliação"}
           </Button>
         </div>

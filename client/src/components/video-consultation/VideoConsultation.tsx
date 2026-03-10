@@ -6,7 +6,6 @@ import { VideoIcon, VideoOffIcon, MicIcon, MicOffIcon, PhoneOffIcon, ScreenShare
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
-import { useMediaCleanupOnUnmount } from '@/hooks/use-media-guard';
 
 interface VideoConsultationProps {
   appointmentId: string;
@@ -33,7 +32,6 @@ export default function VideoConsultation({
   onCallEnd,
   patientToken
 }: VideoConsultationProps) {
-  useMediaCleanupOnUnmount('video-consultation-component');
   // State management
   const [callStatus, setCallStatus] = useState<'pre-call' | 'initializing' | 'connecting' | 'connected' | 'ended'>('pre-call');
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);

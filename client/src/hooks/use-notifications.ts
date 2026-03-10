@@ -5,7 +5,7 @@ import { queryClient, apiRequest } from '@/lib/queryClient';
 
 export interface Notification {
   id: string;
-  type: 'appointment' | 'whatsapp' | 'exam_result' | 'emergency' | 'system' | 'consultation_invite' | 'doctor_message' | 'consultation_ready' | 'urgent_alert' | 'consultation_message' | 'doctor_transfer_request' | 'doctor_transfer_response' | 'patient_transfer_request' | 'data_access_request' | 'data_access_response';
+  type: 'appointment' | 'whatsapp' | 'exam_result' | 'emergency' | 'system' | 'consultation_invite' | 'doctor_message' | 'consultation_ready' | 'urgent_alert' | 'consultation_message';
   title: string;
   message: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
@@ -238,68 +238,6 @@ export function useNotifications() {
           data: message.data
         };
 
-      case 'doctor_transfer_request':
-        return {
-          id: `transfer-req-${Date.now()}`,
-          type: 'doctor_transfer_request',
-          title: message.data?.title || 'Solicitação de Transferência',
-          message: message.data?.message || 'Um médico solicitou a transferência de um paciente',
-          priority: 'high',
-          timestamp,
-          read: false,
-          actionUrl: '/waiting-room',
-          data: message.data
-        };
-
-      case 'doctor_transfer_response':
-        return {
-          id: `transfer-res-${Date.now()}`,
-          type: 'doctor_transfer_response',
-          title: message.data?.title || 'Resposta de Transferência',
-          message: message.data?.message || 'Resposta à solicitação de transferência',
-          priority: 'high',
-          timestamp,
-          read: false,
-          actionUrl: '/waiting-room',
-          data: message.data
-        };
-
-      case 'patient_transfer_request':
-        return {
-          id: `patient-transfer-${Date.now()}`,
-          type: 'patient_transfer_request',
-          title: message.data?.title || 'Confirmação de Transferência',
-          message: message.data?.message || 'Seu médico responsável aprovou uma transferência. Deseja confirmar?',
-          priority: 'critical',
-          timestamp,
-          read: false,
-          data: message.data
-        };
-
-      case 'data_access_request':
-        return {
-          id: `data-access-req-${Date.now()}`,
-          type: 'data_access_request',
-          title: message.data?.title || 'Solicitação de Acesso a Dados',
-          message: message.data?.message || 'Um médico solicitou acesso aos seus dados',
-          priority: 'high',
-          timestamp,
-          read: false,
-          data: message.data
-        };
-
-      case 'data_access_response':
-        return {
-          id: `data-access-res-${Date.now()}`,
-          type: 'data_access_response',
-          title: message.data?.title || 'Resposta de Acesso a Dados',
-          message: message.data?.message || 'Resposta à solicitação de acesso a dados',
-          priority: 'medium',
-          timestamp,
-          read: false,
-          data: message.data
-        };
-
       default:
         return null;
     }
@@ -322,16 +260,6 @@ export function useNotifications() {
         break;
       case 'exam_result':
         queryClient.invalidateQueries({ queryKey: ['/api/exam-results/recent'] });
-        break;
-      case 'doctor_transfer_request':
-      case 'doctor_transfer_response':
-      case 'patient_transfer_request':
-        queryClient.invalidateQueries({ queryKey: ['/api/waiting-room'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/doctor-transfer/pending'] });
-        break;
-      case 'data_access_request':
-      case 'data_access_response':
-        queryClient.invalidateQueries({ queryKey: ['/api/data-access/requests'] });
         break;
       default:
         queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });

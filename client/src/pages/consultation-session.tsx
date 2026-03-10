@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useMediaCleanupOnUnmount } from '@/hooks/use-media-guard';
 import AgoraRTC, {
   IAgoraRTCClient,
   IAgoraRTCRemoteUser,
@@ -41,7 +40,6 @@ export default function ConsultationSession() {
   const { toast } = useToast();
   const { user } = useAuth();
   const sessionId = params?.sessionId || '';
-  useMediaCleanupOnUnmount('consultation-session');
 
   // Agora states
   const [client, setClient] = useState<IAgoraRTCClient | null>(null);

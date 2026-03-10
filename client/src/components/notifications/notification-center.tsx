@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Bell, BellRing, Check, X, AlertTriangle, MessageCircle, Calendar, FileText, Activity, Video, Stethoscope, Send, Reply, Trash2, ArrowRightLeft, ShieldCheck, UserCheck } from 'lucide-react';
+import { Bell, BellRing, Check, X, AlertTriangle, MessageCircle, Calendar, FileText, Activity, Video, Stethoscope, Send, Reply, Trash2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 interface NotificationCenterProps {
@@ -23,7 +23,6 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
-  const [processingAction, setProcessingAction] = useState<string | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -62,69 +61,6 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
     }
   };
 
-  const handleTransferDoctorResponse = async (notification: Notification, approved: boolean) => {
-    const transferId = notification.data?.transferId;
-    if (!transferId || processingAction) return;
-    setProcessingAction(notification.id);
-    try {
-      await apiRequest('PATCH', `/api/doctor-transfer/${transferId}/doctor-response`, { approved });
-      markAsRead(notification.id);
-      toast({
-        title: approved ? "Transferência aprovada" : "Transferência rejeitada",
-        description: approved
-          ? "O paciente será notificado para confirmação final."
-          : "A solicitação de transferência foi rejeitada.",
-      });
-    } catch {
-      toast({ title: "Erro", description: "Não foi possível processar a resposta.", variant: "destructive" });
-    } finally {
-      setProcessingAction(null);
-    }
-  };
-
-  const handleTransferPatientResponse = async (notification: Notification, approved: boolean) => {
-    const transferId = notification.data?.transferId;
-    if (!transferId || processingAction) return;
-    setProcessingAction(notification.id);
-    try {
-      await apiRequest('PATCH', `/api/doctor-transfer/${transferId}/patient-response`, { approved });
-      markAsRead(notification.id);
-      toast({
-        title: approved ? "Transferência confirmada" : "Transferência recusada",
-        description: approved
-          ? "Você foi transferido para o novo médico."
-          : "A transferência foi recusada.",
-      });
-    } catch {
-      toast({ title: "Erro", description: "Não foi possível processar a resposta.", variant: "destructive" });
-    } finally {
-      setProcessingAction(null);
-    }
-  };
-
-  const handleDataAccessResponse = async (notification: Notification, approved: boolean, responseType: 'doctor' | 'patient') => {
-    const requestId = notification.data?.accessRequestId;
-    if (!requestId || processingAction) return;
-    setProcessingAction(notification.id);
-    try {
-      const endpoint = responseType === 'doctor'
-        ? `/api/data-access/${requestId}/doctor-response`
-        : `/api/data-access/${requestId}/patient-response`;
-      await apiRequest('PATCH', endpoint, { approved });
-      markAsRead(notification.id);
-      toast({
-        title: approved ? "Acesso aprovado" : "Acesso negado",
-        description: approved
-          ? "O acesso aos dados foi concedido."
-          : "A solicitação de acesso foi negada.",
-      });
-    } catch {
-      toast({ title: "Erro", description: "Não foi possível processar a resposta.", variant: "destructive" });
-    } finally {
-      setProcessingAction(null);
-    }
-  };
-
   const getNotificationIcon = (type: string, priority: string) => {
     const iconClass = priority === 'critical' ? 'text-destructive' : 
                      priority === 'high' ? 'text-orange-500' : 
@@ -152,13 +88,6 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
         return <AlertTriangle className={`h-4 w-4 ${iconClass} text-orange-500`} />;
       case 'doctor_message':
         return <Stethoscope className={`h-4 w-4 ${iconClass}`} />;
-      case 'doctor_transfer_request':
-      case 'doctor_transfer_response':
-      case 'patient_transfer_request':
-        return <ArrowRightLeft className={`h-4 w-4 ${iconClass}`} />;
-      case 'data_access_request':
-      case 'data_access_response':
-        return <ShieldCheck className={`h-4 w-4 ${iconClass}`} />;
       default:
         return <Bell className={`h-4 w-4 ${iconClass}`} />;
     }
@@ -389,95 +318,6 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
                           <Reply className="h-3 w-3 mr-1" />
                           Responder
                         </Button>
-                      )}
-                      {notification.type === 'doctor_transfer_request' && notification.data?.transferId && !notification.read && (
-                        <>
-                          <Button
-                            size="sm"
-                            className="h-6 px-2 text-xs bg-green-600 hover:bg-green-700 text-white"
-                            disabled={processingAction === notification.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleTransferDoctorResponse(notification, true);
-                            }}
-                          >
-                            <Check className="h-3 w-3 mr-1" />
-                            Aceitar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 px-2 text-xs text-red-600 hover:text-red-800"
-                            disabled={processingAction === notification.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleTransferDoctorResponse(notification, false);
-                            }}
-                          >
-                            <X className="h-3 w-3 mr-1" />
-                            Rejeitar
-                          </Button>
-                        </>
-                      )}
-                      {notification.type === 'patient_transfer_request' && notification.data?.transferId && !notification.read && (
-                        <>
-                          <Button
-                            size="sm"
-                            className="h-6 px-2 text-xs bg-green-600 hover:bg-green-700 text-white"
-                            disabled={processingAction === notification.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleTransferPatientResponse(notification, true);
-                            }}
-                          >
-                            <UserCheck className="h-3 w-3 mr-1" />
-                            Confirmar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 px-2 text-xs text-red-600 hover:text-red-800"
-                            disabled={processingAction === notification.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleTransferPatientResponse(notification, false);
-                            }}
-                          >
-                            <X className="h-3 w-3 mr-1" />
-                            Recusar
-                          </Button>
-                        </>
-                      )}
-                      {notification.type === 'data_access_request' && notification.data?.accessRequestId && !notification.read && (
-                        <>
-                          <Button
-                            size="sm"
-                            className="h-6 px-2 text-xs bg-blue-600 hover:bg-blue-700 text-white"
-                            disabled={processingAction === notification.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const responseType = notification.data?.responseType || (user?.role === 'patient' ? 'patient' : 'doctor');
-                              handleDataAccessResponse(notification, true, responseType);
-                            }}
-                          >
-                            <ShieldCheck className="h-3 w-3 mr-1" />
-                            Aprovar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 px-2 text-xs text-red-600 hover:text-red-800"
-                            disabled={processingAction === notification.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const responseType = notification.data?.responseType || (user?.role === 'patient' ? 'patient' : 'doctor');
-                              handleDataAccessResponse(notification, false, responseType);
-                            }}
-                          >
-                            <X className="h-3 w-3 mr-1" />
-                            Negar
-                          </Button>
-                        </>
                       )}
                     </div>
                   </div>

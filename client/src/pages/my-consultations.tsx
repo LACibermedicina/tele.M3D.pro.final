@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -127,37 +126,22 @@ interface PostConsultationItem {
   createdAt: string;
 }
 
-const itemTypeIcons: Record<string, { icon: any; color: string }> = {
-  prescription: { icon: Pill, color: "bg-blue-100 text-blue-800" },
-  exam: { icon: TestTube, color: "bg-purple-100 text-purple-800" },
-  referral: { icon: ArrowUpRight, color: "bg-orange-100 text-orange-800" },
-  followup: { icon: CalendarCheck, color: "bg-green-100 text-green-800" },
+const itemTypeConfig: Record<string, { icon: any; label: string; color: string }> = {
+  prescription: { icon: Pill, label: "Prescrição", color: "bg-blue-100 text-blue-800" },
+  exam: { icon: TestTube, label: "Exame", color: "bg-purple-100 text-purple-800" },
+  referral: { icon: ArrowUpRight, label: "Encaminhamento", color: "bg-orange-100 text-orange-800" },
+  followup: { icon: CalendarCheck, label: "Retorno", color: "bg-green-100 text-green-800" },
 };
 
-const statusIcons: Record<string, { color: string; icon: any }> = {
-  pending_review: { color: "bg-yellow-100 text-yellow-800", icon: Clock3 },
-  approved: { color: "bg-green-100 text-green-800", icon: CheckCircle },
-  signed: { color: "bg-blue-100 text-blue-800", icon: Shield },
-  rejected: { color: "bg-red-100 text-red-800", icon: XCircle },
+const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+  pending_review: { label: "Em Revisão", color: "bg-yellow-100 text-yellow-800", icon: Clock3 },
+  approved: { label: "Aprovado", color: "bg-green-100 text-green-800", icon: CheckCircle },
+  signed: { label: "Assinado", color: "bg-blue-100 text-blue-800", icon: Shield },
+  rejected: { label: "Não Aprovado", color: "bg-red-100 text-red-800", icon: XCircle },
 };
 
 function PostConsultationItemsPanel({ consultationId }: { consultationId: string }) {
-  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
-
-  const itemTypeLabels: Record<string, string> = {
-    prescription: t("consultation.prescription"),
-    exam: t("medical.exam"),
-    referral: t("referrals.title"),
-    followup: t("schedule.followup"),
-  };
-
-  const statusLabels: Record<string, string> = {
-    pending_review: t("common.pending"),
-    approved: t("common.confirmed"),
-    signed: t("common.confirmed"),
-    rejected: t("common.cancelled"),
-  };
 
   const { data: items, isLoading } = useQuery<PostConsultationItem[]>({
     queryKey: ["/api/post-consultation", consultationId, "items"],
@@ -170,7 +154,7 @@ function PostConsultationItemsPanel({ consultationId }: { consultationId: string
     return (
       <Button variant="ghost" size="sm" onClick={() => setExpanded(true)} className="mt-2">
         <ChevronDown className="w-4 h-4 mr-1" />
-        {t("consultation.prescription")} & {t("medical.exam")}
+        Ver Prescrições e Exames
       </Button>
     );
   }
@@ -179,35 +163,35 @@ function PostConsultationItemsPanel({ consultationId }: { consultationId: string
     <div className="mt-3 space-y-2">
       <Button variant="ghost" size="sm" onClick={() => setExpanded(false)}>
         <ChevronUp className="w-4 h-4 mr-1" />
-        {t("common.hide")}
+        Recolher
       </Button>
 
       {isLoading ? (
         <Skeleton className="h-20 w-full" />
       ) : !approvedItems.length ? (
         <p className="text-sm text-muted-foreground pl-2">
-          {items?.length ? t("common.pending") : t("common.no_results")}
+          {items?.length ? "Itens ainda em revisão pelo médico." : "Nenhum item pós-consulta disponível."}
         </p>
       ) : (
         <div className="space-y-2">
           {approvedItems.map((item) => {
-            const iconConfig = itemTypeIcons[item.type] || itemTypeIcons.prescription;
-            const sIconConfig = statusIcons[item.status] || statusIcons.pending_review;
-            const Icon = iconConfig.icon;
-            const StatusIcon = sIconConfig.icon;
+            const config = itemTypeConfig[item.type] || itemTypeConfig.prescription;
+            const sConfig = statusConfig[item.status] || statusConfig.pending_review;
+            const Icon = config.icon;
+            const StatusIcon = sConfig.icon;
 
             return (
               <div key={item.id} className="bg-white rounded-lg border p-3">
                 <div className="flex items-start gap-2">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <Badge className={iconConfig.color}>
+                      <Badge className={config.color}>
                         <Icon className="w-3 h-3 mr-1" />
-                        {itemTypeLabels[item.type] || item.type}
+                        {config.label}
                       </Badge>
-                      <Badge variant="outline" className={sIconConfig.color}>
+                      <Badge variant="outline" className={sConfig.color}>
                         <StatusIcon className="w-3 h-3 mr-1" />
-                        {statusLabels[item.status] || item.status}
+                        {sConfig.label}
                       </Badge>
                     </div>
                     <p className="text-sm font-medium">{item.title}</p>
@@ -244,7 +228,7 @@ function PostConsultationItemsPanel({ consultationId }: { consultationId: string
 
                     {item.type === "followup" && item.details && (
                       <div className="mt-2 text-xs bg-green-50 rounded px-2 py-1">
-                        {item.details.suggestedDate && <span className="font-medium">{t("common.date")}: {item.details.suggestedDate}</span>}
+                        {item.details.suggestedDate && <span className="font-medium">Data: {item.details.suggestedDate}</span>}
                         {item.details.reason && <span> — {item.details.reason}</span>}
                       </div>
                     )}
@@ -281,7 +265,6 @@ function StarRating({ rating, onRate, size = 5 }: { rating: number; onRate?: (r:
 }
 
 export default function MyConsultations() {
-  const { t } = useTranslation();
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -300,14 +283,14 @@ export default function MyConsultations() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: t("consultation.rate_success"), description: t("consultation.rate_success") });
+      toast({ title: "Avaliação enviada", description: "Obrigado por avaliar sua consulta!" });
       queryClient.invalidateQueries({ queryKey: ['/api/my-consultations'] });
       setRatingDialog(null);
       setRatingValue(0);
       setRatingFeedback("");
     },
     onError: () => {
-      toast({ title: t("common.error"), description: t("common.error"), variant: "destructive" });
+      toast({ title: "Erro", description: "Não foi possível enviar a avaliação.", variant: "destructive" });
     },
   });
 
@@ -317,11 +300,11 @@ export default function MyConsultations() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: t("schedule_page.appointment_cancelled"), description: t("common.success") });
+      toast({ title: "Consulta cancelada", description: "A solicitação foi cancelada com sucesso." });
       queryClient.invalidateQueries({ queryKey: ['/api/my-consultations'] });
     },
     onError: () => {
-      toast({ title: t("common.error"), description: t("common.error"), variant: "destructive" });
+      toast({ title: "Erro", description: "Não foi possível cancelar a consulta.", variant: "destructive" });
     },
   });
 
@@ -330,12 +313,12 @@ export default function MyConsultations() {
       const res = await apiRequest('POST', '/api/consultation-requests/cancel-all', {});
       return res.json();
     },
-    onSuccess: () => {
-      toast({ title: t("schedule_page.appointment_cancelled"), description: t("common.success") });
+    onSuccess: (data) => {
+      toast({ title: "Consultas canceladas", description: `${data.cancelled} consulta(s) cancelada(s) com sucesso.` });
       queryClient.invalidateQueries({ queryKey: ['/api/my-consultations'] });
     },
     onError: () => {
-      toast({ title: t("common.error"), description: t("common.error"), variant: "destructive" });
+      toast({ title: "Erro", description: "Não foi possível cancelar as consultas.", variant: "destructive" });
     },
   });
 
@@ -344,12 +327,12 @@ export default function MyConsultations() {
       const res = await apiRequest('POST', '/api/consultation-requests/archive-all', {});
       return res.json();
     },
-    onSuccess: () => {
-      toast({ title: t("common.success"), description: t("consultation.history") });
+    onSuccess: (data) => {
+      toast({ title: "Consultas arquivadas", description: `${data.archived} consulta(s) enviada(s) para o histórico.` });
       queryClient.invalidateQueries({ queryKey: ['/api/my-consultations'] });
     },
     onError: () => {
-      toast({ title: t("common.error"), description: t("common.error"), variant: "destructive" });
+      toast({ title: "Erro", description: "Não foi possível arquivar as consultas.", variant: "destructive" });
     },
   });
 
@@ -375,10 +358,10 @@ export default function MyConsultations() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'accepted': return t("common.confirmed");
-      case 'pending': return t("common.pending");
-      case 'declined': return t("common.cancelled");
-      case 'completed': return t("common.completed");
+      case 'accepted': return 'Aceita';
+      case 'pending': return 'Pendente';
+      case 'declined': return 'Recusada';
+      case 'completed': return 'Concluída';
       default: return status;
     }
   };
@@ -392,7 +375,7 @@ export default function MyConsultations() {
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <CardTitle className="text-lg">
-              {t("consultation.title")} - {format(new Date(consultation.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+              Consulta - {format(new Date(consultation.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </CardTitle>
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant={getStatusColor(consultation.status)} data-testid={`badge-status-${consultation.status}`}>
@@ -410,7 +393,7 @@ export default function MyConsultations() {
                 data-testid="button-join-session"
               >
                 <Video className="w-4 h-4 mr-2" />
-                {t("consultation.join")}
+                Entrar na Sala
               </Button>
             )}
             {(consultation.status === 'pending' || consultation.status === 'accepted') && (
@@ -422,23 +405,23 @@ export default function MyConsultations() {
                     className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
                   >
                     <Ban className="w-4 h-4 mr-1" />
-                    {t("common.cancel")}
+                    Cancelar
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>{t("schedule_page.appointment_cancelled")}</AlertDialogTitle>
+                    <AlertDialogTitle>Cancelar Consulta</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {t("schedule_page.cancel_all_confirm")}
+                      Tem certeza que deseja cancelar esta solicitação de consulta? Esta ação não pode ser desfeita.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>{t("common.back")}</AlertDialogCancel>
+                    <AlertDialogCancel>Voltar</AlertDialogCancel>
                     <AlertDialogAction 
                       className="bg-red-600 hover:bg-red-700"
                       onClick={() => cancelMutation.mutate(consultation.id)}
                     >
-                      {t("common.confirm")}
+                      Confirmar Cancelamento
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -451,7 +434,7 @@ export default function MyConsultations() {
         <div>
           <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
             <FileText className="w-4 h-4" />
-            {t("consultation.symptoms")}
+            Sintomas
           </h4>
           <p className="text-sm text-muted-foreground" data-testid="text-symptoms">
             {consultation.symptoms}
@@ -462,7 +445,7 @@ export default function MyConsultations() {
           <div>
             <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
               <AlertCircle className="w-4 h-4" />
-              {t("consultation.clinical_analysis")}
+              Apresentação Clínica (IA)
             </h4>
             <p className="text-sm text-muted-foreground" data-testid="text-clinical-presentation">
               {consultation.clinicalPresentation}
@@ -474,7 +457,7 @@ export default function MyConsultations() {
           <div>
             <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
               <User className="w-4 h-4" />
-              {t("common.doctor")}
+              Médico
             </h4>
             <div className="text-sm" data-testid="text-doctor-info">
               <p className="font-medium">{consultation.doctor.name}</p>
@@ -487,7 +470,7 @@ export default function MyConsultations() {
           <div>
             <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
               <FileText className="w-4 h-4" />
-              {t("consultation.notes_label")}
+              Notas do Médico
             </h4>
             <p className="text-sm text-muted-foreground" data-testid="text-clinical-notes">
               {consultation.session.clinicalNotes}
@@ -497,7 +480,7 @@ export default function MyConsultations() {
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Calendar className="w-3 h-3" />
-          {format(new Date(consultation.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+          Solicitado em {format(new Date(consultation.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
         </div>
       </CardContent>
     </Card>
@@ -510,12 +493,12 @@ export default function MyConsultations() {
           <div className="space-y-1">
             <CardTitle className="text-lg flex items-center gap-2">
               <Video className="w-5 h-5 text-blue-600" />
-              {t("medical.teleconsultation")} - {t("consultation.in_progress")}
+              Teleconsulta em Andamento
             </CardTitle>
             <div className="flex items-center gap-2 flex-wrap">
               <Badge className="bg-blue-600">
                 <Video className="w-3 h-3 mr-1" />
-                {vc.status === 'waiting' ? t("consultation.waiting_room") : t("consultation.in_progress")}
+                {vc.status === 'waiting' ? 'Aguardando' : 'Em Andamento'}
               </Badge>
             </div>
           </div>
@@ -526,7 +509,7 @@ export default function MyConsultations() {
               onClick={() => navigate(`/patient/video/${vc.id}`)}
             >
               <Video className="w-4 h-4 mr-2" />
-              {t("consultation.join")}
+              Entrar na Consulta
             </Button>
           </div>
         </div>
@@ -535,7 +518,7 @@ export default function MyConsultations() {
         <div>
           <h4 className="text-sm font-medium flex items-center gap-2 mb-1">
             <User className="w-4 h-4" />
-            {t("common.doctor")}
+            Médico
           </h4>
           <p className="text-sm font-medium">{vc.doctor.name}</p>
           {vc.doctor.specialty && (
@@ -544,7 +527,7 @@ export default function MyConsultations() {
         </div>
         <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
           <Calendar className="w-3 h-3" />
-          {format(new Date(vc.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+          Criada em {format(new Date(vc.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
         </div>
       </CardContent>
     </Card>
@@ -556,7 +539,7 @@ export default function MyConsultations() {
         <div className="container mx-auto px-4 py-8">
           <Card>
             <CardContent className="p-6">
-              <p>{t("consultation.no_consultations")}</p>
+              <p>Apenas pacientes podem ver suas consultas.</p>
             </CardContent>
           </Card>
         </div>
@@ -573,9 +556,9 @@ export default function MyConsultations() {
       <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-5xl">
         <div className="mb-8 flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">{t("consultation.my_consultations")}</h1>
+            <h1 className="text-3xl font-bold mb-2">Minhas Consultas</h1>
             <p className="text-muted-foreground">
-              {t("consultation.no_consultations")}
+              Acompanhe o status de suas solicitações de consulta
             </p>
           </div>
           {hasOpenConsultations && (
@@ -589,20 +572,20 @@ export default function MyConsultations() {
                     disabled={archiveAllMutation.isPending}
                   >
                     <Archive className="w-4 h-4 mr-1" />
-                    {t("consultation.history")}
+                    Enviar para Histórico
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>{t("consultation.history")}</AlertDialogTitle>
+                    <AlertDialogTitle>Enviar para Histórico</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {t("schedule_page.cancel_all_confirm")}
+                      Todas as consultas em aberto serão movidas para o histórico. Isso não cancela as consultas, apenas as marca como concluídas.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>{t("common.back")}</AlertDialogCancel>
+                    <AlertDialogCancel>Voltar</AlertDialogCancel>
                     <AlertDialogAction onClick={() => archiveAllMutation.mutate()}>
-                      {t("common.confirm")}
+                      Confirmar
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -617,23 +600,23 @@ export default function MyConsultations() {
                     disabled={cancelAllMutation.isPending}
                   >
                     <Trash2 className="w-4 h-4 mr-1" />
-                    {t("schedule_page.cancel_all")}
+                    Cancelar Todas
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>{t("schedule_page.cancel_all")}</AlertDialogTitle>
+                    <AlertDialogTitle>Cancelar Todas as Consultas</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {t("schedule_page.cancel_all_confirm")}
+                      Tem certeza que deseja cancelar todas as consultas em aberto? Esta ação cancelará todas as solicitações pendentes e aceitas, incluindo videochamadas ativas.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>{t("common.back")}</AlertDialogCancel>
+                    <AlertDialogCancel>Voltar</AlertDialogCancel>
                     <AlertDialogAction 
                       className="bg-red-600 hover:bg-red-700"
                       onClick={() => cancelAllMutation.mutate()}
                     >
-                      {t("schedule_page.cancel_all")}
+                      Cancelar Todas
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -651,12 +634,12 @@ export default function MyConsultations() {
           <Card>
             <CardContent className="p-12 text-center">
               <Calendar className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">{t("consultation.no_consultations")}</h3>
+              <h3 className="text-lg font-semibold mb-2">Nenhuma consulta solicitada</h3>
               <p className="text-muted-foreground mb-4">
-                {t("consultation.no_consultations")}
+                Você ainda não solicitou nenhuma consulta
               </p>
               <Button onClick={() => navigate('/consultation-request')} data-testid="button-request-consultation">
-                {t("consultation.request_title")}
+                Solicitar Consulta
               </Button>
             </CardContent>
           </Card>
@@ -664,14 +647,14 @@ export default function MyConsultations() {
           <Tabs defaultValue="upcoming" className="space-y-4">
             <TabsList className="grid w-full max-w-lg grid-cols-3">
               <TabsTrigger value="upcoming" data-testid="tab-upcoming">
-                {t("appointments.upcoming")} ({upcomingOnly.length + (consultations.activeVideoConsultations?.length || 0)})
+                Próximas ({upcomingOnly.length + (consultations.activeVideoConsultations?.length || 0)})
               </TabsTrigger>
               <TabsTrigger value="past" data-testid="tab-past">
-                {t("consultation.scheduled")} ({consultations.past?.length || 0})
+                Solicitações ({consultations.past?.length || 0})
               </TabsTrigger>
               <TabsTrigger value="videoHistory" data-testid="tab-video-history">
                 <Video className="w-3.5 h-3.5 mr-1.5" />
-                {t("consultation.history")} ({completedVideoHistory.length})
+                Histórico ({completedVideoHistory.length})
               </TabsTrigger>
             </TabsList>
 
@@ -679,7 +662,7 @@ export default function MyConsultations() {
               {(upcomingOnly.length === 0 && (!consultations.activeVideoConsultations || consultations.activeVideoConsultations.length === 0)) ? (
                 <Card>
                   <CardContent className="p-8 text-center">
-                    <p className="text-muted-foreground">{t("consultation.no_consultations")}</p>
+                    <p className="text-muted-foreground">Nenhuma consulta pendente ou aceita</p>
                   </CardContent>
                 </Card>
               ) : (
@@ -694,7 +677,7 @@ export default function MyConsultations() {
               {consultations.past?.length === 0 ? (
                 <Card>
                   <CardContent className="p-8 text-center">
-                    <p className="text-muted-foreground">{t("consultation.no_consultations")}</p>
+                    <p className="text-muted-foreground">Nenhuma consulta concluída ou recusada</p>
                   </CardContent>
                 </Card>
               ) : (
@@ -707,7 +690,7 @@ export default function MyConsultations() {
                 <Card>
                   <CardContent className="p-8 text-center">
                     <Video className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">{t("consultation.no_consultations")}</p>
+                    <p className="text-muted-foreground">Nenhuma teleconsulta realizada</p>
                   </CardContent>
                 </Card>
               ) : (
@@ -718,14 +701,14 @@ export default function MyConsultations() {
                         <div className="space-y-1">
                           <CardTitle className="text-lg flex items-center gap-2">
                             <Video className="w-5 h-5 text-blue-600" />
-                            {t("medical.teleconsultation")} - {vc.startedAt 
+                            Teleconsulta - {vc.startedAt 
                               ? format(new Date(vc.startedAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                               : format(new Date(vc.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                           </CardTitle>
                           <div className="flex items-center gap-2 flex-wrap">
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                               <CheckCircle className="w-3 h-3 mr-1" />
-                              {t("common.completed")}
+                              Concluída
                             </Badge>
                             {vc.duration && (
                               <Badge variant="secondary">
@@ -741,7 +724,7 @@ export default function MyConsultations() {
                       <div>
                         <h4 className="text-sm font-medium flex items-center gap-2 mb-1">
                           <User className="w-4 h-4" />
-                          {t("common.doctor")}
+                          Médico
                         </h4>
                         <p className="text-sm font-medium">{vc.doctor.name}</p>
                         {vc.doctor.specialty && (
@@ -753,7 +736,7 @@ export default function MyConsultations() {
                         <div>
                           <h4 className="text-sm font-medium flex items-center gap-2 mb-1">
                             <FileText className="w-4 h-4" />
-                            {t("consultation.notes_label")}
+                            Notas da Consulta
                           </h4>
                           <p className="text-sm text-muted-foreground">{vc.meetingNotes}</p>
                         </div>
@@ -762,17 +745,17 @@ export default function MyConsultations() {
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Calendar className="w-3 h-3" />
                         {vc.startedAt 
-                          ? format(new Date(vc.startedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                          : format(new Date(vc.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                          ? `Realizada em ${format(new Date(vc.startedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+                          : `Criada em ${format(new Date(vc.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
                         }
                         {vc.endedAt && vc.startedAt && (
-                          <span>• {t("consultation.duration")}: {Math.round((new Date(vc.endedAt).getTime() - new Date(vc.startedAt).getTime()) / 60000)} min</span>
+                          <span>• Duração: {Math.round((new Date(vc.endedAt).getTime() - new Date(vc.startedAt).getTime()) / 60000)} min</span>
                         )}
                       </div>
 
                       {vc.rating ? (
                         <div className="flex items-center gap-2 pt-2 border-t">
-                          <span className="text-sm font-medium">{t("consultation.rate_stars")}:</span>
+                          <span className="text-sm font-medium">Sua avaliação:</span>
                           <StarRating rating={vc.rating} />
                           {vc.feedback && (
                             <span className="text-sm text-muted-foreground ml-2">"{vc.feedback}"</span>
@@ -787,7 +770,7 @@ export default function MyConsultations() {
                             onClick={() => setRatingDialog({ appointmentId: vc.appointmentId!, doctorName: vc.doctor.name })}
                           >
                             <Star className="w-4 h-4 mr-1.5" />
-                            {t("consultation.rate_title")}
+                            Avaliar Consulta
                           </Button>
                         </div>
                       ) : null}
@@ -807,25 +790,25 @@ export default function MyConsultations() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Star className="w-5 h-5 text-yellow-500" />
-              {t("consultation.rate_title")}
+              Avaliar Consulta
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground">
-              {t("consultation.rate_desc")} <span className="font-medium text-foreground">{ratingDialog?.doctorName}</span>
+              Como foi sua consulta com <span className="font-medium text-foreground">{ratingDialog?.doctorName}</span>?
             </p>
             <div className="flex justify-center">
               <StarRating rating={ratingValue} onRate={setRatingValue} />
             </div>
             <div className="text-center text-sm text-muted-foreground">
-              {ratingValue === 1 && "⭐"}
-              {ratingValue === 2 && "⭐⭐"}
-              {ratingValue === 3 && "⭐⭐⭐"}
-              {ratingValue === 4 && "⭐⭐⭐⭐"}
-              {ratingValue === 5 && "⭐⭐⭐⭐⭐"}
+              {ratingValue === 1 && "Ruim"}
+              {ratingValue === 2 && "Regular"}
+              {ratingValue === 3 && "Bom"}
+              {ratingValue === 4 && "Muito bom"}
+              {ratingValue === 5 && "Excelente"}
             </div>
             <Textarea
-              placeholder={t("consultation.rate_feedback")}
+              placeholder="Deixe um comentário (opcional)"
               value={ratingFeedback}
               onChange={(e) => setRatingFeedback(e.target.value)}
               rows={3}
@@ -833,7 +816,7 @@ export default function MyConsultations() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setRatingDialog(null); setRatingValue(0); setRatingFeedback(""); }}>
-              {t("common.cancel")}
+              Cancelar
             </Button>
             <Button
               disabled={ratingValue === 0 || rateMutation.isPending}
@@ -848,7 +831,7 @@ export default function MyConsultations() {
                 }
               }}
             >
-              {rateMutation.isPending ? t("common.loading") : t("consultation.rate_submit")}
+              {rateMutation.isPending ? "Enviando..." : "Enviar Avaliação"}
             </Button>
           </DialogFooter>
         </DialogContent>

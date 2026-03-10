@@ -19,9 +19,9 @@ export default function LanguageSelector() {
 
   const handleLanguageChange = async (languageCode: string) => {
     try {
-      localStorage.setItem('telemed-language', languageCode);
       await i18n.changeLanguage(languageCode);
       setIsOpen(false);
+      // Note: i18next will automatically handle localStorage with our config
     } catch (error) {
       console.error('Failed to change language:', error);
     }

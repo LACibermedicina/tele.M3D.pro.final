@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
 import { DEFAULT_DOCTOR_ID } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,7 +52,6 @@ export default function Schedule() {
   const [blockReason, setBlockReason] = useState<string>("");
   const [showBlockedList, setShowBlockedList] = useState(false);
   
-  const { t } = useTranslation();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -90,8 +88,8 @@ export default function Schedule() {
     mutationFn: (patientId: string) => apiRequest('POST', `/api/video-consultations/start-with-patient/${patientId}`, {}),
     onSuccess: (_response: any, patientId: string) => {
       toast({
-        title: t("schedule_page.appointment_started"),
-        description: t("schedule_page.patient_notified"),
+        title: "Consulta iniciada",
+        description: "O paciente foi notificado. Redirecionando para a sala...",
       });
       setIsInstantConsultOpen(false);
       setInstantPatientId("");
@@ -151,8 +149,8 @@ export default function Schedule() {
       setSelectedDate(appointmentDate);
       
       toast({
-        title: t("schedule_page.appointment_scheduled"),
-        description: t("schedule_page.appointment_scheduled_desc"),
+        title: "Consulta agendada",
+        description: "A consulta foi agendada com sucesso.",
       });
       setIsCreateModalOpen(false);
       setSelectedPatientId("");
@@ -179,8 +177,8 @@ export default function Schedule() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
       toast({
-        title: t("schedule_page.appointment_updated"),
-        description: t("schedule_page.appointment_scheduled_desc"),
+        title: "Consulta atualizada",
+        description: "A consulta foi atualizada com sucesso.",
       });
       setIsEditModalOpen(false);
       setEditingAppointment(null);
@@ -201,8 +199,8 @@ export default function Schedule() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
       toast({
-        title: t("schedule_page.appointment_cancelled"),
-        description: t("schedule_page.appointment_scheduled_desc"),
+        title: "Consulta cancelada",
+        description: "A consulta foi cancelada com sucesso.",
       });
       setCancelConfirmId(null);
       setCancelConfirmName("");
@@ -222,7 +220,7 @@ export default function Schedule() {
       apiRequest('POST', `/api/video-consultations/${id}/reactivate`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
-      toast({ title: t("consultation.started"), description: t("schedule_page.patient_notified") });
+      toast({ title: "Consulta reativada", description: "O paciente foi notificado para retornar à videochamada." });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -235,7 +233,7 @@ export default function Schedule() {
       apiRequest('POST', `/api/video-consultations/${id}/complete`, { notes }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
-      toast({ title: t("consultation.completed"), description: t("consultation.completed") });
+      toast({ title: "Consulta concluída", description: "Prontuário gerado automaticamente." });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -249,8 +247,8 @@ export default function Schedule() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
       toast({
-        title: t("schedule_page.appointment_cancelled"),
-        description: `${data.cancelled} ${t("schedule_page.appointment_cancelled")}`,
+        title: "Consultas canceladas",
+        description: `${data.cancelled} consulta(s) cancelada(s) com sucesso.`,
       });
       setCancelAllScope(null);
       setCancelAllAppointmentType('all');
@@ -268,8 +266,8 @@ export default function Schedule() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
       toast({
-        title: t("schedule_page.delete_appointment"),
-        description: t("common.success"),
+        title: "Agendamento excluído",
+        description: "O agendamento foi removido permanentemente.",
       });
       setDeleteConfirmId(null);
       setDeleteConfirmName("");
@@ -285,7 +283,7 @@ export default function Schedule() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/consultation-requests'] });
       queryClient.invalidateQueries({ queryKey: ['/api/appointments/doctor'] });
-      toast({ title: t("common.success"), description: t("consultation.request_created") });
+      toast({ title: "Solicitação aceita", description: "A solicitação de consulta foi aceita." });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -297,7 +295,7 @@ export default function Schedule() {
     mutationFn: (id: string) => apiRequest('PATCH', `/api/consultation-requests/${id}/decline`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/consultation-requests'] });
-      toast({ title: t("common.success"), description: t("common.cancelled") });
+      toast({ title: "Solicitação recusada", description: "A solicitação de consulta foi recusada." });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -309,7 +307,7 @@ export default function Schedule() {
     mutationFn: (id: string) => apiRequest('PATCH', `/api/consultation-requests/${id}/cancel`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/consultation-requests'] });
-      toast({ title: t("common.cancelled"), description: t("common.success") });
+      toast({ title: "Solicitação cancelada", description: "A solicitação de consulta foi cancelada." });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -323,8 +321,8 @@ export default function Schedule() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/doctor/blocked-patients'] });
       toast({
-        title: t("schedule_page.patient_blocked"),
-        description: t("common.success"),
+        title: "Paciente bloqueado",
+        description: `${blockPatientName} foi bloqueado. Este paciente não poderá mais agendar consultas com você.`,
       });
       setBlockPatientId(null);
       setBlockPatientName("");
@@ -340,7 +338,7 @@ export default function Schedule() {
     mutationFn: (patientId: string) => apiRequest('DELETE', `/api/doctor/block-patient/${patientId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/doctor/blocked-patients'] });
-      toast({ title: t("schedule_page.patient_unblocked"), description: t("common.success") });
+      toast({ title: "Paciente desbloqueado", description: "O paciente pode agendar consultas novamente." });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -355,18 +353,18 @@ export default function Schedule() {
 
   const handleCancelAppointment = (appointment: any) => {
     setCancelConfirmId(appointment.id);
-    setCancelConfirmName(appointment.patientName || t("schedule.patient_unidentified"));
+    setCancelConfirmName(appointment.patientName || 'Paciente não identificado');
   };
 
   const handleDeleteAppointment = (appointment: any) => {
     setDeleteConfirmId(appointment.id);
-    setDeleteConfirmName(appointment.patientName || t("schedule.patient_unidentified"));
+    setDeleteConfirmName(appointment.patientName || 'Paciente não identificado');
   };
 
   const handleBlockPatient = (appointment: any) => {
     if (appointment.patientId) {
       setBlockPatientId(appointment.patientId);
-      setBlockPatientName(appointment.patientName || t("schedule.patient_unidentified"));
+      setBlockPatientName(appointment.patientName || 'Paciente não identificado');
       setBlockReason("");
     }
   };
@@ -407,7 +405,7 @@ export default function Schedule() {
         });
         
         if (!consultationResponse.ok) {
-          throw new Error('Failed to create consultation session');
+          throw new Error('Falha ao criar sessão de consulta');
         }
         
         const consultation = await consultationResponse.json();
@@ -429,7 +427,7 @@ export default function Schedule() {
 
       if (!tokenResponse.ok) {
         const errorData = await tokenResponse.json();
-        throw new Error(errorData.message || 'Failed to generate access token');
+        throw new Error(errorData.message || 'Falha ao gerar token de acesso');
       }
 
       const { token } = await tokenResponse.json();
@@ -442,15 +440,15 @@ export default function Schedule() {
       setIsJoinLinkModalOpen(true);
 
       toast({
-        title: t("common.success"),
-        description: t("schedule.generate_link"),
+        title: "Link gerado com sucesso",
+        description: "Link de acesso criado para o paciente.",
       });
 
     } catch (error) {
       console.error('Error generating join link:', error);
       toast({
-        title: t("common.error"),
-        description: error instanceof Error ? error.message : t("schedule_page.schedule_error_desc"),
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Não foi possível gerar o link de acesso.",
         variant: "destructive",
       });
     }
@@ -460,8 +458,8 @@ export default function Schedule() {
   const handleCreateAppointment = () => {
     if (!selectedPatientId || !selectedSlot) {
       toast({
-        title: t("common.required_field"),
-        description: t("schedule_page.select_patient") + " / " + t("schedule_page.select_date_time"),
+        title: "Campos obrigatórios",
+        description: "Selecione um paciente e um horário.",
         variant: "destructive",
       });
       return;
@@ -471,8 +469,8 @@ export default function Schedule() {
     const slot = (availableSlots || []).find((s: any) => s.formatted === selectedSlot);
     if (!slot) {
       toast({
-        title: t("common.error"),
-        description: t("schedule_page.schedule_error_desc"),
+        title: "Horário inválido",
+        description: "O horário selecionado não é válido.",
         variant: "destructive",
       });
       return;
@@ -530,13 +528,13 @@ export default function Schedule() {
       window.URL.revokeObjectURL(url);
       
       toast({
-        title: t("common.export"),
-        description: t("common.success"),
+        title: "Agenda exportada",
+        description: "Seu calendário foi exportado com sucesso em formato iCal.",
       });
     } catch (error) {
       toast({
-        title: t("common.error"),
-        description: t("schedule_page.schedule_error_desc"),
+        title: "Erro ao exportar",
+        description: "Não foi possível exportar a agenda.",
         variant: "destructive",
       });
     }
@@ -565,8 +563,8 @@ export default function Schedule() {
       const result = await response.json();
       
       toast({
-        title: t("common.import"),
-        description: t("common.success"),
+        title: "Agenda importada",
+        description: `${result.imported} eventos importados com sucesso.`,
       });
 
       // Refresh appointments
@@ -576,8 +574,8 @@ export default function Schedule() {
       event.target.value = '';
     } catch (error) {
       toast({
-        title: t("common.error"),
-        description: error instanceof Error ? error.message : t("schedule_page.schedule_error_desc"),
+        title: "Erro ao importar",
+        description: error instanceof Error ? error.message : "Não foi possível importar a agenda.",
         variant: "destructive",
       });
       event.target.value = '';
@@ -633,7 +631,7 @@ export default function Schedule() {
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-black dark:to-purple-950">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-32 w-32 border-4 border-primary/20 border-t-primary mx-auto"></div>
-          <p className="text-lg font-medium text-muted-foreground">{t("common.loading")}</p>
+          <p className="text-lg font-medium text-muted-foreground">Carregando agenda...</p>
         </div>
       </div>
     );
@@ -651,7 +649,7 @@ export default function Schedule() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-foreground bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  {t("schedule_page.title")} Tele{"<"}M3D{">"}
+                  Agenda Tele{"<"}M3D{">"}
                 </h1>
                 <p className="text-muted-foreground flex items-center gap-2">
                   <Clock className="h-4 w-4" />
@@ -691,14 +689,15 @@ export default function Schedule() {
                     : 'bg-white/10 dark:bg-black/10'
                 }`}
               >
-                {t("common.today")}
+                Dia
               </Button>
               <Button 
                 variant={viewMode === 'week' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => {
                   setViewMode('week');
-                  toast({ title: t("common.week"), description: t("common.loading") });
+                  // Future: implement week view logic
+                  toast({ title: 'Visualização Semanal', description: 'Em breve - visualização semanal completa' });
                 }}
                 data-testid="button-view-week"
                 className={`backdrop-blur-lg border-white/20 hover:bg-white/20 dark:border-white/10 dark:hover:bg-black/20 ${
@@ -707,7 +706,7 @@ export default function Schedule() {
                     : 'bg-white/10 dark:bg-black/10'
                 }`}
               >
-                {t("common.week")}
+                Semana
               </Button>
             </div>
             
@@ -717,7 +716,7 @@ export default function Schedule() {
               className="btn-medical-primary"
             >
               <Video className="h-4 w-4 mr-2" />
-              {t("schedule_page.new_appointment")}
+              Nova Consulta
             </Button>
           </div>
         </div>
@@ -729,7 +728,7 @@ export default function Schedule() {
               <CardHeader className="border-b border-white/10 dark:border-white/5">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <CalendarIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  {t("navigation.schedule")}
+                  Calendário
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4">
@@ -755,30 +754,30 @@ export default function Schedule() {
                 
                 {/* Enhanced Legend with Modern Styling */}
                 <div className="mt-6 space-y-3">
-                  <div className="text-sm font-medium text-muted-foreground">{t("common.status")}</div>
+                  <div className="text-sm font-medium text-muted-foreground">Status dos Agendamentos</div>
                   <div className="space-y-2">
                     <div className="flex items-center space-x-3 text-xs">
                       <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full shadow-sm"></div>
-                      <span className="text-muted-foreground">{t("consultation.scheduled")}</span>
+                      <span className="text-muted-foreground">Consultas agendadas</span>
                     </div>
                     <div className="flex items-center space-x-3 text-xs">
                       <div className="w-3 h-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-sm animate-pulse"></div>
-                      <span className="text-muted-foreground">{t("dashboard.ai_scheduling")}</span>
+                      <span className="text-muted-foreground">Agendamentos IA</span>
                     </div>
                     <div className="flex items-center space-x-3 text-xs">
                       <div className="w-3 h-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full shadow-sm"></div>
-                      <span className="text-muted-foreground">{t("schedule_page.follow_up")}</span>
+                      <span className="text-muted-foreground">Retornos</span>
                     </div>
                     <div className="flex items-center space-x-3 text-xs">
                       <div className="w-3 h-3 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full shadow-sm"></div>
-                      <span className="text-muted-foreground">{t("consultation.in_progress")}</span>
+                      <span className="text-muted-foreground">Em andamento</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Export/Import Actions */}
                 <div className="mt-6 border-t border-white/10 dark:border-white/5 pt-4 space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground mb-3">{t("schedule_page.title")}</div>
+                  <div className="text-sm font-medium text-muted-foreground mb-3">Gerenciar Agenda</div>
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -787,7 +786,7 @@ export default function Schedule() {
                     data-testid="button-export-calendar"
                   >
                     <Download className="h-4 w-4" />
-                    {t("common.export")}
+                    Exportar Agenda
                   </Button>
                   <Button 
                     variant="outline" 
@@ -797,7 +796,7 @@ export default function Schedule() {
                     data-testid="button-import-calendar"
                   >
                     <Upload className="h-4 w-4" />
-                    {t("common.import")}
+                    Importar Agenda
                   </Button>
                   <input
                     id="import-file-input"
@@ -826,7 +825,7 @@ export default function Schedule() {
                         <div className="p-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white">
                           <Bell className="h-4 w-4" />
                         </div>
-                        <span>{t("consultation.request_title")}</span>
+                        <span>Solicitações de Pacientes</span>
                         <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
                           {pendingRequests.length}
                         </Badge>
@@ -842,12 +841,12 @@ export default function Schedule() {
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-semibold text-sm truncate">{req.patientName || t("common.patient")}</h4>
+                              <h4 className="font-semibold text-sm truncate">{req.patientName || 'Paciente'}</h4>
                               <Badge className={
                                 req.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
                                 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                               }>
-                                {req.status === 'pending' ? t("common.pending") : t("common.confirmed")}
+                                {req.status === 'pending' ? 'Pendente' : 'Aceita'}
                               </Badge>
                               {req.urgencyLevel && (
                                 <Badge variant="outline" className={
@@ -855,18 +854,18 @@ export default function Schedule() {
                                   req.urgencyLevel === 'urgent' ? 'border-orange-500 text-orange-600' :
                                   'border-blue-500 text-blue-600'
                                 }>
-                                  {req.urgencyLevel === 'emergency' ? t("schedule_page.urgent") :
-                                   req.urgencyLevel === 'urgent' ? t("schedule_page.urgent") : t("schedule_page.routine")}
+                                  {req.urgencyLevel === 'emergency' ? 'Emergência' :
+                                   req.urgencyLevel === 'urgent' ? 'Urgente' : 'Normal'}
                                 </Badge>
                               )}
                             </div>
                             <div className="text-xs text-muted-foreground space-y-0.5">
-                              {req.specialty && <span>{req.specialty}</span>}
-                              {req.symptoms && <p className="truncate">{t("consultation.symptoms")}: {req.symptoms}</p>}
+                              {req.specialty && <span>Especialidade: {req.specialty}</span>}
+                              {req.symptoms && <p className="truncate">Sintomas: {req.symptoms}</p>}
                               {req.preferredDate && (
-                                <span> | {t("common.date")}: {new Date(req.preferredDate).toLocaleDateString('pt-BR')}</span>
+                                <span> | Data preferida: {new Date(req.preferredDate).toLocaleDateString('pt-BR')}</span>
                               )}
-                              <span className="block">{new Date(req.createdAt).toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="block">Criado em: {new Date(req.createdAt).toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 ml-3 flex-shrink-0">
@@ -880,7 +879,7 @@ export default function Schedule() {
                                   disabled={acceptRequestMutation.isPending}
                                 >
                                   <CheckCircle2 className="h-4 w-4 mr-1" />
-                                  {t("common.confirm")}
+                                  Aceitar
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -890,7 +889,7 @@ export default function Schedule() {
                                   disabled={declineRequestMutation.isPending}
                                 >
                                   <XCircle className="h-4 w-4 mr-1" />
-                                  {t("common.cancel")}
+                                  Recusar
                                 </Button>
                               </>
                             )}
@@ -903,7 +902,7 @@ export default function Schedule() {
                                 disabled={cancelRequestMutation.isPending}
                               >
                                 <XCircle className="h-4 w-4 mr-1" />
-                                {t("common.cancel")}
+                                Cancelar
                               </Button>
                             )}
                           </div>
@@ -923,7 +922,7 @@ export default function Schedule() {
                 <TabsList className="grid grid-cols-3 w-[480px]">
                   <TabsTrigger value="today" className="flex items-center gap-2">
                     <CalendarIcon className="h-4 w-4" />
-                    {t("schedule_page.today_tab")}
+                    Hoje
                     {(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').length > 0 && (
                       <Badge variant="secondary" className="h-5 px-1.5 text-xs ml-1">
                         {(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').length}
@@ -932,11 +931,11 @@ export default function Schedule() {
                   </TabsTrigger>
                   <TabsTrigger value="future" className="flex items-center gap-2">
                     <Clock className="h-4 w-4" />
-                    {t("schedule_page.upcoming_tab")}
+                    Futuras
                   </TabsTrigger>
                   <TabsTrigger value="history" className="flex items-center gap-2">
                     <History className="h-4 w-4" />
-                    {t("schedule_page.history_tab")}
+                    Histórico
                   </TabsTrigger>
                 </TabsList>
                 <div className="flex items-center gap-2">
@@ -947,7 +946,7 @@ export default function Schedule() {
                     onClick={() => setShowBlockedList(true)}
                   >
                     <UserX className="h-4 w-4 mr-2" />
-                    {t("common.blocked")}
+                    Bloqueados
                   </Button>
                   <Button 
                     onClick={() => setIsInstantConsultOpen(true)}
@@ -955,7 +954,7 @@ export default function Schedule() {
                     size="sm"
                   >
                     <PhoneCall className="h-4 w-4 mr-2" />
-                    {t("schedule_page.instant_consultation")}
+                    Consulta Instantânea
                   </Button>
                 </div>
               </div>
@@ -968,21 +967,21 @@ export default function Schedule() {
                         <div className="p-2 rounded-lg bg-gradient-to-r from-green-500 to-blue-500 text-white">
                           <Users className="h-4 w-4" />
                         </div>
-                        <span>{t("schedule.today_schedule")}</span>
+                        <span>Consultas de Hoje</span>
                       </div>
                       <div className="flex items-center space-x-3">
                         {upcomingNotifications.length > 0 && (
                           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-800 dark:text-orange-200">
                             <AlertCircle className="h-4 w-4" />
                             <span className="text-sm font-medium">
-                              {upcomingNotifications.length} {t("schedule_page.upcoming_tab")}
+                              {upcomingNotifications.length} próxima{upcomingNotifications.length > 1 ? 's' : ''}
                             </span>
                           </div>
                         )}
                         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                           <CalendarIcon className="h-4 w-4 text-primary" />
                           <span data-testid="text-appointment-count">
-                            {(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').length} {t("common.pending")}
+                            {(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').length} consultas pendentes
                           </span>
                         </div>
                         {(appointments || []).filter((a: any) => a.status === 'scheduled' || a.status === 'in-progress').length > 0 && (
@@ -993,7 +992,7 @@ export default function Schedule() {
                             onClick={() => setCancelAllScope('today')}
                           >
                             <Trash2 className="h-4 w-4 mr-1" />
-                            {t("schedule_page.cancel_all")}
+                            Cancelar Todas
                           </Button>
                         )}
                       </div>
@@ -1004,10 +1003,10 @@ export default function Schedule() {
                       <div className="text-center py-12">
                         <i className="fas fa-calendar-day text-6xl text-muted-foreground mb-4"></i>
                         <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                          {t("schedule_page.no_appointments")}
+                          Nenhuma consulta pendente
                         </h3>
                         <p className="text-muted-foreground mb-4">
-                          {t("schedule.schedule_free_today")}
+                          Não há consultas ativas ou agendadas para este dia.
                         </p>
                         <div className="flex items-center justify-center gap-3">
                           <Button 
@@ -1016,14 +1015,14 @@ export default function Schedule() {
                             data-testid="button-add-first-appointment"
                           >
                             <i className="fas fa-plus mr-2"></i>
-                            {t("schedule_page.new_appointment")}
+                            Agendar consulta
                           </Button>
                           <Button 
                             onClick={() => setIsInstantConsultOpen(true)}
                             className="bg-gradient-to-r from-green-600 to-emerald-600 text-white"
                           >
                             <PhoneCall className="h-4 w-4 mr-2" />
-                            {t("schedule_page.instant_consultation")}
+                            Consulta Instantânea
                           </Button>
                         </div>
                       </div>
@@ -1044,7 +1043,7 @@ export default function Schedule() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center space-x-2 mb-1">
                                 <h3 className="font-semibold text-foreground truncate" data-testid={`text-appointment-patient-${appointment.id}`}>
-                                  {appointment.patientName || t("schedule.patient_unidentified")}
+                                  {appointment.patientName || "Paciente não identificado"}
                                 </h3>
                                 {appointment.aiScheduled && (
                                   <Badge variant="secondary" className="bg-purple-100 text-purple-800">
@@ -1056,9 +1055,9 @@ export default function Schedule() {
                               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                                 <i className={getTypeIcon(appointment.type, appointment.aiScheduled)}></i>
                                 <span data-testid={`text-appointment-type-${appointment.id}`}>
-                                  {appointment.type === 'consultation' ? t("schedule_page.consultation") :
-                                   appointment.type === 'followup' ? t("schedule_page.follow_up") :
-                                   appointment.type === 'emergency' ? t("schedule_page.urgent") : appointment.type}
+                                  {appointment.type === 'consultation' ? 'Consulta' :
+                                   appointment.type === 'followup' ? 'Retorno' :
+                                   appointment.type === 'emergency' ? 'Emergência' : appointment.type}
                                 </span>
                                 {appointment.notes && (
                                   <>
@@ -1076,10 +1075,10 @@ export default function Schedule() {
                                 className={getStatusColor(appointment.status)}
                                 data-testid={`badge-appointment-status-${appointment.id}`}
                               >
-                                {appointment.status === 'scheduled' ? t("consultation.scheduled") :
-                                 appointment.status === 'in-progress' ? t("consultation.in_progress") :
-                                 appointment.status === 'completed' ? t("common.completed") :
-                                 appointment.status === 'cancelled' ? t("common.cancelled") : appointment.status}
+                                {appointment.status === 'scheduled' ? 'Agendado' :
+                                 appointment.status === 'in-progress' ? 'Em andamento' :
+                                 appointment.status === 'completed' ? 'Concluído' :
+                                 appointment.status === 'cancelled' ? 'Cancelado' : appointment.status}
                               </Badge>
                             </div>
 
@@ -1088,7 +1087,7 @@ export default function Schedule() {
                                 {(() => {
                                   const patientOnline = onlinePatients?.find((s: any) => s.patientId === appointment.patientId)?.isOnline;
                                   return patientOnline !== undefined ? (
-                                    <span className={`absolute -top-1 -left-1 h-3 w-3 rounded-full border-2 border-white dark:border-gray-900 z-10 ${patientOnline ? 'bg-green-500' : 'bg-gray-400'}`} title={patientOnline ? t("profile_page.online") : t("profile_page.offline")} />
+                                    <span className={`absolute -top-1 -left-1 h-3 w-3 rounded-full border-2 border-white dark:border-gray-900 z-10 ${patientOnline ? 'bg-green-500' : 'bg-gray-400'}`} title={patientOnline ? 'Paciente online' : 'Paciente offline'} />
                                   ) : null;
                                 })()}
                                 <Button
@@ -1099,7 +1098,7 @@ export default function Schedule() {
                                   data-testid={`button-start-consultation-${appointment.id}`}
                                 >
                                   <i className="fas fa-video mr-1"></i>
-                                  {t("common.start")}
+                                  Iniciar
                                 </Button>
                               </div>
                               
@@ -1110,12 +1109,12 @@ export default function Schedule() {
                                 data-testid={`button-generate-link-${appointment.id}`}
                               >
                                 <i className="fas fa-link mr-1"></i>
-                                {t("schedule.generate_link")}
+                                Gerar Link
                               </Button>
                               
                               <ConsultationAccessGenerator
                                 patientId={appointment.patientId}
-                                patientName={appointment.patientName || t("common.patient")}
+                                patientName={appointment.patientName || "Paciente"}
                                 appointmentId={appointment.id}
                                 scheduledAt={appointment.scheduledAt}
                                 trigger={
@@ -1133,7 +1132,7 @@ export default function Schedule() {
                                 onClick={() => handleEditAppointment(appointment)}
                               >
                                 <i className="fas fa-edit mr-1"></i>
-                                {t("common.edit")}
+                                Editar
                               </Button>
                               
                               <Button
@@ -1145,7 +1144,7 @@ export default function Schedule() {
                                 disabled={cancelAppointmentMutation.isPending}
                               >
                                 <XCircle className="h-4 w-4 mr-1" />
-                                {t("common.cancel")}
+                                Cancelar
                               </Button>
                               <Button
                                 variant="outline"
@@ -1155,7 +1154,7 @@ export default function Schedule() {
                                 disabled={deleteAppointmentMutation.isPending}
                               >
                                 <Trash2 className="h-4 w-4 mr-1" />
-                                {t("common.delete")}
+                                Excluir
                               </Button>
                               {appointment.patientId && (
                                 <Button
@@ -1165,7 +1164,7 @@ export default function Schedule() {
                                   onClick={() => handleBlockPatient(appointment)}
                                 >
                                   <Ban className="h-4 w-4 mr-1" />
-                                  {t("schedule_page.block_patient")}
+                                  Bloquear
                                 </Button>
                               )}
                             </div>
@@ -1185,12 +1184,12 @@ export default function Schedule() {
                         <div className="p-2 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
                           <Clock className="h-4 w-4" />
                         </div>
-                        <span>{t("schedule_page.upcoming_tab")}</span>
+                        <span>Consultas Futuras</span>
                       </div>
                       <div className="flex items-center space-x-3">
                         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                           <CalendarIcon className="h-4 w-4 text-primary" />
-                          <span>{(futureAppointments || []).length}</span>
+                          <span>{(futureAppointments || []).length} agendamento(s)</span>
                         </div>
                         {(futureAppointments || []).length > 0 && (
                           <Button
@@ -1200,7 +1199,7 @@ export default function Schedule() {
                             onClick={() => setCancelAllScope('future')}
                           >
                             <Trash2 className="h-4 w-4 mr-1" />
-                            {t("schedule_page.cancel_all")}
+                            Cancelar Todas
                           </Button>
                         )}
                       </div>
@@ -1210,16 +1209,16 @@ export default function Schedule() {
                     {futureLoading ? (
                       <div className="text-center py-12">
                         <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary/20 border-t-primary mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">{t("common.loading")}</p>
+                        <p className="text-muted-foreground">Carregando consultas futuras...</p>
                       </div>
                     ) : !(futureAppointments || []).length ? (
                       <div className="text-center py-12">
                         <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                        <h3 className="text-lg font-semibold text-muted-foreground mb-2">{t("schedule_page.no_appointments")}</h3>
-                        <p className="text-muted-foreground mb-4">{t("schedule.schedule_free_today")}</p>
+                        <h3 className="text-lg font-semibold text-muted-foreground mb-2">Nenhuma consulta futura</h3>
+                        <p className="text-muted-foreground mb-4">Não há consultas agendadas para os próximos dias.</p>
                         <Button variant="outline" onClick={() => setIsCreateModalOpen(true)}>
                           <Plus className="h-4 w-4 mr-2" />
-                          {t("schedule_page.new_appointment")}
+                          Agendar Nova Consulta
                         </Button>
                       </div>
                     ) : (
@@ -1240,7 +1239,7 @@ export default function Schedule() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center space-x-2 mb-1">
                                     <h3 className="font-semibold text-foreground truncate">
-                                      {appointment.patientName || t("schedule.patient_unidentified")}
+                                      {appointment.patientName || "Paciente não identificado"}
                                     </h3>
                                     {appointment.aiScheduled && (
                                       <Badge variant="secondary" className="bg-purple-100 text-purple-800">IA</Badge>
@@ -1248,23 +1247,23 @@ export default function Schedule() {
                                   </div>
                                   <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                                     <span>
-                                      {appointment.type === 'consultation' ? t("schedule_page.consultation") :
-                                       appointment.type === 'followup' ? t("schedule_page.follow_up") :
-                                       appointment.type === 'emergency' ? t("schedule_page.urgent") : appointment.type}
+                                      {appointment.type === 'consultation' ? 'Consulta' :
+                                       appointment.type === 'followup' ? 'Retorno' :
+                                       appointment.type === 'emergency' ? 'Emergência' : appointment.type}
                                     </span>
                                     {appointment.notes && <><span>•</span><span>{appointment.notes}</span></>}
                                   </div>
                                 </div>
                                 <Badge className={getStatusColor(appointment.status)}>
-                                  {appointment.status === 'scheduled' ? t("consultation.scheduled") : appointment.status === 'in-progress' ? t("consultation.in_progress") : appointment.status}
+                                  {appointment.status === 'scheduled' ? 'Agendado' : appointment.status === 'in-progress' ? 'Em andamento' : appointment.status}
                                 </Badge>
                                 <div className="flex items-center space-x-2">
                                   <Button variant="outline" size="sm" onClick={() => handleGenerateJoinLink(appointment)}>
-                                    <i className="fas fa-link mr-1"></i>{t("schedule.generate_link")}
+                                    <i className="fas fa-link mr-1"></i>Gerar Link
                                   </Button>
                                   <ConsultationAccessGenerator
                                     patientId={appointment.patientId}
-                                    patientName={appointment.patientName || t("common.patient")}
+                                    patientName={appointment.patientName || "Paciente"}
                                     appointmentId={appointment.id}
                                     scheduledAt={appointment.scheduledAt}
                                     trigger={
@@ -1275,7 +1274,7 @@ export default function Schedule() {
                                     }
                                   />
                                   <Button variant="outline" size="sm" onClick={() => handleEditAppointment(appointment)}>
-                                    <i className="fas fa-edit mr-1"></i>{t("common.edit")}
+                                    <i className="fas fa-edit mr-1"></i>Editar
                                   </Button>
                                   <Button
                                     variant="outline"
@@ -1285,7 +1284,7 @@ export default function Schedule() {
                                     disabled={cancelAppointmentMutation.isPending}
                                   >
                                     <XCircle className="h-4 w-4 mr-1" />
-                                    {t("common.cancel")}
+                                    Cancelar
                                   </Button>
                                   <Button
                                     variant="outline"
@@ -1295,7 +1294,7 @@ export default function Schedule() {
                                     disabled={deleteAppointmentMutation.isPending}
                                   >
                                     <Trash2 className="h-4 w-4 mr-1" />
-                                    {t("common.delete")}
+                                    Excluir
                                   </Button>
                                   {appointment.patientId && (
                                     <Button
@@ -1305,7 +1304,7 @@ export default function Schedule() {
                                       onClick={() => handleBlockPatient(appointment)}
                                     >
                                       <Ban className="h-4 w-4 mr-1" />
-                                      {t("schedule_page.block_patient")}
+                                      Bloquear
                                     </Button>
                                   )}
                                 </div>
@@ -1326,14 +1325,14 @@ export default function Schedule() {
                       <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
                         <History className="h-4 w-4" />
                       </div>
-                      <span>{t("consultation.history")}</span>
+                      <span>Histórico de Consultas</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     {historyLoading ? (
                       <div className="text-center py-12">
                         <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary/20 border-t-primary mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">{t("common.loading")}</p>
+                        <p className="text-muted-foreground">Carregando histórico...</p>
                       </div>
                     ) : (
                       <ScrollArea className="max-h-[600px]">
@@ -1341,7 +1340,7 @@ export default function Schedule() {
                           <div className="mb-6">
                             <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
                               <Video className="h-4 w-4" />
-                              {t("telemedicine.video_consultation")} ({historyData.videoConsultations.length})
+                              Teleconsultas Realizadas ({historyData.videoConsultations.length})
                             </h3>
                             <div className="space-y-3">
                               {historyData.videoConsultations.map((vc: any) => {
@@ -1362,7 +1361,7 @@ export default function Schedule() {
                                       {vc.duration && <span>• {Math.round(vc.duration / 60)} min</span>}
                                     </div>
                                     {endReasonText && isIncomplete && (
-                                      <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">{endReasonText}</p>
+                                      <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Motivo: {endReasonText}</p>
                                     )}
                                     {vc.meetingNotes && (
                                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{vc.meetingNotes}</p>
@@ -1377,7 +1376,7 @@ export default function Schedule() {
                                           disabled={reactivateConsultationMutation.isPending}
                                         >
                                           <RotateCcw className="h-3 w-3" />
-                                          {t("common.retry")}
+                                          Reativar
                                         </Button>
                                         <Button
                                           size="sm"
@@ -1386,7 +1385,7 @@ export default function Schedule() {
                                           onClick={() => setLocation(`/consultation/video/${vc.patientId}`)}
                                         >
                                           <Video className="h-3 w-3" />
-                                          {t("schedule_page.new_appointment")}
+                                          Nova Chamada
                                         </Button>
                                         <Button
                                           size="sm"
@@ -1396,7 +1395,7 @@ export default function Schedule() {
                                           disabled={completeConsultationMutation.isPending}
                                         >
                                           <FileCheck className="h-3 w-3" />
-                                          {t("common.finish")}
+                                          Concluir
                                         </Button>
                                         <Button
                                           size="sm"
@@ -1405,7 +1404,7 @@ export default function Schedule() {
                                           onClick={() => setLocation(`/whatsapp`)}
                                         >
                                           <MessageSquare className="h-3 w-3" />
-                                          {t("common.send")}
+                                          Mensagem
                                         </Button>
                                       </div>
                                     )}
@@ -1413,12 +1412,12 @@ export default function Schedule() {
                                   {isIncomplete ? (
                                     <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 flex-shrink-0">
                                       <AlertCircle className="h-3 w-3 mr-1" />
-                                      {t("consultation.incomplete")}
+                                      Inconcluída
                                     </Badge>
                                   ) : (
                                     <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 flex-shrink-0">
                                       <CheckCircle2 className="h-3 w-3 mr-1" />
-                                      {t("common.completed")}
+                                      Concluída
                                     </Badge>
                                   )}
                                 </div>
@@ -1432,7 +1431,7 @@ export default function Schedule() {
                           <div>
                             <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
                               <CalendarIcon className="h-4 w-4" />
-                              {t("consultation.history")} ({historyData.appointments.length})
+                              Agendamentos Anteriores ({historyData.appointments.length})
                             </h3>
                             <div className="space-y-3">
                               {historyData.appointments.map((apt: any) => (
@@ -1446,19 +1445,19 @@ export default function Schedule() {
                                     </div>
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <h4 className="font-medium text-sm">{apt.patientName || t("common.patient")}</h4>
+                                    <h4 className="font-medium text-sm">{apt.patientName || 'Paciente'}</h4>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                                       <i className={getTypeIcon(apt.type, apt.aiScheduled)}></i>
                                       <span>
-                                        {apt.type === 'consultation' ? t("schedule_page.consultation") :
-                                         apt.type === 'followup' ? t("schedule_page.follow_up") :
-                                         apt.type === 'emergency' ? t("schedule_page.urgent") : apt.type}
+                                        {apt.type === 'consultation' ? 'Consulta' :
+                                         apt.type === 'followup' ? 'Retorno' :
+                                         apt.type === 'emergency' ? 'Emergência' : apt.type}
                                       </span>
                                       {apt.notes && <span>• {apt.notes}</span>}
                                     </div>
                                   </div>
                                   <Badge className={getStatusColor(apt.status)}>
-                                    {apt.status === 'completed' ? t("common.completed") : t("common.cancelled")}
+                                    {apt.status === 'completed' ? 'Concluído' : 'Cancelado'}
                                   </Badge>
                                 </div>
                               ))}
@@ -1469,8 +1468,8 @@ export default function Schedule() {
                         {(!historyData?.appointments?.length && !historyData?.videoConsultations?.length) && (
                           <div className="text-center py-12">
                             <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold text-muted-foreground mb-2">{t("consultation.no_consultations")}</h3>
-                            <p className="text-muted-foreground">{t("common.no_data")}</p>
+                            <h3 className="text-lg font-semibold text-muted-foreground mb-2">Nenhum histórico</h3>
+                            <p className="text-muted-foreground">Você ainda não possui consultas anteriores.</p>
                           </div>
                         )}
                       </ScrollArea>
@@ -1485,24 +1484,24 @@ export default function Schedule() {
               <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setIsInstantConsultOpen(true)}>
                 <CardContent className="p-6 text-center">
                   <PhoneCall className="h-8 w-8 text-green-600 mx-auto mb-3" />
-                  <h3 className="font-semibold mb-2">{t("schedule_page.instant_consultation")}</h3>
-                  <p className="text-sm text-muted-foreground">{t("schedule_page.start_consultation")}</p>
+                  <h3 className="font-semibold mb-2">Consulta Instantânea</h3>
+                  <p className="text-sm text-muted-foreground">Iniciar videochamada com paciente online</p>
                 </CardContent>
               </Card>
 
               <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setScheduleTab('future')}>
                 <CardContent className="p-6 text-center">
                   <Clock className="h-8 w-8 text-indigo-600 mx-auto mb-3" />
-                  <h3 className="font-semibold mb-2">{t("schedule_page.upcoming_tab")}</h3>
-                  <p className="text-sm text-muted-foreground">{t("schedule_page.no_appointments")}</p>
+                  <h3 className="font-semibold mb-2">Consultas Futuras</h3>
+                  <p className="text-sm text-muted-foreground">Visualize agendamentos dos próximos dias</p>
                 </CardContent>
               </Card>
 
               <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setScheduleTab('history')}>
                 <CardContent className="p-6 text-center">
                   <History className="h-8 w-8 text-indigo-600 mx-auto mb-3" />
-                  <h3 className="font-semibold mb-2">{t("schedule_page.history_tab")}</h3>
-                  <p className="text-sm text-muted-foreground">{t("consultation.history")}</p>
+                  <h3 className="font-semibold mb-2">Histórico</h3>
+                  <p className="text-sm text-muted-foreground">Consultas realizadas, canceladas e expiradas</p>
                 </CardContent>
               </Card>
             </div>
@@ -1513,18 +1512,18 @@ export default function Schedule() {
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
         <DialogContent className="max-w-md" data-testid="modal-create-appointment">
           <DialogHeader>
-            <DialogTitle>{t("schedule_page.new_appointment")}</DialogTitle>
+            <DialogTitle>Nova Consulta</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
             {/* Patient Selection */}
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">
-                {t("common.patient")}
+                Paciente
               </label>
               <Select value={selectedPatientId} onValueChange={setSelectedPatientId}>
                 <SelectTrigger data-testid="select-patient">
-                  <SelectValue placeholder={t("schedule_page.select_patient")} />
+                  <SelectValue placeholder="Selecione um paciente" />
                 </SelectTrigger>
                 <SelectContent>
                   {(patients || []).map((patient: any) => (
@@ -1543,16 +1542,16 @@ export default function Schedule() {
             {/* Available Slots */}
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">
-                {t("schedule_page.select_date_time")}
+                Horário Disponível
               </label>
               <Select value={selectedSlot} onValueChange={setSelectedSlot}>
                 <SelectTrigger data-testid="select-available-slot">
-                  <SelectValue placeholder={t("schedule_page.select_date_time")} />
+                  <SelectValue placeholder="Selecione um horário" />
                 </SelectTrigger>
                 <SelectContent>
                   {slotsLoading ? (
                     <SelectItem value="loading" disabled>
-                      {t("common.loading")}
+                      Carregando horários...
                     </SelectItem>
                   ) : (
                     (availableSlots || []).map((slot: any, index: number) => (
@@ -1572,7 +1571,7 @@ export default function Schedule() {
             {/* Appointment Type */}
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">
-                {t("schedule_page.consultation_type")}
+                Tipo de Consulta
               </label>
               <Select value={appointmentType} onValueChange={setAppointmentType}>
                 <SelectTrigger data-testid="select-appointment-type">
@@ -1580,13 +1579,13 @@ export default function Schedule() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="consultation" data-testid="option-type-consultation">
-                    {t("schedule_page.consultation")}
+                    Consulta
                   </SelectItem>
                   <SelectItem value="followup" data-testid="option-type-followup">
-                    {t("schedule_page.follow_up")}
+                    Retorno
                   </SelectItem>
                   <SelectItem value="emergency" data-testid="option-type-emergency">
-                    {t("schedule_page.urgent")}
+                    Emergência
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -1599,7 +1598,7 @@ export default function Schedule() {
                 onClick={() => setIsCreateModalOpen(false)}
                 data-testid="button-cancel-appointment"
               >
-                {t("common.cancel")}
+                Cancelar
               </Button>
               <Button 
                 onClick={handleCreateAppointment}
@@ -1609,12 +1608,12 @@ export default function Schedule() {
                 {createAppointmentMutation.isPending ? (
                   <>
                     <i className="fas fa-spinner fa-spin mr-2"></i>
-                    {t("common.loading")}
+                    Agendando...
                   </>
                 ) : (
                   <>
                     <i className="fas fa-check mr-2"></i>
-                    {t("schedule_page.new_appointment")}
+                    Agendar Consulta
                   </>
                 )}
               </Button>
@@ -1627,17 +1626,17 @@ export default function Schedule() {
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="max-w-md" data-testid="modal-edit-appointment">
           <DialogHeader>
-            <DialogTitle>{t("common.edit")} {t("schedule_page.consultation")}</DialogTitle>
+            <DialogTitle>Editar Consulta</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
             {editingAppointment && (
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  {t("common.patient")}: <span className="font-medium">{editingAppointment.patientName}</span>
+                  Paciente: <span className="font-medium">{editingAppointment.patientName}</span>
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {t("common.date")}/{t("common.time")}: <span className="font-medium">
+                  Data/Hora: <span className="font-medium">
                     {format(new Date(editingAppointment.scheduledAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                   </span>
                 </p>
@@ -1645,23 +1644,23 @@ export default function Schedule() {
             )}
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t("schedule_page.consultation_type")}</label>
+              <label className="text-sm font-medium">Tipo de Consulta</label>
               <Select value={editAppointmentType} onValueChange={setEditAppointmentType}>
                 <SelectTrigger data-testid="select-edit-appointment-type">
-                  <SelectValue placeholder={t("common.select_option")} />
+                  <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="consultation">{t("schedule_page.consultation")}</SelectItem>
-                  <SelectItem value="followup">{t("schedule_page.follow_up")}</SelectItem>
-                  <SelectItem value="emergency">{t("schedule_page.urgent")}</SelectItem>
+                  <SelectItem value="consultation">Consulta</SelectItem>
+                  <SelectItem value="followup">Retorno</SelectItem>
+                  <SelectItem value="emergency">Emergência</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t("common.notes")}</label>
+              <label className="text-sm font-medium">Observações</label>
               <Textarea 
-                placeholder={t("common.notes")}
+                placeholder="Observações sobre a consulta..."
                 value={editNotes}
                 onChange={(e) => setEditNotes(e.target.value)}
                 data-testid="textarea-edit-notes"
@@ -1676,7 +1675,7 @@ export default function Schedule() {
                 className="flex-1"
                 data-testid="button-cancel-edit"
               >
-                {t("common.cancel")}
+                Cancelar
               </Button>
               <Button 
                 onClick={handleUpdateAppointment}
@@ -1684,7 +1683,7 @@ export default function Schedule() {
                 className="flex-1"
                 data-testid="button-save-edit"
               >
-                {updateAppointmentMutation.isPending ? t("common.loading") : t("common.save")}
+                {updateAppointmentMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
               </Button>
             </div>
           </div>
@@ -1698,7 +1697,7 @@ export default function Schedule() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <i className="fas fa-link text-blue-600"></i>
-              {t("schedule.generate_link")}
+              Link de Acesso para Paciente
             </DialogTitle>
           </DialogHeader>
           
@@ -1715,7 +1714,7 @@ export default function Schedule() {
             {generatedJoinLink && (
               <div className="space-y-3">
                 <div className="p-3 bg-gray-50 rounded-lg border">
-                  <p className="text-sm text-gray-600 mb-2">{t("schedule.generate_link")}:</p>
+                  <p className="text-sm text-gray-600 mb-2">Link de acesso:</p>
                   <p className="font-mono text-sm bg-white p-2 rounded border break-all">
                     {generatedJoinLink}
                   </p>
@@ -1726,15 +1725,15 @@ export default function Schedule() {
                     onClick={() => {
                       navigator.clipboard.writeText(generatedJoinLink);
                       toast({
-                        title: t("schedule.link_copied"),
-                        description: t("schedule.link_copied_desc"),
+                        title: "Link copiado!",
+                        description: "O link foi copiado para a área de transferência.",
                       });
                     }}
                     className="btn-medical-primary flex-1"
                     data-testid="button-copy-link"
                   >
                     <i className="fas fa-copy mr-2"></i>
-                    {t("common.copy")}
+                    Copiar Link
                   </Button>
 
                   <Button
@@ -1754,7 +1753,8 @@ export default function Schedule() {
 
                 <div className="text-xs text-muted-foreground bg-amber-50 p-3 rounded-lg border border-amber-200">
                   <i className="fas fa-info-circle text-amber-600 mr-2"></i>
-                  {t("common.warning")}
+                  <strong>Instruções para o paciente:</strong> Este link é válido por 4 horas. 
+                  O paciente deve clicar no link na hora da consulta e permitir acesso à câmera e microfone.
                 </div>
               </div>
             )}
@@ -1769,7 +1769,7 @@ export default function Schedule() {
                 }}
                 data-testid="button-close-link-modal"
               >
-                {t("common.close")}
+                Fechar
               </Button>
             </div>
           </div>
@@ -1782,16 +1782,16 @@ export default function Schedule() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PhoneCall className="h-5 w-5 text-green-600" />
-              {t("schedule_page.instant_consultation")}
+              Consulta Instantânea
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground mb-4">
-            {t("schedule_page.select_patient")}
+            Selecione um paciente para iniciar uma videoconsulta. O paciente receberá uma notificação em tempo real.
           </p>
           <div className="space-y-3">
             <Select value={instantPatientId} onValueChange={setInstantPatientId}>
               <SelectTrigger>
-                <SelectValue placeholder={t("schedule_page.select_patient")} />
+                <SelectValue placeholder="Selecione um paciente" />
               </SelectTrigger>
               <SelectContent>
                 {(allPatientsForInstant || []).map((patient: any) => {
@@ -1801,7 +1801,7 @@ export default function Schedule() {
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
                         {patient.name}
-                        {isOnline && <span className="text-xs text-green-600 ml-1">{t("profile_page.online")}</span>}
+                        {isOnline && <span className="text-xs text-green-600 ml-1">Online</span>}
                       </div>
                     </SelectItem>
                   );
@@ -1813,7 +1813,7 @@ export default function Schedule() {
               <div className="rounded-lg bg-green-50 dark:bg-green-900/20 p-3">
                 <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-300 mb-2">
                   <Wifi className="h-4 w-4" />
-                  <span className="font-medium">{t("profile_page.online")}</span>
+                  <span className="font-medium">Pacientes Online</span>
                 </div>
                 {onlinePatients.filter((p: any) => p.isOnline).length > 0 ? (
                   <div className="space-y-1">
@@ -1835,14 +1835,14 @@ export default function Schedule() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">{t("common.no_results")}</p>
+                  <p className="text-xs text-muted-foreground">Nenhum paciente online no momento</p>
                 )}
               </div>
             )}
           </div>
           <div className="flex justify-end space-x-2 pt-4">
             <Button variant="outline" onClick={() => { setIsInstantConsultOpen(false); setInstantPatientId(""); }}>
-              {t("common.cancel")}
+              Cancelar
             </Button>
             <Button
               onClick={() => instantPatientId && startInstantConsultMutation.mutate(instantPatientId)}
@@ -1850,9 +1850,9 @@ export default function Schedule() {
               className="bg-gradient-to-r from-green-600 to-emerald-600 text-white"
             >
               {startInstantConsultMutation.isPending ? (
-                <><i className="fas fa-spinner fa-spin mr-2"></i>{t("common.loading")}</>
+                <><i className="fas fa-spinner fa-spin mr-2"></i>Chamando...</>
               ) : (
-                <><PhoneCall className="h-4 w-4 mr-2" />{t("schedule_page.start_consultation")}</>
+                <><PhoneCall className="h-4 w-4 mr-2" />Iniciar Chamada</>
               )}
             </Button>
           </div>
@@ -1865,23 +1865,23 @@ export default function Schedule() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <XCircle className="h-5 w-5" />
-              {t("common.cancel")} {t("schedule_page.consultation")}
+              Cancelar Consulta
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              {t("schedule_page.cancel_all_confirm")} <strong>{cancelConfirmName}</strong>?
+              Tem certeza que deseja cancelar a consulta com <strong>{cancelConfirmName}</strong>? Esta ação não pode ser desfeita.
             </p>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => { setCancelConfirmId(null); setCancelConfirmName(""); }}>
-                {t("common.back")}
+                Voltar
               </Button>
               <Button
                 variant="destructive"
                 onClick={() => cancelConfirmId && cancelAppointmentMutation.mutate(cancelConfirmId)}
                 disabled={cancelAppointmentMutation.isPending}
               >
-                {cancelAppointmentMutation.isPending ? t("common.loading") : t("common.confirm")}
+                {cancelAppointmentMutation.isPending ? 'Cancelando...' : 'Confirmar Cancelamento'}
               </Button>
             </div>
           </div>
@@ -1894,44 +1894,44 @@ export default function Schedule() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <Trash2 className="h-5 w-5" />
-              {t("schedule_page.cancel_all")}
+              Cancelar Todas as Consultas
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">{t("schedule_page.consultation_type")}</label>
+              <label className="text-sm font-medium text-foreground mb-2 block">Tipo de Consulta</label>
               <Select value={cancelAllAppointmentType} onValueChange={setCancelAllAppointmentType}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t("common.all")}</SelectItem>
-                  <SelectItem value="consultation">{t("schedule_page.consultation")}</SelectItem>
-                  <SelectItem value="followup">{t("schedule_page.follow_up")}</SelectItem>
-                  <SelectItem value="emergency">{t("schedule_page.urgent")}</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="consultation">Consultas</SelectItem>
+                  <SelectItem value="followup">Retornos</SelectItem>
+                  <SelectItem value="emergency">Emergências</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
               <p className="text-sm text-red-800 dark:text-red-200">
                 {cancelAllScope === 'today'
-                  ? `${t("schedule_page.cancel_all_confirm")} (${(appointments || []).filter((a: any) => (a.status === 'scheduled' || a.status === 'in-progress') && (cancelAllAppointmentType === 'all' || a.type === cancelAllAppointmentType)).length})`
-                  : t("schedule_page.cancel_all_confirm")}
+                  ? `Você está prestes a cancelar ${cancelAllAppointmentType === 'all' ? 'todas as' : ''} ${(appointments || []).filter((a: any) => (a.status === 'scheduled' || a.status === 'in-progress') && (cancelAllAppointmentType === 'all' || a.type === cancelAllAppointmentType)).length} consulta(s) pendente(s) de hoje${cancelAllAppointmentType !== 'all' ? ` do tipo "${cancelAllAppointmentType === 'consultation' ? 'Consulta' : cancelAllAppointmentType === 'followup' ? 'Retorno' : 'Emergência'}"` : ''}.`
+                  : `Você está prestes a cancelar ${cancelAllAppointmentType === 'all' ? 'todas as' : ''} consulta(s) futura(s) agendada(s)${cancelAllAppointmentType !== 'all' ? ` do tipo "${cancelAllAppointmentType === 'consultation' ? 'Consulta' : cancelAllAppointmentType === 'followup' ? 'Retorno' : 'Emergência'}"` : ''}.`}
               </p>
             </div>
             <p className="text-sm text-muted-foreground">
-              {t("common.warning")}
+              Todas as consultas serão marcadas como canceladas e movidas para o histórico. Os pacientes serão notificados. Esta ação não pode ser desfeita.
             </p>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => { setCancelAllScope(null); setCancelAllAppointmentType('all'); }}>
-                {t("common.back")}
+                Voltar
               </Button>
               <Button
                 variant="destructive"
                 onClick={() => cancelAllScope && cancelAllMutation.mutate({ scope: cancelAllScope, appointmentType: cancelAllAppointmentType })}
                 disabled={cancelAllMutation.isPending}
               >
-                {cancelAllMutation.isPending ? t("common.loading") : t("common.confirm")}
+                {cancelAllMutation.isPending ? 'Cancelando...' : 'Confirmar Cancelamento'}
               </Button>
             </div>
           </div>
@@ -1944,28 +1944,28 @@ export default function Schedule() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-700">
               <Trash2 className="h-5 w-5" />
-              {t("schedule_page.delete_appointment")}
+              Excluir Agendamento
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
               <p className="text-sm text-red-800 dark:text-red-200">
-                {t("schedule_page.delete_appointment")} <strong>{deleteConfirmName}</strong>?
+                Tem certeza que deseja <strong>excluir permanentemente</strong> o agendamento com <strong>{deleteConfirmName}</strong>?
               </p>
             </div>
             <p className="text-sm text-muted-foreground">
-              {t("common.warning")}
+              O agendamento será removido do sistema e o paciente será notificado. Esta ação não pode ser desfeita.
             </p>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => { setDeleteConfirmId(null); setDeleteConfirmName(""); }}>
-                {t("common.back")}
+                Voltar
               </Button>
               <Button
                 variant="destructive"
                 onClick={() => deleteConfirmId && deleteAppointmentMutation.mutate(deleteConfirmId)}
                 disabled={deleteAppointmentMutation.isPending}
               >
-                {deleteAppointmentMutation.isPending ? t("common.loading") : t("common.confirm")}
+                {deleteAppointmentMutation.isPending ? 'Excluindo...' : 'Excluir Permanentemente'}
               </Button>
             </div>
           </div>
@@ -1978,36 +1978,41 @@ export default function Schedule() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-orange-600">
               <Ban className="h-5 w-5" />
-              {t("schedule_page.block_patient")}
+              Bloquear Paciente
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
               <p className="text-sm text-orange-800 dark:text-orange-200">
-                {t("schedule_page.block_patient")}: <strong>{blockPatientName}</strong>
+                Ao bloquear <strong>{blockPatientName}</strong>, este paciente não poderá mais:
               </p>
+              <ul className="text-sm text-orange-700 dark:text-orange-300 mt-2 space-y-1 list-disc list-inside">
+                <li>Agendar consultas com você</li>
+                <li>Solicitar consultas por triagem direcionadas a você</li>
+                <li>Enviar solicitações de atendimento</li>
+              </ul>
             </div>
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">
-                {t("common.notes")}
+                Motivo do bloqueio (opcional)
               </label>
               <Textarea
                 value={blockReason}
                 onChange={(e) => setBlockReason(e.target.value)}
-                placeholder={t("common.notes")}
+                placeholder="Ex: Comportamento inadequado, não comparecimentos repetidos..."
                 rows={3}
               />
             </div>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => { setBlockPatientId(null); setBlockPatientName(""); setBlockReason(""); }}>
-                {t("common.back")}
+                Voltar
               </Button>
               <Button
                 className="bg-orange-600 hover:bg-orange-700 text-white"
                 onClick={() => blockPatientId && blockPatientMutation.mutate({ patientId: blockPatientId, reason: blockReason })}
                 disabled={blockPatientMutation.isPending}
               >
-                {blockPatientMutation.isPending ? t("common.loading") : t("common.confirm")}
+                {blockPatientMutation.isPending ? 'Bloqueando...' : 'Confirmar Bloqueio'}
               </Button>
             </div>
           </div>
@@ -2020,13 +2025,13 @@ export default function Schedule() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserX className="h-5 w-5 text-orange-600" />
-              {t("common.blocked")}
+              Pacientes Bloqueados
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             {!blockedPatients || blockedPatients.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">
-                {t("common.no_results")}
+                Nenhum paciente bloqueado.
               </p>
             ) : (
               <ScrollArea className="max-h-[400px]">
@@ -2035,9 +2040,9 @@ export default function Schedule() {
                     <div key={block.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
                       <div className="flex-1">
                         <p className="font-medium text-sm">{block.patientName}</p>
-                        {block.reason && <p className="text-xs text-muted-foreground mt-1">{block.reason}</p>}
+                        {block.reason && <p className="text-xs text-muted-foreground mt-1">Motivo: {block.reason}</p>}
                         <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(block.blockedAt).toLocaleDateString('pt-BR')}
+                          Bloqueado em {new Date(block.blockedAt).toLocaleDateString('pt-BR')}
                         </p>
                       </div>
                       <Button
@@ -2047,7 +2052,7 @@ export default function Schedule() {
                         disabled={unblockPatientMutation.isPending}
                         className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
                       >
-                        {t("schedule_page.unblock_patient")}
+                        Desbloquear
                       </Button>
                     </div>
                   ))}
