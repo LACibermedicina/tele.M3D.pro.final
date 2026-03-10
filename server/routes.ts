@@ -88,6 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migrateDoctorPatientBlocks();
   await migratePaymentTransactions();
   await migrateClinicTables();
+  await migrateUserDeactivationFields();
   await initStripeSync();
   
   // Initialize default doctor if not exists and get the actual ID
@@ -6620,6 +6621,13 @@ Responda em português brasileiro, de forma estruturada e concisa, com linguagem
         return res.status(401).json({ message: 'User not found' });
       }
       
+      // Check if user was blocked after login
+      if (user.isBlocked) {
+        res.clearCookie('authToken');
+        const reason = user.deactivationReason || 'Conta desativada por questões administrativas.';
+        return res.status(403).json({ message: reason, blocked: true });
+      }
+
       // Attach user to request
       req.user = user;
       next();
@@ -9484,6 +9492,12 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         return res.status(401).json({ message: 'Usuário ou senha incorretos. Verifique suas credenciais e tente novamente.' });
       }
       
+      // Check if user is blocked/deactivated
+      if (user.isBlocked) {
+        const reason = user.deactivationReason || 'Conta desativada por questões administrativas.';
+        return res.status(403).json({ message: reason });
+      }
+
       // Verify password (in production, use bcrypt.compare)
       const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
       // Handle both hashed and plain text passwords for development migration
@@ -13655,9 +13669,13 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       const { userId } = req.params;
       const updateData = req.body;
 
-      // Prevent updating sensitive fields directly
+      // Prevent updating sensitive/controlled fields directly
       delete updateData.password;
       delete updateData.id;
+      delete updateData.isBlocked;
+      delete updateData.blockedBy;
+      delete updateData.deactivationReason;
+      delete updateData.isProtected;
 
       const updatedUser = await storage.updateUser(userId, updateData);
 
@@ -13690,7 +13708,14 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         return res.status(400).json({ message: 'Cannot block your own account' });
       }
 
-      const blockedUser = await storage.blockUser(userId, user.id, reason);
+      // Prevent blocking root superuser
+      const targetUser = await storage.getUser(userId);
+      if (targetUser?.username === 'root') {
+        return res.status(403).json({ message: 'O superusuário root não pode ser desativado.' });
+      }
+
+      const deactivationReason = reason || 'Inativo por questões administrativas';
+      const blockedUser = await storage.blockUser(userId, user.id, deactivationReason);
 
       if (!blockedUser) {
         return res.status(404).json({ message: 'User not found' });
@@ -13784,6 +13809,38 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     } catch (error) {
       console.error('Admin user unblock error:', error);
       res.status(500).json({ message: 'Failed to unblock user' });
+    }
+  });
+
+  // Toggle user protection from deletion
+  app.patch('/api/admin/users/:userId/protect', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied: admin privileges required' });
+      }
+
+      const { userId } = req.params;
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      if (targetUser.username === 'root') {
+        return res.status(403).json({ message: 'O superusuário root é sempre protegido.' });
+      }
+
+      const newProtected = !targetUser.isProtected;
+      const [updated] = await db.update(users)
+        .set({ isProtected: newProtected })
+        .where(eq(users.id, userId))
+        .returning();
+
+      const safeUser = { ...updated, password: undefined };
+      res.json({ message: `Usuário ${newProtected ? 'protegido' : 'desprotegido'} com sucesso`, user: safeUser });
+    } catch (error) {
+      console.error('Admin user protect error:', error);
+      res.status(500).json({ message: 'Failed to update user protection' });
     }
   });
 
@@ -14088,11 +14145,12 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       await db.delete(patients);
       await db.delete(tmcTransactions);
       
-      // Delete all users except the current admin
+      // Delete all users except the current admin and protected users
       await db.delete(users).where(
         and(
           sql`${users.id} != ${user.id}`,
-          sql`${users.role} != 'admin'`
+          sql`${users.role} != 'admin'`,
+          sql`COALESCE(${users.isProtected}, false) = false`
         )
       );
 
@@ -20652,6 +20710,18 @@ async function migrateClinicTables() {
     console.log('✓ Clinic tables migrated successfully');
   } catch (error) {
     console.error('Failed to migrate clinic tables:', error);
+  }
+}
+
+async function migrateUserDeactivationFields() {
+  try {
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivation_reason TEXT DEFAULT NULL`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_protected BOOLEAN DEFAULT false`);
+    // Ensure root user is always protected
+    await db.execute(sql`UPDATE users SET is_protected = true WHERE username = 'root'`);
+    console.log('✓ User deactivation/protection fields migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate user deactivation fields:', error);
   }
 }
 

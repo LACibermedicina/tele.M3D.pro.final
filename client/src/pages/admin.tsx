@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings, CreditCard, Pill } from 'lucide-react';
+import { Shield, ShieldCheck, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings, CreditCard, Pill } from 'lucide-react';
 import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { formatErrorForToast } from '@/lib/error-handler';
@@ -67,6 +69,8 @@ interface AdminUser {
   role: string;
   isBlocked: boolean;
   blockedBy?: string;
+  deactivationReason?: string;
+  isProtected?: boolean;
   lastLogin?: string;
   hierarchyLevel?: number;
   superiorDoctorId?: string;
@@ -125,6 +129,7 @@ export default function AdminPage() {
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [editUserRole, setEditUserRole] = useState('');
+  const [editDeactivationReason, setEditDeactivationReason] = useState('');
 
   // WebSocket for real-time activity monitoring
   const { isConnected, messages } = useWebSocket();
@@ -251,6 +256,19 @@ export default function AdminPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       toast({ title: 'Success', description: 'User unblocked successfully' });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: 'destructive' });
+    }
+  });
+
+  const protectUserMutation = useMutation({
+    mutationFn: (userId: string) => 
+      apiRequest('PATCH', `/api/admin/users/${userId}/protect`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      toast({ title: 'Sucesso', description: 'Status de proteção atualizado' });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -563,9 +581,14 @@ export default function AdminPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={user.isBlocked ? 'destructive' : 'default'}>
-                            {user.isBlocked ? 'Blocked' : 'Active'}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant={user.isBlocked ? 'destructive' : 'default'}>
+                              {user.isBlocked ? 'Inativo' : 'Ativo'}
+                            </Badge>
+                            {user.isProtected && (
+                              <ShieldCheck className="h-4 w-4 text-blue-500" title="Protegido contra exclusão" />
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           {user.lastLogin ? format(new Date(user.lastLogin), 'MMM dd, yyyy HH:mm') : 'Never'}
@@ -606,6 +629,7 @@ export default function AdminPage() {
                               onClick={() => {
                                 setEditingUser(user);
                                 setEditUserRole(user.role);
+                                setEditDeactivationReason(user.deactivationReason || '');
                                 setShowEditUserDialog(true);
                               }}
                             >
@@ -660,10 +684,91 @@ export default function AdminPage() {
                     )}
                   </div>
                 )}
+
+                {editingUser && editingUser.username !== 'root' && (
+                  <>
+                    <div className="border-t pt-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-medium">Acesso ativo</Label>
+                          <p className="text-xs text-muted-foreground">Desativar impede o login do usuário</p>
+                        </div>
+                        <Switch
+                          checked={!editingUser.isBlocked}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              unblockUserMutation.mutate(editingUser.id);
+                              setEditingUser({ ...editingUser, isBlocked: false, deactivationReason: undefined });
+                              setEditDeactivationReason('');
+                            } else {
+                              const reason = editDeactivationReason || 'Inativo por questões administrativas';
+                              blockUserMutation.mutate({ userId: editingUser.id, reason });
+                              setEditingUser({ ...editingUser, isBlocked: true, deactivationReason: reason });
+                            }
+                          }}
+                          disabled={blockUserMutation.isPending || unblockUserMutation.isPending}
+                        />
+                      </div>
+                      {editingUser.isBlocked && (
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Observação</Label>
+                          <Textarea
+                            value={editDeactivationReason}
+                            onChange={(e) => setEditDeactivationReason(e.target.value)}
+                            placeholder="Inativo por questões administrativas"
+                            rows={2}
+                            className="text-sm"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const reason = editDeactivationReason || 'Inativo por questões administrativas';
+                              blockUserMutation.mutate({ userId: editingUser.id, reason });
+                              setEditingUser({ ...editingUser, deactivationReason: reason });
+                            }}
+                            disabled={blockUserMutation.isPending}
+                          >
+                            Salvar observação
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-medium flex items-center gap-1.5">
+                            <ShieldCheck className="h-4 w-4 text-blue-500" />
+                            Proteger contra exclusão
+                          </Label>
+                          <p className="text-xs text-muted-foreground">Impede que este usuário seja removido</p>
+                        </div>
+                        <Switch
+                          checked={!!editingUser.isProtected}
+                          onCheckedChange={() => {
+                            protectUserMutation.mutate(editingUser.id);
+                            setEditingUser({ ...editingUser, isProtected: !editingUser.isProtected });
+                          }}
+                          disabled={protectUserMutation.isPending}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {editingUser && editingUser.username === 'root' && (
+                  <div className="border-t pt-4 space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <ShieldCheck className="h-4 w-4 text-blue-500" />
+                      <span>Superusuário root — sempre protegido, não pode ser desativado</span>
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowEditUserDialog(false)}>
-                  Cancel
+                  Cancelar
                 </Button>
                 <Button
                   onClick={() => {
@@ -677,7 +782,7 @@ export default function AdminPage() {
                   }}
                   disabled={updateUserMutation.isPending}
                 >
-                  Save Changes
+                  Salvar Alterações
                 </Button>
               </DialogFooter>
             </DialogContent>

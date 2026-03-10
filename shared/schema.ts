@@ -21,6 +21,8 @@ export const users = pgTable("users", {
   profilePicture: text("profile_picture"),
   isBlocked: boolean("is_blocked").default(false),
   blockedBy: uuid("blocked_by"),
+  deactivationReason: text("deactivation_reason"),
+  isProtected: boolean("is_protected").default(false),
   superiorDoctorId: uuid("superior_doctor_id"),
   hierarchyLevel: integer("hierarchy_level").default(0),
   inviteQrCode: text("invite_qr_code"),

@@ -292,7 +292,7 @@ export class DatabaseStorage implements IStorage {
       .set({ 
         isBlocked: true, 
         blockedBy: blockedById,
-        // Note: we could add a blockedReason field to schema later if needed
+        deactivationReason: reason || 'Inativo por questões administrativas',
       })
       .where(eq(users.id, userId))
       .returning();
@@ -303,7 +303,8 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.update(users)
       .set({ 
         isBlocked: false, 
-        blockedBy: null 
+        blockedBy: null,
+        deactivationReason: null,
       })
       .where(eq(users.id, userId))
       .returning();
