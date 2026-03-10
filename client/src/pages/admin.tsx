@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, ShieldCheck, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings, CreditCard, Pill } from 'lucide-react';
+import { Shield, ShieldCheck, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings, CreditCard, Pill, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { formatErrorForToast } from '@/lib/error-handler';
@@ -130,6 +130,8 @@ export default function AdminPage() {
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [editUserRole, setEditUserRole] = useState('');
   const [editDeactivationReason, setEditDeactivationReason] = useState('');
+  const [userSortColumn, setUserSortColumn] = useState<string>('username');
+  const [userSortDirection, setUserSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // WebSocket for real-time activity monitoring
   const { isConnected, messages } = useWebSocket();
@@ -544,18 +546,57 @@ export default function AdminPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Username</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Last Login</TableHead>
-                      <TableHead>TM3D Credits</TableHead>
+                      {[
+                        { key: 'username', label: 'Username' },
+                        { key: 'name', label: 'Name' },
+                        { key: 'role', label: 'Role' },
+                        { key: 'status', label: 'Status' },
+                        { key: 'lastLogin', label: 'Last Login' },
+                        { key: 'credits', label: 'TM3D Credits' },
+                      ].map(col => (
+                        <TableHead
+                          key={col.key}
+                          className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+                          onClick={() => {
+                            if (userSortColumn === col.key) {
+                              setUserSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                            } else {
+                              setUserSortColumn(col.key);
+                              setUserSortDirection('asc');
+                            }
+                          }}
+                        >
+                          <div className="flex items-center gap-1">
+                            {col.label}
+                            {userSortColumn === col.key ? (
+                              userSortDirection === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                            ) : (
+                              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/50" />
+                            )}
+                          </div>
+                        </TableHead>
+                      ))}
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {(adminUsers as AdminUser[])
                       .filter((u: AdminUser) => userRoleFilter === 'all' || u.role === userRoleFilter)
+                      .sort((a: AdminUser, b: AdminUser) => {
+                        let valA: any, valB: any;
+                        switch (userSortColumn) {
+                          case 'username': valA = a.username?.toLowerCase() || ''; valB = b.username?.toLowerCase() || ''; break;
+                          case 'name': valA = a.name?.toLowerCase() || ''; valB = b.name?.toLowerCase() || ''; break;
+                          case 'role': valA = a.role || ''; valB = b.role || ''; break;
+                          case 'status': valA = a.isBlocked ? 1 : 0; valB = b.isBlocked ? 1 : 0; break;
+                          case 'lastLogin': valA = a.lastLogin ? new Date(a.lastLogin).getTime() : 0; valB = b.lastLogin ? new Date(b.lastLogin).getTime() : 0; break;
+                          case 'credits': valA = a.tmcCredits || 0; valB = b.tmcCredits || 0; break;
+                          default: valA = a.username?.toLowerCase() || ''; valB = b.username?.toLowerCase() || '';
+                        }
+                        if (valA < valB) return userSortDirection === 'asc' ? -1 : 1;
+                        if (valA > valB) return userSortDirection === 'asc' ? 1 : -1;
+                        return 0;
+                      })
                       .map((user: AdminUser) => (
                       <TableRow key={user.id} data-testid={`user-row-${user.id}`}>
                         <TableCell className="font-medium">{user.username}</TableCell>
