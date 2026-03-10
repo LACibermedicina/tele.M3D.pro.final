@@ -20,7 +20,7 @@ import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
 import { z } from "zod";
 import { db } from "./db";
-import { eq, desc, sql, and, or, isNotNull, inArray, gte, lte, lt } from "drizzle-orm";
+import { eq, desc, sql, and, or, isNotNull, isNull, inArray, gte, lte, lt, ne } from "drizzle-orm";
 import { generateAgoraToken, getAgoraAppId } from "./agora";
 
 // TMC Credit System Validation Schemas
@@ -14148,9 +14148,9 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       // Delete all users except the current admin and protected users
       await db.delete(users).where(
         and(
-          sql`${users.id} != ${user.id}`,
-          sql`${users.role} != 'admin'`,
-          sql`COALESCE(${users.isProtected}, false) = false`
+          ne(users.id, user.id),
+          ne(users.role, 'admin'),
+          or(eq(users.isProtected, false), isNull(users.isProtected))
         )
       );
 
