@@ -14135,15 +14135,52 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       }
 
       // Delete all data in correct order (respecting foreign key constraints)
+      // Leaf-level tables first, then work up the dependency chain
+      await db.delete(consultationNotes);
       await db.delete(chatbotConversations);
       await db.delete(whatsappMessages);
-      await db.delete(medicalRecords);
+      await db.delete(diagnosticInferences);
+      await db.delete(consultationAccessTokens);
+      await db.delete(walletAuditLog);
+      await db.delete(digitalSignatures);
+      await db.delete(signatureVerifications);
+      await db.delete(digitalKeys);
+      await db.delete(pharmacyDispensing);
+      await db.delete(pharmacyReports);
+      await db.delete(clinicConsultationLogs);
+      await db.delete(clinicPatientBindings);
+      await db.delete(clinicMembers);
+      await db.delete(clinics);
+      await db.delete(interConsultations);
+      await db.delete(doctorPatientBlocks);
+      await db.delete(paymentTransactions);
+      await db.delete(pendingNotifications);
+      await db.delete(medicalTeamMembers);
+      await db.delete(medicalTeams);
+      await db.delete(dynamicNfts);
+      await db.delete(nftOwnership);
+      await db.delete(brokerOrders);
+      await db.delete(brokerTrades);
+      await db.delete(externalWallets);
+      await db.delete(withdrawalRequests);
+      await db.delete(paypalOrders);
+      await db.delete(cashboxTransactions);
+      await db.delete(cashbox);
+
+      // Tables referencing medicalRecords
+      await db.delete(examResults);
       await db.delete(prescriptionItems);
       await db.delete(prescriptions);
-      await db.delete(examResults);
+
+      // Tables referencing appointments (must come before appointments)
+      await db.delete(videoConsultations);
+      await db.delete(tmcTransactions);
+      await db.delete(consultationRequests);
+      await db.delete(medicalRecords);
+
+      // Now safe to delete appointments and patients
       await db.delete(appointments);
       await db.delete(patients);
-      await db.delete(tmcTransactions);
       
       // Delete all users except the current admin and protected users
       await db.delete(users).where(
