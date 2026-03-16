@@ -104,6 +104,7 @@ export default function FHIRDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingPatient, setEditingPatient] = useState<{ id: string; given: string; family: string; gender: string; birthDate: string; phone: string; email: string } | null>(null);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [ecgImage, setEcgImage] = useState<string | null>(null);
   const [ecgImagePreview, setEcgImagePreview] = useState<string | null>(null);
   const [ecgResult, setEcgResult] = useState<ECGAnalysisResult | null>(null);
@@ -281,6 +282,7 @@ export default function FHIRDashboard() {
         resourceType: 'Observation',
         id: `ecg-${Date.now()}`,
         status: 'final',
+        ...(selectedPatientId ? { subject: { reference: `Patient/${selectedPatientId}` } } : {}),
         category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/observation-category', code: 'exam', display: 'Exam' }] }],
         code: { coding: [{ system: 'http://loinc.org', code: '100974-8', display: 'ECG study' }], text: 'ECG Analysis' },
         effectiveDateTime: new Date().toISOString(),
@@ -520,7 +522,7 @@ export default function FHIRDashboard() {
                         </TableHeader>
                         <TableBody>
                           {patients.map((entry) => (
-                            <TableRow key={entry.resource.id}>
+                            <TableRow key={entry.resource.id} className={`cursor-pointer ${selectedPatientId === entry.resource.id ? 'bg-blue-500/10 border-l-2 border-l-blue-500' : ''}`} onClick={() => setSelectedPatientId(prev => prev === entry.resource.id ? null : entry.resource.id)}>
                               <TableCell className="font-medium">
                                 {getPatientName(entry.resource)}
                               </TableCell>
@@ -628,6 +630,15 @@ export default function FHIRDashboard() {
                   <ObservationsTab />
                 </CardContent>
               </Card>
+            )}
+
+            {(activeTab === 'ecg' || activeTab === 'export') && selectedPatientId && (
+              <div className="mb-3 flex items-center gap-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm">
+                <Users className="h-4 w-4 text-blue-500" />
+                <span className="text-muted-foreground">Paciente selecionado:</span>
+                <span className="font-medium">{patients.find(p => p.resource.id === selectedPatientId)?.resource.name?.[0]?.given?.join(' ')} {patients.find(p => p.resource.id === selectedPatientId)?.resource.name?.[0]?.family}</span>
+                <Button variant="ghost" size="sm" className="ml-auto h-6 text-xs" onClick={() => setSelectedPatientId(null)}>Remover</Button>
+              </div>
             )}
 
             {activeTab === 'ecg' && (
@@ -817,6 +828,7 @@ function ObservationsTab() {
   const [patientId, setPatientId] = useState('');
   const [showCreateObs, setShowCreateObs] = useState(false);
   const [newObs, setNewObs] = useState({ code: '', display: '', value: '', unit: '' });
+  const [editingObs, setEditingObs] = useState<{ id: string; code: string; display: string; value: string; unit: string } | null>(null);
 
   const { data: observations, isLoading } = useQuery({
     queryKey: ['/api/fhir/observations', patientId],
@@ -867,6 +879,45 @@ function ObservationsTab() {
       toast({ title: 'Erro ao remover observação', variant: 'destructive' });
     },
   });
+
+  const updateObsMutation = useMutation({
+    mutationFn: async (obs: NonNullable<typeof editingObs>) => {
+      const observation: FHIRObservationResource = {
+        resourceType: 'Observation',
+        id: obs.id,
+        status: 'final',
+        code: {
+          coding: [{ system: 'http://loinc.org', code: obs.code, display: obs.display }],
+          text: obs.display,
+        },
+        effectiveDateTime: new Date().toISOString(),
+        ...(obs.unit
+          ? { valueQuantity: { value: parseFloat(obs.value), unit: obs.unit } }
+          : { valueString: obs.value }),
+        ...(patientId ? { subject: { reference: `Patient/${patientId}` } } : {}),
+      };
+      return apiRequest('PUT', `/api/fhir/observations/${obs.id}`, observation);
+    },
+    onSuccess: () => {
+      toast({ title: 'Observação atualizada' });
+      queryClient.invalidateQueries({ queryKey: ['/api/fhir/observations'] });
+      setEditingObs(null);
+    },
+    onError: () => {
+      toast({ title: 'Erro ao atualizar observação', variant: 'destructive' });
+    },
+  });
+
+  const openEditObs = (entry: { resource: FHIRObservationResource }) => {
+    const r = entry.resource;
+    setEditingObs({
+      id: r.id,
+      code: r.code?.coding?.[0]?.code || '',
+      display: r.code?.text || r.code?.coding?.[0]?.display || '',
+      value: r.valueString || String(r.valueQuantity?.value || ''),
+      unit: r.valueQuantity?.unit || '',
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -947,9 +998,14 @@ function ObservationsTab() {
                   <Badge variant="outline" className="text-xs">{entry.resource?.status || '-'}</Badge>
                 </TableCell>
                 <TableCell>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700" onClick={() => deleteObsMutation.mutate(entry.resource.id)} disabled={deleteObsMutation.isPending}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500 hover:text-blue-700" onClick={() => openEditObs(entry)}>
+                      <Edit className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700" onClick={() => deleteObsMutation.mutate(entry.resource.id)} disabled={deleteObsMutation.isPending}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -960,6 +1016,41 @@ function ObservationsTab() {
           Nenhuma observação encontrada para este paciente
         </p>
       ) : null}
+
+      {editingObs && (
+        <Dialog open={!!editingObs} onOpenChange={() => setEditingObs(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Observação FHIR</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Código LOINC</Label>
+                  <Input value={editingObs.code} onChange={e => setEditingObs(p => p ? { ...p, code: e.target.value } : null)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Descrição</Label>
+                  <Input value={editingObs.display} onChange={e => setEditingObs(p => p ? { ...p, display: e.target.value } : null)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Valor</Label>
+                  <Input value={editingObs.value} onChange={e => setEditingObs(p => p ? { ...p, value: e.target.value } : null)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Unidade (opcional)</Label>
+                  <Input value={editingObs.unit} onChange={e => setEditingObs(p => p ? { ...p, unit: e.target.value } : null)} />
+                </div>
+              </div>
+              <Button className="w-full" onClick={() => editingObs && updateObsMutation.mutate(editingObs)} disabled={updateObsMutation.isPending || !editingObs.display || !editingObs.value}>
+                {updateObsMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Atualizando...</> : 'Atualizar Observação'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
