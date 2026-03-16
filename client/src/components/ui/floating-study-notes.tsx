@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 interface StudyNote {
-  id: number;
+  id: string;
   title: string;
   content: string;
   folder: string;
@@ -45,7 +45,7 @@ export default function FloatingStudyNotes() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (data: { id?: number; title: string; content: string }) => {
+    mutationFn: async (data: { id?: string; title: string; content: string }) => {
       if (data.id) {
         return apiRequest('PATCH', `/api/doctor-notes/${data.id}`, {
           title: data.title,
@@ -70,7 +70,7 @@ export default function FloatingStudyNotes() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => apiRequest('DELETE', `/api/doctor-notes/${id}`),
+    mutationFn: async (id: string) => apiRequest('DELETE', `/api/doctor-notes/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/doctor-notes'] });
       setSelectedNote(null);
