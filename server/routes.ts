@@ -20539,8 +20539,7 @@ ${combinedText.slice(0, 8000)}`;
     } catch (error) {
       console.error('ECG analysis error:', error);
       res.status(500).json({ 
-        message: 'Erro ao analisar ECG',
-        error: error instanceof Error ? error.message : 'Erro desconhecido'
+        message: 'Erro ao analisar ECG. Tente novamente em alguns instantes.'
       });
     }
   });
@@ -20676,6 +20675,75 @@ ${combinedText.slice(0, 8000)}`;
     } catch (error) {
       console.error('FHIR Patient delete error:', error);
       res.status(500).json({ message: 'Erro ao remover paciente FHIR' });
+    }
+  });
+
+  // FHIR R4 - Update Patient
+  app.put('/api/fhir/patients/:id', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
+      }
+      const response = await fetch(`${FHIR_SERVER}/Patient/${req.params.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/fhir+json',
+          'Accept': 'application/fhir+json'
+        },
+        body: JSON.stringify({ ...req.body, id: req.params.id })
+      });
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error) {
+      console.error('FHIR Patient update error:', error);
+      res.status(500).json({ message: 'Erro ao atualizar paciente FHIR' });
+    }
+  });
+
+  // FHIR R4 - Update Observation
+  app.put('/api/fhir/observations/:id', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
+      }
+      const response = await fetch(`${FHIR_SERVER}/Observation/${req.params.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/fhir+json',
+          'Accept': 'application/fhir+json'
+        },
+        body: JSON.stringify({ ...req.body, id: req.params.id })
+      });
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error) {
+      console.error('FHIR Observation update error:', error);
+      res.status(500).json({ message: 'Erro ao atualizar observação FHIR' });
+    }
+  });
+
+  // FHIR R4 - Delete Observation
+  app.delete('/api/fhir/observations/:id', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
+      }
+      const response = await fetch(`${FHIR_SERVER}/Observation/${req.params.id}`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/fhir+json' }
+      });
+      if (response.ok) {
+        res.json({ message: 'Observação removida' });
+      } else {
+        const data = await response.json();
+        res.status(response.status).json(data);
+      }
+    } catch (error) {
+      console.error('FHIR Observation delete error:', error);
+      res.status(500).json({ message: 'Erro ao remover observação FHIR' });
     }
   });
 

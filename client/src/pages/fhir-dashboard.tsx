@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ import {
 } from 'recharts';
 import {
   Users, FileText, Heart, Download, Search, Plus, Trash2,
-  Upload, Activity, Loader2, AlertTriangle, Stethoscope, Zap
+  Upload, Activity, Loader2, AlertTriangle, Stethoscope, Zap, Edit
 } from 'lucide-react';
 
 const ECG_COLORS: Record<string, string> = {
@@ -49,6 +49,20 @@ interface FHIRBundle {
   type: string;
   total?: number;
   entry?: FHIRPatient[];
+}
+
+interface FHIRObservationResource {
+  resourceType: string;
+  id: string;
+  status: string;
+  category?: Array<{ coding: Array<{ system: string; code: string; display: string }> }>;
+  code: { coding?: Array<{ system: string; code: string; display: string }>; text?: string };
+  effectiveDateTime?: string;
+  valueString?: string;
+  valueQuantity?: { value: number; unit?: string; system?: string; code?: string };
+  component?: Array<{ code: { text: string }; valueString: string }>;
+  note?: Array<{ text: string }>;
+  subject?: { reference: string };
 }
 
 interface ECGAnalysisResult {
@@ -89,6 +103,7 @@ export default function FHIRDashboard() {
   const [activeTab, setActiveTab] = useState('patients');
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editingPatient, setEditingPatient] = useState<{ id: string; given: string; family: string; gender: string; birthDate: string; phone: string; email: string } | null>(null);
   const [ecgImage, setEcgImage] = useState<string | null>(null);
   const [ecgImagePreview, setEcgImagePreview] = useState<string | null>(null);
   const [ecgResult, setEcgResult] = useState<ECGAnalysisResult | null>(null);
@@ -150,6 +165,45 @@ export default function FHIRDashboard() {
       toast({ title: 'Erro ao remover paciente', variant: 'destructive' });
     },
   });
+
+  const updatePatientMutation = useMutation({
+    mutationFn: async (patientData: NonNullable<typeof editingPatient>) => {
+      const fhirPatient = {
+        resourceType: 'Patient',
+        id: patientData.id,
+        name: [{ given: [patientData.given], family: patientData.family }],
+        gender: patientData.gender,
+        birthDate: patientData.birthDate || undefined,
+        telecom: [
+          ...(patientData.phone ? [{ system: 'phone' as const, value: patientData.phone }] : []),
+          ...(patientData.email ? [{ system: 'email' as const, value: patientData.email }] : []),
+        ],
+        active: true,
+      };
+      return apiRequest('PUT', `/api/fhir/patients/${patientData.id}`, fhirPatient);
+    },
+    onSuccess: () => {
+      toast({ title: 'Paciente atualizado' });
+      queryClient.invalidateQueries({ queryKey: ['/api/fhir/patients'] });
+      setEditingPatient(null);
+    },
+    onError: () => {
+      toast({ title: 'Erro ao atualizar paciente', variant: 'destructive' });
+    },
+  });
+
+  const openEditPatient = (entry: FHIRPatient) => {
+    const r = entry.resource;
+    setEditingPatient({
+      id: r.id,
+      given: r.name?.[0]?.given?.join(' ') || '',
+      family: r.name?.[0]?.family || '',
+      gender: r.gender || 'unknown',
+      birthDate: r.birthDate || '',
+      phone: r.telecom?.find(t => t.system === 'phone')?.value || '',
+      email: r.telecom?.find(t => t.system === 'email')?.value || '',
+    });
+  };
 
   const ecgAnalysisMutation = useMutation({
     mutationFn: async (data: { imageBase64: string; patientContext: any }) => {
@@ -223,24 +277,25 @@ export default function FHIRDashboard() {
     };
 
     if (ecgResult) {
+      const ecgObservation: FHIRObservationResource = {
+        resourceType: 'Observation',
+        id: `ecg-${Date.now()}`,
+        status: 'final',
+        category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/observation-category', code: 'exam', display: 'Exam' }] }],
+        code: { coding: [{ system: 'http://loinc.org', code: '100974-8', display: 'ECG study' }], text: 'ECG Analysis' },
+        effectiveDateTime: new Date().toISOString(),
+        valueString: ecgResult.technical_summary,
+        component: Object.entries(ecgResult.ecg_metrics).map(([key, value]) => ({
+          code: { text: key.replace(/_/g, ' ') },
+          valueString: value,
+        })),
+        note: [
+          { text: ecgResult.simple_summary },
+          { text: ecgResult.disclaimer },
+        ],
+      };
       bundle.entry.push({
-        resource: {
-          resourceType: 'Observation',
-          id: `ecg-${Date.now()}`,
-          status: 'final',
-          category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/observation-category', code: 'exam', display: 'Exam' }] }],
-          code: { coding: [{ system: 'http://loinc.org', code: '100974-8', display: 'ECG study' }], text: 'ECG Analysis' },
-          effectiveDateTime: new Date().toISOString(),
-          valueString: ecgResult.technical_summary,
-          component: Object.entries(ecgResult.ecg_metrics).map(([key, value]) => ({
-            code: { text: key.replace(/_/g, ' ') },
-            valueString: value,
-          })),
-          note: [
-            { text: ecgResult.simple_summary },
-            { text: ecgResult.disclaimer },
-          ],
-        } as any,
+        resource: ecgObservation,
         fullUrl: `urn:uuid:ecg-${Date.now()}`,
       });
     }
@@ -478,15 +533,25 @@ export default function FHIRDashboard() {
                               <TableCell className="text-xs">{getPatientPhone(entry.resource)}</TableCell>
                               <TableCell className="text-xs">{getPatientEmail(entry.resource)}</TableCell>
                               <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-red-500 hover:text-red-700"
-                                  onClick={() => deletePatientMutation.mutate(entry.resource.id)}
-                                  disabled={deletePatientMutation.isPending}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-blue-500 hover:text-blue-700"
+                                    onClick={() => openEditPatient(entry)}
+                                  >
+                                    <Edit className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-red-500 hover:text-red-700"
+                                    onClick={() => deletePatientMutation.mutate(entry.resource.id)}
+                                    disabled={deletePatientMutation.isPending}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -496,6 +561,59 @@ export default function FHIRDashboard() {
                   )}
                 </CardContent>
               </Card>
+            )}
+
+            {editingPatient && (
+              <Dialog open={!!editingPatient} onOpenChange={() => setEditingPatient(null)}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Editar Paciente FHIR</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>Nome</Label>
+                        <Input value={editingPatient.given} onChange={e => setEditingPatient(p => p ? { ...p, given: e.target.value } : null)} />
+                      </div>
+                      <div>
+                        <Label>Sobrenome</Label>
+                        <Input value={editingPatient.family} onChange={e => setEditingPatient(p => p ? { ...p, family: e.target.value } : null)} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>Gênero</Label>
+                        <Select value={editingPatient.gender} onValueChange={v => setEditingPatient(p => p ? { ...p, gender: v } : null)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="male">Masculino</SelectItem>
+                            <SelectItem value="female">Feminino</SelectItem>
+                            <SelectItem value="other">Outro</SelectItem>
+                            <SelectItem value="unknown">Não informado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Data de Nascimento</Label>
+                        <Input type="date" value={editingPatient.birthDate} onChange={e => setEditingPatient(p => p ? { ...p, birthDate: e.target.value } : null)} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>Telefone</Label>
+                        <Input value={editingPatient.phone} onChange={e => setEditingPatient(p => p ? { ...p, phone: e.target.value } : null)} />
+                      </div>
+                      <div>
+                        <Label>Email</Label>
+                        <Input value={editingPatient.email} onChange={e => setEditingPatient(p => p ? { ...p, email: e.target.value } : null)} />
+                      </div>
+                    </div>
+                    <Button className="w-full" onClick={() => editingPatient && updatePatientMutation.mutate(editingPatient)} disabled={updatePatientMutation.isPending || !editingPatient.given}>
+                      {updatePatientMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Atualizando...</> : 'Atualizar Paciente'}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             )}
 
             {activeTab === 'observations' && (
@@ -695,7 +813,11 @@ export default function FHIRDashboard() {
 }
 
 function ObservationsTab() {
+  const { toast } = useToast();
   const [patientId, setPatientId] = useState('');
+  const [showCreateObs, setShowCreateObs] = useState(false);
+  const [newObs, setNewObs] = useState({ code: '', display: '', value: '', unit: '' });
+
   const { data: observations, isLoading } = useQuery({
     queryKey: ['/api/fhir/observations', patientId],
     queryFn: () => {
@@ -704,6 +826,46 @@ function ObservationsTab() {
       return fetch(`/api/fhir/observations?${params}`).then(r => r.json());
     },
     enabled: !!patientId,
+  });
+
+  const createObsMutation = useMutation({
+    mutationFn: async () => {
+      const observation: FHIRObservationResource = {
+        resourceType: 'Observation',
+        id: '',
+        status: 'final',
+        code: {
+          coding: [{ system: 'http://loinc.org', code: newObs.code, display: newObs.display }],
+          text: newObs.display,
+        },
+        effectiveDateTime: new Date().toISOString(),
+        ...(newObs.unit
+          ? { valueQuantity: { value: parseFloat(newObs.value), unit: newObs.unit } }
+          : { valueString: newObs.value }),
+        ...(patientId ? { subject: { reference: `Patient/${patientId}` } } : {}),
+      };
+      return apiRequest('POST', '/api/fhir/observations', observation);
+    },
+    onSuccess: () => {
+      toast({ title: 'Observação criada' });
+      queryClient.invalidateQueries({ queryKey: ['/api/fhir/observations'] });
+      setShowCreateObs(false);
+      setNewObs({ code: '', display: '', value: '', unit: '' });
+    },
+    onError: () => {
+      toast({ title: 'Erro ao criar observação', variant: 'destructive' });
+    },
+  });
+
+  const deleteObsMutation = useMutation({
+    mutationFn: async (obsId: string) => apiRequest('DELETE', `/api/fhir/observations/${obsId}`),
+    onSuccess: () => {
+      toast({ title: 'Observação removida' });
+      queryClient.invalidateQueries({ queryKey: ['/api/fhir/observations'] });
+    },
+    onError: () => {
+      toast({ title: 'Erro ao remover observação', variant: 'destructive' });
+    },
   });
 
   return (
@@ -717,6 +879,41 @@ function ObservationsTab() {
         <Button variant="outline" disabled={!patientId || isLoading}>
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
         </Button>
+        <Dialog open={showCreateObs} onOpenChange={setShowCreateObs}>
+          <DialogTrigger asChild>
+            <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Nova</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Criar Observação FHIR</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Código LOINC</Label>
+                  <Input placeholder="Ex: 8867-4" value={newObs.code} onChange={e => setNewObs(p => ({ ...p, code: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs">Descrição</Label>
+                  <Input placeholder="Ex: Heart rate" value={newObs.display} onChange={e => setNewObs(p => ({ ...p, display: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Valor</Label>
+                  <Input placeholder="Ex: 72" value={newObs.value} onChange={e => setNewObs(p => ({ ...p, value: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs">Unidade (opcional)</Label>
+                  <Input placeholder="Ex: bpm" value={newObs.unit} onChange={e => setNewObs(p => ({ ...p, unit: e.target.value }))} />
+                </div>
+              </div>
+              <Button className="w-full" onClick={() => createObsMutation.mutate()} disabled={createObsMutation.isPending || !newObs.display || !newObs.value}>
+                {createObsMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Criando...</> : 'Criar Observação'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
       {!patientId && (
         <p className="text-sm text-muted-foreground text-center py-6">
@@ -731,10 +928,11 @@ function ObservationsTab() {
               <TableHead>Valor</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="w-[60px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {observations.entry.map((entry: any) => (
+            {observations.entry.map((entry: { resource: FHIRObservationResource }) => (
               <TableRow key={entry.resource?.id}>
                 <TableCell className="text-xs">
                   {entry.resource?.code?.text || entry.resource?.code?.coding?.[0]?.display || '-'}
@@ -747,6 +945,11 @@ function ObservationsTab() {
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline" className="text-xs">{entry.resource?.status || '-'}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700" onClick={() => deleteObsMutation.mutate(entry.resource.id)} disabled={deleteObsMutation.isPending}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -782,6 +985,20 @@ interface ECGEngineTabProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }
 
+const ANNOTATION_COLOR_MAP: Record<string, string> = {
+  red: '#EF4444', blue: '#3B82F6', green: '#22C55E', orange: '#F97316',
+  yellow: '#EAB308', purple: '#8B5CF6', flutter: '#EF4444', svt: '#3B82F6',
+  at: '#22C55E', artifact: '#F97316', st: '#EAB308', block: '#8B5CF6',
+};
+
+function resolveAnnotationColor(value: string): string {
+  const lower = value.toLowerCase();
+  for (const [key, color] of Object.entries(ANNOTATION_COLOR_MAP)) {
+    if (lower.includes(key)) return color;
+  }
+  return '#6B7280';
+}
+
 function ECGEngineTab({
   ecgImage, ecgImagePreview, ecgResult,
   ecgPatientAge, setEcgPatientAge,
@@ -791,6 +1008,60 @@ function ECGEngineTab({
   fileInputRef, handleFileSelect,
   runECGAnalysis, isAnalyzing, canvasRef
 }: ECGEngineTabProps) {
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    if (!ecgResult?.visual_annotation_instructions || !canvasRef.current || !imgRef.current) return;
+    const canvas = canvasRef.current;
+    const img = imgRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = img.naturalWidth || img.clientWidth;
+    canvas.height = img.naturalHeight || img.clientHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const annotations = Object.entries(ecgResult.visual_annotation_instructions);
+    const regionCount = annotations.length;
+    if (regionCount === 0) return;
+
+    const regionWidth = canvas.width / regionCount;
+    const regionHeight = canvas.height;
+
+    annotations.forEach(([label, colorDesc], idx) => {
+      const color = resolveAnnotationColor(colorDesc);
+      const x = idx * regionWidth;
+      ctx.fillStyle = color + '25';
+      ctx.fillRect(x, 0, regionWidth, regionHeight);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(x + 2, 2, regionWidth - 4, regionHeight - 4);
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = color;
+      ctx.font = `bold ${Math.max(12, canvas.width / 60)}px sans-serif`;
+      const text = label.replace(/highlight_|_/g, ' ').trim();
+      const maxTextWidth = regionWidth - 12;
+      const displayText = ctx.measureText(text).width > maxTextWidth ? text.substring(0, 15) + '...' : text;
+      ctx.fillText(displayText, x + 6, 20);
+
+      ctx.beginPath();
+      ctx.moveTo(x + regionWidth / 2, regionHeight * 0.25);
+      ctx.lineTo(x + regionWidth / 2, regionHeight * 0.75);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      const arrowSize = 8;
+      ctx.beginPath();
+      ctx.moveTo(x + regionWidth / 2, regionHeight * 0.75);
+      ctx.lineTo(x + regionWidth / 2 - arrowSize, regionHeight * 0.75 - arrowSize);
+      ctx.moveTo(x + regionWidth / 2, regionHeight * 0.75);
+      ctx.lineTo(x + regionWidth / 2 + arrowSize, regionHeight * 0.75 - arrowSize);
+      ctx.stroke();
+    });
+  }, [ecgResult, canvasRef]);
+
   return (
     <div className="space-y-4">
       <Card>
@@ -861,6 +1132,7 @@ function ECGEngineTab({
             {ecgImagePreview ? (
               <div className="relative">
                 <img
+                  ref={imgRef}
                   src={ecgImagePreview}
                   alt="ECG"
                   className="w-full rounded-lg"
@@ -869,6 +1141,7 @@ function ECGEngineTab({
                 <canvas
                   ref={canvasRef}
                   className="absolute inset-0 w-full h-full pointer-events-none"
+                  style={{ mixBlendMode: 'multiply' }}
                 />
                 <div className="absolute top-2 right-2">
                   <Badge className="bg-green-500 text-white text-xs">

@@ -460,14 +460,17 @@ Formato: texto corrido, máximo 300 palavras.
 
       const systemPrompt = `You are an ECG analysis engine. Analyze the ECG IMAGE provided along with PATIENT context [${patientInfo}].
 
-STEPS:
-1. PREPROCESS: Identify leads/QRS/RR intervals/baseline/atrial activity
-2. METRICS: HR=300/RR | rhythm:regular/irregular | QRS:narrow/wide | atrial:P/flutter/fib | noise:tremor/drift
-3. LOGIC: Apply diagnostic reasoning (e.g., HR~150+regular+narrow+sawtooth→Flutter 2:1 at 70-80%)
-4. %DX: Provide diagnosis probabilities for all considered conditions
-5. ANNOTATE: Describe color-coded annotations: Red=flutter, Blue=SVT, Green=AT, Orange=artifact + arrows(RR/QRS/P)
-6. JSON: Return structured JSON with ecg_metrics, diagnosis_probabilities, visual_annotation_instructions, technical_summary, simple_summary
-7. DISCLAIMER: 'Análise automatizada. Requer revisão médica.'
+AUTOMATED 10-STEP PIPELINE:
+1. IMAGE QUALITY ASSESSMENT: Evaluate signal quality, lead placement, baseline stability, and noise artifacts (tremor, drift, interference)
+2. LEAD IDENTIFICATION: Identify all visible leads (I, II, III, aVR, aVL, aVF, V1-V6) and their orientation
+3. WAVEFORM SEGMENTATION: Isolate P waves, QRS complexes, T waves, ST segments, PR intervals, QT intervals
+4. RATE & RHYTHM ANALYSIS: HR=300/RR | rhythm regularity assessment | sinus vs non-sinus origin
+5. AXIS DETERMINATION: Calculate electrical axis from limb leads, identify deviations (LAD/RAD/extreme)
+6. MORPHOLOGY ANALYSIS: QRS width (narrow/wide), P wave morphology, T wave changes, ST elevation/depression, Q waves, bundle branch patterns
+7. DIAGNOSTIC REASONING: Apply clinical logic trees (e.g., HR~150+regular+narrow+sawtooth→Flutter 2:1, wide QRS+AV dissociation→VT)
+8. PROBABILITY SCORING: Assign % confidence to each considered diagnosis based on cumulative findings
+9. VISUAL ANNOTATION MAPPING: Define color-coded overlay instructions: Red=flutter/fibrillation zones, Blue=SVT patterns, Green=atrial tachycardia, Orange=artifact regions, Yellow=ST changes, Purple=conduction blocks + arrows for key intervals (RR, QRS, PR, QT)
+10. STRUCTURED OUTPUT: Compile ecg_metrics, diagnosis_probabilities, visual_annotation_instructions, technical_summary, simple_summary, disclaimer
 
 Respond in PORTUGUÊS MÉDICO with %CONFIANÇA. Return ONLY valid JSON.`;
 
