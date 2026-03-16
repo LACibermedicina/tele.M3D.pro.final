@@ -430,6 +430,89 @@ Formato: texto corrido, máximo 300 palavras.
       };
     }
   }
+
+  async analyzeECGImage(imageBase64: string, patientContext: {
+    age?: number;
+    sex?: string;
+    clinicalHistory?: string;
+  }): Promise<{
+    ecg_metrics: {
+      heart_rate: string;
+      rhythm: string;
+      qrs_width: string;
+      atrial_activity: string;
+      signal_quality: string;
+    };
+    diagnosis_probabilities: Record<string, string>;
+    visual_annotation_instructions: Record<string, string>;
+    technical_summary: string;
+    simple_summary: string;
+    disclaimer: string;
+  }> {
+    try {
+      const client = getOpenAIClient();
+      
+      const patientInfo = [
+        patientContext.age ? `IDADE: ${patientContext.age} anos` : '',
+        patientContext.sex ? `SEXO: ${patientContext.sex}` : '',
+        patientContext.clinicalHistory ? `HISTÓRIA CLÍNICA: ${patientContext.clinicalHistory}` : '',
+      ].filter(Boolean).join(' | ');
+
+      const systemPrompt = `You are an ECG analysis engine. Analyze the ECG IMAGE provided along with PATIENT context [${patientInfo}].
+
+STEPS:
+1. PREPROCESS: Identify leads/QRS/RR intervals/baseline/atrial activity
+2. METRICS: HR=300/RR | rhythm:regular/irregular | QRS:narrow/wide | atrial:P/flutter/fib | noise:tremor/drift
+3. LOGIC: Apply diagnostic reasoning (e.g., HR~150+regular+narrow+sawtooth→Flutter 2:1 at 70-80%)
+4. %DX: Provide diagnosis probabilities for all considered conditions
+5. ANNOTATE: Describe color-coded annotations: Red=flutter, Blue=SVT, Green=AT, Orange=artifact + arrows(RR/QRS/P)
+6. JSON: Return structured JSON with ecg_metrics, diagnosis_probabilities, visual_annotation_instructions, technical_summary, simple_summary
+7. DISCLAIMER: 'Análise automatizada. Requer revisão médica.'
+
+Respond in PORTUGUÊS MÉDICO with %CONFIANÇA. Return ONLY valid JSON.`;
+
+      const response = await client.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Analise esta imagem de ECG. Dados do paciente: ${patientInfo || 'Não informado'}. Retorne JSON estruturado com ecg_metrics, diagnosis_probabilities, visual_annotation_instructions, technical_summary, simple_summary, disclaimer.`
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/png;base64,${imageBase64}`,
+                  detail: "high"
+                }
+              }
+            ]
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 2000,
+        temperature: 0.2,
+      });
+
+      const result = JSON.parse(response.choices[0].message.content || '{}');
+      
+      if (!result.disclaimer) {
+        result.disclaimer = 'Análise automatizada. Requer revisão médica.';
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('OpenAI ECG analysis error:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        status: (error as any)?.status || 'Unknown',
+        message: error instanceof Error ? error.message : 'Failed to analyze ECG'
+      });
+      throw error;
+    }
+  }
 }
 
 export const openAIService = new OpenAIService();

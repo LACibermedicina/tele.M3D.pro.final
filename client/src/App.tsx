@@ -64,6 +64,7 @@ import Installation from "@/pages/installation";
 import Broker from "@/pages/broker";
 import ClinicsPage from "@/pages/clinics";
 import Reports from "@/pages/reports";
+import FHIRDashboard from "@/pages/fhir-dashboard";
 import NftManagement from "@/pages/nft-management";
 import UrgentAlertOverlay from "@/components/notifications/urgent-alert-overlay";
 import Header from "@/components/layout/header";
@@ -480,6 +481,13 @@ function Router() {
           <ProtectedRoute>
             <Header />
             <ClinicsPage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/fhir-dashboard">
+          <ProtectedRoute requiredRoles={['doctor', 'admin']}>
+            <Header />
+            <FHIRDashboard />
           </ProtectedRoute>
         </Route>
         

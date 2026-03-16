@@ -20516,6 +20516,193 @@ ${combinedText.slice(0, 8000)}`;
     }
   });
 
+  // ===== FHIR R4 Dashboard + ECG Analysis Engine Routes =====
+
+  const FHIR_SERVER = process.env.FHIR_SERVER || 'https://r4.ontoserver.csiro.au/fhir';
+
+  // ECG Analysis via GPT-4o Vision
+  app.post('/api/ecg/analyze', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Apenas médicos e administradores podem analisar ECGs' });
+      }
+
+      const { imageBase64, patientContext } = req.body;
+      if (!imageBase64) {
+        return res.status(400).json({ message: 'Imagem ECG (base64) é obrigatória' });
+      }
+
+      const { openAIService } = await import('./services/openai');
+      const result = await openAIService.analyzeECGImage(imageBase64, patientContext || {});
+      res.json(result);
+    } catch (error) {
+      console.error('ECG analysis error:', error);
+      res.status(500).json({ 
+        message: 'Erro ao analisar ECG',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  });
+
+  // FHIR R4 Proxy - Get Patients
+  app.get('/api/fhir/patients', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
+      }
+      const { name, _count } = req.query;
+      let url = `${FHIR_SERVER}/Patient?_count=${_count || 20}&_sort=-_lastUpdated`;
+      if (name) url += `&name=${encodeURIComponent(name as string)}`;
+      
+      const response = await fetch(url, {
+        headers: { 'Accept': 'application/fhir+json' }
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error('FHIR Patient fetch error:', error);
+      res.status(500).json({ message: 'Erro ao buscar pacientes FHIR' });
+    }
+  });
+
+  // FHIR R4 Proxy - Create Patient
+  app.post('/api/fhir/patients', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Sem permissão' });
+      }
+      
+      const response = await fetch(`${FHIR_SERVER}/Patient`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/fhir+json',
+          'Accept': 'application/fhir+json'
+        },
+        body: JSON.stringify(req.body)
+      });
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error) {
+      console.error('FHIR Patient create error:', error);
+      res.status(500).json({ message: 'Erro ao criar paciente FHIR' });
+    }
+  });
+
+  // FHIR R4 Proxy - Get Observations
+  app.get('/api/fhir/observations', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
+      }
+      const { patient, code, _count } = req.query;
+      let url = `${FHIR_SERVER}/Observation?_count=${_count || 50}&_sort=-date`;
+      if (patient) url += `&patient=${encodeURIComponent(patient as string)}`;
+      if (code) url += `&code=${encodeURIComponent(code as string)}`;
+      
+      const response = await fetch(url, {
+        headers: { 'Accept': 'application/fhir+json' }
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error('FHIR Observation fetch error:', error);
+      res.status(500).json({ message: 'Erro ao buscar observações FHIR' });
+    }
+  });
+
+  // FHIR R4 Proxy - Create Observation
+  app.post('/api/fhir/observations', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Sem permissão' });
+      }
+      
+      const response = await fetch(`${FHIR_SERVER}/Observation`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/fhir+json',
+          'Accept': 'application/fhir+json'
+        },
+        body: JSON.stringify(req.body)
+      });
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error) {
+      console.error('FHIR Observation create error:', error);
+      res.status(500).json({ message: 'Erro ao criar observação FHIR' });
+    }
+  });
+
+  // FHIR R4 - Get Patient by ID
+  app.get('/api/fhir/patients/:id', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
+      }
+      const response = await fetch(`${FHIR_SERVER}/Patient/${req.params.id}`, {
+        headers: { 'Accept': 'application/fhir+json' }
+      });
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (error) {
+      console.error('FHIR Patient get error:', error);
+      res.status(500).json({ message: 'Erro ao buscar paciente FHIR' });
+    }
+  });
+
+  // FHIR R4 - Delete Patient
+  app.delete('/api/fhir/patients/:id', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Sem permissão' });
+      }
+      const response = await fetch(`${FHIR_SERVER}/Patient/${req.params.id}`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/fhir+json' }
+      });
+      if (response.ok) {
+        res.json({ message: 'Paciente removido' });
+      } else {
+        const data = await response.json();
+        res.status(response.status).json(data);
+      }
+    } catch (error) {
+      console.error('FHIR Patient delete error:', error);
+      res.status(500).json({ message: 'Erro ao remover paciente FHIR' });
+    }
+  });
+
+  // FHIR R4 Local patients export as FHIR Bundle
+  app.get('/api/fhir/export-bundle/:patientId', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Sem permissão' });
+      }
+
+      const { patientExportService } = await import('./services/patient-export-service');
+      const bundle = await patientExportService.exportPatientData(req.params.patientId, {
+        standard: (req.query.standard as any) || 'fhir-intl',
+        format: 'json',
+        deidentify: req.query.deidentify === 'true',
+      });
+      
+      res.setHeader('Content-Type', 'application/fhir+json');
+      res.setHeader('Content-Disposition', `attachment; filename="fhir-bundle-${req.params.patientId}.json"`);
+      res.json(bundle);
+    } catch (error) {
+      console.error('FHIR export error:', error);
+      res.status(500).json({ message: 'Erro ao exportar bundle FHIR' });
+    }
+  });
+
   return httpServer;
 }
 
