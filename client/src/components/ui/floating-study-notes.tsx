@@ -127,7 +127,7 @@ export default function FloatingStudyNotes() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 right-6 z-40 w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center hover:scale-110"
+        className="fixed bottom-[4.5rem] right-6 z-40 w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center hover:scale-110"
         title="Study Notes"
       >
         <BookOpen className="h-5 w-5" />
@@ -139,7 +139,7 @@ export default function FloatingStudyNotes() {
   const panelHeight = isExpanded ? 'max-h-[85vh]' : 'max-h-[60vh]';
 
   return (
-    <div className={`fixed bottom-24 right-6 z-50 ${panelWidth} ${panelHeight} flex flex-col`}>
+    <div className={`fixed bottom-4 right-[412px] z-50 ${panelWidth} ${panelHeight} flex flex-col`}>
       <Card className="flex flex-col h-full border-amber-500/30 shadow-2xl bg-background/95 backdrop-blur-sm">
         <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between border-b shrink-0">
           <CardTitle className="text-sm flex items-center gap-2">

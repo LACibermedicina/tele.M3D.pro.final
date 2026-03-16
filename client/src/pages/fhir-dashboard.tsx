@@ -853,19 +853,23 @@ function ClinicalHistoryTab() {
   const timeline = data?.timeline || [];
   const filtered = filterType === 'all' ? timeline : timeline.filter(e => e.type === filterType);
 
-  const typeColor = (type: string) => {
-    switch (type) {
-      case 'medical_record': return 'bg-blue-500/10 text-blue-600 border-blue-500/30';
-      case 'appointment': return 'bg-green-500/10 text-green-600 border-green-500/30';
-      default: return 'bg-muted text-muted-foreground';
-    }
+  const typeColor = (type: string, consultationType: string) => {
+    if (consultationType === 'urgent') return 'bg-red-500/10 text-red-600 border-red-500/30';
+    if (consultationType === 'followup') return 'bg-green-500/10 text-green-600 border-green-500/30';
+    return 'bg-blue-500/10 text-blue-600 border-blue-500/30';
+  };
+
+  const timelineDotColor = (consultationType: string) => {
+    if (consultationType === 'urgent') return 'bg-red-500 border-red-600';
+    if (consultationType === 'followup') return 'bg-green-500 border-green-600';
+    return 'bg-blue-500 border-blue-600';
   };
 
   const consultationBadge = (ct: string) => {
     switch (ct) {
       case 'urgent': return <Badge variant="destructive" className="text-[10px]">Urgente</Badge>;
-      case 'followup': return <Badge className="text-[10px] bg-amber-500">Retorno</Badge>;
-      default: return <Badge variant="secondary" className="text-[10px]">Agendada</Badge>;
+      case 'followup': return <Badge className="text-[10px] bg-green-600 text-white">Retorno</Badge>;
+      default: return <Badge className="text-[10px] bg-blue-600 text-white">Agendada</Badge>;
     }
   };
 
@@ -911,10 +915,8 @@ function ClinicalHistoryTab() {
             <div className="space-y-4">
               {filtered.map((entry) => (
                 <div key={`${entry.type}-${entry.id}`} className="relative pl-10">
-                  <div className={`absolute left-2 top-2 w-4 h-4 rounded-full border-2 ${
-                    entry.type === 'medical_record' ? 'bg-blue-500 border-blue-600' : 'bg-green-500 border-green-600'
-                  }`} />
-                  <Card className={`border ${typeColor(entry.type)}`}>
+                  <div className={`absolute left-2 top-2 w-4 h-4 rounded-full border-2 ${timelineDotColor(entry.consultationType)}`} />
+                  <Card className={`border ${typeColor(entry.type, entry.consultationType)}`}>
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
