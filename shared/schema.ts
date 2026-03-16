@@ -1972,6 +1972,45 @@ export const insertClinicConsultationLogSchema = createInsertSchema(clinicConsul
 export type InsertClinicConsultationLog = z.infer<typeof insertClinicConsultationLogSchema>;
 export type ClinicConsultationLog = typeof clinicConsultationLogs.$inferSelect;
 
+// FHIR R4 Local Storage Tables
+export const fhirPatients = pgTable("fhir_patients", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  resourceData: jsonb("resource_data").notNull(),
+  name: text("name"),
+  family: text("family"),
+  gender: text("gender"),
+  birthDate: text("birth_date"),
+  phone: text("phone"),
+  email: text("email"),
+  active: boolean("active").default(true).notNull(),
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const fhirObservations = pgTable("fhir_observations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  fhirPatientId: uuid("fhir_patient_id").references(() => fhirPatients.id),
+  resourceData: jsonb("resource_data").notNull(),
+  code: text("code"),
+  display: text("display"),
+  valueString: text("value_string"),
+  valueQuantity: text("value_quantity"),
+  unit: text("unit"),
+  status: text("status").default("final").notNull(),
+  effectiveDateTime: text("effective_date_time"),
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertFhirPatientSchema = createInsertSchema(fhirPatients).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertFhirPatient = z.infer<typeof insertFhirPatientSchema>;
+export type FhirPatient = typeof fhirPatients.$inferSelect;
+
+export const insertFhirObservationSchema = createInsertSchema(fhirObservations).omit({ id: true, createdAt: true });
+export type InsertFhirObservation = z.infer<typeof insertFhirObservationSchema>;
+export type FhirObservation = typeof fhirObservations.$inferSelect;
+
 // TMC system types
 export interface TmcBalance {
   userId: string;

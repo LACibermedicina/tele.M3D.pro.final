@@ -19,7 +19,8 @@ import {
 } from 'recharts';
 import {
   Users, FileText, Heart, Download, Search, Plus, Trash2,
-  Upload, Activity, Loader2, AlertTriangle, Stethoscope, Zap, Edit
+  Upload, Activity, Loader2, AlertTriangle, Stethoscope, Zap, Edit,
+  ClipboardList, Calendar
 } from 'lucide-react';
 
 const ECG_COLORS: Record<string, string> = {
@@ -349,6 +350,7 @@ export default function FHIRDashboard() {
                   {[
                     { key: 'patients', icon: Users, label: 'Pacientes' },
                     { key: 'observations', icon: FileText, label: 'Exames' },
+                    { key: 'history', icon: ClipboardList, label: 'Histórico Clínico' },
                     { key: 'ecg', icon: Heart, label: 'ECG Engine' },
                     { key: 'export', icon: Download, label: 'Exportar' },
                   ].map(item => (
@@ -381,8 +383,8 @@ export default function FHIRDashboard() {
                   <Badge variant="secondary" className="text-xs">{fhirPatients?.total || patients.length}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">FHIR Server</span>
-                  <Badge variant="outline" className="text-xs text-green-600">Online</Badge>
+                  <span className="text-xs text-muted-foreground">Armazenamento</span>
+                  <Badge variant="outline" className="text-xs text-green-600">PostgreSQL Local</Badge>
                 </div>
                 {ecgResult && (
                   <div className="flex items-center justify-between">
@@ -632,6 +634,10 @@ export default function FHIRDashboard() {
               </Card>
             )}
 
+            {activeTab === 'history' && (
+              <ClinicalHistoryTab />
+            )}
+
             {(activeTab === 'ecg' || activeTab === 'export') && selectedPatientId && (
               <div className="mb-3 flex items-center gap-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm">
                 <Users className="h-4 w-4 text-blue-500" />
@@ -820,6 +826,155 @@ export default function FHIRDashboard() {
         </div>
       </div>
     </PageWrapper>
+  );
+}
+
+interface ClinicalHistoryEntry {
+  id: number;
+  type: 'medical_record' | 'appointment';
+  date: string;
+  patientName: string;
+  doctorName: string;
+  diagnosis: string | null;
+  symptoms: string | null;
+  treatment: string | null;
+  prescription: string | null;
+  observations: string | null;
+  consultationType: string;
+}
+
+function ClinicalHistoryTab() {
+  const [filterType, setFilterType] = useState<'all' | 'medical_record' | 'appointment'>('all');
+
+  const { data, isLoading } = useQuery<{ timeline: ClinicalHistoryEntry[]; total: number }>({
+    queryKey: ['/api/fhir/clinical-history'],
+  });
+
+  const timeline = data?.timeline || [];
+  const filtered = filterType === 'all' ? timeline : timeline.filter(e => e.type === filterType);
+
+  const typeColor = (type: string) => {
+    switch (type) {
+      case 'medical_record': return 'bg-blue-500/10 text-blue-600 border-blue-500/30';
+      case 'appointment': return 'bg-green-500/10 text-green-600 border-green-500/30';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const consultationBadge = (ct: string) => {
+    switch (ct) {
+      case 'urgent': return <Badge variant="destructive" className="text-[10px]">Urgente</Badge>;
+      case 'followup': return <Badge className="text-[10px] bg-amber-500">Retorno</Badge>;
+      default: return <Badge variant="secondary" className="text-[10px]">Agendada</Badge>;
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5 text-purple-500" />
+            Histórico Clínico
+          </CardTitle>
+          <div className="flex items-center gap-1">
+            {(['all', 'medical_record', 'appointment'] as const).map(f => (
+              <Button
+                key={f}
+                variant={filterType === f ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setFilterType(f)}
+              >
+                {f === 'all' ? 'Todos' : f === 'medical_record' ? 'Registros' : 'Consultas'}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Total: {data?.total || 0} registros
+        </p>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-8">
+            <ClipboardList className="h-10 w-10 mx-auto text-muted-foreground/30 mb-2" />
+            <p className="text-sm text-muted-foreground">Nenhum registro encontrado</p>
+          </div>
+        ) : (
+          <div className="relative">
+            <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
+            <div className="space-y-4">
+              {filtered.map((entry) => (
+                <div key={`${entry.type}-${entry.id}`} className="relative pl-10">
+                  <div className={`absolute left-2 top-2 w-4 h-4 rounded-full border-2 ${
+                    entry.type === 'medical_record' ? 'bg-blue-500 border-blue-600' : 'bg-green-500 border-green-600'
+                  }`} />
+                  <Card className={`border ${typeColor(entry.type)}`}>
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px]">
+                            {entry.type === 'medical_record' ? 'Prontuário' : 'Consulta'}
+                          </Badge>
+                          {consultationBadge(entry.consultationType)}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(entry.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2 text-xs">
+                        <span className="text-muted-foreground">Paciente:</span>
+                        <span className="font-medium">{entry.patientName}</span>
+                        <span className="text-muted-foreground ml-2">Médico:</span>
+                        <span className="font-medium">{entry.doctorName}</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {entry.diagnosis && (
+                          <div className="p-2 rounded bg-background/50">
+                            <p className="text-[10px] text-muted-foreground uppercase font-medium">Diagnóstico</p>
+                            <p className="text-xs mt-0.5">{entry.diagnosis}</p>
+                          </div>
+                        )}
+                        {entry.symptoms && (
+                          <div className="p-2 rounded bg-background/50">
+                            <p className="text-[10px] text-muted-foreground uppercase font-medium">Sintomas</p>
+                            <p className="text-xs mt-0.5">{entry.symptoms}</p>
+                          </div>
+                        )}
+                        {entry.treatment && (
+                          <div className="p-2 rounded bg-background/50">
+                            <p className="text-[10px] text-muted-foreground uppercase font-medium">Tratamento</p>
+                            <p className="text-xs mt-0.5">{entry.treatment}</p>
+                          </div>
+                        )}
+                        {entry.prescription && (
+                          <div className="p-2 rounded bg-background/50">
+                            <p className="text-[10px] text-muted-foreground uppercase font-medium">Prescrição</p>
+                            <p className="text-xs mt-0.5">{entry.prescription}</p>
+                          </div>
+                        )}
+                        {entry.observations && (
+                          <div className="p-2 rounded bg-background/50 md:col-span-2">
+                            <p className="text-[10px] text-muted-foreground uppercase font-medium">Observações</p>
+                            <p className="text-xs mt-0.5">{entry.observations}</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

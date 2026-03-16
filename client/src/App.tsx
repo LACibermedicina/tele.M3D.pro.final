@@ -69,6 +69,8 @@ import NftManagement from "@/pages/nft-management";
 import UrgentAlertOverlay from "@/components/notifications/urgent-alert-overlay";
 import Header from "@/components/layout/header";
 import FloatingChatbot from "@/components/ui/floating-chatbot";
+import FloatingECGAnalyzer from "@/components/ui/floating-ecg-analyzer";
+import FloatingStudyNotes from "@/components/ui/floating-study-notes";
 import CommandPalette from "@/components/command-palette";
 import QuickActionsBar from "@/components/quick-actions-bar";
 import { VoiceAssistantProvider } from "@/contexts/VoiceAssistantContext";
@@ -523,6 +525,8 @@ function Router() {
       </footer>
       
       {!isInVideoConsultation && <FloatingChatbot />}
+      {!isInVideoConsultation && <FloatingECGAnalyzer />}
+      {!isInVideoConsultation && <FloatingStudyNotes />}
       
       {user && !isInVideoConsultation && <QuickActionsBar userRole={user.role} />}
 

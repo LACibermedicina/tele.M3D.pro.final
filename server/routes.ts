@@ -14,7 +14,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
@@ -89,6 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migratePaymentTransactions();
   await migrateClinicTables();
   await migrateUserDeactivationFields();
+  await migrateFhirTables();
   await initStripeSync();
   
   // Initialize default doctor if not exists and get the actual ID
@@ -1409,14 +1410,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Doctor Notes API (macOS Notes-style)
-  const validFolders = ['all', 'clinical', 'patients', 'study', 'personal'];
+  const validFolders = ['all', 'clinical', 'patients', 'study', 'personal', 'ecg_study'];
   const validColors = ['default', 'yellow', 'green', 'blue', 'purple', 'pink', 'red'];
 
   app.get('/api/doctor-notes', async (req: any, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Authentication required' });
-      if (req.user.role !== 'doctor') return res.status(403).json({ message: 'Access denied' });
-      const notes = await storage.getDoctorNotes(req.user.id);
+      if (!['doctor', 'admin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+      let notes = await storage.getDoctorNotes(req.user.id);
+      const { folder } = req.query;
+      if (folder && typeof folder === 'string' && validFolders.includes(folder)) {
+        notes = notes.filter((n: any) => n.folder === folder);
+      }
       res.json(notes);
     } catch (error) {
       console.error('Error fetching doctor notes:', error);
@@ -1427,7 +1432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/doctor-notes', async (req: any, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Authentication required' });
-      if (req.user.role !== 'doctor') return res.status(403).json({ message: 'Access denied' });
+      if (!['doctor', 'admin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
       const { title, content, folder, color, isPinned, patientId } = req.body;
       const safeFolder = typeof folder === 'string' && validFolders.includes(folder) ? folder : 'all';
       const safeColor = typeof color === 'string' && validColors.includes(color) ? color : 'default';
@@ -1450,7 +1455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/doctor-notes/:id', async (req: any, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Authentication required' });
-      if (req.user.role !== 'doctor') return res.status(403).json({ message: 'Access denied' });
+      if (!['doctor', 'admin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
       const existing = await storage.getDoctorNoteById(req.params.id);
       if (!existing) return res.status(404).json({ message: 'Note not found' });
       if (existing.doctorId !== req.user.id) return res.status(403).json({ message: 'Access denied' });
@@ -1473,7 +1478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/doctor-notes/:id', async (req: any, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Authentication required' });
-      if (req.user.role !== 'doctor') return res.status(403).json({ message: 'Access denied' });
+      if (!['doctor', 'admin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
       const existing = await storage.getDoctorNoteById(req.params.id);
       if (!existing) return res.status(404).json({ message: 'Note not found' });
       if (existing.doctorId !== req.user.id) return res.status(403).json({ message: 'Access denied' });
@@ -20518,8 +20523,6 @@ ${combinedText.slice(0, 8000)}`;
 
   // ===== FHIR R4 Dashboard + ECG Analysis Engine Routes =====
 
-  const FHIR_SERVER = process.env.FHIR_SERVER || 'https://r4.ontoserver.csiro.au/fhir';
-
   // ECG Analysis via GPT-4o Vision
   app.post('/api/ecg/analyze', requireAuth, async (req: any, res: any) => {
     try {
@@ -20544,29 +20547,39 @@ ${combinedText.slice(0, 8000)}`;
     }
   });
 
-  // FHIR R4 Proxy - Get Patients
+  // FHIR R4 Local DB - Get Patients
   app.get('/api/fhir/patients', requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
       if (!['doctor', 'admin'].includes(req.user.role)) {
         return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
       }
-      const { name, _count } = req.query;
-      let url = `${FHIR_SERVER}/Patient?_count=${_count || 20}&_sort=-_lastUpdated`;
-      if (name) url += `&name=${encodeURIComponent(name as string)}`;
+      const { name } = req.query;
+      let query = db.select().from(fhirPatients).where(eq(fhirPatients.active, true)).orderBy(desc(fhirPatients.updatedAt));
       
-      const response = await fetch(url, {
-        headers: { 'Accept': 'application/fhir+json' }
-      });
-      const data = await response.json();
-      res.json(data);
+      let rows = await query;
+      if (name) {
+        const search = (name as string).toLowerCase();
+        rows = rows.filter(r => (r.name || '').toLowerCase().includes(search) || (r.family || '').toLowerCase().includes(search));
+      }
+
+      const bundle = {
+        resourceType: 'Bundle',
+        type: 'searchset',
+        total: rows.length,
+        entry: rows.map(r => ({
+          resource: { ...(r.resourceData as any), id: r.id },
+          fullUrl: `urn:uuid:${r.id}`,
+        })),
+      };
+      res.json(bundle);
     } catch (error) {
       console.error('FHIR Patient fetch error:', error);
       res.status(500).json({ message: 'Erro ao buscar pacientes FHIR' });
     }
   });
 
-  // FHIR R4 Proxy - Create Patient
+  // FHIR R4 Local DB - Create Patient
   app.post('/api/fhir/patients', requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
@@ -20574,46 +20587,66 @@ ${combinedText.slice(0, 8000)}`;
         return res.status(403).json({ message: 'Sem permissão' });
       }
       
-      const response = await fetch(`${FHIR_SERVER}/Patient`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/fhir+json',
-          'Accept': 'application/fhir+json'
-        },
-        body: JSON.stringify(req.body)
-      });
-      const data = await response.json();
-      res.status(response.status).json(data);
+      const resource = req.body;
+      const givenName = resource.name?.[0]?.given?.join(' ') || '';
+      const familyName = resource.name?.[0]?.family || '';
+      const phone = resource.telecom?.find((t: any) => t.system === 'phone')?.value || null;
+      const email = resource.telecom?.find((t: any) => t.system === 'email')?.value || null;
+
+      const [created] = await db.insert(fhirPatients).values({
+        resourceData: resource,
+        name: givenName,
+        family: familyName,
+        gender: resource.gender || null,
+        birthDate: resource.birthDate || null,
+        phone,
+        email,
+        active: resource.active !== false,
+        createdBy: req.user.id,
+      }).returning();
+
+      const fullResource = { ...resource, id: created.id };
+      await db.update(fhirPatients).set({ resourceData: fullResource }).where(eq(fhirPatients.id, created.id));
+      res.status(201).json(fullResource);
     } catch (error) {
       console.error('FHIR Patient create error:', error);
       res.status(500).json({ message: 'Erro ao criar paciente FHIR' });
     }
   });
 
-  // FHIR R4 Proxy - Get Observations
+  // FHIR R4 Local DB - Get Observations
   app.get('/api/fhir/observations', requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
       if (!['doctor', 'admin'].includes(req.user.role)) {
         return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
       }
-      const { patient, code, _count } = req.query;
-      let url = `${FHIR_SERVER}/Observation?_count=${_count || 50}&_sort=-date`;
-      if (patient) url += `&patient=${encodeURIComponent(patient as string)}`;
-      if (code) url += `&code=${encodeURIComponent(code as string)}`;
+      const { patient } = req.query;
       
-      const response = await fetch(url, {
-        headers: { 'Accept': 'application/fhir+json' }
-      });
-      const data = await response.json();
-      res.json(data);
+      let rows;
+      if (patient) {
+        rows = await db.select().from(fhirObservations).where(eq(fhirObservations.fhirPatientId, patient as string)).orderBy(desc(fhirObservations.createdAt));
+      } else {
+        rows = await db.select().from(fhirObservations).orderBy(desc(fhirObservations.createdAt)).limit(50);
+      }
+
+      const bundle = {
+        resourceType: 'Bundle',
+        type: 'searchset',
+        total: rows.length,
+        entry: rows.map(r => ({
+          resource: { ...(r.resourceData as any), id: r.id },
+          fullUrl: `urn:uuid:${r.id}`,
+        })),
+      };
+      res.json(bundle);
     } catch (error) {
       console.error('FHIR Observation fetch error:', error);
       res.status(500).json({ message: 'Erro ao buscar observações FHIR' });
     }
   });
 
-  // FHIR R4 Proxy - Create Observation
+  // FHIR R4 Local DB - Create Observation
   app.post('/api/fhir/observations', requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
@@ -20621,129 +20654,224 @@ ${combinedText.slice(0, 8000)}`;
         return res.status(403).json({ message: 'Sem permissão' });
       }
       
-      const response = await fetch(`${FHIR_SERVER}/Observation`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/fhir+json',
-          'Accept': 'application/fhir+json'
-        },
-        body: JSON.stringify(req.body)
-      });
-      const data = await response.json();
-      res.status(response.status).json(data);
+      const resource = req.body;
+      const patientRef = resource.subject?.reference?.replace('Patient/', '') || null;
+
+      const [created] = await db.insert(fhirObservations).values({
+        fhirPatientId: patientRef,
+        resourceData: resource,
+        code: resource.code?.coding?.[0]?.code || null,
+        display: resource.code?.text || resource.code?.coding?.[0]?.display || null,
+        valueString: resource.valueString || (resource.valueQuantity ? String(resource.valueQuantity.value) : null),
+        valueQuantity: resource.valueQuantity ? String(resource.valueQuantity.value) : null,
+        unit: resource.valueQuantity?.unit || null,
+        status: resource.status || 'final',
+        effectiveDateTime: resource.effectiveDateTime || new Date().toISOString(),
+        createdBy: req.user.id,
+      }).returning();
+
+      const fullResource = { ...resource, id: created.id };
+      await db.update(fhirObservations).set({ resourceData: fullResource }).where(eq(fhirObservations.id, created.id));
+      res.status(201).json(fullResource);
     } catch (error) {
       console.error('FHIR Observation create error:', error);
       res.status(500).json({ message: 'Erro ao criar observação FHIR' });
     }
   });
 
-  // FHIR R4 - Get Patient by ID
+  // FHIR R4 Local DB - Get Patient by ID
   app.get('/api/fhir/patients/:id', requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
       if (!['doctor', 'admin'].includes(req.user.role)) {
         return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
       }
-      const response = await fetch(`${FHIR_SERVER}/Patient/${req.params.id}`, {
-        headers: { 'Accept': 'application/fhir+json' }
-      });
-      const data = await response.json();
-      res.status(response.status).json(data);
+      const [row] = await db.select().from(fhirPatients).where(eq(fhirPatients.id, req.params.id));
+      if (!row) return res.status(404).json({ message: 'Paciente não encontrado' });
+      res.json({ ...(row.resourceData as any), id: row.id });
     } catch (error) {
       console.error('FHIR Patient get error:', error);
       res.status(500).json({ message: 'Erro ao buscar paciente FHIR' });
     }
   });
 
-  // FHIR R4 - Delete Patient
+  // FHIR R4 Local DB - Delete Patient
   app.delete('/api/fhir/patients/:id', requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
       if (!['doctor', 'admin'].includes(req.user.role)) {
         return res.status(403).json({ message: 'Sem permissão' });
       }
-      const response = await fetch(`${FHIR_SERVER}/Patient/${req.params.id}`, {
-        method: 'DELETE',
-        headers: { 'Accept': 'application/fhir+json' }
-      });
-      if (response.ok) {
-        res.json({ message: 'Paciente removido' });
-      } else {
-        const data = await response.json();
-        res.status(response.status).json(data);
-      }
+      await db.delete(fhirObservations).where(eq(fhirObservations.fhirPatientId, req.params.id));
+      const [deleted] = await db.delete(fhirPatients).where(eq(fhirPatients.id, req.params.id)).returning();
+      if (!deleted) return res.status(404).json({ message: 'Paciente não encontrado' });
+      res.json({ message: 'Paciente removido' });
     } catch (error) {
       console.error('FHIR Patient delete error:', error);
       res.status(500).json({ message: 'Erro ao remover paciente FHIR' });
     }
   });
 
-  // FHIR R4 - Update Patient
+  // FHIR R4 Local DB - Update Patient
   app.put('/api/fhir/patients/:id', requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
       if (!['doctor', 'admin'].includes(req.user.role)) {
         return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
       }
-      const response = await fetch(`${FHIR_SERVER}/Patient/${req.params.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/fhir+json',
-          'Accept': 'application/fhir+json'
-        },
-        body: JSON.stringify({ ...req.body, id: req.params.id })
-      });
-      const data = await response.json();
-      res.status(response.status).json(data);
+      const resource = { ...req.body, id: req.params.id };
+      const givenName = resource.name?.[0]?.given?.join(' ') || '';
+      const familyName = resource.name?.[0]?.family || '';
+      const phone = resource.telecom?.find((t: any) => t.system === 'phone')?.value || null;
+      const email = resource.telecom?.find((t: any) => t.system === 'email')?.value || null;
+
+      const [updated] = await db.update(fhirPatients).set({
+        resourceData: resource,
+        name: givenName,
+        family: familyName,
+        gender: resource.gender || null,
+        birthDate: resource.birthDate || null,
+        phone,
+        email,
+        active: resource.active !== false,
+        updatedAt: new Date(),
+      }).where(eq(fhirPatients.id, req.params.id)).returning();
+
+      if (!updated) return res.status(404).json({ message: 'Paciente não encontrado' });
+      res.json(resource);
     } catch (error) {
       console.error('FHIR Patient update error:', error);
       res.status(500).json({ message: 'Erro ao atualizar paciente FHIR' });
     }
   });
 
-  // FHIR R4 - Update Observation
+  // FHIR R4 Local DB - Update Observation
   app.put('/api/fhir/observations/:id', requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
       if (!['doctor', 'admin'].includes(req.user.role)) {
         return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
       }
-      const response = await fetch(`${FHIR_SERVER}/Observation/${req.params.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/fhir+json',
-          'Accept': 'application/fhir+json'
-        },
-        body: JSON.stringify({ ...req.body, id: req.params.id })
-      });
-      const data = await response.json();
-      res.status(response.status).json(data);
+      const resource = { ...req.body, id: req.params.id };
+      const patientRef = resource.subject?.reference?.replace('Patient/', '') || null;
+
+      const [updated] = await db.update(fhirObservations).set({
+        resourceData: resource,
+        fhirPatientId: patientRef,
+        code: resource.code?.coding?.[0]?.code || null,
+        display: resource.code?.text || resource.code?.coding?.[0]?.display || null,
+        valueString: resource.valueString || (resource.valueQuantity ? String(resource.valueQuantity.value) : null),
+        valueQuantity: resource.valueQuantity ? String(resource.valueQuantity.value) : null,
+        unit: resource.valueQuantity?.unit || null,
+        status: resource.status || 'final',
+        effectiveDateTime: resource.effectiveDateTime || new Date().toISOString(),
+      }).where(eq(fhirObservations.id, req.params.id)).returning();
+
+      if (!updated) return res.status(404).json({ message: 'Observação não encontrada' });
+      res.json(resource);
     } catch (error) {
       console.error('FHIR Observation update error:', error);
       res.status(500).json({ message: 'Erro ao atualizar observação FHIR' });
     }
   });
 
-  // FHIR R4 - Delete Observation
+  // FHIR R4 Local DB - Delete Observation
   app.delete('/api/fhir/observations/:id', requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
       if (!['doctor', 'admin'].includes(req.user.role)) {
         return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
       }
-      const response = await fetch(`${FHIR_SERVER}/Observation/${req.params.id}`, {
-        method: 'DELETE',
-        headers: { 'Accept': 'application/fhir+json' }
-      });
-      if (response.ok) {
-        res.json({ message: 'Observação removida' });
-      } else {
-        const data = await response.json();
-        res.status(response.status).json(data);
-      }
+      const [deleted] = await db.delete(fhirObservations).where(eq(fhirObservations.id, req.params.id)).returning();
+      if (!deleted) return res.status(404).json({ message: 'Observação não encontrada' });
+      res.json({ message: 'Observação removida' });
     } catch (error) {
       console.error('FHIR Observation delete error:', error);
       res.status(500).json({ message: 'Erro ao remover observação FHIR' });
+    }
+  });
+
+  // FHIR R4 - Clinical History from completed consultations
+  app.get('/api/fhir/clinical-history', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Acesso restrito a médicos e administradores' });
+      }
+
+      const records = await db.select({
+        id: medicalRecords.id,
+        patientId: medicalRecords.patientId,
+        doctorId: medicalRecords.doctorId,
+        appointmentId: medicalRecords.appointmentId,
+        diagnosis: medicalRecords.diagnosis,
+        symptoms: medicalRecords.symptoms,
+        treatment: medicalRecords.treatment,
+        prescription: medicalRecords.prescription,
+        observations: medicalRecords.observations,
+        createdAt: medicalRecords.createdAt,
+        doctorName: users.name,
+        patientName: patients.name,
+      })
+      .from(medicalRecords)
+      .leftJoin(users, eq(medicalRecords.doctorId, users.id))
+      .leftJoin(patients, eq(medicalRecords.patientId, patients.id))
+      .orderBy(desc(medicalRecords.createdAt))
+      .limit(100);
+
+      const completedAppointments = await db.select({
+        id: appointments.id,
+        patientId: appointments.patientId,
+        doctorId: appointments.doctorId,
+        scheduledAt: appointments.scheduledAt,
+        type: appointments.type,
+        status: appointments.status,
+        notes: appointments.notes,
+        doctorName: users.name,
+        patientName: patients.name,
+      })
+      .from(appointments)
+      .leftJoin(users, eq(appointments.doctorId, users.id))
+      .leftJoin(patients, eq(appointments.patientId, patients.id))
+      .where(eq(appointments.status, 'completed'))
+      .orderBy(desc(appointments.scheduledAt))
+      .limit(100);
+
+      const timeline = [
+        ...records.map(r => ({
+          id: r.id,
+          type: 'medical_record' as const,
+          date: r.createdAt,
+          patientName: r.patientName || 'Paciente',
+          doctorName: r.doctorName || 'Médico',
+          diagnosis: r.diagnosis,
+          symptoms: r.symptoms,
+          treatment: r.treatment,
+          prescription: r.prescription,
+          observations: r.observations,
+          consultationType: r.appointmentId ? 'scheduled' : 'urgent',
+        })),
+        ...completedAppointments
+          .filter(a => !records.some(r => r.appointmentId === a.id))
+          .map(a => ({
+            id: a.id,
+            type: 'appointment' as const,
+            date: a.scheduledAt,
+            patientName: a.patientName || 'Paciente',
+            doctorName: a.doctorName || 'Médico',
+            diagnosis: null,
+            symptoms: null,
+            treatment: null,
+            prescription: null,
+            observations: a.notes,
+            consultationType: a.type === 'emergency' ? 'urgent' : a.type === 'followup' ? 'followup' : 'scheduled',
+          })),
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      res.json({ timeline, total: timeline.length });
+    } catch (error) {
+      console.error('Clinical history fetch error:', error);
+      res.status(500).json({ message: 'Erro ao buscar histórico clínico' });
     }
   });
 
@@ -21046,6 +21174,46 @@ async function migrateUserDeactivationFields() {
     console.log('✓ User deactivation/protection fields migrated successfully');
   } catch (error) {
     console.error('Failed to migrate user deactivation fields:', error);
+  }
+}
+
+async function migrateFhirTables() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS fhir_patients (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        resource_data JSONB NOT NULL,
+        name TEXT,
+        family TEXT,
+        gender TEXT,
+        birth_date TEXT,
+        phone TEXT,
+        email TEXT,
+        active BOOLEAN NOT NULL DEFAULT true,
+        created_by UUID NOT NULL REFERENCES users(id),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS fhir_observations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        fhir_patient_id UUID REFERENCES fhir_patients(id),
+        resource_data JSONB NOT NULL,
+        code TEXT,
+        display TEXT,
+        value_string TEXT,
+        value_quantity TEXT,
+        unit TEXT,
+        status TEXT NOT NULL DEFAULT 'final',
+        effective_date_time TEXT,
+        created_by UUID NOT NULL REFERENCES users(id),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    console.log('✓ FHIR tables migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate FHIR tables:', error);
   }
 }
 
