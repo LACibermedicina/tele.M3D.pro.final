@@ -49,8 +49,6 @@ export default function FloatingECGAnalyzer() {
   const [savedToStudy, setSavedToStudy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!user || !['doctor', 'admin'].includes(user.role)) return null;
-
   const ecgMutation = useMutation({
     mutationFn: async () => {
       if (!ecgImage) throw new Error('No image');
@@ -157,6 +155,8 @@ export default function FloatingECGAnalyzer() {
     setPatientHistory('');
     setSavedToStudy(false);
   };
+
+  if (!user || !['doctor', 'admin'].includes(user.role)) return null;
 
   if (!isOpen) {
     return (

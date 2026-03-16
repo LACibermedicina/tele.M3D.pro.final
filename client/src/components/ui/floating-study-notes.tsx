@@ -36,12 +36,10 @@ export default function FloatingStudyNotes() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  if (!user || !['doctor', 'admin'].includes(user.role)) return null;
-
   const { data: notes = [], isLoading } = useQuery<StudyNote[]>({
     queryKey: ['/api/doctor-notes', 'ecg_study'],
     queryFn: () => fetch('/api/doctor-notes?folder=ecg_study').then(r => r.json()),
-    enabled: isOpen,
+    enabled: isOpen && !!user && ['doctor', 'admin'].includes(user.role),
   });
 
   const saveMutation = useMutation({
@@ -85,6 +83,8 @@ export default function FloatingStudyNotes() {
       queryClient.invalidateQueries({ queryKey: ['/api/doctor-notes'] });
     },
   });
+
+  if (!user || !['doctor', 'admin'].includes(user.role)) return null;
 
   const selectNote = (note: StudyNote) => {
     setSelectedNote(note);
