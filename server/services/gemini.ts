@@ -788,6 +788,129 @@ Formato: texto corrido, máximo 300 palavras.
       };
     }
   }
+  async analyzeECGImage(imageBase64: string, patientContext: {
+    age?: number;
+    sex?: string;
+    clinicalHistory?: string;
+  }): Promise<{
+    ecg_metrics: {
+      heart_rate: string;
+      rhythm: string;
+      qrs_width: string;
+      atrial_activity: string;
+      signal_quality: string;
+    };
+    diagnosis_probabilities: Record<string, string>;
+    visual_annotation_instructions: Record<string, string>;
+    technical_summary: string;
+    simple_summary: string;
+    disclaimer: string;
+  }> {
+    const patientInfo = [
+      patientContext.age ? `IDADE: ${patientContext.age} anos` : '',
+      patientContext.sex ? `SEXO: ${patientContext.sex}` : '',
+      patientContext.clinicalHistory ? `HISTÓRIA CLÍNICA: ${patientContext.clinicalHistory}` : '',
+    ].filter(Boolean).join(' | ');
+
+    const prompt = `You are an ECG analysis engine. Analyze the ECG IMAGE provided along with PATIENT context [${patientInfo}].
+
+AUTOMATED 10-STEP PIPELINE:
+1. IMAGE QUALITY ASSESSMENT: Evaluate signal quality, lead placement, baseline stability, and noise artifacts (tremor, drift, interference)
+2. LEAD IDENTIFICATION: Identify all visible leads (I, II, III, aVR, aVL, aVF, V1-V6) and their orientation
+3. WAVEFORM SEGMENTATION: Isolate P waves, QRS complexes, T waves, ST segments, PR intervals, QT intervals
+4. RATE & RHYTHM ANALYSIS: HR=300/RR | rhythm regularity assessment | sinus vs non-sinus origin
+5. AXIS DETERMINATION: Calculate electrical axis from limb leads, identify deviations (LAD/RAD/extreme)
+6. MORPHOLOGY ANALYSIS: QRS width (narrow/wide), P wave morphology, T wave changes, ST elevation/depression, Q waves, bundle branch patterns
+7. DIAGNOSTIC REASONING: Apply clinical logic trees (e.g., HR~150+regular+narrow+sawtooth→Flutter 2:1, wide QRS+AV dissociation→VT)
+8. PROBABILITY SCORING: Assign % confidence to each considered diagnosis based on cumulative findings
+9. VISUAL ANNOTATION MAPPING: Define color-coded overlay instructions: Red=flutter/fibrillation zones, Blue=SVT patterns, Green=atrial tachycardia, Orange=artifact regions, Yellow=ST changes, Purple=conduction blocks + arrows for key intervals (RR, QRS, PR, QT)
+10. STRUCTURED OUTPUT: Compile ecg_metrics, diagnosis_probabilities, visual_annotation_instructions, technical_summary, simple_summary, disclaimer
+
+Analise esta imagem de ECG. Dados do paciente: ${patientInfo || 'Não informado'}. Retorne JSON estruturado com ecg_metrics, diagnosis_probabilities, visual_annotation_instructions, technical_summary, simple_summary, disclaimer.
+
+Respond in PORTUGUÊS MÉDICO with %CONFIANÇA. Return ONLY valid JSON with these exact keys: ecg_metrics (object with heart_rate, rhythm, qrs_width, atrial_activity, signal_quality), diagnosis_probabilities (object), visual_annotation_instructions (object), technical_summary (string), simple_summary (string), disclaimer (string).`;
+
+    const normalizeECGResult = (raw: any) => ({
+      ecg_metrics: {
+        heart_rate: raw?.ecg_metrics?.heart_rate ?? 'Não determinado',
+        rhythm: raw?.ecg_metrics?.rhythm ?? 'Não determinado',
+        qrs_width: raw?.ecg_metrics?.qrs_width ?? 'Não determinado',
+        atrial_activity: raw?.ecg_metrics?.atrial_activity ?? 'Não determinado',
+        signal_quality: raw?.ecg_metrics?.signal_quality ?? 'Não determinado',
+      },
+      diagnosis_probabilities: raw?.diagnosis_probabilities ?? {},
+      visual_annotation_instructions: raw?.visual_annotation_instructions ?? {},
+      technical_summary: raw?.technical_summary ?? 'Análise técnica não disponível.',
+      simple_summary: raw?.simple_summary ?? 'Resumo simplificado não disponível.',
+      disclaimer: raw?.disclaimer ?? 'Análise automatizada. Requer revisão médica.',
+    });
+
+    let geminiError: unknown = null;
+    try {
+      const client = getGeminiClient();
+      const model = client.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+          maxOutputTokens: 2000,
+        },
+      });
+
+      const response = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            mimeType: 'image/png',
+            data: imageBase64,
+          },
+        },
+      ]);
+
+      const text = response.response.text();
+      const parsed = JSON.parse(text);
+      return normalizeECGResult(parsed);
+    } catch (err) {
+      geminiError = err;
+      console.error('Gemini ECG analysis error:', err instanceof Error ? err.message : err);
+    }
+
+    console.log('Falling back to OpenAI for ECG analysis...');
+    try {
+      const openai = getOpenAIFallback();
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: prompt },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Analise esta imagem de ECG. Dados do paciente: ${patientInfo || 'Não informado'}. Retorne JSON estruturado.`,
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/png;base64,${imageBase64}`,
+                  detail: 'high',
+                },
+              },
+            ],
+          },
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 2000,
+        temperature: 0.2,
+      });
+
+      const parsed = JSON.parse(response.choices[0].message.content || '{}');
+      return normalizeECGResult(parsed);
+    } catch (openaiError) {
+      console.error('OpenAI fallback ECG analysis also failed:', openaiError instanceof Error ? openaiError.message : openaiError);
+      throw geminiError || openaiError;
+    }
+  }
 }
 
 export const geminiService = new GeminiService();

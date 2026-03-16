@@ -20536,8 +20536,8 @@ ${combinedText.slice(0, 8000)}`;
         return res.status(400).json({ message: 'Imagem ECG (base64) é obrigatória' });
       }
 
-      const { openAIService } = await import('./services/openai');
-      const result = await openAIService.analyzeECGImage(imageBase64, patientContext || {});
+      const { geminiService } = await import('./services/gemini');
+      const result = await geminiService.analyzeECGImage(imageBase64, patientContext || {});
       res.json(result);
     } catch (error) {
       console.error('ECG analysis error:', error);
