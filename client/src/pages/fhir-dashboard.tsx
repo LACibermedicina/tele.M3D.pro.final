@@ -83,6 +83,18 @@ interface ECGAnalysisResult {
     atrial_activity: string;
     signal_quality: string;
   };
+  lead_by_lead_analysis?: Record<string, string>;
+  waveform_segmentation?: {
+    p_wave: string;
+    pr_interval: string;
+    qrs_complex: string;
+    st_segment: string;
+    t_wave: string;
+    qt_interval: string;
+    u_wave: string;
+  };
+  rhythm_strip_interpretation?: string;
+  immersive_image?: string | null;
   cardiac_interpretation: string;
   key_findings: string[];
   systematic_analysis: {
@@ -1715,6 +1727,84 @@ function ECGEngineTab({
                         </li>
                       ))}
                     </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Immersive AI Visualization */}
+              {ecgResult.immersive_image && (
+                <Card className="border-indigo-500/30 overflow-hidden">
+                  <CardHeader className="p-3 pb-0">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Eye className="h-4 w-4 text-indigo-500" /> Visualização Imersiva AI
+                      <Badge className="ml-2 bg-indigo-500 text-white text-[10px]">gpt-image-1</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3">
+                    <img
+                      src={`data:image/png;base64,${ecgResult.immersive_image}`}
+                      alt="ECG Immersive AI Visualization"
+                      className="w-full h-auto rounded-lg border"
+                    />
+                    <p className="text-[10px] text-muted-foreground text-center mt-2">
+                      Imagem gerada por IA (gpt-image-1) — Ilustrativa, não substitui laudo médico
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Lead-by-Lead Analysis */}
+              {ecgResult.lead_by_lead_analysis && Object.keys(ecgResult.lead_by_lead_analysis).length > 0 && (
+                <Card className="border-blue-500/20">
+                  <CardHeader className="p-3 pb-0">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-blue-500" /> Análise Derivação por Derivação
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {Object.entries(ecgResult.lead_by_lead_analysis).map(([lead, finding]) => (
+                        <div key={lead} className="p-2 rounded-lg border bg-muted/30 text-xs">
+                          <span className="font-bold text-blue-500">{lead}:</span>{' '}
+                          <span className="text-muted-foreground">{finding}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Waveform Segmentation */}
+              {ecgResult.waveform_segmentation && (
+                <Card className="border-teal-500/20">
+                  <CardHeader className="p-3 pb-0">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-teal-500" /> Segmentação de Formas de Onda
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {Object.entries(ecgResult.waveform_segmentation).map(([key, val]) => (
+                        <div key={key} className="p-2 rounded-lg border bg-muted/30 text-xs">
+                          <span className="font-bold uppercase text-teal-600 dark:text-teal-400">{key.replace(/_/g, ' ')}:</span>{' '}
+                          <span className="text-muted-foreground">{val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Rhythm Strip Interpretation */}
+              {ecgResult.rhythm_strip_interpretation && (
+                <Card className="border-purple-500/20">
+                  <CardHeader className="p-3 pb-0">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-purple-500" /> Interpretação da Faixa de Ritmo
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3">
+                    <p className="text-sm text-muted-foreground leading-relaxed">{ecgResult.rhythm_strip_interpretation}</p>
                   </CardContent>
                 </Card>
               )}

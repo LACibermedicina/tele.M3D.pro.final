@@ -799,26 +799,74 @@ Formato: texto corrido, máximo 300 palavras.
       patientContext.clinicalHistory ? `HISTÓRIA CLÍNICA: ${patientContext.clinicalHistory}` : '',
     ].filter(Boolean).join(' | ');
 
-    const prompt = `Você é um sistema avançado de análise de ECG de nível hospitalar, equivalente a um cardiologista sênior. Analise a imagem de ECG fornecida com contexto do paciente [${patientInfo}].
+    const prompt = `Você é o ECG Reader — um sistema de interpretação eletrocardiográfica de nível hospitalar que replica a metodologia clínica estruturada do "ECG Reader" GPT. Analise a imagem de ECG fornecida com contexto do paciente [${patientInfo}].
 
-ANÁLISE SISTEMÁTICA DIDÁTICA EM 9 CRITÉRIOS (com valores de referência):
+=== PIPELINE DE ANÁLISE ECG READER (7 FASES) ===
 
-1. RITMO: Determinar se é sinusal ou não. Avaliar regularidade R-R, presença de ondas P antes de cada QRS, morfologia uniforme das ondas P.
-2. FREQUÊNCIA CARDÍACA: Calcular FC (normal: 60-100 bpm). Método: 300/nº quadrados grandes entre R-R ou contar complexos em 6s x10.
-3. EIXO QRS: Determinar eixo elétrico (normal: -30° a +90°). Avaliar derivações I e aVF para desvios.
-4. ONDA P: Morfologia, duração (<0,12s), amplitude (<2,5mm em DII). Avaliar sobrecarga atrial.
-5. INTERVALO PR: Medir duração (normal: 0,12-0,20s). Bloqueios AV se prolongado.
-6. COMPLEXO QRS: Largura (normal: <0,12s). Avaliar bloqueios de ramo, ondas Q patológicas, amplitude para hipertrofia.
-7. SEGMENTO ST: Avaliar se isoelétrico (normal). Supradesnivelamento (IAM, pericardite) ou infradesnivelamento (isquemia). Quantificar em mm.
-8. ONDA T: Morfologia, simetria, inversões. Avaliar isquemia, distúrbios eletrolíticos.
-9. INTERVALO QT: Medir e calcular QTc (normal: <440ms homens, <460ms mulheres). Risco de arritmias se prolongado.
+FASE 1 — VERIFICAÇÃO TÉCNICA E CALIBRAÇÃO:
+- Confirmar velocidade do papel (padrão: 25 mm/s; se 50 mm/s, ajustar leituras)
+- Verificar calibração de voltagem (padrão: 10 mm/mV = 1 mV)
+- Avaliar qualidade do traçado: artefatos, interferência de linha de base, tremor muscular
+- Identificar se ECG é de 12 derivações padrão ou formato reduzido
 
-VERIFICAÇÃO DE PADRONIZAÇÃO: Confirmar velocidade do papel (25 mm/s) e calibração (10 mm/mV).
+FASE 2 — ANÁLISE DERIVAÇÃO POR DERIVAÇÃO (Lead-by-Lead):
+Para cada derivação (DI, DII, DIII, aVR, aVL, aVF, V1-V6), avaliar:
+- Morfologia da onda P (presença, amplitude, duração, bifidez, inversão)
+- Intervalo PR (onset da P até onset do QRS)
+- Complexo QRS (duração, amplitude, morfologia — ondas Q, R, S, padrão rSR', QS)
+- Ponto J e Segmento ST (elevação/depressão em mm, morfologia côncava/convexa/retificada)
+- Onda T (orientação, amplitude, simetria, achatamento, inversão)
+- Onda U (presença e significância)
 
-REGRAS DE ANÁLISE:
+FASE 3 — SEGMENTAÇÃO DE FORMAS DE ONDA:
+- Separar e classificar cada componente: P-QRS-ST-T-U
+- Medir intervalos: PR, QRS, QT, QTc (Bazett: QTc = QT/√RR)
+- Calcular relação R/S nas precordiais (progressão R V1→V6)
+- Identificar zona de transição precordial
+
+FASE 4 — INTERPRETAÇÃO DA FAIXA DE RITMO (Rhythm Strip):
+- Analisar DII longo ou faixa de ritmo inferior
+- Determinar ritmo: sinusal, atrial, juncional, ventricular, ou marca-passo
+- Avaliar regularidade R-R (regular, regularmente irregular, irregularmente irregular)
+- Calcular FC: método 300/quadrados grandes ou método 6 segundos
+- Identificar: extrassístoles (APCs/PVCs), pausas, condução aberrante
+- Avaliar relação P:QRS (1:1, >1:1 para bloqueios, <1:1 para dissociação)
+
+FASE 5 — DETERMINAÇÃO DO EIXO ELÉTRICO:
+- Calcular eixo QRS pelo método quadrante (DI + aVF) e método perpendicular
+- Normal: -30° a +90° | Desvio esquerdo: -30° a -90° | Desvio direito: +90° a +180°
+- Determinar eixo da onda P e eixo da onda T
+- Avaliar concordância ou discordância dos eixos
+
+FASE 6 — CORRELAÇÃO CLÍNICA E PADRÕES DIAGNÓSTICOS:
+- Aplicar critérios de Sokolow-Lyon e Cornell para HVE
+- Critérios de sobrecarga atrial (P mitrale, P pulmonale)
+- Padrões isquêmicos: ST-T em territórios coronarianos (anterior, inferior, lateral, posterior)
+- Critérios de bloqueio de ramo (BRD: rSR' em V1, BRE: QS/rS em V1 + R monofásico em V5-V6)
+- Critérios de Sgarbossa para IAMCSST com BRE
+- Padrões especiais: Brugada, WPW (delta), QT longo, repolarização precoce, pericardite
+
+FASE 7 — SÍNTESE DIAGNÓSTICA COM EVIDÊNCIAS:
+- Formular diagnóstico presuntivo com nível de confiança baseado em guidelines AHA/ESC/SBC
+- Listar diagnósticos diferenciais com probabilidades baseadas em evidências
+- Referências epidemiológicas (prevalência, incidência, mortalidade)
+- Plano de ação estratificado por urgência
+
+ANÁLISE SISTEMÁTICA EM 9 CRITÉRIOS (com valores de referência):
+1. RITMO: Avaliar regularidade R-R, presença/morfologia de ondas P antes de cada QRS
+2. FREQUÊNCIA CARDÍACA: Calcular FC (normal: 60-100 bpm)
+3. EIXO QRS: Determinar eixo elétrico (normal: -30° a +90°)
+4. ONDA P: Morfologia, duração (<0,12s), amplitude (<2,5mm em DII)
+5. INTERVALO PR: Duração (normal: 0,12-0,20s)
+6. COMPLEXO QRS: Largura (<0,12s), morfologia, amplitude
+7. SEGMENTO ST: Isoelétrico vs supra/infradesnivelamento em mm
+8. ONDA T: Morfologia, simetria, inversões
+9. INTERVALO QT: QTc (normal: <440ms H, <460ms M)
+
+REGRAS:
 - Marcar cada alteração com % descritivo (ex: "ST supradesnivelado 2mm em V1-V4 - 80% probabilidade de IAM anterior")
-- Incluir estatísticas epidemiológicas e probabilidades da literatura (guidelines AHA/ESC/SBC)
-- Usar cores semânticas para hipóteses diagnósticas:
+- Incluir dados epidemiológicos da literatura (guidelines AHA/ESC/SBC)
+- Usar cores semânticas:
   * Vermelho (#EF4444) = isquemia/infarto/alto risco
   * Azul (#3B82F6) = hipertrofia/distúrbios de condução
   * Verde (#22C55E) = normalidade/variante normal
@@ -829,6 +877,30 @@ IMPORTANTE: Responda inteiramente em PORTUGUÊS MÉDICO. Retorne APENAS JSON vá
 
 {
   "ecg_metrics": { "heart_rate": "string com valor e classificação", "rhythm": "string", "qrs_width": "string com valor em ms", "atrial_activity": "string", "signal_quality": "string" },
+  "lead_by_lead_analysis": {
+    "DI": "achados nesta derivação",
+    "DII": "achados nesta derivação",
+    "DIII": "achados nesta derivação",
+    "aVR": "achados nesta derivação",
+    "aVL": "achados nesta derivação",
+    "aVF": "achados nesta derivação",
+    "V1": "achados nesta derivação",
+    "V2": "achados nesta derivação",
+    "V3": "achados nesta derivação",
+    "V4": "achados nesta derivação",
+    "V5": "achados nesta derivação",
+    "V6": "achados nesta derivação"
+  },
+  "waveform_segmentation": {
+    "p_wave": "morfologia, duração, amplitude geral",
+    "pr_interval": "medida e interpretação",
+    "qrs_complex": "duração, morfologia, progressão R",
+    "st_segment": "alterações, quantificação em mm por território",
+    "t_wave": "morfologia, inversões, concordância",
+    "qt_interval": "QT medido, QTc calculado por Bazett",
+    "u_wave": "presença e significância"
+  },
+  "rhythm_strip_interpretation": "Análise detalhada da faixa de ritmo: regularidade, relação P:QRS, extrassístoles, pausas",
   "cardiac_interpretation": "Texto detalhado explicando o que este ECG indica sobre a condição, função e atividade elétrica do coração",
   "key_findings": ["array dos achados clínicos mais importantes, cada um como string com % descritivo"],
   "systematic_analysis": {
@@ -878,6 +950,17 @@ Seja extremamente detalhado e didático. Referencie guidelines AHA/ESC/SBC quand
           atrial_activity: raw?.ecg_metrics?.atrial_activity ?? 'Não determinado',
           signal_quality: raw?.ecg_metrics?.signal_quality ?? 'Não determinado',
         },
+        lead_by_lead_analysis: raw?.lead_by_lead_analysis ?? {},
+        waveform_segmentation: {
+          p_wave: raw?.waveform_segmentation?.p_wave ?? 'Não avaliado',
+          pr_interval: raw?.waveform_segmentation?.pr_interval ?? 'Não avaliado',
+          qrs_complex: raw?.waveform_segmentation?.qrs_complex ?? 'Não avaliado',
+          st_segment: raw?.waveform_segmentation?.st_segment ?? 'Não avaliado',
+          t_wave: raw?.waveform_segmentation?.t_wave ?? 'Não avaliado',
+          qt_interval: raw?.waveform_segmentation?.qt_interval ?? 'Não avaliado',
+          u_wave: raw?.waveform_segmentation?.u_wave ?? 'Não avaliado',
+        },
+        rhythm_strip_interpretation: raw?.rhythm_strip_interpretation ?? 'Interpretação da faixa de ritmo não disponível.',
         cardiac_interpretation: raw?.cardiac_interpretation ?? 'Interpretação cardíaca não disponível.',
         key_findings: Array.isArray(raw?.key_findings) ? raw.key_findings : [],
         systematic_analysis: {
@@ -951,7 +1034,7 @@ Seja extremamente detalhado e didático. Referencie guidelines AHA/ESC/SBC quand
         generationConfig: {
           responseMimeType: 'application/json',
           temperature: 0.2,
-          maxOutputTokens: 6000,
+          maxOutputTokens: 8000,
         },
       });
 
@@ -998,7 +1081,7 @@ Seja extremamente detalhado e didático. Referencie guidelines AHA/ESC/SBC quand
           },
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 6000,
+        max_tokens: 8000,
         temperature: 0.2,
       });
 

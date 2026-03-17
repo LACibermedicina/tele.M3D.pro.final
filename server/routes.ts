@@ -20538,7 +20538,40 @@ ${combinedText.slice(0, 8000)}`;
 
       const { geminiService } = await import('./services/gemini');
       const result = await geminiService.analyzeECGImage(imageBase64, patientContext || {});
-      res.json(result);
+
+      let immersiveImage: string | null = null;
+      try {
+        const { generateImageBuffer } = await import('./replit_integrations/image/client');
+        const findings = result.key_findings?.slice(0, 5)?.join('; ') || 'ECG analysis';
+        const diagnosis = result.presumptive_diagnosis?.name || 'ECG';
+        const severity = result.severity_level?.label || 'Moderado';
+        const annotations = (result.color_coded_annotations || []).slice(0, 4).map((a: any) =>
+          `Region "${a.region}": ${a.hypothesis} (${a.color_name} ${a.color_hex})`
+        ).join('. ');
+
+        const imagePrompt = `Create a professional medical ECG summary visualization image. Style: clean dark background (#1a1a2e) with a stylized ECG waveform trace across the center in white/light gray.
+
+Key visual elements:
+- Title at top: "ECG Analysis - ${diagnosis}" in white bold text
+- Severity indicator: "${severity}" badge in the top-right corner
+- Color-coded annotation regions overlaid on the waveform:
+  ${annotations}
+- Use these exact semantic colors: Red (#EF4444) for ischemia/infarction, Blue (#3B82F6) for hypertrophy/conduction, Green (#22C55E) for normal, Yellow (#EAB308) for moderate risk, Purple (#8B5CF6) for arrhythmia
+- Key findings listed below the waveform in small text: ${findings}
+- Professional medical infographic style with clean typography
+- Include a subtle grid pattern behind the waveform (like ECG paper)
+- Bottom bar with "AI-Generated ECG Summary • Not for clinical use without physician review"
+
+The image should look like a high-quality medical dashboard visualization, NOT a real ECG trace.`;
+
+        const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
+        immersiveImage = imageBuffer.toString('base64');
+        console.log('ECG immersive image generated successfully');
+      } catch (imgError) {
+        console.error('ECG immersive image generation failed (non-blocking):', imgError instanceof Error ? imgError.message : imgError);
+      }
+
+      res.json({ ...result, immersive_image: immersiveImage });
     } catch (error) {
       console.error('ECG analysis error:', error);
       res.status(500).json({ 

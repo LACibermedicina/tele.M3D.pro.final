@@ -16,7 +16,8 @@ import {
   Heart, X, Upload, Zap, Loader2, Minimize2, Maximize2,
   Activity, AlertTriangle, ChevronDown, ChevronUp, Save, BookOpen,
   User, Mail, Send, FileText, Shield, Stethoscope, ClipboardList,
-  CheckCircle, XCircle, Target, Palette, BarChart3, Siren, Eye, TrendingUp
+  CheckCircle, XCircle, Target, Palette, BarChart3, Siren, Eye, TrendingUp,
+  ImageIcon, Layers
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
@@ -48,6 +49,18 @@ interface ECGResult {
     atrial_activity: string;
     signal_quality: string;
   };
+  lead_by_lead_analysis?: Record<string, string>;
+  waveform_segmentation?: {
+    p_wave: string;
+    pr_interval: string;
+    qrs_complex: string;
+    st_segment: string;
+    t_wave: string;
+    qt_interval: string;
+    u_wave: string;
+  };
+  rhythm_strip_interpretation?: string;
+  immersive_image?: string | null;
   cardiac_interpretation: string;
   key_findings: string[];
   systematic_analysis: {
@@ -104,6 +117,9 @@ export default function FloatingECGAnalyzer() {
   const [showSystematic, setShowSystematic] = useState(false);
   const [showEpidemiological, setShowEpidemiological] = useState(false);
   const [showActionPlan, setShowActionPlan] = useState(false);
+  const [showLeadByLead, setShowLeadByLead] = useState(false);
+  const [showWaveform, setShowWaveform] = useState(false);
+  const [showImmersiveImage, setShowImmersiveImage] = useState(true);
   const [isDragOver, setIsDragOver] = useState(false);
   const [patientAge, setPatientAge] = useState('');
   const [patientSex, setPatientSex] = useState('');
@@ -485,6 +501,93 @@ export default function FloatingECGAnalyzer() {
                           <Siren className="h-3 w-3" /> Comentário Clínico Importante
                         </p>
                         <p className="text-[10px] text-foreground leading-relaxed font-medium">{result.clinical_comment}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {result.immersive_image && (
+                    <>
+                      <button
+                        onClick={() => setShowImmersiveImage(!showImmersiveImage)}
+                        className="w-full flex items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground"
+                      >
+                        <span className="flex items-center gap-1">
+                          <ImageIcon className="h-3 w-3 text-indigo-500" /> Visualização Imersiva AI
+                        </span>
+                        {showImmersiveImage ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      </button>
+                      {showImmersiveImage && (
+                        <Card className="border-indigo-500/30 overflow-hidden">
+                          <CardContent className="p-0">
+                            <img
+                              src={`data:image/png;base64,${result.immersive_image}`}
+                              alt="ECG Immersive AI Visualization"
+                              className="w-full h-auto rounded-lg"
+                            />
+                            <p className="text-[9px] text-muted-foreground text-center py-1 bg-muted/30">
+                              Imagem gerada por IA (gpt-image-1) — Ilustrativa, não substitui laudo médico
+                            </p>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </>
+                  )}
+
+                  {result.lead_by_lead_analysis && Object.keys(result.lead_by_lead_analysis).length > 0 && (
+                    <>
+                      <button
+                        onClick={() => setShowLeadByLead(!showLeadByLead)}
+                        className="w-full flex items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground"
+                      >
+                        <span className="flex items-center gap-1">
+                          <Layers className="h-3 w-3" /> Análise Derivação por Derivação
+                        </span>
+                        {showLeadByLead ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      </button>
+                      {showLeadByLead && (
+                        <div className="space-y-1">
+                          {Object.entries(result.lead_by_lead_analysis).map(([lead, finding]) => (
+                            <div key={lead} className="p-1.5 rounded border bg-muted/30 text-[10px]">
+                              <span className="font-semibold text-blue-500">{lead}:</span>{' '}
+                              <span className="text-muted-foreground">{finding}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {result.waveform_segmentation && (
+                    <>
+                      <button
+                        onClick={() => setShowWaveform(!showWaveform)}
+                        className="w-full flex items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground"
+                      >
+                        <span className="flex items-center gap-1">
+                          <Activity className="h-3 w-3" /> Segmentação de Formas de Onda
+                        </span>
+                        {showWaveform ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      </button>
+                      {showWaveform && (
+                        <div className="space-y-1">
+                          {Object.entries(result.waveform_segmentation).map(([key, val]) => (
+                            <div key={key} className="p-1.5 rounded border bg-muted/30 text-[10px]">
+                              <span className="font-semibold uppercase">{key.replace(/_/g, ' ')}:</span>{' '}
+                              <span className="text-muted-foreground">{val}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {result.rhythm_strip_interpretation && (
+                    <Card className="border-purple-500/20">
+                      <CardContent className="p-2">
+                        <p className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 mb-1 flex items-center gap-1">
+                          <Activity className="h-3 w-3" /> Interpretação da Faixa de Ritmo
+                        </p>
+                        <p className="text-[10px] text-muted-foreground leading-relaxed">{result.rhythm_strip_interpretation}</p>
                       </CardContent>
                     </Card>
                   )}
