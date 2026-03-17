@@ -2133,7 +2133,7 @@ function RadiologyEngineTab({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Scan className="h-5 w-5 text-indigo-500" />
-            Análise Radiológica
+            Análise de Estudos
             {user?.role === 'admin' && <Badge variant="outline" className="text-xs">Gemini 2.0 Flash</Badge>}
           </CardTitle>
         </CardHeader>

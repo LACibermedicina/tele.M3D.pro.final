@@ -284,7 +284,7 @@ export default function FloatingECGAnalyzer() {
   const panelWidth = isExpanded ? 'w-[560px]' : 'w-[380px]';
   const panelHeight = isExpanded ? 'max-h-[90vh]' : 'max-h-[65vh]';
   const severityLevel = result?.severity_level?.level ?? 1;
-  const analysisLocked = !!result && !savedToStudy;
+  const analysisLocked = !!result;
 
   return (
     <>
@@ -388,7 +388,7 @@ export default function FloatingECGAnalyzer() {
                     {ecgMutation.isPending ? (
                       <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Analisando...</>
                     ) : analysisLocked ? (
-                      <><Zap className="h-3 w-3 mr-1" /> Salve ou limpe para novo estudo</>
+                      <><Zap className="h-3 w-3 mr-1" /> Limpe para novo estudo</>
                     ) : (
                       <><Zap className="h-3 w-3 mr-1" /> Analisar ECG</>
                     )}
