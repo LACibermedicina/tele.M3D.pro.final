@@ -16,7 +16,7 @@ import {
   Scan, X, Upload, Zap, Loader2, Minimize2, Maximize2,
   Activity, AlertTriangle, ChevronDown, ChevronUp, Save, BookOpen,
   User, Mail, Send, FileText, Shield, Stethoscope, ClipboardList,
-  Eye, Target, Palette, Siren, TrendingUp, Layers, Star
+  Eye, Target, Palette, Siren, TrendingUp, Layers, Star, ImageIcon
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
@@ -92,6 +92,7 @@ export default function FloatingRadiologyAnalyzer() {
   const [shareEmail, setShareEmail] = useState('');
   const [shareScope, setShareScope] = useState('full_summary');
   const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [immersiveImage, setImmersiveImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: patientsBundle } = useQuery<any>({
@@ -212,6 +213,23 @@ export default function FloatingRadiologyAnalyzer() {
     },
   });
 
+  const generateImmersiveImageMutation = useMutation({
+    mutationFn: async () => {
+      if (!result) throw new Error('No analysis result');
+      const res = await apiRequest('POST', '/api/radiology/generate-immersive-image', {
+        analysisData: result,
+      });
+      return res.json();
+    },
+    onSuccess: (data: { immersive_image: string }) => {
+      setImmersiveImage(data.immersive_image);
+      toast({ title: 'Imagem descritiva avançada gerada com sucesso' });
+    },
+    onError: () => {
+      toast({ title: 'Erro ao gerar imagem descritiva', variant: 'destructive' });
+    },
+  });
+
   const handleFile = (file: File) => {
     if (!file.type.startsWith('image/')) return;
     const reader = new FileReader();
@@ -221,6 +239,7 @@ export default function FloatingRadiologyAnalyzer() {
       setRadPreview(e.target?.result as string);
       setResult(null);
       setSavedToStudy(false);
+      setImmersiveImage(null);
     };
     reader.readAsDataURL(file);
   };
@@ -254,6 +273,7 @@ export default function FloatingRadiologyAnalyzer() {
     setPatientHistory('');
     setAnatomicalRegion('');
     setSavedToStudy(false);
+    setImmersiveImage(null);
   };
 
   if (!user || !['doctor', 'admin'].includes(user.role)) return null;
@@ -263,7 +283,7 @@ export default function FloatingRadiologyAnalyzer() {
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-[10.5rem] right-6 z-40 w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center hover:scale-110"
-        title="Quick Radiology Analyzer"
+        title="Análise de Estudo"
       >
         <Scan className="h-5 w-5" />
       </button>
@@ -281,8 +301,7 @@ export default function FloatingRadiologyAnalyzer() {
           <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between border-b shrink-0">
             <CardTitle className="text-sm flex items-center gap-2">
               <Scan className="h-4 w-4 text-indigo-500" />
-              Quick Radiology Analyzer
-              <Badge variant="outline" className="text-[9px] ml-1">Gemini AI</Badge>
+              Análise de Estudo
             </CardTitle>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsExpanded(!isExpanded)}>
@@ -395,6 +414,43 @@ export default function FloatingRadiologyAnalyzer() {
                       <><Zap className="h-3 w-3 mr-1" /> Analisar Radiografia</>
                     )}
                   </Button>
+
+                  {result && (
+                    <Button
+                      onClick={() => generateImmersiveImageMutation.mutate()}
+                      disabled={generateImmersiveImageMutation.isPending || !result}
+                      className="w-full bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 text-white"
+                      size="sm"
+                    >
+                      {generateImmersiveImageMutation.isPending ? (
+                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Gerando Imagem PACS...</>
+                      ) : (
+                        <><ImageIcon className="h-3 w-3 mr-1" /> Gerar Imagem Descritiva Avançada</>
+                      )}
+                    </Button>
+                  )}
+
+                  {immersiveImage && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-semibold flex items-center gap-1 text-rose-600 dark:text-rose-400">
+                        <ImageIcon className="h-3 w-3" /> Painel PACS Imersivo
+                      </p>
+                      <div className="rounded-lg overflow-hidden border border-rose-500/30">
+                        <img
+                          src={`data:image/png;base64,${immersiveImage}`}
+                          alt="Painel PACS Imersivo - Análise Radiológica"
+                          className="w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => {
+                            const w = window.open();
+                            if (w) {
+                              w.document.write(`<html><head><title>Painel PACS Imersivo</title><style>body{margin:0;background:#1a1a2e;display:flex;justify-content:center;align-items:center;min-height:100vh;}</style></head><body><img src="data:image/png;base64,${immersiveImage}" style="max-width:100%;max-height:100vh;object-fit:contain;" /></body></html>`);
+                            }
+                          }}
+                        />
+                      </div>
+                      <p className="text-[9px] text-muted-foreground text-center">Clique na imagem para visualizar em tela cheia</p>
+                    </div>
+                  )}
                 </div>
               )}
 

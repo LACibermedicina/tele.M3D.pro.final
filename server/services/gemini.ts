@@ -1110,8 +1110,19 @@ Seja extremamente detalhado e didático. Referencie guidelines AHA/ESC/SBC quand
 
 ENTRADA: Radiografia médica com contexto clínico [${patientInfo}].
 
-MISSÃO: Analise a radiografia e gere interpretação estruturada multimodal composta de:
-• Interpretação radiológica estruturada
+=== REGRA CRÍTICA DE IDENTIFICAÇÃO ANATÔMICA ===
+ANTES de qualquer análise, identifique CORRETAMENTE a região anatômica visível na imagem:
+- OBSERVE as estruturas ósseas, órgãos e tecidos REALMENTE presentes na imagem
+- NÃO assuma que toda radiografia é de tórax/pulmão
+- Se a imagem mostra pelve, quadril, fêmur → é estudo de PELVE/QUADRIL
+- Se a imagem mostra abdome, alças intestinais, coluna lombar → é estudo de ABDOME
+- Se a imagem mostra crânio → é estudo de CRÂNIO
+- Se a imagem mostra extremidades → identifique o segmento específico
+- A região anatômica informada pelo contexto clínico é apenas uma referência; a imagem tem precedência absoluta
+- ERRO GRAVE: classificar um estudo de abdome como estudo pulmonar ou vice-versa
+
+MISSÃO: Analise a radiografia segundo os cânones de análise procedimental de estudos de imagem e gere interpretação estruturada multimodal:
+• Interpretação radiológica estruturada baseada nos achados REAIS da imagem
 • Diagnóstico diferencial probabilístico
 • Estratificação prognóstica
 • Suporte à decisão clínica
@@ -1119,19 +1130,39 @@ MISSÃO: Analise a radiografia e gere interpretação estruturada multimodal com
 
 RESTRIÇÕES GLOBAIS:
 • Nunca gere conteúdo anatômico fixo ou genérico
-• Todas as saídas devem adaptar-se aos achados radiográficos reais
-• Mantenha coerência topográfica anatômica absoluta
+• Todas as saídas devem adaptar-se aos achados radiográficos REAIS visíveis na imagem
+• Mantenha coerência topográfica anatômica absoluta — identifique a região CORRETA
 • Priorize relevância clínica sobre anatomia descritiva
 • Garanta interpretabilidade rápida (cognição de nível emergencial)
-• Simule fluxo de trabalho real de radiologia hospitalar
+• Simule fluxo de trabalho real de radiologia hospitalar (PACS workflow)
+• Cada achado deve ser ESPECÍFICO para a região anatômica identificada
 
-ANÁLISE TÉCNICA RADIOGRÁFICA SISTEMÁTICA:
+ANÁLISE PROCEDIMENTAL DE ESTUDOS DE IMAGEM:
+
+FASE 1 — IDENTIFICAÇÃO DO ESTUDO:
+• Identificar modalidade (RX, TC, RM, USG)
+• Determinar região anatômica REAL visível na imagem
+• Identificar projeção/incidência (AP, PA, Lateral, Oblíqua)
+• Verificar lateralidade quando aplicável
+
+FASE 2 — AVALIAÇÃO TÉCNICA:
 • Projeção e incidência
 • Rotação e centralização
 • Penetração radiográfica
 • Colimação
 • Artefatos identificados
 • Escore de qualidade diagnóstica (1-5)
+
+FASE 3 — ANÁLISE SISTEMÁTICA POR REGIÃO:
+• Avaliar CADA estrutura visível na imagem de forma organizada
+• Descrever achados normais E patológicos
+• Quantificar alterações quando possível (em mm, graus, %)
+• Correlacionar achados entre si
+
+FASE 4 — CORRELAÇÃO CLÍNICA:
+• Integrar achados com contexto clínico do paciente
+• Aplicar critérios diagnósticos específicos para a patologia identificada
+• Usar escalas/classificações reconhecidas (Tönnis, Kellgren-Lawrence, TNM, etc.)
 
 INTEGRAÇÃO MULTI-ESPECIALIDADE:
 Interprete achados considerando: medicina de emergência, ortopedia, geriatria, terapia intensiva, oncologia, cirurgia geral, clínica médica, anestesiologia, medicina vascular.

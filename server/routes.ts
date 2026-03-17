@@ -20762,6 +20762,101 @@ The image should look like a high-quality medical dashboard visualization, NOT a
     }
   });
 
+  app.post('/api/radiology/generate-immersive-image', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Apenas médicos e administradores podem gerar imagens' });
+      }
+
+      const { analysisData } = req.body;
+      if (!analysisData) {
+        return res.status(400).json({ message: 'Dados da análise são obrigatórios' });
+      }
+
+      const { generateImageBuffer } = await import('./replit_integrations/image/client');
+
+      const findings = analysisData.radiology_findings || {};
+      const diagnosis = analysisData.probabilistic_diagnosis?.presumptive?.name || 'Estudo Radiológico';
+      const severity = analysisData.severity_level?.label || 'Moderado';
+      const region = findings.anatomical_region || 'Região não especificada';
+      const laterality = findings.laterality || 'N/A';
+      const dominantPathology = findings.dominant_pathology || 'Achado não identificado';
+      const impactPct = findings.clinical_impact_percentage || '0%';
+      const formalReport = analysisData.formal_report || {};
+      const laySummary = (analysisData.lay_summary || []).join(' ');
+      const colorRegions = (analysisData.color_coded_regions || []).slice(0, 6).map((r: any) =>
+        `"${r.region}": ${r.finding} (${r.color_name} ${r.color_hex}, risk: ${r.risk_level})`
+      ).join('. ');
+      const differentials = (analysisData.probabilistic_diagnosis?.differentials || []).slice(0, 4).map((d: any) =>
+        `${d.name}: ${d.confidence}`
+      ).join(', ');
+      const prognostic = analysisData.prognostic_estimation || {};
+      const techQuality = analysisData.technical_quality || {};
+      const educationalNote = analysisData.educational_note?.didactic_note || '';
+
+      const imagePrompt = `Create an immersive PACS-style radiology workstation visual panel — a hyper-realistic medical image synthesis for radiology educational interface. Dark hospital interface background (#1a1a2e).
+
+STYLE: Advanced medical workstation UI, RSNA teaching atlas hybrid, AI diagnostic heatmap overlay, ultra-clean vector + radiograph fusion.
+
+VISUAL LAYOUT — 6 BLOCKS:
+
+BLOCK 1 (TOP LEFT) — "RX ORIGINAL":
+- Show a stylized radiograph of "${region}" with "${laterality}" laterality
+- Highlight the dominant pathology "${dominantPathology}" with an organic RED polygon overlay
+- Caption: "Achado principal: ${dominantPathology} (~${impactPct} impacto clínico)"
+- Red square indicator
+
+BLOCK 2 (TOP CENTER) — "OVERLAY ORGÂNICO TOPOGRÁFICO":
+- Same radiograph base with transparent anatomical mapping overlay
+- AI-style pathological heatmap gradient (orange to intense red) focused on pathology area
+- Up to 10 critical structures with connected white arrows
+- Probabilistic relevance percentage labels on key structures
+
+BLOCK 3 (TOP RIGHT) — "ANATOMIA NORMAL COMPARATIVA":
+- Clean anatomical medical illustration of normal "${region}" for comparison
+- Green highlights showing healthy anatomical landmarks
+- Label: "Atlas-Style Reference"
+
+BLOCK 4 (BOTTOM LEFT) — "IMAGEM ANATÔMICA FUNCIONAL":
+- Biomechanical/pathological conceptual illustration
+- Show stress zones, instability, degeneration, or deformity relevant to "${dominantPathology}"
+- Compare normal (green) vs pathological (red/orange) with clear labels
+- Bold laterality marker: "${laterality}"
+
+BLOCK 5 (BOTTOM CENTER) — STRUCTURED DATA BLOCKS:
+- "ESTIMATIVA PROGNÓSTICA": Severity: ${prognostic.severity_score || severity}, Progression risk: ${prognostic.functional_progression_risk || 'N/A'}, Intervention risk: ${prognostic.intervention_risk || 'N/A'}
+- "DIAGNÓSTICO DIFERENCIAL": ${differentials}
+- "LAUDO HOSPITALAR FORMAL": Exam: ${formalReport.exam || region}, Impression: ${formalReport.diagnostic_impression || diagnosis}
+- "RESUMO LEIGO": ${laySummary}
+
+BLOCK 6 (BOTTOM RIGHT) — CLINICAL SUMMARY:
+- Technical quality score: ${techQuality.score || 3}/5
+- Educational note text block
+- Red bottom bar: "Correlacione clinicamente. % relevância, prognóstico, DDx e conduta incluídos."
+
+TOP BANNER: "RESUMO CLÍNICO-RADIOLÓGICO PADRONIZADO E IMERSIVO: ${region} com Análise de ${dominantPathology}" in white/red text. Metadata: Patient ID simulated, Senior radiologist.
+
+COLOR SEMANTICS: Red = high clinical risk, Orange = moderate risk, Yellow = secondary, Blue = anatomical reference, Green = normal comparison.
+
+Color-coded regions from analysis: ${colorRegions}
+
+GRAPHICAL RULES: Organic medical polygons, thin clinical arrows, no decorative elements, high contrast clinical readability, real radiology workstation appearance. Text density auto-adapted to severity.
+
+Generate ONE single integrated immersive medical radiology panel that is hyper-informative, visually clean, clinically actionable, educationally robust, and fully case-specific.`;
+
+      const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
+      const immersiveImage = imageBuffer.toString('base64');
+      console.log('Radiology immersive PACS image generated successfully');
+      res.json({ immersive_image: immersiveImage });
+    } catch (error) {
+      console.error('Radiology immersive image generation error:', error);
+      res.status(500).json({
+        message: 'Erro ao gerar imagem imersiva. Tente novamente em alguns instantes.'
+      });
+    }
+  });
+
   app.post('/api/radiology/associate', requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
