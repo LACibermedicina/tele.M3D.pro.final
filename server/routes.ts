@@ -1410,7 +1410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Doctor Notes API (macOS Notes-style)
-  const validFolders = ['all', 'clinical', 'patients', 'study', 'personal', 'ecg_study'];
+  const validFolders = ['all', 'clinical', 'patients', 'study', 'personal', 'ecg_study', 'ecg_shares'];
   const validColors = ['default', 'yellow', 'green', 'blue', 'purple', 'pink', 'red'];
 
   app.get('/api/doctor-notes', async (req: any, res) => {
@@ -20680,8 +20680,19 @@ ${combinedText.slice(0, 8000)}`;
 
       console.log(`[ECG Share] Doctor ${req.user.id} sharing ECG analysis to ${recipientEmail} (scope: ${contentScope})`);
 
+      const shareRecord = await storage.createDoctorNote({
+        doctorId: req.user.id,
+        title: `ECG Share - ${topDiagnosis} → ${recipientEmail}`,
+        content: formattedContent,
+        folder: 'ecg_shares',
+        color: 'green',
+        isPinned: false,
+        patientId: null,
+      });
+
       res.json({
         success: true,
+        shareId: (shareRecord as any)?.id,
         message: `Análise ECG preparada para envio a ${recipientEmail}`,
         recipientEmail,
         contentScope,

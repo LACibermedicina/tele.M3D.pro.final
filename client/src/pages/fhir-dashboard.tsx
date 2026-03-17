@@ -1728,7 +1728,7 @@ function ECGEngineTab({
               <Input
                 type="email"
                 value={shareEmail}
-                onChange={(e: any) => setShareEmail(e.target.value)}
+                onChange={(e) => setShareEmail(e.target.value)}
                 placeholder="medico@hospital.com"
               />
             </div>
