@@ -49,3 +49,7 @@ defaultBucketID = "replit-objstore-26502e2f-e588-4f96-a3c7-48edc8625ec1"
 [userenv.shared]
 PAYPAL_MODE = "sandbox"
 VITE_PAYPAL_MODE = "sandbox"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
