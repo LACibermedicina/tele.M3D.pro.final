@@ -792,43 +792,47 @@ Formato: texto corrido, máximo 300 palavras.
     age?: number;
     sex?: string;
     clinicalHistory?: string;
-  }): Promise<{
-    ecg_metrics: {
-      heart_rate: string;
-      rhythm: string;
-      qrs_width: string;
-      atrial_activity: string;
-      signal_quality: string;
-    };
-    diagnosis_probabilities: Record<string, string>;
-    visual_annotation_instructions: Record<string, string>;
-    technical_summary: string;
-    simple_summary: string;
-    disclaimer: string;
-  }> {
+  }): Promise<any> {
     const patientInfo = [
       patientContext.age ? `IDADE: ${patientContext.age} anos` : '',
       patientContext.sex ? `SEXO: ${patientContext.sex}` : '',
       patientContext.clinicalHistory ? `HISTÓRIA CLÍNICA: ${patientContext.clinicalHistory}` : '',
     ].filter(Boolean).join(' | ');
 
-    const prompt = `You are an ECG analysis engine. Analyze the ECG IMAGE provided along with PATIENT context [${patientInfo}].
+    const prompt = `You are an advanced ECG analysis engine for medical professionals. Analyze the ECG IMAGE provided along with PATIENT context [${patientInfo}].
 
 AUTOMATED 10-STEP PIPELINE:
-1. IMAGE QUALITY ASSESSMENT: Evaluate signal quality, lead placement, baseline stability, and noise artifacts (tremor, drift, interference)
-2. LEAD IDENTIFICATION: Identify all visible leads (I, II, III, aVR, aVL, aVF, V1-V6) and their orientation
+1. IMAGE QUALITY ASSESSMENT: Evaluate signal quality, lead placement, baseline stability, and noise artifacts
+2. LEAD IDENTIFICATION: Identify all visible leads (I, II, III, aVR, aVL, aVF, V1-V6)
 3. WAVEFORM SEGMENTATION: Isolate P waves, QRS complexes, T waves, ST segments, PR intervals, QT intervals
 4. RATE & RHYTHM ANALYSIS: HR=300/RR | rhythm regularity assessment | sinus vs non-sinus origin
-5. AXIS DETERMINATION: Calculate electrical axis from limb leads, identify deviations (LAD/RAD/extreme)
-6. MORPHOLOGY ANALYSIS: QRS width (narrow/wide), P wave morphology, T wave changes, ST elevation/depression, Q waves, bundle branch patterns
-7. DIAGNOSTIC REASONING: Apply clinical logic trees (e.g., HR~150+regular+narrow+sawtooth→Flutter 2:1, wide QRS+AV dissociation→VT)
-8. PROBABILITY SCORING: Assign % confidence to each considered diagnosis based on cumulative findings
-9. VISUAL ANNOTATION MAPPING: Define color-coded overlay instructions: Red=flutter/fibrillation zones, Blue=SVT patterns, Green=atrial tachycardia, Orange=artifact regions, Yellow=ST changes, Purple=conduction blocks + arrows for key intervals (RR, QRS, PR, QT)
-10. STRUCTURED OUTPUT: Compile ecg_metrics, diagnosis_probabilities, visual_annotation_instructions, technical_summary, simple_summary, disclaimer
+5. AXIS DETERMINATION: Calculate electrical axis from limb leads, identify deviations
+6. MORPHOLOGY ANALYSIS: QRS width, P wave morphology, T wave changes, ST elevation/depression, Q waves, bundle branch patterns
+7. DIAGNOSTIC REASONING: Apply clinical logic trees
+8. PROBABILITY SCORING: Assign % confidence to each considered diagnosis
+9. VISUAL ANNOTATION MAPPING: Define color-coded overlay instructions
+10. STRUCTURED OUTPUT: Full didactic analysis with all required fields
 
-Analise esta imagem de ECG. Dados do paciente: ${patientInfo || 'Não informado'}. Retorne JSON estruturado com ecg_metrics, diagnosis_probabilities, visual_annotation_instructions, technical_summary, simple_summary, disclaimer.
+IMPORTANT: Respond entirely in PORTUGUÊS MÉDICO. Return ONLY valid JSON with ALL these keys:
 
-Respond in PORTUGUÊS MÉDICO with %CONFIANÇA. Return ONLY valid JSON with these exact keys: ecg_metrics (object with heart_rate, rhythm, qrs_width, atrial_activity, signal_quality), diagnosis_probabilities (object), visual_annotation_instructions (object), technical_summary (string), simple_summary (string), disclaimer (string).`;
+{
+  "ecg_metrics": { "heart_rate": "string", "rhythm": "string", "qrs_width": "string", "atrial_activity": "string", "signal_quality": "string" },
+  "cardiac_interpretation": "Detailed text explaining what this ECG indicates about the heart's condition, function, and electrical activity",
+  "key_findings": ["array of the most important clinical observations from this ECG, each as a string"],
+  "presumptive_diagnosis": { "name": "Primary diagnosis name", "confidence": "XX%", "color": "#hex color", "reasoning": "Clinical reasoning for this diagnosis" },
+  "differential_diagnoses": [{ "name": "Alternative diagnosis", "confidence": "XX%", "color": "#hex color", "reasoning": "Brief reasoning" }],
+  "recommended_conduct": "Detailed action plan including recommended exams, medications if applicable, monitoring, and follow-up",
+  "severity_level": { "level": 1-5, "label": "Leve/Moderado/Grave/Muito Grave/Crítico", "description": "Brief severity justification" },
+  "technical_report": "Formal technical laudo with all measured parameters, intervals, morphology findings, and clinical conclusion",
+  "diagnosis_probabilities": { "diagnosis_name": "XX%" },
+  "visual_annotation_instructions": { "finding_name": "color_description" },
+  "technical_summary": "Concise technical summary",
+  "simple_summary": "Patient-friendly summary of the ECG findings",
+  "disclaimer": "Medical disclaimer about automated analysis"
+}
+
+Use different colors for each diagnostic hypothesis. severity_level.level: 1=Leve, 2=Moderado, 3=Grave, 4=Muito Grave, 5=Crítico.
+Provide at least 2-4 differential diagnoses with percentages. Be thorough and didactic.`;
 
     const normalizeECGResult = (raw: any) => ({
       ecg_metrics: {
@@ -838,11 +842,34 @@ Respond in PORTUGUÊS MÉDICO with %CONFIANÇA. Return ONLY valid JSON with thes
         atrial_activity: raw?.ecg_metrics?.atrial_activity ?? 'Não determinado',
         signal_quality: raw?.ecg_metrics?.signal_quality ?? 'Não determinado',
       },
+      cardiac_interpretation: raw?.cardiac_interpretation ?? 'Interpretação cardíaca não disponível.',
+      key_findings: Array.isArray(raw?.key_findings) ? raw.key_findings : [],
+      presumptive_diagnosis: {
+        name: raw?.presumptive_diagnosis?.name ?? 'Não determinado',
+        confidence: raw?.presumptive_diagnosis?.confidence ?? '0%',
+        color: raw?.presumptive_diagnosis?.color ?? '#3B82F6',
+        reasoning: raw?.presumptive_diagnosis?.reasoning ?? '',
+      },
+      differential_diagnoses: Array.isArray(raw?.differential_diagnoses)
+        ? raw.differential_diagnoses.map((d: any) => ({
+            name: d?.name ?? 'Diagnóstico alternativo',
+            confidence: d?.confidence ?? '0%',
+            color: d?.color ?? '#6B7280',
+            reasoning: d?.reasoning ?? '',
+          }))
+        : [],
+      recommended_conduct: raw?.recommended_conduct ?? 'Conduta recomendada não disponível.',
+      severity_level: {
+        level: raw?.severity_level?.level ?? 1,
+        label: raw?.severity_level?.label ?? 'Não classificado',
+        description: raw?.severity_level?.description ?? '',
+      },
+      technical_report: raw?.technical_report ?? 'Laudo técnico não disponível.',
       diagnosis_probabilities: raw?.diagnosis_probabilities ?? {},
       visual_annotation_instructions: raw?.visual_annotation_instructions ?? {},
       technical_summary: raw?.technical_summary ?? 'Análise técnica não disponível.',
       simple_summary: raw?.simple_summary ?? 'Resumo simplificado não disponível.',
-      disclaimer: raw?.disclaimer ?? 'Análise automatizada. Requer revisão médica.',
+      disclaimer: raw?.disclaimer ?? 'Análise automatizada por IA. Requer revisão e validação médica profissional. Não substitui avaliação clínica presencial.',
     });
 
     let geminiError: unknown = null;
@@ -853,7 +880,7 @@ Respond in PORTUGUÊS MÉDICO with %CONFIANÇA. Return ONLY valid JSON with thes
         generationConfig: {
           responseMimeType: 'application/json',
           temperature: 0.2,
-          maxOutputTokens: 2000,
+          maxOutputTokens: 4000,
         },
       });
 
@@ -900,7 +927,7 @@ Respond in PORTUGUÊS MÉDICO with %CONFIANÇA. Return ONLY valid JSON with thes
           },
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 2000,
+        max_tokens: 4000,
         temperature: 0.2,
       });
 

@@ -20,7 +20,7 @@ import {
 import {
   Users, FileText, Heart, Download, Search, Plus, Trash2,
   Upload, Activity, Loader2, AlertTriangle, Stethoscope, Zap, Edit,
-  ClipboardList, Calendar
+  ClipboardList, Calendar, Shield
 } from 'lucide-react';
 
 const ECG_COLORS: Record<string, string> = {
@@ -74,6 +74,27 @@ interface ECGAnalysisResult {
     atrial_activity: string;
     signal_quality: string;
   };
+  cardiac_interpretation: string;
+  key_findings: string[];
+  presumptive_diagnosis: {
+    name: string;
+    confidence: string;
+    color: string;
+    reasoning: string;
+  };
+  differential_diagnoses: Array<{
+    name: string;
+    confidence: string;
+    color: string;
+    reasoning: string;
+  }>;
+  recommended_conduct: string;
+  severity_level: {
+    level: number;
+    label: string;
+    description: string;
+  };
+  technical_report: string;
   diagnosis_probabilities: Record<string, string>;
   visual_annotation_instructions: Record<string, string>;
   technical_summary: string;
@@ -1257,6 +1278,56 @@ function ECGEngineTab({
   runECGAnalysis, isAnalyzing, canvasRef
 }: ECGEngineTabProps) {
   const imgRef = useRef<HTMLImageElement>(null);
+  const { toast } = useToast();
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showAssociateDialog, setShowAssociateDialog] = useState(false);
+  const [shareEmail, setShareEmail] = useState('');
+  const [shareScope, setShareScope] = useState('full_summary');
+  const [selectedPatientId, setSelectedPatientId] = useState('');
+
+  const { data: fhirPatientsBundle } = useQuery<any>({
+    queryKey: ['/api/fhir/patients'],
+    enabled: showAssociateDialog,
+  });
+  const fhirPatients: any[] = fhirPatientsBundle?.entry || [];
+
+  const associateMutation = useMutation({
+    mutationFn: async () => {
+      if (!ecgResult || !selectedPatientId) throw new Error('Missing data');
+      return apiRequest('POST', '/api/ecg/associate', {
+        patientId: selectedPatientId,
+        analysisData: ecgResult,
+        patientContext: { age: ecgPatientAge, sex: ecgPatientSex, clinicalHistory: ecgPatientHistory },
+      });
+    },
+    onSuccess: () => {
+      setShowAssociateDialog(false);
+      toast({ title: 'ECG associado ao paciente' });
+    },
+    onError: () => {
+      toast({ title: 'Erro ao associar', variant: 'destructive' });
+    },
+  });
+
+  const shareMutation = useMutation({
+    mutationFn: async () => {
+      if (!ecgResult || !shareEmail) throw new Error('Missing data');
+      return apiRequest('POST', '/api/ecg/share', {
+        recipientEmail: shareEmail,
+        contentScope: shareScope,
+        analysisData: ecgResult,
+        patientContext: { age: ecgPatientAge, sex: ecgPatientSex, clinicalHistory: ecgPatientHistory },
+      });
+    },
+    onSuccess: () => {
+      setShowShareDialog(false);
+      setShareEmail('');
+      toast({ title: 'Análise ECG enviada', description: `Preparada para ${shareEmail}` });
+    },
+    onError: () => {
+      toast({ title: 'Erro ao enviar', variant: 'destructive' });
+    },
+  });
 
   useEffect(() => {
     if (!ecgResult?.visual_annotation_instructions || !canvasRef.current || !imgRef.current) return;
@@ -1317,7 +1388,7 @@ function ECGEngineTab({
           <CardTitle className="flex items-center gap-2">
             <Heart className="h-5 w-5 text-red-500" />
             ECG Analysis Engine
-            <Badge className="ml-2 bg-blue-500 text-white text-[10px]">GPT-4o Vision</Badge>
+            <Badge className="ml-2 bg-blue-500 text-white text-[10px]">Gemini AI Vision</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1435,6 +1506,92 @@ function ECGEngineTab({
           {/* Results */}
           {ecgResult && (
             <div className="space-y-4 mt-4">
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setShowAssociateDialog(true)}>
+                  <Users className="h-3.5 w-3.5 mr-1.5" /> Associar a Paciente
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setShowShareDialog(true)}>
+                  <Download className="h-3.5 w-3.5 mr-1.5" /> Enviar por Email
+                </Button>
+              </div>
+
+              {/* Presumptive Diagnosis + Severity */}
+              <Card className="border-l-4" style={{ borderLeftColor: ecgResult.presumptive_diagnosis?.color || '#3B82F6' }}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-bold flex items-center gap-2">
+                      <Stethoscope className="h-4 w-4" /> Diagnóstico Presuntivo
+                    </h3>
+                    <Badge className={`text-white ${
+                      ecgResult.severity_level?.level >= 4 ? 'bg-red-600' :
+                      ecgResult.severity_level?.level === 3 ? 'bg-orange-500' :
+                      ecgResult.severity_level?.level === 2 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}>
+                      {ecgResult.severity_level?.label || 'N/A'} ({ecgResult.severity_level?.level || 0}/5)
+                    </Badge>
+                  </div>
+                  <p className="text-base font-bold" style={{ color: ecgResult.presumptive_diagnosis?.color }}>
+                    {ecgResult.presumptive_diagnosis?.name} ({ecgResult.presumptive_diagnosis?.confidence})
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">{ecgResult.presumptive_diagnosis?.reasoning}</p>
+                  {ecgResult.severity_level?.description && (
+                    <p className="text-xs text-muted-foreground mt-2 italic">{ecgResult.severity_level.description}</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Cardiac Interpretation */}
+              <Card className="border-purple-500/20">
+                <CardHeader className="p-3 pb-0">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Heart className="h-4 w-4 text-purple-500" /> Interpretação Cardíaca
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3">
+                  <p className="text-sm text-muted-foreground leading-relaxed">{ecgResult.cardiac_interpretation}</p>
+                </CardContent>
+              </Card>
+
+              {/* Key Findings */}
+              {ecgResult.key_findings?.length > 0 && (
+                <Card className="border-amber-500/20">
+                  <CardHeader className="p-3 pb-0">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-500" /> Achados Principais
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3">
+                    <ul className="space-y-1">
+                      {ecgResult.key_findings.map((f: string, i: number) => (
+                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <span className="text-amber-500 font-bold">•</span> {f}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Differential Diagnoses */}
+              <Card className="border-blue-500/20">
+                <CardHeader className="p-3 pb-0">
+                  <CardTitle className="text-sm">Diagnósticos Diferenciais</CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 space-y-2">
+                  {ecgResult.differential_diagnoses?.map((d: any, i: number) => (
+                    <div key={i} className="flex items-center gap-3 p-2 rounded-lg border bg-muted/30">
+                      <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: d.color || DX_COLORS[i % DX_COLORS.length] }} />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{d.name}</p>
+                        <p className="text-xs text-muted-foreground">{d.reasoning}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs shrink-0">{d.confidence}</Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
               {/* Diagnosis Bar Chart */}
               <Card className="border-blue-500/20">
                 <CardHeader className="p-3 pb-0">
@@ -1466,8 +1623,32 @@ function ECGEngineTab({
                 </CardContent>
               </Card>
 
+              {/* Recommended Conduct */}
+              <Card className="border-green-500/20">
+                <CardHeader className="p-3 pb-0">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-green-500" /> Conduta Recomendada
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3">
+                  <p className="text-sm text-muted-foreground leading-relaxed">{ecgResult.recommended_conduct}</p>
+                </CardContent>
+              </Card>
+
+              {/* Technical Report */}
+              <Card className="border-indigo-500/20">
+                <CardHeader className="p-3 pb-0">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-indigo-500" /> Laudo Técnico
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3">
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{ecgResult.technical_report}</p>
+                </CardContent>
+              </Card>
+
               {/* Annotation Legend */}
-              {ecgResult.visual_annotation_instructions && (
+              {ecgResult.visual_annotation_instructions && Object.keys(ecgResult.visual_annotation_instructions).length > 0 && (
                 <Card>
                   <CardHeader className="p-3 pb-0">
                     <CardTitle className="text-sm">Legenda de Anotações</CardTitle>
@@ -1487,10 +1668,97 @@ function ECGEngineTab({
                   </CardContent>
                 </Card>
               )}
+
+              {/* Disclaimer */}
+              <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground">{ecgResult.disclaimer}</p>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={showAssociateDialog} onOpenChange={setShowAssociateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-4 w-4" /> Associar ECG a Paciente
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Select value={selectedPatientId} onValueChange={setSelectedPatientId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecionar paciente..." />
+              </SelectTrigger>
+              <SelectContent>
+                {fhirPatients.map((p: any) => {
+                  const name = p.resource?.name?.[0]?.text || p.resource?.name?.[0]?.given?.join(' ') || p.resource?.id;
+                  return (
+                    <SelectItem key={p.resource?.id} value={p.resource?.id || ''}>
+                      {name}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowAssociateDialog(false)}>Cancelar</Button>
+            <Button
+              onClick={() => associateMutation.mutate()}
+              disabled={!selectedPatientId || associateMutation.isPending}
+            >
+              {associateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Associar'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-4 w-4" /> Enviar Análise por Email
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm">Email do Destinatário</Label>
+              <Input
+                type="email"
+                value={shareEmail}
+                onChange={(e: any) => setShareEmail(e.target.value)}
+                placeholder="medico@hospital.com"
+              />
+            </div>
+            <div>
+              <Label className="text-sm mb-2 block">Conteúdo a Enviar</Label>
+              <Select value={shareScope} onValueChange={setShareScope}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="study_analysis">Estudo + Análise</SelectItem>
+                  <SelectItem value="analysis_only">Somente Análise</SelectItem>
+                  <SelectItem value="report_only">Somente Laudo</SelectItem>
+                  <SelectItem value="full_summary">Resumo Completo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowShareDialog(false)}>Cancelar</Button>
+            <Button
+              onClick={() => shareMutation.mutate()}
+              disabled={!shareEmail || shareMutation.isPending}
+            >
+              {shareMutation.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+              Enviar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

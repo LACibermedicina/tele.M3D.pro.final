@@ -20547,6 +20547,151 @@ ${combinedText.slice(0, 8000)}`;
     }
   });
 
+  app.post('/api/ecg/associate', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Apenas médicos podem associar análises ECG' });
+      }
+
+      const { patientId, analysisData, patientContext } = req.body;
+      if (!patientId || !analysisData) {
+        return res.status(400).json({ message: 'patientId e analysisData são obrigatórios' });
+      }
+
+      const topDiagnosis = analysisData.presumptive_diagnosis?.name || 
+        Object.keys(analysisData.diagnosis_probabilities || {})[0]?.replace(/_/g, ' ') || 'ECG';
+
+      const content = [
+        `# Análise ECG - ${topDiagnosis}`,
+        `**Data:** ${new Date().toLocaleString('pt-BR')}`,
+        `**Paciente ID:** ${patientId}`,
+        patientContext?.age ? `**Idade:** ${patientContext.age}` : '',
+        patientContext?.sex ? `**Sexo:** ${patientContext.sex}` : '',
+        patientContext?.clinicalHistory ? `**Histórico:** ${patientContext.clinicalHistory}` : '',
+        '',
+        `## Interpretação Cardíaca`,
+        analysisData.cardiac_interpretation || analysisData.simple_summary || '',
+        '',
+        `## Diagnóstico Presuntivo`,
+        `**${analysisData.presumptive_diagnosis?.name || topDiagnosis}** (${analysisData.presumptive_diagnosis?.confidence || 'N/A'})`,
+        analysisData.presumptive_diagnosis?.reasoning || '',
+        '',
+        `## Diagnósticos Diferenciais`,
+        ...(analysisData.differential_diagnoses || []).map((d: any) => `- ${d.name}: ${d.confidence} - ${d.reasoning || ''}`),
+        '',
+        `## Conduta Recomendada`,
+        analysisData.recommended_conduct || '',
+        '',
+        `## Nível de Gravidade`,
+        `${analysisData.severity_level?.label || 'N/A'} (${analysisData.severity_level?.level || 0}/5)`,
+        analysisData.severity_level?.description || '',
+        '',
+        `## Laudo Técnico`,
+        analysisData.technical_report || analysisData.technical_summary || '',
+        '',
+        `## Métricas`,
+        ...Object.entries(analysisData.ecg_metrics || {}).map(([k, v]) => `- **${k.replace(/_/g, ' ')}**: ${v}`),
+      ].filter(Boolean).join('\n');
+
+      const noteResult = await storage.createDoctorNote({
+        doctorId: req.user.id,
+        title: `ECG - ${topDiagnosis} - Paciente ${patientId.substring(0, 8)}`,
+        content,
+        folder: 'ecg_study',
+        color: 'blue',
+        isPinned: false,
+        patientId,
+      });
+
+      res.json({ success: true, noteId: (noteResult as any)?.id, message: 'Análise ECG associada ao paciente' });
+    } catch (error) {
+      console.error('ECG associate error:', error);
+      res.status(500).json({ message: 'Erro ao associar análise ECG ao paciente' });
+    }
+  });
+
+  app.post('/api/ecg/share', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Apenas médicos podem compartilhar análises ECG' });
+      }
+
+      const { recipientEmail, contentScope, analysisData, patientContext } = req.body;
+      if (!recipientEmail || !contentScope || !analysisData) {
+        return res.status(400).json({ message: 'recipientEmail, contentScope e analysisData são obrigatórios' });
+      }
+
+      const validScopes = ['study_analysis', 'analysis_only', 'report_only', 'full_summary'];
+      if (!validScopes.includes(contentScope)) {
+        return res.status(400).json({ message: 'contentScope inválido' });
+      }
+
+      let formattedContent = '';
+      const topDiagnosis = analysisData.presumptive_diagnosis?.name || 
+        Object.keys(analysisData.diagnosis_probabilities || {})[0]?.replace(/_/g, ' ') || 'ECG';
+
+      if (contentScope === 'study_analysis' || contentScope === 'full_summary') {
+        formattedContent += `ANÁLISE ECG COMPLETA\n${'='.repeat(40)}\n`;
+        formattedContent += `Data: ${new Date().toLocaleString('pt-BR')}\n`;
+        formattedContent += `Médico: Dr(a). ${req.user.name || req.user.username}\n\n`;
+        if (patientContext?.age) formattedContent += `Idade: ${patientContext.age}\n`;
+        if (patientContext?.sex) formattedContent += `Sexo: ${patientContext.sex}\n`;
+        if (patientContext?.clinicalHistory) formattedContent += `Histórico: ${patientContext.clinicalHistory}\n`;
+        formattedContent += '\n';
+      }
+
+      if (contentScope !== 'report_only') {
+        formattedContent += `INTERPRETAÇÃO CARDÍACA\n${'-'.repeat(30)}\n`;
+        formattedContent += `${analysisData.cardiac_interpretation || analysisData.simple_summary || 'N/A'}\n\n`;
+        formattedContent += `ACHADOS PRINCIPAIS\n${'-'.repeat(30)}\n`;
+        (analysisData.key_findings || []).forEach((f: string) => { formattedContent += `• ${f}\n`; });
+        formattedContent += '\n';
+        formattedContent += `DIAGNÓSTICO PRESUNTIVO\n${'-'.repeat(30)}\n`;
+        formattedContent += `${analysisData.presumptive_diagnosis?.name || topDiagnosis} (${analysisData.presumptive_diagnosis?.confidence || 'N/A'})\n`;
+        formattedContent += `${analysisData.presumptive_diagnosis?.reasoning || ''}\n\n`;
+        formattedContent += `DIAGNÓSTICOS DIFERENCIAIS\n${'-'.repeat(30)}\n`;
+        (analysisData.differential_diagnoses || []).forEach((d: any) => {
+          formattedContent += `• ${d.name}: ${d.confidence} - ${d.reasoning || ''}\n`;
+        });
+        formattedContent += '\n';
+        formattedContent += `CONDUTA RECOMENDADA\n${'-'.repeat(30)}\n`;
+        formattedContent += `${analysisData.recommended_conduct || 'N/A'}\n\n`;
+        formattedContent += `GRAVIDADE: ${analysisData.severity_level?.label || 'N/A'} (${analysisData.severity_level?.level || 0}/5)\n`;
+        formattedContent += `${analysisData.severity_level?.description || ''}\n\n`;
+      }
+
+      if (contentScope === 'report_only' || contentScope === 'study_analysis' || contentScope === 'full_summary') {
+        formattedContent += `LAUDO TÉCNICO\n${'-'.repeat(30)}\n`;
+        formattedContent += `${analysisData.technical_report || analysisData.technical_summary || 'N/A'}\n\n`;
+        formattedContent += `MÉTRICAS ECG\n${'-'.repeat(30)}\n`;
+        Object.entries(analysisData.ecg_metrics || {}).forEach(([k, v]) => {
+          formattedContent += `• ${k.replace(/_/g, ' ')}: ${v}\n`;
+        });
+        formattedContent += '\n';
+      }
+
+      formattedContent += `${'='.repeat(40)}\n`;
+      formattedContent += analysisData.disclaimer || 'Análise automatizada por IA. Requer validação médica.';
+
+      console.log(`[ECG Share] Doctor ${req.user.id} sharing ECG analysis to ${recipientEmail} (scope: ${contentScope})`);
+
+      res.json({
+        success: true,
+        message: `Análise ECG preparada para envio a ${recipientEmail}`,
+        recipientEmail,
+        contentScope,
+        formattedContent,
+        sentAt: new Date().toISOString(),
+        sentBy: req.user.id,
+      });
+    } catch (error) {
+      console.error('ECG share error:', error);
+      res.status(500).json({ message: 'Erro ao compartilhar análise ECG' });
+    }
+  });
+
   // FHIR R4 Local DB - Get Patients
   app.get('/api/fhir/patients', requireAuth, async (req: any, res: any) => {
     try {
