@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -527,12 +528,11 @@ export default function FloatingRadiologyAnalyzer() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <input
+            <Input
               type="text"
               value={newPatientName}
               onChange={(e) => setNewPatientName(e.target.value)}
               placeholder="Nome do paciente..."
-              className="w-full px-3 py-2 border rounded-md text-sm bg-background"
             />
           </div>
           <DialogFooter>
