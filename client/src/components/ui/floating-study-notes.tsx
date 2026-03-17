@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,12 @@ export default function FloatingStudyNotes() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setIsOpen(true);
+    window.addEventListener('open-study-notes-widget', handler);
+    return () => window.removeEventListener('open-study-notes-widget', handler);
+  }, []);
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedNote, setSelectedNote] = useState<StudyNote | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -124,15 +130,7 @@ export default function FloatingStudyNotes() {
   });
 
   if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-[4.5rem] right-6 z-40 w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center hover:scale-110"
-        title="Study Notes"
-      >
-        <BookOpen className="h-5 w-5" />
-      </button>
-    );
+    return null;
   }
 
   const panelWidth = isExpanded ? 'w-[480px]' : 'w-[340px]';

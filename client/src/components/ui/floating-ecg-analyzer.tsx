@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -12,8 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   Heart, X, Upload, Zap, Loader2,
-  Save, User, AlertTriangle, Stethoscope,
-  ImageIcon, Trash2, ExternalLink, Download
+  Save, User, UserPlus, AlertTriangle, Stethoscope,
+  ImageIcon, Trash2, ExternalLink, Download, GripVertical
 } from 'lucide-react';
 
 const SEVERITY_COLORS: Record<number, string> = {
@@ -24,11 +24,22 @@ const SEVERITY_COLORS: Record<number, string> = {
   5: 'bg-red-700',
 };
 
+const DEFAULT_POS = { x: -1, y: -1 };
+const DEFAULT_SIZE = { w: 360, h: 500 };
+const MIN_SIZE = { w: 300, h: 350 };
+const MAX_SIZE = { w: 700, h: 900 };
+
 export default function FloatingECGAnalyzer() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setIsOpen(true);
+    window.addEventListener('open-ecg-widget', handler);
+    return () => window.removeEventListener('open-ecg-widget', handler);
+  }, []);
   const [ecgImage, setEcgImage] = useState<string | null>(null);
   const [ecgPreview, setEcgPreview] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
@@ -36,8 +47,94 @@ export default function FloatingECGAnalyzer() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [savedToStudy, setSavedToStudy] = useState(false);
   const [showAssociateDialog, setShowAssociateDialog] = useState(false);
+  const [showCreatePatientDialog, setShowCreatePatientDialog] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [newPatientName, setNewPatientName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [pos, setPos] = useState(DEFAULT_POS);
+  const [size, setSize] = useState(DEFAULT_SIZE);
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const resizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const cleanupFnsRef = useRef<Array<() => void>>([]);
+
+  useEffect(() => {
+    return () => {
+      cleanupFnsRef.current.forEach(fn => fn());
+      cleanupFnsRef.current = [];
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && pos.x === -1) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      setPos({ x: vw - size.w - 80, y: vh - size.h - 20 });
+    }
+  }, [isOpen]);
+
+  const onDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    dragRef.current = { startX: clientX, startY: clientY, origX: pos.x, origY: pos.y };
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      if (!dragRef.current) return;
+      const cx = 'touches' in ev ? (ev as TouchEvent).touches[0].clientX : (ev as MouseEvent).clientX;
+      const cy = 'touches' in ev ? (ev as TouchEvent).touches[0].clientY : (ev as MouseEvent).clientY;
+      const dx = cx - dragRef.current.startX;
+      const dy = cy - dragRef.current.startY;
+      setPos({
+        x: Math.max(0, Math.min(window.innerWidth - size.w, dragRef.current.origX + dx)),
+        y: Math.max(0, Math.min(window.innerHeight - 60, dragRef.current.origY + dy)),
+      });
+    };
+    const cleanup = () => {
+      dragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', cleanup);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', cleanup);
+      cleanupFnsRef.current = cleanupFnsRef.current.filter(fn => fn !== cleanup);
+    };
+    cleanupFnsRef.current.push(cleanup);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', cleanup);
+    window.addEventListener('touchmove', onMove);
+    window.addEventListener('touchend', cleanup);
+  }, [pos, size.w]);
+
+  const onResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    resizeRef.current = { startX: clientX, startY: clientY, origW: size.w, origH: size.h };
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      if (!resizeRef.current) return;
+      const cx = 'touches' in ev ? (ev as TouchEvent).touches[0].clientX : (ev as MouseEvent).clientX;
+      const cy = 'touches' in ev ? (ev as TouchEvent).touches[0].clientY : (ev as MouseEvent).clientY;
+      const dw = cx - resizeRef.current.startX;
+      const dh = cy - resizeRef.current.startY;
+      setSize({
+        w: Math.max(MIN_SIZE.w, Math.min(MAX_SIZE.w, resizeRef.current.origW + dw)),
+        h: Math.max(MIN_SIZE.h, Math.min(MAX_SIZE.h, resizeRef.current.origH + dh)),
+      });
+    };
+    const cleanup = () => {
+      resizeRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', cleanup);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', cleanup);
+      cleanupFnsRef.current = cleanupFnsRef.current.filter(fn => fn !== cleanup);
+    };
+    cleanupFnsRef.current.push(cleanup);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', cleanup);
+    window.addEventListener('touchmove', onMove);
+    window.addEventListener('touchend', cleanup);
+  }, [size]);
 
   const { data: patientsBundle } = useQuery<any>({
     queryKey: ['/api/fhir/patients'],
@@ -128,6 +225,31 @@ export default function FloatingECGAnalyzer() {
     },
   });
 
+  const createPatientMutation = useMutation({
+    mutationFn: async () => {
+      if (!newPatientName.trim()) throw new Error('Nome obrigatório');
+      const res = await apiRequest('POST', '/api/fhir/patients', {
+        resourceType: 'Patient',
+        name: [{ text: newPatientName.trim() }],
+        active: true,
+      });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      setShowCreatePatientDialog(false);
+      setNewPatientName('');
+      queryClient.invalidateQueries({ queryKey: ['/api/fhir/patients'] });
+      toast({ title: 'Paciente criado com sucesso' });
+      if (data?.id) {
+        setSelectedPatientId(data.id);
+        setShowAssociateDialog(true);
+      }
+    },
+    onError: () => {
+      toast({ title: 'Erro ao criar paciente', variant: 'destructive' });
+    },
+  });
+
   const handleFile = (file: File) => {
     if (!file.type.startsWith('image/')) return;
     const reader = new FileReader();
@@ -173,15 +295,7 @@ export default function FloatingECGAnalyzer() {
   if (!user || !['doctor', 'admin'].includes(user.role)) return null;
 
   if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-[7.5rem] right-6 z-40 w-12 h-12 rounded-full bg-gradient-to-r from-red-500 to-pink-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center hover:scale-110"
-        title="Análise de Estudo ECG"
-      >
-        <Heart className="h-5 w-5" />
-      </button>
-    );
+    return null;
   }
 
   const severityLevel = result?.severity_level?.level ?? 1;
@@ -189,16 +303,33 @@ export default function FloatingECGAnalyzer() {
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 md:right-20 z-50 w-[360px] max-h-[70vh] flex flex-col">
+      <div
+        ref={cardRef}
+        className="fixed z-50 flex flex-col"
+        style={{ left: pos.x, top: pos.y, width: size.w, height: size.h }}
+      >
         <Card className="flex flex-col h-full border-red-500/30 shadow-2xl bg-background/95 backdrop-blur-sm">
-          <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between border-b shrink-0">
-            <CardTitle className="text-sm flex items-center gap-2">
+          <CardHeader
+            className="p-3 pb-2 flex flex-row items-center justify-between border-b shrink-0 cursor-grab active:cursor-grabbing select-none"
+            onMouseDown={onDragStart}
+            onTouchStart={onDragStart}
+          >
+            <CardTitle className="text-sm flex items-center gap-2 pointer-events-none">
+              <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
               <Heart className="h-4 w-4 text-red-500" />
-              Análise de Estudo
+              Estudo de ECG
             </CardTitle>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsOpen(false)}>
-              <X className="h-3 w-3" />
-            </Button>
+            <div className="flex items-center gap-0.5">
+              <Button variant="ghost" size="icon" className="h-6 w-6" title="Vincular a paciente" onClick={(e) => { e.stopPropagation(); setShowAssociateDialog(true); }}>
+                <User className="h-3 w-3 text-blue-500" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6" title="Criar novo paciente" onClick={(e) => { e.stopPropagation(); setShowCreatePatientDialog(true); }}>
+                <UserPlus className="h-3 w-3 text-emerald-500" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
           </CardHeader>
 
           <ScrollArea className="flex-1 overflow-auto">
@@ -335,6 +466,17 @@ export default function FloatingECGAnalyzer() {
               )}
             </CardContent>
           </ScrollArea>
+
+          <div
+            className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-40 hover:opacity-80 transition-opacity"
+            onMouseDown={onResizeStart}
+            onTouchStart={onResizeStart}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" className="text-muted-foreground">
+              <path d="M14 14L8 14L14 8Z" fill="currentColor" />
+              <path d="M14 14L11 14L14 11Z" fill="currentColor" opacity="0.5" />
+            </svg>
+          </div>
         </Card>
       </div>
 
@@ -360,6 +502,31 @@ export default function FloatingECGAnalyzer() {
             <Button variant="outline" onClick={() => setShowAssociateDialog(false)}>Cancelar</Button>
             <Button onClick={() => associateMutation.mutate()} disabled={!selectedPatientId || associateMutation.isPending}>
               {associateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Associar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCreatePatientDialog} onOpenChange={setShowCreatePatientDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-4 w-4" /> Criar Novo Paciente
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={newPatientName}
+              onChange={(e) => setNewPatientName(e.target.value)}
+              placeholder="Nome do paciente..."
+              className="w-full px-3 py-2 border rounded-md text-sm bg-background"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreatePatientDialog(false)}>Cancelar</Button>
+            <Button onClick={() => createPatientMutation.mutate()} disabled={!newPatientName.trim() || createPatientMutation.isPending}>
+              {createPatientMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Criar'}
             </Button>
           </DialogFooter>
         </DialogContent>

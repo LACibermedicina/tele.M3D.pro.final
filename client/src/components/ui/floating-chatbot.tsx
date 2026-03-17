@@ -68,6 +68,12 @@ export default function FloatingChatbot() {
   
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setIsOpen(true);
+    window.addEventListener('open-chatbot-widget', handler);
+    return () => window.removeEventListener('open-chatbot-widget', handler);
+  }, []);
   const [currentMessage, setCurrentMessage] = useState('');
   const [activeInterviewId, setActiveInterviewId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
@@ -481,21 +487,7 @@ export default function FloatingChatbot() {
   );
 
   if (!isOpen) {
-    return (
-      <>
-        {voicePromptDialog}
-        <div className="fixed bottom-6 right-6 z-50">
-          <Button
-            onClick={() => setIsOpen(true)}
-            size="sm"
-            className="rounded-full w-10 h-10 p-0 hover:scale-105 transition-transform bg-gradient-to-br from-primary/90 to-medical-primary/90 hover:from-primary hover:to-medical-primary border-2 border-gray-800 dark:border-gray-700 shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
-            data-testid="button-open-chatbot"
-          >
-            <MessageCircle className="w-5 h-5 text-white" />
-          </Button>
-        </div>
-      </>
-    );
+    return <>{voicePromptDialog}</>;
   }
 
   return (
