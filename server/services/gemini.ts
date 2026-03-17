@@ -917,7 +917,7 @@ IMPORTANTE: Responda inteiramente em PORTUGUÊS MÉDICO. Retorne APENAS JSON vá
   "epidemiological_data": [{ "finding": "achado", "prevalence": "prevalência na população", "source": "AHA/ESC/SBC guideline reference" }],
   "color_coded_annotations": [{ "region": "região do ECG", "color_hex": "#hex", "color_name": "nome da cor", "hypothesis": "hipótese diagnóstica", "probability": "XX%", "description": "descrição" }],
   "presumptive_diagnosis": { "name": "Diagnóstico principal", "confidence": "XX%", "color": "#hex", "reasoning": "Raciocínio clínico baseado em guidelines" },
-  "differential_diagnoses": [{ "name": "Diagnóstico alternativo", "confidence": "XX%", "color": "#hex", "reasoning": "Raciocínio breve com referência a literatura" }],
+  "differential_diagnoses": [{ "name": "Diagnóstico alternativo", "confidence": "XX%", "color": "#hex", "reasoning": "Raciocínio breve com referência a literatura", "key_indicators": ["indicador clínico curto 1", "indicador clínico curto 2"] }],
   "action_plan": { "immediate_actions": ["ações imediatas"], "follow_up": ["acompanhamento"], "monitoring": ["monitoramento"] },
   "clinical_comment": "O que é MAIS IMPORTANTE sobre este ECG - comentário destacado do achado principal e sua urgência",
   "recommended_conduct": "Plano de ação detalhado: exames, medicações se aplicável, monitoramento e seguimento",
@@ -1003,6 +1003,7 @@ Seja extremamente detalhado e didático. Referencie guidelines AHA/ESC/SBC quand
               confidence: d?.confidence ?? '0%',
               color: d?.color ?? '#6B7280',
               reasoning: d?.reasoning ?? '',
+              key_indicators: Array.isArray(d?.key_indicators) ? d.key_indicators : [],
             }))
           : [],
         action_plan: {
@@ -1190,7 +1191,7 @@ IMPORTANTE: Responda inteiramente em PORTUGUÊS MÉDICO. Retorne APENAS JSON vá
   "pathophysiology_model": "descrição do modelo fisiopatológico/biomecânico relevante ao achado",
   "probabilistic_diagnosis": {
     "presumptive": { "name": "Diagnóstico presuntivo", "confidence": "XX%", "color": "#hex", "reasoning": "Raciocínio clínico com referência a guidelines" },
-    "differentials": [{ "name": "Diagnóstico diferencial", "confidence": "XX%", "color": "#hex", "reasoning": "Raciocínio breve" }]
+    "differentials": [{ "name": "Diagnóstico diferencial", "confidence": "XX%", "color": "#hex", "reasoning": "Raciocínio breve", "key_indicators": ["indicador clínico curto 1", "indicador clínico curto 2"] }]
   },
   "prognostic_estimation": {
     "severity_score": "descrição e pontuação",
@@ -1254,6 +1255,7 @@ Seja extremamente detalhado, didático e baseado em evidências. Use padrão CBR
               confidence: d?.confidence ?? '0%',
               color: d?.color ?? '#6B7280',
               reasoning: d?.reasoning ?? '',
+              key_indicators: Array.isArray(d?.key_indicators) ? d.key_indicators : [],
             }))
           : [],
       },

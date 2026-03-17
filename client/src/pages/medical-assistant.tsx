@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsPermanentAdmin } from '@/hooks/use-permanent-admin';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
@@ -59,6 +60,7 @@ type QuickAction = {
 
 export default function MedicalAssistant() {
   const { user } = useAuth();
+  const isPermanentAdmin = useIsPermanentAdmin();
   const { toast } = useToast();
   const [inputMessage, setInputMessage] = useState('');
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
@@ -379,7 +381,7 @@ export default function MedicalAssistant() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Modelo</span>
-                    <Badge>Gemini 1.5 Flash</Badge>
+                    <Badge>{isPermanentAdmin ? 'Gemini 1.5 Flash' : 'Motor IA'}</Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Referências</span>

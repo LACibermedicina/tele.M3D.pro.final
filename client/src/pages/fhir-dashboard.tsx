@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import PageWrapper from '@/components/layout/page-wrapper';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsPermanentAdmin } from '@/hooks/use-permanent-admin';
 import { useLocation } from 'wouter';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -1530,6 +1531,7 @@ function ECGEngineTab({
   const imgRef = useRef<HTMLImageElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const isPermanentAdmin = useIsPermanentAdmin();
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showAssociateDialog, setShowAssociateDialog] = useState(false);
   const [shareEmail, setShareEmail] = useState('');
@@ -1639,7 +1641,7 @@ function ECGEngineTab({
           <CardTitle className="flex items-center gap-2">
             <Heart className="h-5 w-5 text-red-500" />
             Análise de ECG
-            {user?.role === 'admin' && <Badge className="ml-2 bg-blue-500 text-white text-[10px]">Gemini AI Vision</Badge>}
+            {isPermanentAdmin && <Badge className="ml-2 bg-blue-500 text-white text-[10px]">Gemini AI Vision</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1830,7 +1832,7 @@ function ECGEngineTab({
                   <CardHeader className="p-3 pb-0">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <Eye className="h-4 w-4 text-indigo-500" /> Visualização Imersiva AI
-                      <Badge className="ml-2 bg-indigo-500 text-white text-[10px]">gpt-image-1</Badge>
+                      {isPermanentAdmin && <Badge className="ml-2 bg-indigo-500 text-white text-[10px]">gpt-image-1</Badge>}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-3">
@@ -1840,7 +1842,7 @@ function ECGEngineTab({
                       className="w-full h-auto rounded-lg border"
                     />
                     <p className="text-[10px] text-muted-foreground text-center mt-2">
-                      Imagem gerada por IA (gpt-image-1) — Ilustrativa, não substitui laudo médico
+                      Imagem gerada por IA — Ilustrativa, não substitui laudo médico
                     </p>
                   </CardContent>
                 </Card>
@@ -2132,6 +2134,7 @@ function RadiologyEngineTab({
   radFileInputRef, handleRadFileSelect, runRadAnalysis, isAnalyzing,
 }: RadiologyEngineTabProps) {
   const { user } = useAuth();
+  const isPermanentAdmin = useIsPermanentAdmin();
   const [showReport, setShowReport] = useState(false);
   const [showAnatomical, setShowAnatomical] = useState(false);
   const [showPrognosis, setShowPrognosis] = useState(false);
@@ -2148,7 +2151,7 @@ function RadiologyEngineTab({
           <CardTitle className="flex items-center gap-2">
             <Scan className="h-5 w-5 text-indigo-500" />
             Análise de Estudos
-            {user?.role === 'admin' && <Badge variant="outline" className="text-xs">Gemini 2.0 Flash</Badge>}
+            {isPermanentAdmin && <Badge variant="outline" className="text-xs">Gemini 2.0 Flash</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">

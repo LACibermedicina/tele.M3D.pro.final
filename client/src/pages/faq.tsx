@@ -113,7 +113,7 @@ const faqData: FaqItem[] = [
   {
     category: "IA Médica",
     question: "Posso confiar nas respostas da IA?",
-    answer: "A IA é um assistente de apoio à decisão clínica, NÃO substitui o julgamento médico. Todas as respostas devem ser avaliadas pelo profissional de saúde. A IA utiliza modelos de linguagem (Gemini/GPT) com diretrizes médicas, mas pode cometer erros."
+    answer: "A IA é um assistente de apoio à decisão clínica, NÃO substitui o julgamento médico. Todas as respostas devem ser avaliadas pelo profissional de saúde. A IA utiliza modelos de linguagem avançados com diretrizes médicas, mas pode cometer erros."
   },
   {
     category: "IA Médica",

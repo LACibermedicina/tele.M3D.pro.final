@@ -71,7 +71,7 @@ export default function Installation() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-sm">
               {[
                 { icon: <Video className="h-3.5 w-3.5" />, label: "Teleconsultas (Agora)" },
-                { icon: <Brain className="h-3.5 w-3.5" />, label: "IA Médica (Gemini)" },
+                { icon: <Brain className="h-3.5 w-3.5" />, label: "IA Médica" },
                 { icon: <Activity className="h-3.5 w-3.5" />, label: "Triagem IA" },
                 { icon: <Pill className="h-3.5 w-3.5" />, label: "Farmácia LGPD" },
                 { icon: <FileText className="h-3.5 w-3.5" />, label: "PMD v1.0 (CFM)" },

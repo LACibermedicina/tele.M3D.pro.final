@@ -74,7 +74,7 @@ O assistente exibe badges de segurança de acordo com o nível de acesso (visita
 - Perguntas frequentes sobre teleconsultas
 - Informações sobre segurança e privacidade dos dados
 
-O chatbot é alimentado por IA (Google Gemini) com referências da OMS, Ministério da Saúde do Brasil e DSM-5.`
+O chatbot é alimentado por IA com referências da OMS, Ministério da Saúde do Brasil e DSM-5.`
       }
     ]
   },
@@ -1123,7 +1123,7 @@ Os farmacêuticos possuem um dashboard dedicado com funcionalidades específicas
 
 Variáveis de ambiente necessárias:
 - DATABASE_URL (obrigatório): Conexão PostgreSQL
-- GEMINI_API_KEY (obrigatório): API do Google Gemini para IA
+- GEMINI_API_KEY (obrigatório): API de IA médica
 - AGORA_APP_ID / AGORA_APP_CERTIFICATE (opcional): Vídeo via Agora.io
 - SESSION_SECRET (opcional): Criptografia de sessão
 - PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET (opcional): Pagamentos PayPal
@@ -1131,7 +1131,7 @@ Variáveis de ambiente necessárias:
 - PAGBANK_TOKEN / PAGBANK_EMAIL (opcional): Pagamentos PagBank (PIX/Boleto)
 - PHARMACY_ENABLED (opcional): Habilitar módulo de Farmácia
 - PMD_AUDIT_ENABLED (opcional): Habilitar audit logs do PMD
-- AI_INTEGRATIONS_OPENAI_API_KEY (opcional): Fallback OpenAI
+- AI_INTEGRATIONS_OPENAI_API_KEY (opcional): Fallback de IA
 
 O sistema utiliza 61 tabelas no PostgreSQL e migra automaticamente na inicialização.`
       }

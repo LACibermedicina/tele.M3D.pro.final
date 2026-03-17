@@ -209,7 +209,7 @@ export default function Documentation() {
       items: [
         {
           title: "Assistente Médico IA",
-          description: "Powered by Google Gemini (OMS/MS-Brasil/DSM-5) com fallback OpenAI GPT-4o-mini",
+          description: "Motor de IA Médica (OMS/MS-Brasil/DSM-5) com fallback automático",
           features: ["Suporte diagnóstico", "Interações medicamentosas", "Protocolos clínicos (OMS/MS-Brasil)", "Pesquisa de evidências"]
         },
         {
@@ -475,7 +475,7 @@ export default function Documentation() {
     },
     {
       title: "Integrações",
-      items: ["Google Gemini 2.0 Flash", "OpenAI GPT-4o-mini (fallback)", "Agora.io Video SDK", "PayPal Checkout", "Stripe Checkout", "PagBank (PIX/Boleto)", "HL7 FHIR R4 Export"]
+      items: ["Motor de IA Médica", "Fallback IA automático", "Agora.io Video SDK", "PayPal Checkout", "Stripe Checkout", "PagBank (PIX/Boleto)", "HL7 FHIR R4 Export"]
     },
     {
       title: "Segurança",

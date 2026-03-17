@@ -12,9 +12,13 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Heart, X, Upload, Zap, Loader2,
   Save, User, UserPlus, AlertTriangle, Stethoscope,
-  ImageIcon, Trash2, ExternalLink, Download, GripVertical
+  ImageIcon, Trash2, ExternalLink, Download, GripVertical, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 const SEVERITY_COLORS: Record<number, string> = {
@@ -51,6 +55,8 @@ export default function FloatingECGAnalyzer() {
   const [showCreatePatientDialog, setShowCreatePatientDialog] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [newPatientName, setNewPatientName] = useState('');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showDifferentials, setShowDifferentials] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [pos, setPos] = useState(DEFAULT_POS);
@@ -406,6 +412,37 @@ export default function FloatingECGAnalyzer() {
                     </CardContent>
                   </Card>
 
+                  {result.differential_diagnoses && result.differential_diagnoses.length > 0 && (
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => setShowDifferentials(!showDifferentials)}
+                        className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors w-full"
+                      >
+                        {showDifferentials ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        Diagnósticos Diferenciais ({result.differential_diagnoses.length})
+                      </button>
+                      {showDifferentials && result.differential_diagnoses.slice(0, 5).map((d: any, i: number) => (
+                        <div key={i} className="flex items-center gap-1.5 px-1.5 py-1 rounded bg-muted/40 border border-border/50">
+                          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color || '#6B7280' }} />
+                          <span className="text-[10px] font-medium flex-1 truncate">{d.name}</span>
+                          <Badge variant="outline" className="text-[8px] h-4 px-1">{d.confidence}</Badge>
+                        </div>
+                      ))}
+                      {showDifferentials && result.differential_diagnoses.some((d: any) => d.key_indicators?.length > 0) && (
+                        <div className="pl-2 space-y-0.5">
+                          {result.differential_diagnoses.slice(0, 3).map((d: any, i: number) =>
+                            d.key_indicators?.length > 0 ? (
+                              <p key={i} className="text-[9px] text-muted-foreground">
+                                <span className="font-medium" style={{ color: d.color }}>{d.name}:</span>{' '}
+                                {d.key_indicators.slice(0, 2).join(', ')}
+                              </p>
+                            ) : null
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <p className="text-[10px] text-muted-foreground leading-relaxed">{result.recommended_conduct}</p>
 
                   <div className="flex flex-col gap-1.5">
@@ -439,12 +476,24 @@ export default function FloatingECGAnalyzer() {
                     <Button
                       size="sm"
                       className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white"
-                      onClick={() => { setIsOpen(false); setLocation('/fhir-dashboard'); }}
+                      onClick={() => {
+                        if (!savedToStudy && result) {
+                          saveToStudyMutation.mutate();
+                        }
+                        setIsOpen(false);
+                        setLocation('/fhir-dashboard');
+                      }}
                     >
                       <ExternalLink className="h-3 w-3 mr-1" /> Aprofundamento
                     </Button>
 
-                    <Button size="sm" variant="destructive" className="w-full" onClick={clearAll}>
+                    <Button size="sm" variant="destructive" className="w-full" onClick={() => {
+                      if (result && !savedToStudy) {
+                        setShowClearConfirm(true);
+                      } else {
+                        clearAll();
+                      }
+                    }}>
                       <Trash2 className="h-3 w-3 mr-1" /> Limpar Tudo
                     </Button>
                   </div>
@@ -545,6 +594,26 @@ export default function FloatingECGAnalyzer() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Salvar estudo antes de limpar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O estudo atual não foi salvo. Deseja salvá-lo nos Estudos Não Vinculados antes de limpar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex gap-2">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { setShowClearConfirm(false); clearAll(); }}>
+              Limpar sem Salvar
+            </AlertDialogAction>
+            <AlertDialogAction onClick={() => { saveToStudyMutation.mutate(); setShowClearConfirm(false); clearAll(); }}>
+              Salvar e Limpar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

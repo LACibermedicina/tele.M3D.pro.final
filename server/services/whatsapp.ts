@@ -210,6 +210,85 @@ ${response}
 
     return await this.sendMessage(to, message);
   }
+  async sendConsultationRequestNotification(
+    to: string,
+    patientName: string,
+    specialty: string,
+    urgencyLevel: string,
+    symptoms: string
+  ): Promise<boolean> {
+    const urgencyEmoji = urgencyLevel === 'emergency' ? '🔴' : urgencyLevel === 'very_urgent' ? '🟠' : urgencyLevel === 'urgent' ? '🟡' : '🟢';
+    const message = `${urgencyEmoji} Nova Solicitação de Consulta
+
+👤 Paciente: ${patientName}
+🏥 Especialidade: ${specialty}
+⚡ Urgência: ${urgencyLevel}
+📝 Sintomas: ${symptoms.slice(0, 200)}
+
+Acesse a plataforma para aceitar ou encaminhar esta solicitação.
+
+🏥 Tele<M3D> Pro`;
+
+    return await this.sendMessage(to, message);
+  }
+
+  async sendConsultationJoinNotification(
+    to: string,
+    doctorName: string,
+    consultationId: string,
+    accessCode?: string
+  ): Promise<boolean> {
+    const codeInfo = accessCode ? `\n🔑 Código de acesso: ${accessCode}` : '';
+    const message = `✅ Consulta Pronta
+
+Dr(a). ${doctorName} está aguardando você na teleconsulta.${codeInfo}
+
+Acesse a plataforma para iniciar sua consulta por vídeo.
+
+🏥 Tele<M3D> Pro`;
+
+    return await this.sendMessage(to, message);
+  }
+
+  async sendConsultationReminderNotification(
+    to: string,
+    doctorName: string,
+    date: string,
+    time: string
+  ): Promise<boolean> {
+    const message = `⏰ Lembrete de Consulta
+
+📅 Data: ${date}
+🕐 Horário: ${time}
+👨‍⚕️ Médico(a): Dr(a). ${doctorName}
+
+Sua teleconsulta está agendada. Certifique-se de estar em um local com boa conexão de internet.
+
+🏥 Tele<M3D> Pro`;
+
+    return await this.sendMessage(to, message);
+  }
+
+  async sendConsultationCompletedNotification(
+    to: string,
+    doctorName: string,
+    summary?: string
+  ): Promise<boolean> {
+    const summaryText = summary ? `\n📋 Resumo: ${summary.slice(0, 300)}` : '';
+    const message = `✅ Consulta Finalizada
+
+Sua teleconsulta com Dr(a). ${doctorName} foi concluída com sucesso.${summaryText}
+
+Acesse a plataforma para ver suas prescrições, exames e orientações.
+
+🏥 Tele<M3D> Pro`;
+
+    return await this.sendMessage(to, message);
+  }
+
+  isConfigured(): boolean {
+    return !!(this.accessToken && this.phoneNumberId);
+  }
 }
 
 export const whatsAppService = new WhatsAppService();

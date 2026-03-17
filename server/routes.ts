@@ -10682,6 +10682,27 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         } catch (notifErr) {
           console.error('Failed to store consultation request notification:', notifErr);
         }
+
+        try {
+          if (whatsAppService.isConfigured()) {
+            const whatsappEnabled = await storage.getSystemSetting('notification_whatsapp_enabled');
+            if (whatsappEnabled?.value === 'true') {
+              const doctor = await storage.getUser(selectedDocId);
+              if (doctor?.whatsappNumber) {
+                const patientRecord2 = await storage.getPatient(patientId);
+                await whatsAppService.sendConsultationRequestNotification(
+                  doctor.whatsappNumber,
+                  patientRecord2?.name || 'Paciente',
+                  doctor.specialty || 'Geral',
+                  triageData.aiTriageLevel || 'standard',
+                  symptoms
+                );
+              }
+            }
+          }
+        } catch (waErr) {
+          console.error('WhatsApp consultation request notification error (non-blocking):', waErr);
+        }
       }
 
       res.json({
@@ -10821,21 +10842,23 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         status: 'accepted'
       });
 
-      // Send WhatsApp notification to patient
-      const patient = await storage.getPatient(request.patientId);
-      if (patient?.whatsappNumber && !request.whatsappNotificationSent) {
-        try {
-          await whatsAppService.sendMessage(
-            patient.whatsappNumber,
-            `Sua solicitação de consulta foi aceita pelo Dr. ${req.user!.name}. Em breve você receberá mais informações.`
-          );
-          
-          await storage.updateConsultationRequest(req.params.id, {
-            whatsappNotificationSent: true
-          });
-        } catch (whatsappError) {
-          console.error('WhatsApp notification error:', whatsappError);
+      try {
+        const patientOptedIn = request.whatsappNotificationSent === true;
+        if (patientOptedIn && whatsAppService.isConfigured()) {
+          const whatsappEnabled = await storage.getSystemSetting('notification_whatsapp_enabled');
+          if (whatsappEnabled?.value === 'true') {
+            const patient = await storage.getPatient(request.patientId);
+            if (patient?.whatsappNumber) {
+              await whatsAppService.sendConsultationJoinNotification(
+                patient.whatsappNumber,
+                req.user!.name || 'Médico',
+                req.params.id
+              );
+            }
+          }
         }
+      } catch (waErr) {
+        console.error('WhatsApp accept notification error (non-blocking):', waErr);
       }
 
       res.json({ success: true, consultationRequest: updated });
@@ -20559,20 +20582,34 @@ ${combinedText.slice(0, 8000)}`;
           `Region "${a.region}": ${a.hypothesis} (${a.color_name} ${a.color_hex})`
         ).join('. ');
 
-        const imagePrompt = `Create a professional medical ECG summary visualization image. Style: clean dark background (#1a1a2e) with a stylized ECG waveform trace across the center in white/light gray.
+        const imagePrompt = `Create an immersive PACS-style ECG summary visualization panel — a hyper-realistic medical image synthesis for cardiology educational interface. Dark hospital interface background (#1a1a2e).
 
-Key visual elements:
-- Title at top: "ECG Analysis - ${diagnosis}" in white bold text
-- Severity indicator: "${severity}" badge in the top-right corner
+ALL TEXT MUST BE IN PORTUGUESE (BRAZIL). Use large, bold, high-contrast fonts (minimum 18pt equivalent). White text on dark backgrounds. Avoid small or condensed text.
+
+VISUAL LAYOUT — 4 BLOCKS:
+
+BLOCK 1 (TOP) — "RESUMO ECG":
+- Title: "Análise de ECG — ${diagnosis}" in white bold text
+- Severity badge: "${severity}" in top-right corner with appropriate color
+- Stylized ECG waveform trace across center with subtle grid pattern (ECG paper style)
+
+BLOCK 2 (MIDDLE) — "ANOTAÇÕES COLORIDAS":
 - Color-coded annotation regions overlaid on the waveform:
   ${annotations}
-- Use these exact semantic colors: Red (#EF4444) for ischemia/infarction, Blue (#3B82F6) for hypertrophy/conduction, Green (#22C55E) for normal, Yellow (#EAB308) for moderate risk, Purple (#8B5CF6) for arrhythmia
-- Key findings listed below the waveform in small text: ${findings}
-- Professional medical infographic style with clean typography
-- Include a subtle grid pattern behind the waveform (like ECG paper)
-- Bottom bar with "AI-Generated ECG Summary • Not for clinical use without physician review"
+- Semantic colors: Vermelho (#EF4444) = isquemia/infarto, Azul (#3B82F6) = hipertrofia/condução, Verde (#22C55E) = normal, Amarelo (#EAB308) = risco moderado, Roxo (#8B5CF6) = arritmia
+- Each annotation with clear Portuguese label and connecting arrows
 
-The image should look like a high-quality medical dashboard visualization, NOT a real ECG trace.`;
+BLOCK 3 (BOTTOM LEFT) — "ACHADOS PRINCIPAIS":
+- Key findings in readable list: ${findings}
+- Each finding with colored indicator dot
+
+BLOCK 4 (BOTTOM RIGHT) — "DADOS CLÍNICOS":
+- Diagnosis: ${diagnosis}
+- Severity: ${severity}
+
+BOTTOM BAR: "Resumo ECG gerado por IA • Não substitui avaliação médica profissional" in white text on dark strip.
+
+GRAPHICAL RULES: Professional medical infographic, clean typography, high contrast, real cardiology workstation appearance. All labels in Portuguese. No decorative elements. Prioritize legibility.`;
 
         const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
         immersiveImage = imageBuffer.toString('base64');
@@ -20902,6 +20939,8 @@ Generate ONE single integrated didactic ECG analysis panel that is hyper-informa
 
       const imagePrompt = `Create an immersive PACS-style radiology workstation visual panel — a hyper-realistic medical image synthesis for radiology educational interface. Dark hospital interface background (#1a1a2e).
 
+ALL TEXT MUST BE IN PORTUGUESE (BRAZIL). Use large, bold, high-contrast fonts (minimum 16pt equivalent). White text on dark backgrounds. Avoid small or condensed text. Prioritize legibility over density.
+
 STYLE: Advanced medical workstation UI, RSNA teaching atlas hybrid, AI diagnostic heatmap overlay, ultra-clean vector + radiograph fusion.
 
 VISUAL LAYOUT — 6 BLOCKS:
@@ -20910,45 +20949,44 @@ BLOCK 1 (TOP LEFT) — "RX ORIGINAL":
 - Show a stylized radiograph of "${region}" with "${laterality}" laterality
 - Highlight the dominant pathology "${dominantPathology}" with an organic RED polygon overlay
 - Caption: "Achado principal: ${dominantPathology} (~${impactPct} impacto clínico)"
-- Red square indicator
 
-BLOCK 2 (TOP CENTER) — "OVERLAY ORGÂNICO TOPOGRÁFICO":
+BLOCK 2 (TOP CENTER) — "OVERLAY TOPOGRÁFICO":
 - Same radiograph base with transparent anatomical mapping overlay
 - AI-style pathological heatmap gradient (orange to intense red) focused on pathology area
-- Up to 10 critical structures with connected white arrows
+- Up to 8 critical structures with connected white arrows
 - Probabilistic relevance percentage labels on key structures
 
 BLOCK 3 (TOP RIGHT) — "ANATOMIA NORMAL COMPARATIVA":
 - Clean anatomical medical illustration of normal "${region}" for comparison
 - Green highlights showing healthy anatomical landmarks
-- Label: "Atlas-Style Reference"
+- Label: "Referência Atlas"
 
 BLOCK 4 (BOTTOM LEFT) — "IMAGEM ANATÔMICA FUNCIONAL":
 - Biomechanical/pathological conceptual illustration
 - Show stress zones, instability, degeneration, or deformity relevant to "${dominantPathology}"
-- Compare normal (green) vs pathological (red/orange) with clear labels
+- Compare normal (verde) vs pathological (vermelho/laranja) with clear labels
 - Bold laterality marker: "${laterality}"
 
-BLOCK 5 (BOTTOM CENTER) — STRUCTURED DATA BLOCKS:
-- "ESTIMATIVA PROGNÓSTICA": Severity: ${prognostic.severity_score || severity}, Progression risk: ${prognostic.functional_progression_risk || 'N/A'}, Intervention risk: ${prognostic.intervention_risk || 'N/A'}
+BLOCK 5 (BOTTOM CENTER) — DADOS ESTRUTURADOS:
+- "ESTIMATIVA PROGNÓSTICA": Gravidade: ${prognostic.severity_score || severity}, Risco progressão: ${prognostic.functional_progression_risk || 'N/A'}, Risco intervenção: ${prognostic.intervention_risk || 'N/A'}
 - "DIAGNÓSTICO DIFERENCIAL": ${differentials}
-- "LAUDO HOSPITALAR FORMAL": Exam: ${formalReport.exam || region}, Impression: ${formalReport.diagnostic_impression || diagnosis}
+- "LAUDO FORMAL": Exame: ${formalReport.exam || region}, Impressão: ${formalReport.diagnostic_impression || diagnosis}
 - "RESUMO LEIGO": ${laySummary}
 
-BLOCK 6 (BOTTOM RIGHT) — CLINICAL SUMMARY:
-- Technical quality score: ${techQuality.score || 3}/5
-- Educational note text block
-- Red bottom bar: "Correlacione clinicamente. % relevância, prognóstico, DDx e conduta incluídos."
+BLOCK 6 (BOTTOM RIGHT) — RESUMO CLÍNICO:
+- Qualidade técnica: ${techQuality.score || 3}/5
+- Nota educacional
+- Barra inferior vermelha: "Correlacione clinicamente. Relevância %, prognóstico, DDx e conduta incluídos."
 
-TOP BANNER: "RESUMO CLÍNICO-RADIOLÓGICO PADRONIZADO E IMERSIVO: ${region} com Análise de ${dominantPathology}" in white/red text. Metadata: Patient ID simulated, Senior radiologist.
+TOP BANNER: "RESUMO CLÍNICO-RADIOLÓGICO IMERSIVO: ${region} — ${dominantPathology}" in white/red text.
 
-COLOR SEMANTICS: Red = high clinical risk, Orange = moderate risk, Yellow = secondary, Blue = anatomical reference, Green = normal comparison.
+COLOR SEMANTICS: Vermelho = alto risco clínico, Laranja = risco moderado, Amarelo = secundário, Azul = referência anatômica, Verde = comparação normal.
 
-Color-coded regions from analysis: ${colorRegions}
+Regiões coloridas da análise: ${colorRegions}
 
-GRAPHICAL RULES: Organic medical polygons, thin clinical arrows, no decorative elements, high contrast clinical readability, real radiology workstation appearance. Text density auto-adapted to severity.
+GRAPHICAL RULES: Organic medical polygons, thin clinical arrows, no decorative elements, high contrast clinical readability, real radiology workstation appearance. All text in Portuguese. Prioritize font size and legibility over information density.
 
-Generate ONE single integrated immersive medical radiology panel that is hyper-informative, visually clean, clinically actionable, educationally robust, and fully case-specific.`;
+Generate ONE single integrated immersive medical radiology panel.`;
 
       const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
       const immersiveImage = imageBuffer.toString('base64');

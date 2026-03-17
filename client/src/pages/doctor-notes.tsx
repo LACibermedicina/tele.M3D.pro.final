@@ -31,7 +31,9 @@ import {
   Clock,
   ChevronDown,
   Palette,
+  ArrowLeft,
 } from "lucide-react";
+import { useLocation } from "wouter";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -73,6 +75,7 @@ function getColorConfig(colorId: string) {
 export default function DoctorNotesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFolder, setActiveFolder] = useState("all");
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
@@ -224,7 +227,14 @@ export default function DoctorNotesPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-80px)] bg-background overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-80px)] bg-background overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30">
+        <Button variant="ghost" size="sm" onClick={() => window.history.length > 1 ? window.history.back() : navigate('/')} className="gap-1.5 text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Voltar
+        </Button>
+        <span className="text-sm font-medium text-muted-foreground">Notas Clínicas</span>
+      </div>
+      <div className="flex flex-1 overflow-hidden">
       {/* Sidebar - Folders & Notes List */}
       <div
         className={`flex flex-col border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/50 transition-all duration-300 ${
@@ -513,6 +523,7 @@ export default function DoctorNotesPage() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
