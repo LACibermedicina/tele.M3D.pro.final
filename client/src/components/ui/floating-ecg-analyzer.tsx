@@ -70,7 +70,20 @@ export default function FloatingECGAnalyzer() {
     if (isOpen && pos.x === -1) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      setPos({ x: vw - size.w - 80, y: vh - size.h - 20 });
+      const radWidget = document.querySelector('[data-widget-id="radiology"]');
+      let x = vw - size.w - 80;
+      let y = vh - size.h - 20;
+      if (radWidget) {
+        const rect = radWidget.getBoundingClientRect();
+        if (Math.abs(rect.left - x) < size.w && Math.abs(rect.top - y) < size.h) {
+          x = Math.max(0, rect.left - size.w - 20);
+          if (x < 0) {
+            y = Math.max(0, rect.top - size.h - 20);
+            x = vw - size.w - 80;
+          }
+        }
+      }
+      setPos({ x, y });
     }
   }, [isOpen]);
 
@@ -305,6 +318,7 @@ export default function FloatingECGAnalyzer() {
     <>
       <div
         ref={cardRef}
+        data-widget-id="ecg"
         className="fixed z-50 flex flex-col"
         style={{ left: pos.x, top: pos.y, width: size.w, height: size.h }}
       >

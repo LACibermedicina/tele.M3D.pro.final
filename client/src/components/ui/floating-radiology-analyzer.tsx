@@ -69,7 +69,20 @@ export default function FloatingRadiologyAnalyzer() {
     if (isOpen && pos.x === -1) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      setPos({ x: vw - size.w - 80, y: vh - size.h - 80 });
+      const ecgWidget = document.querySelector('[data-widget-id="ecg"]');
+      let x = vw - size.w - 80;
+      let y = vh - size.h - 20;
+      if (ecgWidget) {
+        const rect = ecgWidget.getBoundingClientRect();
+        if (Math.abs(rect.left - x) < size.w && Math.abs(rect.top - y) < size.h) {
+          x = Math.max(0, rect.left - size.w - 20);
+          if (x < 0) {
+            y = Math.max(0, rect.top - size.h - 20);
+            x = vw - size.w - 80;
+          }
+        }
+      }
+      setPos({ x, y });
     }
   }, [isOpen]);
 
@@ -303,6 +316,7 @@ export default function FloatingRadiologyAnalyzer() {
   return (
     <>
       <div
+        data-widget-id="radiology"
         className="fixed z-50 flex flex-col"
         style={{ left: pos.x, top: pos.y, width: size.w, height: size.h }}
       >
