@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { WebhookHandlers } from "./webhookHandlers";
+import { setupMcpServer } from "./mcp";
 
 const app = express();
 
@@ -67,6 +68,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  setupMcpServer(app);
+
   const server = await registerRoutes(app);
 
   // Add API protection middleware before error handler and Vite setup

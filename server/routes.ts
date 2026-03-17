@@ -6642,6 +6642,16 @@ Responda em português brasileiro, de forma estruturada e concisa, com linguagem
     }
   };
 
+  const requireAuthOrMcp = async (req: any, res: any, next: any) => {
+    const mcpSecret = process.env.TELE_M3D_SECRET;
+    const mcpHeader = req.headers["x-mcp-auth"];
+    if (mcpSecret && mcpHeader === mcpSecret) {
+      req.user = { id: 'mcp-service', role: 'admin', username: 'mcp-service', isMcpService: true };
+      return next();
+    }
+    return requireAuth(req, res, next);
+  };
+
   // Middleware to require specific roles
   const requireRole = (roles: string[]) => {
     return (req: any, res: any, next: any) => {
@@ -20524,7 +20534,7 @@ ${combinedText.slice(0, 8000)}`;
   // ===== FHIR R4 Dashboard + ECG Analysis Engine Routes =====
 
   // ECG Analysis via Gemini AI Vision (with OpenAI fallback)
-  app.post('/api/ecg/analyze', requireAuth, async (req: any, res: any) => {
+  app.post('/api/ecg/analyze', requireAuthOrMcp, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
       if (!['doctor', 'admin'].includes(req.user.role)) {
@@ -21461,6 +21471,184 @@ Generate ONE single integrated immersive medical radiology panel that is hyper-i
     } catch (error) {
       console.error('FHIR export error:', error);
       res.status(500).json({ message: 'Erro ao exportar bundle FHIR' });
+    }
+  });
+
+  // ===== MCP-Compatible Study Management Routes =====
+
+  const mcpOrDoctorAuth = async (req: any, res: any, next: any) => {
+    const mcpSecret = process.env.TELE_M3D_SECRET;
+    const authHeader = req.headers.authorization;
+    const mcpHeader = req.headers["x-mcp-auth"];
+
+    if (mcpSecret) {
+      const token = authHeader?.startsWith("Bearer ")
+        ? authHeader.slice(7)
+        : mcpHeader;
+      if (token === mcpSecret) {
+        req.user = { id: 'mcp-service', role: 'admin', username: 'mcp-service', isMcpService: true };
+        return next();
+      }
+    }
+
+    return requireAuth(req, res, async () => {
+      if (!req.user || !['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Access denied: doctor or admin role required' });
+      }
+      next();
+    });
+  };
+
+  app.get('/api/study-report/:id', mcpOrDoctorAuth, async (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      const [observation] = await db
+        .select()
+        .from(fhirObservations)
+        .where(eq(fhirObservations.id, id))
+        .limit(1);
+
+      if (!observation) {
+        return res.status(404).json({ message: 'Study report not found' });
+      }
+
+      if (!req.user.isMcpService && observation.createdBy !== req.user.id && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied: you do not own this study report' });
+      }
+
+      res.json({
+        id: observation.id,
+        code: observation.code,
+        display: observation.display,
+        status: observation.status,
+        valueString: observation.valueString,
+        effectiveDateTime: observation.effectiveDateTime,
+        resourceData: observation.resourceData,
+        createdAt: observation.createdAt,
+      });
+    } catch (error) {
+      console.error('Get study report error:', error);
+      res.status(500).json({ message: 'Failed to retrieve study report' });
+    }
+  });
+
+  app.get('/api/patient/:patientId/studies', mcpOrDoctorAuth, async (req: any, res: any) => {
+    try {
+      const { patientId } = req.params;
+
+      const [patient] = await db
+        .select()
+        .from(fhirPatients)
+        .where(eq(fhirPatients.id, patientId))
+        .limit(1);
+
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient not found' });
+      }
+
+      if (!req.user.isMcpService && patient.createdBy !== req.user.id && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied: you do not have access to this patient' });
+      }
+
+      const observations = await db
+        .select({
+          id: fhirObservations.id,
+          code: fhirObservations.code,
+          display: fhirObservations.display,
+          status: fhirObservations.status,
+          valueString: fhirObservations.valueString,
+          effectiveDateTime: fhirObservations.effectiveDateTime,
+          createdAt: fhirObservations.createdAt,
+        })
+        .from(fhirObservations)
+        .where(eq(fhirObservations.fhirPatientId, patientId))
+        .orderBy(desc(fhirObservations.createdAt));
+
+      res.json({
+        patientId,
+        patientName: patient.name,
+        totalStudies: observations.length,
+        studies: observations,
+      });
+    } catch (error) {
+      console.error('List patient studies error:', error);
+      res.status(500).json({ message: 'Failed to list patient studies' });
+    }
+  });
+
+  app.post('/api/studies', mcpOrDoctorAuth, async (req: any, res: any) => {
+    try {
+      const { patientId, imageBase64, studyType, notes } = req.body;
+
+      if (!patientId || !imageBase64) {
+        return res.status(400).json({ message: 'patientId and imageBase64 are required' });
+      }
+
+      const [patient] = await db
+        .select()
+        .from(fhirPatients)
+        .where(eq(fhirPatients.id, patientId))
+        .limit(1);
+
+      if (!patient) {
+        return res.status(404).json({ message: 'Patient not found' });
+      }
+
+      if (!req.user.isMcpService && patient.createdBy !== req.user.id && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied: you do not have access to this patient' });
+      }
+
+      const type = studyType || "12-lead";
+      const now = new Date().toISOString();
+      const createdBy = req.user.isMcpService ? patient.createdBy : req.user.id;
+
+      const resourceData = {
+        resourceType: "Observation",
+        status: "preliminary",
+        category: [{
+          coding: [{
+            system: "http://terminology.hl7.org/CodeSystem/observation-category",
+            code: "procedure",
+            display: "Procedure",
+          }],
+        }],
+        code: {
+          coding: [{
+            system: "http://loinc.org",
+            code: "11524-6",
+            display: "ECG study",
+          }],
+          text: `ECG Study - ${type}`,
+        },
+        subject: { reference: `Patient/${patientId}` },
+        effectiveDateTime: now,
+        valueString: notes || `ECG ${type} study`,
+      };
+
+      const [newObservation] = await db
+        .insert(fhirObservations)
+        .values({
+          fhirPatientId: patientId,
+          resourceData,
+          code: "11524-6",
+          display: `ECG Study - ${type}`,
+          valueString: notes || `ECG ${type} study`,
+          status: "preliminary",
+          effectiveDateTime: now,
+          createdBy,
+        })
+        .returning();
+
+      res.status(201).json({
+        id: newObservation.id,
+        status: "created",
+        studyType: type,
+        patientId,
+        createdAt: newObservation.createdAt,
+      });
+    } catch (error) {
+      console.error('Create study error:', error);
+      res.status(500).json({ message: 'Failed to create study' });
     }
   });
 
