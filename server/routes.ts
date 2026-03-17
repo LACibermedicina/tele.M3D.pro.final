@@ -20896,17 +20896,7 @@ Generate ONE single integrated didactic ECG analysis panel that is hyper-informa
       const { geminiService } = await import('./services/gemini');
       const result = await geminiService.analyzeRadiologyImage(imageBase64, patientContext || {});
 
-      let immersiveImage: string | null = null;
-      try {
-        const { generateImageBuffer } = await import('./replit_integrations/image/client');
-        const imagePrompt = await geminiService.generateRadiologyPACSImagePrompt(result);
-        const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
-        immersiveImage = imageBuffer.toString('base64');
-        console.log('Radiology immersive PACS image generated successfully (inline)');
-      } catch (imgError) {
-        console.error('Radiology immersive image generation failed (non-blocking):', imgError instanceof Error ? imgError.message : imgError);
-      }
-
+      const immersiveImage = await geminiService.generateRadiologyPACSImage(result);
       res.json({ ...result, immersive_image: immersiveImage });
     } catch (error) {
       console.error('Radiology analysis error:', error);
@@ -20928,13 +20918,11 @@ Generate ONE single integrated didactic ECG analysis panel that is hyper-informa
         return res.status(400).json({ message: 'Dados da análise são obrigatórios' });
       }
 
-      const { generateImageBuffer } = await import('./replit_integrations/image/client');
       const { geminiService } = await import('./services/gemini');
-
-      const imagePrompt = await geminiService.generateRadiologyPACSImagePrompt(analysisData);
-      const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
-      const immersiveImage = imageBuffer.toString('base64');
-      console.log('Radiology immersive PACS image generated successfully');
+      const immersiveImage = await geminiService.generateRadiologyPACSImage(analysisData);
+      if (!immersiveImage) {
+        return res.status(500).json({ message: 'Falha ao gerar imagem imersiva' });
+      }
       res.json({ immersive_image: immersiveImage });
     } catch (error) {
       console.error('Radiology immersive image generation error:', error);

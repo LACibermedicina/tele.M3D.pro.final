@@ -1385,6 +1385,19 @@ Seja extremamente detalhado, didático e baseado em evidências. Use padrão CBR
       throw geminiError || openaiError;
     }
   }
+  async generateRadiologyPACSImage(analysisData: any): Promise<string | null> {
+    try {
+      const { generateImageBuffer } = await import('../replit_integrations/image/client');
+      const imagePrompt = await this.generateRadiologyPACSImagePrompt(analysisData);
+      const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
+      console.log('Radiology immersive PACS image generated via service');
+      return imageBuffer.toString('base64');
+    } catch (error) {
+      console.error('generateRadiologyPACSImage error (non-blocking):', error instanceof Error ? error.message : error);
+      return null;
+    }
+  }
+
   async generateRadiologyPACSImagePrompt(analysisData: any): Promise<string> {
     const findings = analysisData.radiology_findings || {};
     const diagnosis = analysisData.probabilistic_diagnosis?.presumptive?.name || 'Estudo Radiológico';
