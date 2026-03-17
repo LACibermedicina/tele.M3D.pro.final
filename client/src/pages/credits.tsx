@@ -153,6 +153,7 @@ export default function CreditsPage() {
                     </>
                   )}
                 </Button>
+              </div>
               </CardContent>
             </Card>
         ))}

@@ -1410,7 +1410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Doctor Notes API (macOS Notes-style)
-  const validFolders = ['all', 'clinical', 'patients', 'study', 'personal', 'ecg_study', 'ecg_shares'];
+  const validFolders = ['all', 'clinical', 'patients', 'study', 'personal', 'ecg_study', 'ecg_shares', 'radiology_study', 'radiology_shares'];
   const validColors = ['default', 'yellow', 'green', 'blue', 'purple', 'pink', 'red'];
 
   app.get('/api/doctor-notes', async (req: any, res) => {
@@ -20703,6 +20703,189 @@ ${combinedText.slice(0, 8000)}`;
     } catch (error) {
       console.error('ECG share error:', error);
       res.status(500).json({ message: 'Erro ao compartilhar análise ECG' });
+    }
+  });
+
+  app.post('/api/radiology/analyze', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Apenas médicos e administradores podem analisar radiografias' });
+      }
+
+      const { imageBase64, patientContext } = req.body;
+      if (!imageBase64) {
+        return res.status(400).json({ message: 'Imagem radiográfica (base64) é obrigatória' });
+      }
+
+      const { geminiService } = await import('./services/gemini');
+      const result = await geminiService.analyzeRadiologyImage(imageBase64, patientContext || {});
+      res.json(result);
+    } catch (error) {
+      console.error('Radiology analysis error:', error);
+      res.status(500).json({ 
+        message: 'Erro ao analisar radiografia. Tente novamente em alguns instantes.'
+      });
+    }
+  });
+
+  app.post('/api/radiology/associate', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Apenas médicos podem associar análises radiológicas' });
+      }
+
+      const { patientId, analysisData, patientContext } = req.body;
+      if (!patientId || !analysisData) {
+        return res.status(400).json({ message: 'patientId e analysisData são obrigatórios' });
+      }
+
+      const topDiagnosis = analysisData.probabilistic_diagnosis?.presumptive?.name || 
+        analysisData.radiology_findings?.dominant_pathology || 'Radiologia';
+
+      const content = [
+        `# Análise Radiológica - ${topDiagnosis}`,
+        `**Data:** ${new Date().toLocaleString('pt-BR')}`,
+        `**Paciente ID:** ${patientId}`,
+        patientContext?.age ? `**Idade:** ${patientContext.age}` : '',
+        patientContext?.sex ? `**Sexo:** ${patientContext.sex}` : '',
+        patientContext?.clinicalHistory ? `**Histórico:** ${patientContext.clinicalHistory}` : '',
+        patientContext?.anatomicalRegion ? `**Região:** ${patientContext.anatomicalRegion}` : '',
+        '',
+        `## Achado Principal`,
+        `**Patologia dominante:** ${analysisData.radiology_findings?.dominant_pathology || 'N/A'}`,
+        `**Região anatômica:** ${analysisData.radiology_findings?.anatomical_region || 'N/A'}`,
+        analysisData.radiology_findings?.description || '',
+        '',
+        `## Diagnóstico Presuntivo`,
+        `**${analysisData.probabilistic_diagnosis?.presumptive?.name || topDiagnosis}** (${analysisData.probabilistic_diagnosis?.presumptive?.confidence || 'N/A'})`,
+        analysisData.probabilistic_diagnosis?.presumptive?.reasoning || '',
+        '',
+        `## Diagnósticos Diferenciais`,
+        ...(analysisData.probabilistic_diagnosis?.differentials || []).map((d: any) => `- ${d.name}: ${d.confidence} - ${d.reasoning || ''}`),
+        '',
+        `## Conduta Recomendada`,
+        analysisData.recommended_conduct || '',
+        '',
+        `## Gravidade`,
+        `${analysisData.severity_level?.label || 'N/A'} (${analysisData.severity_level?.level || 0}/5)`,
+        analysisData.severity_level?.description || '',
+        '',
+        `## Laudo Formal`,
+        analysisData.formal_report?.findings || '',
+        analysisData.formal_report?.diagnostic_impression || '',
+        analysisData.formal_report?.recommendations || '',
+      ].filter(Boolean).join('\n');
+
+      const noteResult = await storage.createDoctorNote({
+        doctorId: req.user.id,
+        title: `Radiologia - ${topDiagnosis} - Paciente ${patientId.substring(0, 8)}`,
+        content,
+        folder: 'radiology_study',
+        color: 'purple',
+        isPinned: false,
+        patientId,
+      });
+
+      res.json({ success: true, noteId: (noteResult as any)?.id, message: 'Análise radiológica associada ao paciente' });
+    } catch (error) {
+      console.error('Radiology associate error:', error);
+      res.status(500).json({ message: 'Erro ao associar análise radiológica ao paciente' });
+    }
+  });
+
+  app.post('/api/radiology/share', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Apenas médicos podem compartilhar análises radiológicas' });
+      }
+
+      const { recipientEmail, contentScope, analysisData, patientContext } = req.body;
+      if (!recipientEmail || !contentScope || !analysisData) {
+        return res.status(400).json({ message: 'recipientEmail, contentScope e analysisData são obrigatórios' });
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(recipientEmail)) {
+        return res.status(400).json({ message: 'Formato de email inválido' });
+      }
+      const validScopes = ['study_analysis', 'analysis_only', 'report_only', 'full_summary'];
+      if (!validScopes.includes(contentScope)) {
+        return res.status(400).json({ message: 'Escopo inválido' });
+      }
+
+      let formattedContent = '';
+      const topDiagnosis = analysisData.probabilistic_diagnosis?.presumptive?.name || 
+        analysisData.radiology_findings?.dominant_pathology || 'Radiologia';
+
+      if (contentScope === 'study_analysis' || contentScope === 'full_summary') {
+        formattedContent += `ANÁLISE RADIOLÓGICA COMPLETA\n${'='.repeat(40)}\n`;
+        formattedContent += `Data: ${new Date().toLocaleString('pt-BR')}\n`;
+        formattedContent += `Médico: Dr(a). ${req.user.name || req.user.username}\n\n`;
+        if (patientContext?.age) formattedContent += `Idade: ${patientContext.age}\n`;
+        if (patientContext?.sex) formattedContent += `Sexo: ${patientContext.sex}\n`;
+        if (patientContext?.clinicalHistory) formattedContent += `Histórico: ${patientContext.clinicalHistory}\n`;
+        if (patientContext?.anatomicalRegion) formattedContent += `Região: ${patientContext.anatomicalRegion}\n`;
+        formattedContent += '\n';
+      }
+
+      if (contentScope !== 'report_only') {
+        formattedContent += `ACHADO PRINCIPAL\n${'-'.repeat(30)}\n`;
+        formattedContent += `Patologia: ${analysisData.radiology_findings?.dominant_pathology || 'N/A'}\n`;
+        formattedContent += `Região: ${analysisData.radiology_findings?.anatomical_region || 'N/A'}\n`;
+        formattedContent += `${analysisData.radiology_findings?.description || ''}\n\n`;
+        formattedContent += `DIAGNÓSTICO PRESUNTIVO\n${'-'.repeat(30)}\n`;
+        formattedContent += `${analysisData.probabilistic_diagnosis?.presumptive?.name || topDiagnosis} (${analysisData.probabilistic_diagnosis?.presumptive?.confidence || 'N/A'})\n`;
+        formattedContent += `${analysisData.probabilistic_diagnosis?.presumptive?.reasoning || ''}\n\n`;
+        formattedContent += `DIAGNÓSTICOS DIFERENCIAIS\n${'-'.repeat(30)}\n`;
+        (analysisData.probabilistic_diagnosis?.differentials || []).forEach((d: any) => {
+          formattedContent += `• ${d.name}: ${d.confidence} - ${d.reasoning || ''}\n`;
+        });
+        formattedContent += '\n';
+        formattedContent += `CONDUTA RECOMENDADA\n${'-'.repeat(30)}\n`;
+        formattedContent += `${analysisData.recommended_conduct || 'N/A'}\n\n`;
+        formattedContent += `GRAVIDADE: ${analysisData.severity_level?.label || 'N/A'} (${analysisData.severity_level?.level || 0}/5)\n`;
+        formattedContent += `${analysisData.severity_level?.description || ''}\n\n`;
+      }
+
+      if (contentScope === 'report_only' || contentScope === 'study_analysis' || contentScope === 'full_summary') {
+        formattedContent += `LAUDO FORMAL\n${'-'.repeat(30)}\n`;
+        formattedContent += `Exame: ${analysisData.formal_report?.exam || 'N/A'}\n`;
+        formattedContent += `Técnica: ${analysisData.formal_report?.technique || 'N/A'}\n`;
+        formattedContent += `Achados: ${analysisData.formal_report?.findings || 'N/A'}\n`;
+        formattedContent += `Impressão: ${analysisData.formal_report?.diagnostic_impression || 'N/A'}\n`;
+        formattedContent += `Recomendações: ${analysisData.formal_report?.recommendations || 'N/A'}\n\n`;
+      }
+
+      formattedContent += `${'='.repeat(40)}\n`;
+      formattedContent += analysisData.disclaimer || 'Análise automatizada por IA. Requer validação médica.';
+
+      console.log(`[Radiology Share] Doctor ${req.user.id} sharing radiology analysis to ${recipientEmail} (scope: ${contentScope})`);
+
+      const shareRecord = await storage.createDoctorNote({
+        doctorId: req.user.id,
+        title: `Radiologia Share - ${topDiagnosis} → ${recipientEmail}`,
+        content: formattedContent,
+        folder: 'radiology_shares',
+        color: 'purple',
+        isPinned: false,
+        patientId: null,
+      });
+
+      res.json({
+        success: true,
+        shareId: (shareRecord as any)?.id,
+        message: `Análise radiológica preparada para envio a ${recipientEmail}`,
+        recipientEmail,
+        contentScope,
+        formattedContent,
+        sentAt: new Date().toISOString(),
+        sentBy: req.user.id,
+      });
+    } catch (error) {
+      console.error('Radiology share error:', error);
+      res.status(500).json({ message: 'Erro ao compartilhar análise radiológica' });
     }
   });
 

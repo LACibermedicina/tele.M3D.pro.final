@@ -66,10 +66,12 @@ import ClinicsPage from "@/pages/clinics";
 import Reports from "@/pages/reports";
 import FHIRDashboard from "@/pages/fhir-dashboard";
 import NftManagement from "@/pages/nft-management";
+import CreditsPage from "@/pages/credits";
 import UrgentAlertOverlay from "@/components/notifications/urgent-alert-overlay";
 import Header from "@/components/layout/header";
 import FloatingChatbot from "@/components/ui/floating-chatbot";
 import FloatingECGAnalyzer from "@/components/ui/floating-ecg-analyzer";
+import FloatingRadiologyAnalyzer from "@/components/ui/floating-radiology-analyzer";
 import FloatingStudyNotes from "@/components/ui/floating-study-notes";
 import CommandPalette from "@/components/command-palette";
 import QuickActionsBar from "@/components/quick-actions-bar";
@@ -479,6 +481,13 @@ function Router() {
           </ProtectedRoute>
         </Route>
 
+        <Route path="/credits">
+          <ProtectedRoute>
+            <Header />
+            <CreditsPage />
+          </ProtectedRoute>
+        </Route>
+
         <Route path="/clinics">
           <ProtectedRoute>
             <Header />
@@ -525,6 +534,7 @@ function Router() {
       </footer>
       
       {!isInVideoConsultation && <FloatingChatbot />}
+      {!isInVideoConsultation && <FloatingRadiologyAnalyzer />}
       {!isInVideoConsultation && <FloatingECGAnalyzer />}
       {!isInVideoConsultation && <FloatingStudyNotes />}
       

@@ -799,78 +799,149 @@ Formato: texto corrido, máximo 300 palavras.
       patientContext.clinicalHistory ? `HISTÓRIA CLÍNICA: ${patientContext.clinicalHistory}` : '',
     ].filter(Boolean).join(' | ');
 
-    const prompt = `You are an advanced ECG analysis engine for medical professionals. Analyze the ECG IMAGE provided along with PATIENT context [${patientInfo}].
+    const prompt = `Você é um sistema avançado de análise de ECG de nível hospitalar, equivalente a um cardiologista sênior. Analise a imagem de ECG fornecida com contexto do paciente [${patientInfo}].
 
-AUTOMATED 10-STEP PIPELINE:
-1. IMAGE QUALITY ASSESSMENT: Evaluate signal quality, lead placement, baseline stability, and noise artifacts
-2. LEAD IDENTIFICATION: Identify all visible leads (I, II, III, aVR, aVL, aVF, V1-V6)
-3. WAVEFORM SEGMENTATION: Isolate P waves, QRS complexes, T waves, ST segments, PR intervals, QT intervals
-4. RATE & RHYTHM ANALYSIS: HR=300/RR | rhythm regularity assessment | sinus vs non-sinus origin
-5. AXIS DETERMINATION: Calculate electrical axis from limb leads, identify deviations
-6. MORPHOLOGY ANALYSIS: QRS width, P wave morphology, T wave changes, ST elevation/depression, Q waves, bundle branch patterns
-7. DIAGNOSTIC REASONING: Apply clinical logic trees
-8. PROBABILITY SCORING: Assign % confidence to each considered diagnosis
-9. VISUAL ANNOTATION MAPPING: Define color-coded overlay instructions
-10. STRUCTURED OUTPUT: Full didactic analysis with all required fields
+ANÁLISE SISTEMÁTICA DIDÁTICA EM 9 CRITÉRIOS (com valores de referência):
 
-IMPORTANT: Respond entirely in PORTUGUÊS MÉDICO. Return ONLY valid JSON with ALL these keys:
+1. RITMO: Determinar se é sinusal ou não. Avaliar regularidade R-R, presença de ondas P antes de cada QRS, morfologia uniforme das ondas P.
+2. FREQUÊNCIA CARDÍACA: Calcular FC (normal: 60-100 bpm). Método: 300/nº quadrados grandes entre R-R ou contar complexos em 6s x10.
+3. EIXO QRS: Determinar eixo elétrico (normal: -30° a +90°). Avaliar derivações I e aVF para desvios.
+4. ONDA P: Morfologia, duração (<0,12s), amplitude (<2,5mm em DII). Avaliar sobrecarga atrial.
+5. INTERVALO PR: Medir duração (normal: 0,12-0,20s). Bloqueios AV se prolongado.
+6. COMPLEXO QRS: Largura (normal: <0,12s). Avaliar bloqueios de ramo, ondas Q patológicas, amplitude para hipertrofia.
+7. SEGMENTO ST: Avaliar se isoelétrico (normal). Supradesnivelamento (IAM, pericardite) ou infradesnivelamento (isquemia). Quantificar em mm.
+8. ONDA T: Morfologia, simetria, inversões. Avaliar isquemia, distúrbios eletrolíticos.
+9. INTERVALO QT: Medir e calcular QTc (normal: <440ms homens, <460ms mulheres). Risco de arritmias se prolongado.
+
+VERIFICAÇÃO DE PADRONIZAÇÃO: Confirmar velocidade do papel (25 mm/s) e calibração (10 mm/mV).
+
+REGRAS DE ANÁLISE:
+- Marcar cada alteração com % descritivo (ex: "ST supradesnivelado 2mm em V1-V4 - 80% probabilidade de IAM anterior")
+- Incluir estatísticas epidemiológicas e probabilidades da literatura (guidelines AHA/ESC/SBC)
+- Usar cores semânticas para hipóteses diagnósticas:
+  * Vermelho (#EF4444) = isquemia/infarto/alto risco
+  * Azul (#3B82F6) = hipertrofia/distúrbios de condução
+  * Verde (#22C55E) = normalidade/variante normal
+  * Amarelo (#EAB308) = risco moderado (pericardite, distúrbios eletrolíticos)
+  * Roxo (#8B5CF6) = arritmias
+
+IMPORTANTE: Responda inteiramente em PORTUGUÊS MÉDICO. Retorne APENAS JSON válido com TODAS estas chaves:
 
 {
-  "ecg_metrics": { "heart_rate": "string", "rhythm": "string", "qrs_width": "string", "atrial_activity": "string", "signal_quality": "string" },
-  "cardiac_interpretation": "Detailed text explaining what this ECG indicates about the heart's condition, function, and electrical activity",
-  "key_findings": ["array of the most important clinical observations from this ECG, each as a string"],
-  "presumptive_diagnosis": { "name": "Primary diagnosis name", "confidence": "XX%", "color": "#hex color", "reasoning": "Clinical reasoning for this diagnosis" },
-  "differential_diagnoses": [{ "name": "Alternative diagnosis", "confidence": "XX%", "color": "#hex color", "reasoning": "Brief reasoning" }],
-  "recommended_conduct": "Detailed action plan including recommended exams, medications if applicable, monitoring, and follow-up",
-  "severity_level": { "level": 1-5, "label": "Leve/Moderado/Grave/Muito Grave/Crítico", "description": "Brief severity justification" },
-  "technical_report": "Formal technical laudo with all measured parameters, intervals, morphology findings, and clinical conclusion",
-  "diagnosis_probabilities": { "diagnosis_name": "XX%" },
-  "visual_annotation_instructions": { "finding_name": "color_description" },
-  "technical_summary": "Concise technical summary",
-  "simple_summary": "Patient-friendly summary of the ECG findings",
-  "disclaimer": "Medical disclaimer about automated analysis"
+  "ecg_metrics": { "heart_rate": "string com valor e classificação", "rhythm": "string", "qrs_width": "string com valor em ms", "atrial_activity": "string", "signal_quality": "string" },
+  "cardiac_interpretation": "Texto detalhado explicando o que este ECG indica sobre a condição, função e atividade elétrica do coração",
+  "key_findings": ["array dos achados clínicos mais importantes, cada um como string com % descritivo"],
+  "systematic_analysis": {
+    "ritmo": { "finding": "achado", "normal_range": "Ritmo sinusal regular", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "ex: 95% compatível com ritmo sinusal" },
+    "frequencia_cardiaca": { "finding": "XX bpm", "normal_range": "60-100 bpm", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
+    "eixo_qrs": { "finding": "eixo em graus", "normal_range": "-30° a +90°", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
+    "onda_p": { "finding": "achado", "normal_range": "<0,12s duração, <2,5mm amplitude", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
+    "intervalo_pr": { "finding": "valor em ms/s", "normal_range": "0,12-0,20s", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
+    "complexo_qrs": { "finding": "achado com valor", "normal_range": "<0,12s", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
+    "segmento_st": { "finding": "achado com quantificação em mm", "normal_range": "Isoelétrico", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
+    "onda_t": { "finding": "achado", "normal_range": "Concordante com QRS", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
+    "intervalo_qt": { "finding": "QTc valor", "normal_range": "<440ms (H) / <460ms (M)", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" }
+  },
+  "epidemiological_data": [{ "finding": "achado", "prevalence": "prevalência na população", "source": "AHA/ESC/SBC guideline reference" }],
+  "color_coded_annotations": [{ "region": "região do ECG", "color_hex": "#hex", "color_name": "nome da cor", "hypothesis": "hipótese diagnóstica", "probability": "XX%", "description": "descrição" }],
+  "presumptive_diagnosis": { "name": "Diagnóstico principal", "confidence": "XX%", "color": "#hex", "reasoning": "Raciocínio clínico baseado em guidelines" },
+  "differential_diagnoses": [{ "name": "Diagnóstico alternativo", "confidence": "XX%", "color": "#hex", "reasoning": "Raciocínio breve com referência a literatura" }],
+  "action_plan": { "immediate_actions": ["ações imediatas"], "follow_up": ["acompanhamento"], "monitoring": ["monitoramento"] },
+  "clinical_comment": "O que é MAIS IMPORTANTE sobre este ECG - comentário destacado do achado principal e sua urgência",
+  "recommended_conduct": "Plano de ação detalhado: exames, medicações se aplicável, monitoramento e seguimento",
+  "severity_level": { "level": 1-5, "label": "Baixo/Moderado/Alto/Muito Alto/Crítico", "description": "Justificativa da gravidade" },
+  "technical_report": "Laudo técnico formal completo com todos parâmetros medidos, intervalos, achados morfológicos, conclusão clínica e recomendações, padrão CBR/RSNA",
+  "diagnosis_probabilities": { "nome_diagnostico": "XX%" },
+  "visual_annotation_instructions": { "nome_achado": "cor_para_destaque" },
+  "technical_summary": "Resumo técnico conciso",
+  "simple_summary": "Resumo acessível ao paciente dos achados",
+  "disclaimer": "Disclaimer médico sobre análise automatizada"
 }
 
-Use different colors for each diagnostic hypothesis. severity_level.level: 1=Leve, 2=Moderado, 3=Grave, 4=Muito Grave, 5=Crítico.
-Provide at least 2-4 differential diagnoses with percentages. Be thorough and didactic.`;
+severity_level.level: 1=Baixo, 2=Moderado, 3=Alto, 4=Muito Alto, 5=Crítico.
+Forneça pelo menos 3-5 diagnósticos diferenciais com probabilidades baseadas em evidências.
+Seja extremamente detalhado e didático. Referencie guidelines AHA/ESC/SBC quando possível.`;
 
-    const normalizeECGResult = (raw: any) => ({
-      ecg_metrics: {
-        heart_rate: raw?.ecg_metrics?.heart_rate ?? 'Não determinado',
-        rhythm: raw?.ecg_metrics?.rhythm ?? 'Não determinado',
-        qrs_width: raw?.ecg_metrics?.qrs_width ?? 'Não determinado',
-        atrial_activity: raw?.ecg_metrics?.atrial_activity ?? 'Não determinado',
-        signal_quality: raw?.ecg_metrics?.signal_quality ?? 'Não determinado',
-      },
-      cardiac_interpretation: raw?.cardiac_interpretation ?? 'Interpretação cardíaca não disponível.',
-      key_findings: Array.isArray(raw?.key_findings) ? raw.key_findings : [],
-      presumptive_diagnosis: {
-        name: raw?.presumptive_diagnosis?.name ?? 'Não determinado',
-        confidence: raw?.presumptive_diagnosis?.confidence ?? '0%',
-        color: raw?.presumptive_diagnosis?.color ?? '#3B82F6',
-        reasoning: raw?.presumptive_diagnosis?.reasoning ?? '',
-      },
-      differential_diagnoses: Array.isArray(raw?.differential_diagnoses)
-        ? raw.differential_diagnoses.map((d: any) => ({
-            name: d?.name ?? 'Diagnóstico alternativo',
-            confidence: d?.confidence ?? '0%',
-            color: d?.color ?? '#6B7280',
-            reasoning: d?.reasoning ?? '',
-          }))
-        : [],
-      recommended_conduct: raw?.recommended_conduct ?? 'Conduta recomendada não disponível.',
-      severity_level: {
-        level: raw?.severity_level?.level ?? 1,
-        label: raw?.severity_level?.label ?? 'Não classificado',
-        description: raw?.severity_level?.description ?? '',
-      },
-      technical_report: raw?.technical_report ?? 'Laudo técnico não disponível.',
-      diagnosis_probabilities: raw?.diagnosis_probabilities ?? {},
-      visual_annotation_instructions: raw?.visual_annotation_instructions ?? {},
-      technical_summary: raw?.technical_summary ?? 'Análise técnica não disponível.',
-      simple_summary: raw?.simple_summary ?? 'Resumo simplificado não disponível.',
-      disclaimer: raw?.disclaimer ?? 'Análise automatizada por IA. Requer revisão e validação médica profissional. Não substitui avaliação clínica presencial.',
-    });
+    const normalizeECGResult = (raw: any) => {
+      const normalizeSysItem = (item: any) => ({
+        finding: item?.finding ?? 'Não avaliado',
+        normal_range: item?.normal_range ?? '',
+        is_normal: item?.is_normal ?? true,
+        clinical_significance: item?.clinical_significance ?? '',
+        percentage_descriptor: item?.percentage_descriptor ?? '',
+      });
+      return {
+        ecg_metrics: {
+          heart_rate: raw?.ecg_metrics?.heart_rate ?? 'Não determinado',
+          rhythm: raw?.ecg_metrics?.rhythm ?? 'Não determinado',
+          qrs_width: raw?.ecg_metrics?.qrs_width ?? 'Não determinado',
+          atrial_activity: raw?.ecg_metrics?.atrial_activity ?? 'Não determinado',
+          signal_quality: raw?.ecg_metrics?.signal_quality ?? 'Não determinado',
+        },
+        cardiac_interpretation: raw?.cardiac_interpretation ?? 'Interpretação cardíaca não disponível.',
+        key_findings: Array.isArray(raw?.key_findings) ? raw.key_findings : [],
+        systematic_analysis: {
+          ritmo: normalizeSysItem(raw?.systematic_analysis?.ritmo),
+          frequencia_cardiaca: normalizeSysItem(raw?.systematic_analysis?.frequencia_cardiaca),
+          eixo_qrs: normalizeSysItem(raw?.systematic_analysis?.eixo_qrs),
+          onda_p: normalizeSysItem(raw?.systematic_analysis?.onda_p),
+          intervalo_pr: normalizeSysItem(raw?.systematic_analysis?.intervalo_pr),
+          complexo_qrs: normalizeSysItem(raw?.systematic_analysis?.complexo_qrs),
+          segmento_st: normalizeSysItem(raw?.systematic_analysis?.segmento_st),
+          onda_t: normalizeSysItem(raw?.systematic_analysis?.onda_t),
+          intervalo_qt: normalizeSysItem(raw?.systematic_analysis?.intervalo_qt),
+        },
+        epidemiological_data: Array.isArray(raw?.epidemiological_data)
+          ? raw.epidemiological_data.map((e: any) => ({
+              finding: e?.finding ?? '',
+              prevalence: e?.prevalence ?? '',
+              source: e?.source ?? '',
+            }))
+          : [],
+        color_coded_annotations: Array.isArray(raw?.color_coded_annotations)
+          ? raw.color_coded_annotations.map((a: any) => ({
+              region: a?.region ?? '',
+              color_hex: a?.color_hex ?? '#6B7280',
+              color_name: a?.color_name ?? '',
+              hypothesis: a?.hypothesis ?? '',
+              probability: a?.probability ?? '0%',
+              description: a?.description ?? '',
+            }))
+          : [],
+        presumptive_diagnosis: {
+          name: raw?.presumptive_diagnosis?.name ?? 'Não determinado',
+          confidence: raw?.presumptive_diagnosis?.confidence ?? '0%',
+          color: raw?.presumptive_diagnosis?.color ?? '#3B82F6',
+          reasoning: raw?.presumptive_diagnosis?.reasoning ?? '',
+        },
+        differential_diagnoses: Array.isArray(raw?.differential_diagnoses)
+          ? raw.differential_diagnoses.map((d: any) => ({
+              name: d?.name ?? 'Diagnóstico alternativo',
+              confidence: d?.confidence ?? '0%',
+              color: d?.color ?? '#6B7280',
+              reasoning: d?.reasoning ?? '',
+            }))
+          : [],
+        action_plan: {
+          immediate_actions: Array.isArray(raw?.action_plan?.immediate_actions) ? raw.action_plan.immediate_actions : [],
+          follow_up: Array.isArray(raw?.action_plan?.follow_up) ? raw.action_plan.follow_up : [],
+          monitoring: Array.isArray(raw?.action_plan?.monitoring) ? raw.action_plan.monitoring : [],
+        },
+        clinical_comment: raw?.clinical_comment ?? '',
+        recommended_conduct: raw?.recommended_conduct ?? 'Conduta recomendada não disponível.',
+        severity_level: {
+          level: raw?.severity_level?.level ?? 1,
+          label: raw?.severity_level?.label ?? 'Não classificado',
+          description: raw?.severity_level?.description ?? '',
+        },
+        technical_report: raw?.technical_report ?? 'Laudo técnico não disponível.',
+        diagnosis_probabilities: raw?.diagnosis_probabilities ?? {},
+        visual_annotation_instructions: raw?.visual_annotation_instructions ?? {},
+        technical_summary: raw?.technical_summary ?? 'Análise técnica não disponível.',
+        simple_summary: raw?.simple_summary ?? 'Resumo simplificado não disponível.',
+        disclaimer: raw?.disclaimer ?? 'Análise automatizada por IA. Requer revisão e validação médica profissional. Não substitui avaliação clínica presencial.',
+      };
+    };
 
     let geminiError: unknown = null;
     try {
@@ -880,7 +951,7 @@ Provide at least 2-4 differential diagnoses with percentages. Be thorough and di
         generationConfig: {
           responseMimeType: 'application/json',
           temperature: 0.2,
-          maxOutputTokens: 4000,
+          maxOutputTokens: 6000,
         },
       });
 
@@ -914,7 +985,7 @@ Provide at least 2-4 differential diagnoses with percentages. Be thorough and di
             content: [
               {
                 type: 'text',
-                text: `Analise esta imagem de ECG. Dados do paciente: ${patientInfo || 'Não informado'}. Retorne JSON estruturado.`,
+                text: `Analise esta imagem de ECG. Dados do paciente: ${patientInfo || 'Não informado'}. Retorne JSON estruturado conforme o schema solicitado.`,
               },
               {
                 type: 'image_url',
@@ -927,7 +998,7 @@ Provide at least 2-4 differential diagnoses with percentages. Be thorough and di
           },
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 4000,
+        max_tokens: 6000,
         temperature: 0.2,
       });
 
@@ -935,6 +1006,266 @@ Provide at least 2-4 differential diagnoses with percentages. Be thorough and di
       return normalizeECGResult(parsed);
     } catch (openaiError) {
       console.error('OpenAI fallback ECG analysis also failed:', openaiError instanceof Error ? openaiError.message : openaiError);
+      throw geminiError || openaiError;
+    }
+  }
+
+  async analyzeRadiologyImage(imageBase64: string, patientContext: {
+    age?: number;
+    sex?: string;
+    clinicalHistory?: string;
+    anatomicalRegion?: string;
+  }): Promise<any> {
+    const patientInfo = [
+      patientContext.age ? `IDADE: ${patientContext.age} anos` : '',
+      patientContext.sex ? `SEXO: ${patientContext.sex}` : '',
+      patientContext.clinicalHistory ? `HISTÓRIA CLÍNICA: ${patientContext.clinicalHistory}` : '',
+      patientContext.anatomicalRegion ? `REGIÃO ANATÔMICA: ${patientContext.anatomicalRegion}` : '',
+    ].filter(Boolean).join(' | ');
+
+    const prompt = `Você é um sistema de inteligência radiológica sênior de nível hospitalar, equivalente a um radiologista subespecialista, integrando raciocínio diagnóstico, priorização clínica, interpretação biomecânica, modelagem prognóstica e visualização educacional.
+
+ENTRADA: Radiografia médica com contexto clínico [${patientInfo}].
+
+MISSÃO: Analise a radiografia e gere interpretação estruturada multimodal composta de:
+• Interpretação radiológica estruturada
+• Diagnóstico diferencial probabilístico
+• Estratificação prognóstica
+• Suporte à decisão clínica
+• Aumento educacional médico
+
+RESTRIÇÕES GLOBAIS:
+• Nunca gere conteúdo anatômico fixo ou genérico
+• Todas as saídas devem adaptar-se aos achados radiográficos reais
+• Mantenha coerência topográfica anatômica absoluta
+• Priorize relevância clínica sobre anatomia descritiva
+• Garanta interpretabilidade rápida (cognição de nível emergencial)
+• Simule fluxo de trabalho real de radiologia hospitalar
+
+ANÁLISE TÉCNICA RADIOGRÁFICA SISTEMÁTICA:
+• Projeção e incidência
+• Rotação e centralização
+• Penetração radiográfica
+• Colimação
+• Artefatos identificados
+• Escore de qualidade diagnóstica (1-5)
+
+INTEGRAÇÃO MULTI-ESPECIALIDADE:
+Interprete achados considerando: medicina de emergência, ortopedia, geriatria, terapia intensiva, oncologia, cirurgia geral, clínica médica, anestesiologia, medicina vascular.
+
+SEMÂNTICA DE CORES:
+• Vermelho (#EF4444) = alto risco clínico / achado principal
+• Laranja (#F97316) = risco moderado / achado secundário
+• Amarelo (#EAB308) = envolvimento secundário
+• Azul (#3B82F6) = referência anatômica
+• Verde (#22C55E) = comparação normal / anatomia preservada
+• Roxo (#8B5CF6) = achado incidental
+
+IMPORTANTE: Responda inteiramente em PORTUGUÊS MÉDICO. Retorne APENAS JSON válido com TODAS estas chaves:
+
+{
+  "radiology_findings": {
+    "dominant_pathology": "achado patológico dominante",
+    "anatomical_region": "região anatômica afetada",
+    "clinical_impact_percentage": "XX%",
+    "laterality": "Direita/Esquerda/Bilateral/N/A",
+    "description": "descrição detalhada do achado principal"
+  },
+  "anatomical_overlay": [{ "structure": "nome da estrutura", "relevance_percentage": "XX%", "comment": "comentário educacional", "status": "normal/alterado/suspeito" }],
+  "normal_comparison": { "description": "descrição da anatomia normal para comparação", "key_differences": ["diferenças chave entre normal e achado"] },
+  "pathophysiology_model": "descrição do modelo fisiopatológico/biomecânico relevante ao achado",
+  "probabilistic_diagnosis": {
+    "presumptive": { "name": "Diagnóstico presuntivo", "confidence": "XX%", "color": "#hex", "reasoning": "Raciocínio clínico com referência a guidelines" },
+    "differentials": [{ "name": "Diagnóstico diferencial", "confidence": "XX%", "color": "#hex", "reasoning": "Raciocínio breve" }]
+  },
+  "prognostic_estimation": {
+    "severity_score": "descrição e pontuação",
+    "functional_progression_risk": "XX%",
+    "intervention_risk": "XX%",
+    "prognosis_model": "modelo utilizado (ex: Tönnis, TNM, etc.)"
+  },
+  "formal_report": {
+    "exam": "modalidade e região",
+    "technique": "avaliação da técnica",
+    "findings": "achados radiológicos detalhados",
+    "diagnostic_impression": "impressão diagnóstica formal",
+    "recommendations": "recomendações"
+  },
+  "lay_summary": ["linha 1 do resumo leigo", "linha 2", "linha 3"],
+  "educational_note": { "quality_score": 1-5, "quality_assessment": "avaliação da qualidade técnica", "didactic_note": "nota educacional sobre o caso", "next_steps": "próximas evoluções sugeridas" },
+  "severity_level": { "level": 1-5, "label": "Baixo/Moderado/Alto/Muito Alto/Crítico", "description": "justificativa da gravidade" },
+  "recommended_conduct": "Conduta detalhada: exames complementares, encaminhamentos, monitoramento",
+  "multi_specialty_relevance": [{ "specialty": "especialidade", "relevance": "por que é relevante", "urgency": "baixa/média/alta/urgente" }],
+  "technical_quality": { "projection": "tipo de projeção", "rotation": "avaliação", "centering": "avaliação", "penetration": "avaliação", "collimation": "avaliação", "artifacts": "artefatos identificados", "score": 1-5 },
+  "color_coded_regions": [{ "region": "região", "color_hex": "#hex", "color_name": "cor", "finding": "achado", "risk_level": "alto/moderado/baixo" }],
+  "clinical_comment": "O que é MAIS IMPORTANTE sobre esta radiografia",
+  "action_plan": { "immediate_actions": ["ações imediatas"], "follow_up": ["acompanhamento"], "monitoring": ["monitoramento"] },
+  "disclaimer": "Disclaimer médico"
+}
+
+severity_level.level: 1=Baixo, 2=Moderado, 3=Alto, 4=Muito Alto, 5=Crítico.
+Seja extremamente detalhado, didático e baseado em evidências. Use padrão CBR/RSNA para o laudo formal.`;
+
+    const normalizeRadiologyResult = (raw: any) => ({
+      radiology_findings: {
+        dominant_pathology: raw?.radiology_findings?.dominant_pathology ?? 'Não identificado',
+        anatomical_region: raw?.radiology_findings?.anatomical_region ?? 'Não determinada',
+        clinical_impact_percentage: raw?.radiology_findings?.clinical_impact_percentage ?? '0%',
+        laterality: raw?.radiology_findings?.laterality ?? 'N/A',
+        description: raw?.radiology_findings?.description ?? '',
+      },
+      anatomical_overlay: Array.isArray(raw?.anatomical_overlay)
+        ? raw.anatomical_overlay.map((s: any) => ({
+            structure: s?.structure ?? '',
+            relevance_percentage: s?.relevance_percentage ?? '0%',
+            comment: s?.comment ?? '',
+            status: s?.status ?? 'normal',
+          }))
+        : [],
+      normal_comparison: {
+        description: raw?.normal_comparison?.description ?? '',
+        key_differences: Array.isArray(raw?.normal_comparison?.key_differences) ? raw.normal_comparison.key_differences : [],
+      },
+      pathophysiology_model: raw?.pathophysiology_model ?? '',
+      probabilistic_diagnosis: {
+        presumptive: {
+          name: raw?.probabilistic_diagnosis?.presumptive?.name ?? 'Não determinado',
+          confidence: raw?.probabilistic_diagnosis?.presumptive?.confidence ?? '0%',
+          color: raw?.probabilistic_diagnosis?.presumptive?.color ?? '#3B82F6',
+          reasoning: raw?.probabilistic_diagnosis?.presumptive?.reasoning ?? '',
+        },
+        differentials: Array.isArray(raw?.probabilistic_diagnosis?.differentials)
+          ? raw.probabilistic_diagnosis.differentials.map((d: any) => ({
+              name: d?.name ?? '',
+              confidence: d?.confidence ?? '0%',
+              color: d?.color ?? '#6B7280',
+              reasoning: d?.reasoning ?? '',
+            }))
+          : [],
+      },
+      prognostic_estimation: {
+        severity_score: raw?.prognostic_estimation?.severity_score ?? '',
+        functional_progression_risk: raw?.prognostic_estimation?.functional_progression_risk ?? '0%',
+        intervention_risk: raw?.prognostic_estimation?.intervention_risk ?? '0%',
+        prognosis_model: raw?.prognostic_estimation?.prognosis_model ?? '',
+      },
+      formal_report: {
+        exam: raw?.formal_report?.exam ?? '',
+        technique: raw?.formal_report?.technique ?? '',
+        findings: raw?.formal_report?.findings ?? '',
+        diagnostic_impression: raw?.formal_report?.diagnostic_impression ?? '',
+        recommendations: raw?.formal_report?.recommendations ?? '',
+      },
+      lay_summary: Array.isArray(raw?.lay_summary) ? raw.lay_summary : [],
+      educational_note: {
+        quality_score: raw?.educational_note?.quality_score ?? 3,
+        quality_assessment: raw?.educational_note?.quality_assessment ?? '',
+        didactic_note: raw?.educational_note?.didactic_note ?? '',
+        next_steps: raw?.educational_note?.next_steps ?? '',
+      },
+      severity_level: {
+        level: raw?.severity_level?.level ?? 1,
+        label: raw?.severity_level?.label ?? 'Não classificado',
+        description: raw?.severity_level?.description ?? '',
+      },
+      recommended_conduct: raw?.recommended_conduct ?? 'Conduta não disponível.',
+      multi_specialty_relevance: Array.isArray(raw?.multi_specialty_relevance)
+        ? raw.multi_specialty_relevance.map((s: any) => ({
+            specialty: s?.specialty ?? '',
+            relevance: s?.relevance ?? '',
+            urgency: s?.urgency ?? 'baixa',
+          }))
+        : [],
+      technical_quality: {
+        projection: raw?.technical_quality?.projection ?? '',
+        rotation: raw?.technical_quality?.rotation ?? '',
+        centering: raw?.technical_quality?.centering ?? '',
+        penetration: raw?.technical_quality?.penetration ?? '',
+        collimation: raw?.technical_quality?.collimation ?? '',
+        artifacts: raw?.technical_quality?.artifacts ?? 'Nenhum identificado',
+        score: raw?.technical_quality?.score ?? 3,
+      },
+      color_coded_regions: Array.isArray(raw?.color_coded_regions)
+        ? raw.color_coded_regions.map((r: any) => ({
+            region: r?.region ?? '',
+            color_hex: r?.color_hex ?? '#6B7280',
+            color_name: r?.color_name ?? '',
+            finding: r?.finding ?? '',
+            risk_level: r?.risk_level ?? 'baixo',
+          }))
+        : [],
+      clinical_comment: raw?.clinical_comment ?? '',
+      action_plan: {
+        immediate_actions: Array.isArray(raw?.action_plan?.immediate_actions) ? raw.action_plan.immediate_actions : [],
+        follow_up: Array.isArray(raw?.action_plan?.follow_up) ? raw.action_plan.follow_up : [],
+        monitoring: Array.isArray(raw?.action_plan?.monitoring) ? raw.action_plan.monitoring : [],
+      },
+      disclaimer: raw?.disclaimer ?? 'Análise automatizada por IA. Requer revisão e validação médica profissional. Não substitui avaliação clínica presencial.',
+    });
+
+    let geminiError: unknown = null;
+    try {
+      const client = getGeminiClient();
+      const model = client.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+          maxOutputTokens: 6000,
+        },
+      });
+
+      const response = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            mimeType: 'image/png',
+            data: imageBase64,
+          },
+        },
+      ]);
+
+      const text = response.response.text();
+      const parsed = JSON.parse(text);
+      return normalizeRadiologyResult(parsed);
+    } catch (err) {
+      geminiError = err;
+      console.error('Gemini radiology analysis error:', err instanceof Error ? err.message : err);
+    }
+
+    console.log('Falling back to OpenAI for radiology analysis...');
+    try {
+      const openai = getOpenAIFallback();
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: prompt },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Analise esta imagem radiográfica. Dados do paciente: ${patientInfo || 'Não informado'}. Retorne JSON estruturado conforme o schema solicitado.`,
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/png;base64,${imageBase64}`,
+                  detail: 'high',
+                },
+              },
+            ],
+          },
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 6000,
+        temperature: 0.2,
+      });
+
+      const parsed = JSON.parse(response.choices[0].message.content || '{}');
+      return normalizeRadiologyResult(parsed);
+    } catch (openaiError) {
+      console.error('OpenAI fallback radiology analysis also failed:', openaiError instanceof Error ? openaiError.message : openaiError);
       throw geminiError || openaiError;
     }
   }

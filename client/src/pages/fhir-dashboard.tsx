@@ -20,7 +20,8 @@ import {
 import {
   Users, FileText, Heart, Download, Search, Plus, Trash2,
   Upload, Activity, Loader2, AlertTriangle, Stethoscope, Zap, Edit,
-  ClipboardList, Calendar, Shield
+  ClipboardList, Calendar, Shield, Scan, Eye, Layers, Target,
+  CheckCircle, XCircle, Palette, Siren, TrendingUp, Star, BookOpen
 } from 'lucide-react';
 
 const ECG_COLORS: Record<string, string> = {
@@ -66,6 +67,14 @@ interface FHIRObservationResource {
   subject?: { reference: string };
 }
 
+interface SystematicItem {
+  finding: string;
+  normal_range: string;
+  is_normal: boolean;
+  clinical_significance: string;
+  percentage_descriptor: string;
+}
+
 interface ECGAnalysisResult {
   ecg_metrics: {
     heart_rate: string;
@@ -76,6 +85,19 @@ interface ECGAnalysisResult {
   };
   cardiac_interpretation: string;
   key_findings: string[];
+  systematic_analysis: {
+    ritmo: SystematicItem;
+    frequencia_cardiaca: SystematicItem;
+    eixo_qrs: SystematicItem;
+    onda_p: SystematicItem;
+    intervalo_pr: SystematicItem;
+    complexo_qrs: SystematicItem;
+    segmento_st: SystematicItem;
+    onda_t: SystematicItem;
+    intervalo_qt: SystematicItem;
+  };
+  epidemiological_data: Array<{ finding: string; prevalence: string; source: string }>;
+  color_coded_annotations: Array<{ region: string; color_hex: string; color_name: string; hypothesis: string; probability: string; description: string }>;
   presumptive_diagnosis: {
     name: string;
     confidence: string;
@@ -88,6 +110,8 @@ interface ECGAnalysisResult {
     color: string;
     reasoning: string;
   }>;
+  action_plan: { immediate_actions: string[]; follow_up: string[]; monitoring: string[] };
+  clinical_comment: string;
   recommended_conduct: string;
   severity_level: {
     level: number;
@@ -99,6 +123,35 @@ interface ECGAnalysisResult {
   visual_annotation_instructions: Record<string, string>;
   technical_summary: string;
   simple_summary: string;
+  disclaimer: string;
+}
+
+interface RadiologyAnalysisResult {
+  radiology_findings: {
+    dominant_pathology: string;
+    anatomical_region: string;
+    clinical_impact_percentage: string;
+    laterality: string;
+    description: string;
+  };
+  anatomical_overlay: Array<{ structure: string; relevance_percentage: string; comment: string; status: string }>;
+  normal_comparison: { description: string; key_differences: string[] };
+  pathophysiology_model: string;
+  probabilistic_diagnosis: {
+    presumptive: { name: string; confidence: string; color: string; reasoning: string };
+    differentials: Array<{ name: string; confidence: string; color: string; reasoning: string }>;
+  };
+  prognostic_estimation: { severity_score: string; functional_progression_risk: string; intervention_risk: string; prognosis_model: string };
+  formal_report: { exam: string; technique: string; findings: string; diagnostic_impression: string; recommendations: string };
+  lay_summary: string[];
+  educational_note: { quality_score: number; quality_assessment: string; didactic_note: string; next_steps: string };
+  severity_level: { level: number; label: string; description: string };
+  recommended_conduct: string;
+  multi_specialty_relevance: Array<{ specialty: string; relevance: string; urgency: string }>;
+  technical_quality: { projection: string; rotation: string; centering: string; penetration: string; collimation: string; artifacts: string; score: number };
+  color_coded_regions: Array<{ region: string; color_hex: string; color_name: string; finding: string; risk_level: string }>;
+  clinical_comment: string;
+  action_plan: { immediate_actions: string[]; follow_up: string[]; monitoring: string[] };
   disclaimer: string;
 }
 
@@ -136,6 +189,15 @@ export default function FHIRDashboard() {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [radImage, setRadImage] = useState<string | null>(null);
+  const [radImagePreview, setRadImagePreview] = useState<string | null>(null);
+  const [radResult, setRadResult] = useState<RadiologyAnalysisResult | null>(null);
+  const [radPatientAge, setRadPatientAge] = useState('');
+  const [radPatientSex, setRadPatientSex] = useState('');
+  const [radPatientHistory, setRadPatientHistory] = useState('');
+  const [radAnatomicalRegion, setRadAnatomicalRegion] = useState('');
+  const [isRadDragOver, setIsRadDragOver] = useState(false);
+  const radFileInputRef = useRef<HTMLInputElement>(null);
 
   const [newPatient, setNewPatient] = useState({
     given: '', family: '', gender: 'unknown', birthDate: '', phone: '', email: ''
@@ -286,6 +348,65 @@ export default function FHIRDashboard() {
     });
   };
 
+  const radAnalysisMutation = useMutation({
+    mutationFn: async (data: { imageBase64: string; patientContext: any }) => {
+      const res = await apiRequest('POST', '/api/radiology/analyze', data);
+      return res.json();
+    },
+    onSuccess: (data: RadiologyAnalysisResult) => {
+      setRadResult(data);
+      toast({ title: 'Análise radiológica concluída' });
+    },
+    onError: () => {
+      toast({ title: 'Erro ao analisar radiografia', variant: 'destructive' });
+    },
+  });
+
+  const handleRadFileSelect = useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Apenas imagens são aceitas', variant: 'destructive' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      setRadImagePreview(dataUrl);
+      const base64 = dataUrl.split(',')[1];
+      setRadImage(base64);
+      setRadResult(null);
+    };
+    reader.readAsDataURL(file);
+  }, [toast]);
+
+  const handleRadDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsRadDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleRadFileSelect(file);
+  }, [handleRadFileSelect]);
+
+  const handleRadDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsRadDragOver(true);
+  }, []);
+
+  const handleRadDragLeave = useCallback(() => {
+    setIsRadDragOver(false);
+  }, []);
+
+  const runRadAnalysis = () => {
+    if (!radImage) return;
+    radAnalysisMutation.mutate({
+      imageBase64: radImage,
+      patientContext: {
+        age: radPatientAge ? parseInt(radPatientAge) : undefined,
+        sex: radPatientSex || undefined,
+        clinicalHistory: radPatientHistory || undefined,
+        anatomicalRegion: radAnatomicalRegion || undefined,
+      },
+    });
+  };
+
   const exportFHIRBundle = () => {
     const entries = fhirPatients?.entry || [];
     const bundle = {
@@ -373,6 +494,7 @@ export default function FHIRDashboard() {
                     { key: 'observations', icon: FileText, label: 'Exames' },
                     { key: 'history', icon: ClipboardList, label: 'Histórico Clínico' },
                     { key: 'ecg', icon: Heart, label: 'ECG Engine' },
+                    { key: 'radiology', icon: Scan, label: 'Radiologia' },
                     { key: 'export', icon: Download, label: 'Exportar' },
                   ].map(item => (
                     <button
@@ -659,7 +781,7 @@ export default function FHIRDashboard() {
               <ClinicalHistoryTab />
             )}
 
-            {(activeTab === 'ecg' || activeTab === 'export') && selectedPatientId && (
+            {(activeTab === 'ecg' || activeTab === 'radiology' || activeTab === 'export') && selectedPatientId && (
               <div className="mb-3 flex items-center gap-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm">
                 <Users className="h-4 w-4 text-blue-500" />
                 <span className="text-muted-foreground">Paciente selecionado:</span>
@@ -688,6 +810,30 @@ export default function FHIRDashboard() {
                 runECGAnalysis={runECGAnalysis}
                 isAnalyzing={ecgAnalysisMutation.isPending}
                 canvasRef={canvasRef}
+              />
+            )}
+
+            {activeTab === 'radiology' && (
+              <RadiologyEngineTab
+                radImage={radImage}
+                radImagePreview={radImagePreview}
+                radResult={radResult}
+                radPatientAge={radPatientAge}
+                setRadPatientAge={setRadPatientAge}
+                radPatientSex={radPatientSex}
+                setRadPatientSex={setRadPatientSex}
+                radPatientHistory={radPatientHistory}
+                setRadPatientHistory={setRadPatientHistory}
+                radAnatomicalRegion={radAnatomicalRegion}
+                setRadAnatomicalRegion={setRadAnatomicalRegion}
+                isRadDragOver={isRadDragOver}
+                handleRadDrop={handleRadDrop}
+                handleRadDragOver={handleRadDragOver}
+                handleRadDragLeave={handleRadDragLeave}
+                radFileInputRef={radFileInputRef}
+                handleRadFileSelect={handleRadFileSelect}
+                runRadAnalysis={runRadAnalysis}
+                isAnalyzing={radAnalysisMutation.isPending}
               />
             )}
 
@@ -1759,6 +1905,403 @@ function ECGEngineTab({
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+const RAD_ANATOMICAL_REGIONS = [
+  'Tórax (PA)', 'Tórax (Lateral)', 'Crânio', 'Coluna Cervical', 'Coluna Torácica',
+  'Coluna Lombar', 'Abdome', 'Pelve', 'Ombro', 'Cotovelo', 'Punho/Mão',
+  'Quadril', 'Joelho', 'Tornozelo/Pé', 'Seios da Face', 'Outro'
+];
+
+const RAD_SEVERITY_COLORS: Record<number, string> = {
+  1: 'bg-green-500', 2: 'bg-yellow-500', 3: 'bg-orange-500', 4: 'bg-red-500', 5: 'bg-red-700',
+};
+
+interface RadiologyEngineTabProps {
+  radImage: string | null;
+  radImagePreview: string | null;
+  radResult: RadiologyAnalysisResult | null;
+  radPatientAge: string;
+  setRadPatientAge: (v: string) => void;
+  radPatientSex: string;
+  setRadPatientSex: (v: string) => void;
+  radPatientHistory: string;
+  setRadPatientHistory: (v: string) => void;
+  radAnatomicalRegion: string;
+  setRadAnatomicalRegion: (v: string) => void;
+  isRadDragOver: boolean;
+  handleRadDrop: (e: React.DragEvent) => void;
+  handleRadDragOver: (e: React.DragEvent) => void;
+  handleRadDragLeave: () => void;
+  radFileInputRef: React.RefObject<HTMLInputElement>;
+  handleRadFileSelect: (file: File) => void;
+  runRadAnalysis: () => void;
+  isAnalyzing: boolean;
+}
+
+function RadiologyEngineTab({
+  radImage, radImagePreview, radResult,
+  radPatientAge, setRadPatientAge, radPatientSex, setRadPatientSex,
+  radPatientHistory, setRadPatientHistory, radAnatomicalRegion, setRadAnatomicalRegion,
+  isRadDragOver, handleRadDrop, handleRadDragOver, handleRadDragLeave,
+  radFileInputRef, handleRadFileSelect, runRadAnalysis, isAnalyzing,
+}: RadiologyEngineTabProps) {
+  const [showReport, setShowReport] = useState(false);
+  const [showAnatomical, setShowAnatomical] = useState(false);
+  const [showPrognosis, setShowPrognosis] = useState(false);
+  const [showActionPlan, setShowActionPlan] = useState(false);
+  const [showSpecialties, setShowSpecialties] = useState(false);
+  const [showTechQuality, setShowTechQuality] = useState(false);
+
+  const severityLevel = radResult?.severity_level?.level ?? 1;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Scan className="h-5 w-5 text-indigo-500" />
+            Análise Radiológica com IA
+            <Badge variant="outline" className="text-xs">Gemini 2.0 Flash</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!radImagePreview ? (
+            <div
+              onDrop={handleRadDrop}
+              onDragOver={handleRadDragOver}
+              onDragLeave={handleRadDragLeave}
+              onClick={() => radFileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                isRadDragOver
+                  ? 'border-indigo-500 bg-indigo-500/10 scale-[1.02]'
+                  : 'border-indigo-500/30 hover:border-indigo-500/50 hover:bg-indigo-500/5'
+              }`}
+            >
+              <Upload className="h-12 w-12 mx-auto text-indigo-400 mb-3" />
+              <p className="text-lg font-semibold">Arraste uma Imagem Radiográfica</p>
+              <p className="text-sm text-muted-foreground mt-1">ou clique para selecionar (PNG, JPG, DICOM preview)</p>
+              <input
+                ref={radFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && handleRadFileSelect(e.target.files[0])}
+              />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="relative rounded-xl overflow-hidden border-2 border-indigo-500/20 bg-black">
+                <img src={radImagePreview} alt="Radiografia" className="w-full h-auto max-h-64 object-contain" />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <Label className="text-xs">Idade</Label>
+                  <Input value={radPatientAge} onChange={(e) => setRadPatientAge(e.target.value)} placeholder="Ex: 65" className="h-8" />
+                </div>
+                <div>
+                  <Label className="text-xs">Sexo</Label>
+                  <Select value={radPatientSex} onValueChange={setRadPatientSex}>
+                    <SelectTrigger className="h-8"><SelectValue placeholder="Sexo" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Masculino</SelectItem>
+                      <SelectItem value="female">Feminino</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Região Anatômica</Label>
+                  <Select value={radAnatomicalRegion} onValueChange={setRadAnatomicalRegion}>
+                    <SelectTrigger className="h-8"><SelectValue placeholder="Região..." /></SelectTrigger>
+                    <SelectContent>
+                      {RAD_ANATOMICAL_REGIONS.map(r => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Histórico</Label>
+                  <Input value={radPatientHistory} onChange={(e) => setRadPatientHistory(e.target.value)} placeholder="Queixa..." className="h-8" />
+                </div>
+              </div>
+              <Button onClick={runRadAnalysis} disabled={!radImage || isAnalyzing} className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700" size="lg">
+                {isAnalyzing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analisando Radiografia...</> : <><Zap className="h-4 w-4 mr-2" /> Analisar Radiografia com IA</>}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {radResult && (
+        <div className="space-y-4">
+          {radResult.clinical_comment && (
+            <Card className="border-red-500/30 bg-red-500/5">
+              <CardContent className="p-4">
+                <p className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1 flex items-center gap-2">
+                  <Siren className="h-4 w-4" /> Comentário Clínico
+                </p>
+                <p className="text-sm text-foreground leading-relaxed font-medium">{radResult.clinical_comment}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className="border-l-4" style={{ borderLeftColor: radResult.probabilistic_diagnosis.presumptive.color }}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold flex items-center gap-2">
+                  <Stethoscope className="h-4 w-4 text-primary" /> Diagnóstico Presuntivo
+                </p>
+                <Badge className={`text-white ${RAD_SEVERITY_COLORS[severityLevel] || 'bg-gray-500'}`}>
+                  {radResult.severity_level.label} ({severityLevel}/5)
+                </Badge>
+              </div>
+              <p className="text-base font-bold" style={{ color: radResult.probabilistic_diagnosis.presumptive.color }}>
+                {radResult.probabilistic_diagnosis.presumptive.name} ({radResult.probabilistic_diagnosis.presumptive.confidence})
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">{radResult.probabilistic_diagnosis.presumptive.reasoning}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-indigo-500/20">
+            <CardContent className="p-4">
+              <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mb-2 flex items-center gap-2">
+                <Eye className="h-4 w-4" /> Achado Principal
+              </p>
+              <p className="font-medium">{radResult.radiology_findings.dominant_pathology}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Região: {radResult.radiology_findings.anatomical_region} | Lateralidade: {radResult.radiology_findings.laterality} | Impacto: {radResult.radiology_findings.clinical_impact_percentage}
+              </p>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{radResult.radiology_findings.description}</p>
+            </CardContent>
+          </Card>
+
+          {radResult.color_coded_regions && radResult.color_coded_regions.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Palette className="h-4 w-4" /> Regiões Coloridas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {radResult.color_coded_regions.map((r, i) => (
+                  <div key={i} className="flex items-center gap-3 p-2 rounded border bg-muted/30">
+                    <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: r.color_hex }} />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{r.region} — {r.finding}</p>
+                    </div>
+                    <Badge variant="outline" className={`${r.risk_level === 'alto' ? 'border-red-500 text-red-500' : r.risk_level === 'moderado' ? 'border-amber-500 text-amber-500' : ''}`}>
+                      {r.risk_level}
+                    </Badge>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <ClipboardList className="h-4 w-4" /> Diagnósticos Diferenciais
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {radResult.probabilistic_diagnosis.differentials.map((d, i) => (
+                <div key={i} className="flex items-center gap-3 p-2 rounded border bg-muted/30">
+                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: d.color || DX_COLORS[i % DX_COLORS.length] }} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{d.name}</p>
+                    <p className="text-xs text-muted-foreground">{d.reasoning}</p>
+                  </div>
+                  <Badge variant="outline">{d.confidence}</Badge>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="border-green-500/20">
+            <CardContent className="p-4">
+              <p className="text-sm font-semibold text-green-600 dark:text-green-400 mb-2 flex items-center gap-2">
+                <Shield className="h-4 w-4" /> Conduta Recomendada
+              </p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{radResult.recommended_conduct}</p>
+            </CardContent>
+          </Card>
+
+          {radResult.action_plan && (radResult.action_plan.immediate_actions.length > 0 || radResult.action_plan.follow_up.length > 0 || radResult.action_plan.monitoring.length > 0) && (
+            <Card>
+              <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowActionPlan(!showActionPlan)}>
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span className="flex items-center gap-2"><Siren className="h-4 w-4" /> Plano de Ação</span>
+                  {showActionPlan ? <span className="text-xs text-muted-foreground">Recolher</span> : <span className="text-xs text-muted-foreground">Expandir</span>}
+                </CardTitle>
+              </CardHeader>
+              {showActionPlan && (
+                <CardContent className="space-y-3">
+                  {radResult.action_plan.immediate_actions.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">Ações Imediatas</p>
+                      {radResult.action_plan.immediate_actions.map((a, i) => (
+                        <p key={i} className="text-sm text-muted-foreground flex items-start gap-1"><span className="text-red-500">•</span> {a}</p>
+                      ))}
+                    </div>
+                  )}
+                  {radResult.action_plan.follow_up.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-1">Acompanhamento</p>
+                      {radResult.action_plan.follow_up.map((a, i) => (
+                        <p key={i} className="text-sm text-muted-foreground flex items-start gap-1"><span className="text-amber-500">•</span> {a}</p>
+                      ))}
+                    </div>
+                  )}
+                  {radResult.action_plan.monitoring.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-1">Monitoramento</p>
+                      {radResult.action_plan.monitoring.map((a, i) => (
+                        <p key={i} className="text-sm text-muted-foreground flex items-start gap-1"><span className="text-blue-500">•</span> {a}</p>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowAnatomical(!showAnatomical)}>
+              <CardTitle className="text-sm flex items-center justify-between">
+                <span className="flex items-center gap-2"><Layers className="h-4 w-4" /> Overlay Anatômico</span>
+                {showAnatomical ? <span className="text-xs text-muted-foreground">Recolher</span> : <span className="text-xs text-muted-foreground">Expandir</span>}
+              </CardTitle>
+            </CardHeader>
+            {showAnatomical && radResult.anatomical_overlay.length > 0 && (
+              <CardContent className="space-y-2">
+                {radResult.anatomical_overlay.map((s, i) => (
+                  <div key={i} className={`p-2 rounded border ${s.status === 'alterado' ? 'border-red-500/20 bg-red-500/5' : s.status === 'suspeito' ? 'border-amber-500/20 bg-amber-500/5' : 'border-green-500/20 bg-green-500/5'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{s.structure}</span>
+                      <Badge variant="outline" className="text-xs">{s.status} — {s.relevance_percentage}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{s.comment}</p>
+                  </div>
+                ))}
+              </CardContent>
+            )}
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowPrognosis(!showPrognosis)}>
+              <CardTitle className="text-sm flex items-center justify-between">
+                <span className="flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Estimativa Prognóstica</span>
+                {showPrognosis ? <span className="text-xs text-muted-foreground">Recolher</span> : <span className="text-xs text-muted-foreground">Expandir</span>}
+              </CardTitle>
+            </CardHeader>
+            {showPrognosis && (
+              <CardContent className="space-y-2 text-sm">
+                <p><span className="font-semibold">Gravidade:</span> {radResult.prognostic_estimation.severity_score}</p>
+                <p><span className="font-semibold">Risco Progressão:</span> {radResult.prognostic_estimation.functional_progression_risk}</p>
+                <p><span className="font-semibold">Risco Intervenção:</span> {radResult.prognostic_estimation.intervention_risk}</p>
+                <p><span className="font-semibold">Modelo:</span> {radResult.prognostic_estimation.prognosis_model}</p>
+              </CardContent>
+            )}
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowSpecialties(!showSpecialties)}>
+              <CardTitle className="text-sm flex items-center justify-between">
+                <span className="flex items-center gap-2"><Star className="h-4 w-4" /> Multi-Especialidade</span>
+                {showSpecialties ? <span className="text-xs text-muted-foreground">Recolher</span> : <span className="text-xs text-muted-foreground">Expandir</span>}
+              </CardTitle>
+            </CardHeader>
+            {showSpecialties && radResult.multi_specialty_relevance.length > 0 && (
+              <CardContent className="space-y-2">
+                {radResult.multi_specialty_relevance.map((s, i) => (
+                  <div key={i} className="flex items-center gap-3 p-2 rounded border bg-muted/30">
+                    <span className="text-sm font-medium">{s.specialty}</span>
+                    <span className="flex-1 text-xs text-muted-foreground truncate">{s.relevance}</span>
+                    <Badge variant="outline" className={`text-xs ${s.urgency === 'urgente' ? 'border-red-500 text-red-500' : s.urgency === 'alta' ? 'border-amber-500 text-amber-500' : ''}`}>
+                      {s.urgency}
+                    </Badge>
+                  </div>
+                ))}
+              </CardContent>
+            )}
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowTechQuality(!showTechQuality)}>
+              <CardTitle className="text-sm flex items-center justify-between">
+                <span className="flex items-center gap-2"><Activity className="h-4 w-4" /> Qualidade Técnica</span>
+                {showTechQuality ? <span className="text-xs text-muted-foreground">Recolher</span> : <span className="text-xs text-muted-foreground">Expandir</span>}
+              </CardTitle>
+            </CardHeader>
+            {showTechQuality && (
+              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {Object.entries(radResult.technical_quality).filter(([k]) => k !== 'score').map(([key, val]) => (
+                  <div key={key} className="p-2 rounded-lg bg-muted/50 border">
+                    <p className="text-xs text-muted-foreground uppercase">{key}</p>
+                    <p className="text-sm font-medium">{val as string}</p>
+                  </div>
+                ))}
+                <div className="p-2 rounded-lg bg-muted/50 border">
+                  <p className="text-xs text-muted-foreground uppercase">Score</p>
+                  <p className="text-sm font-medium">{radResult.technical_quality.score}/5</p>
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowReport(!showReport)}>
+              <CardTitle className="text-sm flex items-center justify-between">
+                <span className="flex items-center gap-2"><FileText className="h-4 w-4" /> Laudo Formal (CBR/RSNA)</span>
+                {showReport ? <span className="text-xs text-muted-foreground">Recolher</span> : <span className="text-xs text-muted-foreground">Expandir</span>}
+              </CardTitle>
+            </CardHeader>
+            {showReport && (
+              <CardContent className="space-y-2 text-sm">
+                <p><span className="font-semibold">Exame:</span> {radResult.formal_report.exam}</p>
+                <p><span className="font-semibold">Técnica:</span> {radResult.formal_report.technique}</p>
+                <p className="leading-relaxed"><span className="font-semibold">Achados:</span> {radResult.formal_report.findings}</p>
+                <p className="leading-relaxed"><span className="font-semibold">Impressão:</span> {radResult.formal_report.diagnostic_impression}</p>
+                <p className="leading-relaxed"><span className="font-semibold">Recomendações:</span> {radResult.formal_report.recommendations}</p>
+              </CardContent>
+            )}
+          </Card>
+
+          {radResult.lay_summary && radResult.lay_summary.length > 0 && (
+            <Card className="border-blue-500/20">
+              <CardContent className="p-4">
+                <p className="text-sm font-medium mb-2">Resumo para o Paciente</p>
+                {radResult.lay_summary.map((line, i) => (
+                  <p key={i} className="text-sm text-muted-foreground leading-relaxed">{line}</p>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {radResult.educational_note?.didactic_note && (
+            <Card className="border-purple-500/20">
+              <CardContent className="p-4">
+                <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mb-2 flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" /> Nota Educacional
+                </p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{radResult.educational_note.didactic_note}</p>
+                {radResult.educational_note.next_steps && (
+                  <p className="text-sm text-muted-foreground mt-2"><span className="font-medium">Próximos passos:</span> {radResult.educational_note.next_steps}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+            <p className="text-sm text-muted-foreground">{radResult.disclaimer}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

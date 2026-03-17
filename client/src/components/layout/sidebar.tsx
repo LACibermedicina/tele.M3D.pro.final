@@ -60,7 +60,7 @@ function SidebarContent() {
       label: "Sala de Espera",
       icon: Headphones,
       description: "Consulta imediata com médico online",
-      roles: ['patient'],
+      roles: ['patient', 'visitor'],
     },
     {
       path: "/consultation-request",
