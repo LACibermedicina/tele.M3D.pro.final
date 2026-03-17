@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import PageWrapper from '@/components/layout/page-wrapper';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from 'wouter';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
@@ -187,29 +188,38 @@ function getPatientEmail(patient: FHIRPatient['resource']): string {
 }
 
 function SavedStudiesSidebar() {
+  const [, setLocation] = useLocation();
   const { data: notes } = useQuery<any[]>({
     queryKey: ['/api/doctor-notes'],
   });
 
-  const ecgStudies = (notes || []).filter((n: any) => n.folder === 'ecg_study').slice(0, 5);
-  const radStudies = (notes || []).filter((n: any) => n.folder === 'radiology_study').slice(0, 5);
-  const hasStudies = ecgStudies.length > 0 || radStudies.length > 0;
+  const ecgStudies = (notes || []).filter((n: any) => n.folder === 'ecg_study' && !n.patientId).slice(0, 5);
+  const radStudies = (notes || []).filter((n: any) => n.folder === 'radiology_study' && !n.patientId).slice(0, 5);
+  const ecgLinked = (notes || []).filter((n: any) => n.folder === 'ecg_study' && n.patientId).length;
+  const radLinked = (notes || []).filter((n: any) => n.folder === 'radiology_study' && n.patientId).length;
+  const hasUnlinked = ecgStudies.length > 0 || radStudies.length > 0;
 
   return (
     <Card>
       <CardHeader className="p-3 pb-1">
-        <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Estudos Salvos
+        <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center justify-between">
+          <span>Estudos Não Vinculados</span>
+          <Badge variant="outline" className="text-[9px]">{ecgStudies.length + radStudies.length}</Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3 pt-0">
-        {!hasStudies ? (
+      <CardContent className="p-3 pt-1">
+        {!hasUnlinked ? (
           <div className="text-center py-4">
             <Heart className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-            <p className="text-xs text-muted-foreground">Nenhum estudo salvo</p>
+            <p className="text-xs text-muted-foreground">Nenhum estudo pendente</p>
             <p className="text-[10px] text-muted-foreground/70 mt-1">
-              Use as abas ECG ou Radiologia para analisar e salvar estudos
+              Todos os estudos foram vinculados a pacientes
             </p>
+            {(ecgLinked > 0 || radLinked > 0) && (
+              <p className="text-[10px] text-green-600 mt-1">
+                {ecgLinked + radLinked} estudo(s) vinculado(s)
+              </p>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -220,9 +230,14 @@ function SavedStudiesSidebar() {
                 </p>
                 <div className="space-y-1">
                   {ecgStudies.map((s: any) => (
-                    <div key={s.id} className="p-1.5 rounded border bg-muted/30 text-[10px] truncate text-muted-foreground" title={s.title}>
+                    <button
+                      key={s.id}
+                      onClick={() => setLocation('/doctor-notes')}
+                      className="w-full text-left p-1.5 rounded border bg-muted/30 hover:bg-red-500/10 hover:border-red-500/30 transition-colors text-[10px] truncate text-muted-foreground cursor-pointer"
+                      title={`${s.title} — Clique para gerenciar`}
+                    >
                       {s.title}
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -234,13 +249,21 @@ function SavedStudiesSidebar() {
                 </p>
                 <div className="space-y-1">
                   {radStudies.map((s: any) => (
-                    <div key={s.id} className="p-1.5 rounded border bg-muted/30 text-[10px] truncate text-muted-foreground" title={s.title}>
+                    <button
+                      key={s.id}
+                      onClick={() => setLocation('/doctor-notes')}
+                      className="w-full text-left p-1.5 rounded border bg-muted/30 hover:bg-indigo-500/10 hover:border-indigo-500/30 transition-colors text-[10px] truncate text-muted-foreground cursor-pointer"
+                      title={`${s.title} — Clique para gerenciar`}
+                    >
                       {s.title}
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
             )}
+            <p className="text-[9px] text-muted-foreground/60 text-center">
+              Clique para gerenciar no painel de anotações
+            </p>
           </div>
         )}
       </CardContent>
