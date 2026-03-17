@@ -243,6 +243,11 @@ function SavedStudiesSidebar() {
                     </button>
                   ))}
                 </div>
+                {allEcgUnlinked.length > 5 && (
+                  <button onClick={() => setLocation('/doctor-notes')} className="w-full text-center text-[9px] text-red-500 hover:underline mt-1 cursor-pointer">
+                    Ver todos ({allEcgUnlinked.length})
+                  </button>
+                )}
               </div>
             )}
             {radStudies.length > 0 && (
@@ -262,11 +267,19 @@ function SavedStudiesSidebar() {
                     </button>
                   ))}
                 </div>
+                {allRadUnlinked.length > 5 && (
+                  <button onClick={() => setLocation('/doctor-notes')} className="w-full text-center text-[9px] text-indigo-500 hover:underline mt-1 cursor-pointer">
+                    Ver todos ({allRadUnlinked.length})
+                  </button>
+                )}
               </div>
             )}
-            <p className="text-[9px] text-muted-foreground/60 text-center">
-              Clique para gerenciar no painel de anotações
-            </p>
+            <button
+              onClick={() => setLocation('/doctor-notes')}
+              className="w-full text-[9px] text-muted-foreground/60 text-center hover:underline cursor-pointer"
+            >
+              Gerenciar no painel de anotações
+            </button>
           </div>
         )}
       </CardContent>
