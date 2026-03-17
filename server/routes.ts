@@ -20622,10 +20622,13 @@ ${combinedText.slice(0, 8000)}`;
       if (!recipientEmail || !contentScope || !analysisData) {
         return res.status(400).json({ message: 'recipientEmail, contentScope e analysisData são obrigatórios' });
       }
-
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(recipientEmail)) {
+        return res.status(400).json({ message: 'Formato de email inválido' });
+      }
       const validScopes = ['study_analysis', 'analysis_only', 'report_only', 'full_summary'];
       if (!validScopes.includes(contentScope)) {
-        return res.status(400).json({ message: 'contentScope inválido' });
+        return res.status(400).json({ message: 'Escopo inválido' });
       }
 
       let formattedContent = '';
