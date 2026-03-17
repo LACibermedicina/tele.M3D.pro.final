@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import PageWrapper from '@/components/layout/page-wrapper';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
@@ -185,7 +186,70 @@ function getPatientEmail(patient: FHIRPatient['resource']): string {
   return email?.value || '-';
 }
 
+function SavedStudiesSidebar() {
+  const { data: notes } = useQuery<any[]>({
+    queryKey: ['/api/doctor-notes'],
+  });
+
+  const ecgStudies = (notes || []).filter((n: any) => n.folder === 'ecg_study').slice(0, 5);
+  const radStudies = (notes || []).filter((n: any) => n.folder === 'radiology_study').slice(0, 5);
+  const hasStudies = ecgStudies.length > 0 || radStudies.length > 0;
+
+  return (
+    <Card>
+      <CardHeader className="p-3 pb-1">
+        <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Estudos Salvos
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-3 pt-0">
+        {!hasStudies ? (
+          <div className="text-center py-4">
+            <Heart className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+            <p className="text-xs text-muted-foreground">Nenhum estudo salvo</p>
+            <p className="text-[10px] text-muted-foreground/70 mt-1">
+              Use as abas ECG ou Radiologia para analisar e salvar estudos
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {ecgStudies.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-red-500 uppercase tracking-wide mb-1 flex items-center gap-1">
+                  <Heart className="h-3 w-3" /> ECG ({ecgStudies.length})
+                </p>
+                <div className="space-y-1">
+                  {ecgStudies.map((s: any) => (
+                    <div key={s.id} className="p-1.5 rounded border bg-muted/30 text-[10px] truncate text-muted-foreground" title={s.title}>
+                      {s.title}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {radStudies.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide mb-1 flex items-center gap-1">
+                  <Scan className="h-3 w-3" /> Radiologia ({radStudies.length})
+                </p>
+                <div className="space-y-1">
+                  {radStudies.map((s: any) => (
+                    <div key={s.id} className="p-1.5 rounded border bg-muted/30 text-[10px] truncate text-muted-foreground" title={s.title}>
+                      {s.title}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function FHIRDashboard() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('patients');
   const [searchTerm, setSearchTerm] = useState('');
@@ -487,10 +551,10 @@ export default function FHIRDashboard() {
           </div>
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-              Dashboard FHIR R4 + ECG Engine
+              Análise de Estudos
             </h1>
             <p className="text-sm text-muted-foreground">
-              Gestão de pacientes FHIR R4 e análise de ECG com IA
+              Gestão de pacientes FHIR R4, análise de ECG e estudos radiológicos
             </p>
           </div>
         </div>
@@ -505,7 +569,7 @@ export default function FHIRDashboard() {
                     { key: 'patients', icon: Users, label: 'Pacientes' },
                     { key: 'observations', icon: FileText, label: 'Exames' },
                     { key: 'history', icon: ClipboardList, label: 'Histórico Clínico' },
-                    { key: 'ecg', icon: Heart, label: 'ECG Engine' },
+                    { key: 'ecg', icon: Heart, label: 'ECG' },
                     { key: 'radiology', icon: Scan, label: 'Radiologia' },
                     { key: 'export', icon: Download, label: 'Exportar' },
                   ].map(item => (
@@ -979,17 +1043,8 @@ export default function FHIRDashboard() {
               </>
             )}
 
-            {/* Quick ECG Dropzone (always visible on right) */}
             {!ecgResult && (
-              <Card className="border-dashed border-2 border-muted-foreground/20">
-                <CardContent className="p-6 text-center">
-                  <Heart className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-                  <p className="text-sm font-medium text-muted-foreground">ECG Engine</p>
-                  <p className="text-xs text-muted-foreground/70 mt-1">
-                    Use a aba "ECG Engine" para arrastar uma imagem de ECG e obter análise automática com IA
-                  </p>
-                </CardContent>
-              </Card>
+              <SavedStudiesSidebar />
             )}
 
             {/* Disclaimer */}
@@ -1437,6 +1492,7 @@ function ECGEngineTab({
 }: ECGEngineTabProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showAssociateDialog, setShowAssociateDialog] = useState(false);
   const [shareEmail, setShareEmail] = useState('');
@@ -1545,8 +1601,8 @@ function ECGEngineTab({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Heart className="h-5 w-5 text-red-500" />
-            ECG Analysis Engine
-            <Badge className="ml-2 bg-blue-500 text-white text-[10px]">Gemini AI Vision</Badge>
+            Análise de ECG
+            {user?.role === 'admin' && <Badge className="ml-2 bg-blue-500 text-white text-[10px]">Gemini AI Vision</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1656,7 +1712,7 @@ function ECGEngineTab({
             ) : (
               <>
                 <Zap className="h-4 w-4 mr-2" />
-                Analisar ECG com IA
+                Analisar ECG
               </>
             )}
           </Button>
@@ -1664,12 +1720,12 @@ function ECGEngineTab({
           {/* Results */}
           {ecgResult && (
             <div className="space-y-4 mt-4">
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setShowAssociateDialog(true)}>
+              {/* Action Buttons - stacked */}
+              <div className="flex flex-col gap-2">
+                <Button size="sm" className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white" onClick={() => setShowAssociateDialog(true)}>
                   <Users className="h-3.5 w-3.5 mr-1.5" /> Associar a Paciente
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setShowShareDialog(true)}>
+                <Button size="sm" className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white" onClick={() => setShowShareDialog(true)}>
                   <Download className="h-3.5 w-3.5 mr-1.5" /> Enviar por Email
                 </Button>
               </div>
@@ -2038,6 +2094,7 @@ function RadiologyEngineTab({
   isRadDragOver, handleRadDrop, handleRadDragOver, handleRadDragLeave,
   radFileInputRef, handleRadFileSelect, runRadAnalysis, isAnalyzing,
 }: RadiologyEngineTabProps) {
+  const { user } = useAuth();
   const [showReport, setShowReport] = useState(false);
   const [showAnatomical, setShowAnatomical] = useState(false);
   const [showPrognosis, setShowPrognosis] = useState(false);
@@ -2053,8 +2110,8 @@ function RadiologyEngineTab({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Scan className="h-5 w-5 text-indigo-500" />
-            Análise Radiológica com IA
-            <Badge variant="outline" className="text-xs">Gemini 2.0 Flash</Badge>
+            Análise Radiológica
+            {user?.role === 'admin' && <Badge variant="outline" className="text-xs">Gemini 2.0 Flash</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -2118,7 +2175,7 @@ function RadiologyEngineTab({
                 </div>
               </div>
               <Button onClick={runRadAnalysis} disabled={!radImage || isAnalyzing} className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700" size="lg">
-                {isAnalyzing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analisando Radiografia...</> : <><Zap className="h-4 w-4 mr-2" /> Analisar Radiografia com IA</>}
+                {isAnalyzing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analisando Radiografia...</> : <><Zap className="h-4 w-4 mr-2" /> Analisar Radiografia</>}
               </Button>
             </div>
           )}

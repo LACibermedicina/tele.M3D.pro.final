@@ -1,28 +1,21 @@
 import { useState, useRef, useCallback } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   Scan, X, Upload, Zap, Loader2, Minimize2, Maximize2,
-  Activity, AlertTriangle, ChevronDown, ChevronUp, Save, BookOpen,
-  User, Mail, Send, FileText, Shield, Stethoscope, ClipboardList,
-  Eye, Target, Palette, Siren, TrendingUp, Layers, Star, ImageIcon
+  AlertTriangle, Save, BookOpen, User, Stethoscope,
+  ImageIcon, Trash2, ExternalLink, Download
 } from 'lucide-react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
-} from 'recharts';
-
-const DX_COLORS = ['#EF4444', '#3B82F6', '#22C55E', '#F97316', '#8B5CF6', '#EC4899', '#14B8A6', '#F59E0B'];
 
 const SEVERITY_COLORS: Record<number, string> = {
   1: 'bg-green-500',
@@ -70,27 +63,19 @@ interface RadiologyResult {
 export default function FloatingRadiologyAnalyzer() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [radImage, setRadImage] = useState<string | null>(null);
   const [radPreview, setRadPreview] = useState<string | null>(null);
   const [result, setResult] = useState<RadiologyResult | null>(null);
-  const [showReport, setShowReport] = useState(false);
-  const [showAnatomical, setShowAnatomical] = useState(false);
-  const [showPrognosis, setShowPrognosis] = useState(false);
-  const [showActionPlan, setShowActionPlan] = useState(false);
-  const [showSpecialties, setShowSpecialties] = useState(false);
-  const [showTechQuality, setShowTechQuality] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [patientAge, setPatientAge] = useState('');
   const [patientSex, setPatientSex] = useState('');
   const [patientHistory, setPatientHistory] = useState('');
   const [anatomicalRegion, setAnatomicalRegion] = useState('');
   const [savedToStudy, setSavedToStudy] = useState(false);
-  const [showShareDialog, setShowShareDialog] = useState(false);
   const [showAssociateDialog, setShowAssociateDialog] = useState(false);
-  const [shareEmail, setShareEmail] = useState('');
-  const [shareScope, setShareScope] = useState('full_summary');
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [immersiveImage, setImmersiveImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -118,6 +103,7 @@ export default function FloatingRadiologyAnalyzer() {
     onSuccess: (data: RadiologyResult) => {
       setResult(data);
       setSavedToStudy(false);
+      setImmersiveImage(null);
       setIsExpanded(true);
       toast({ title: 'Radiografia analisada com sucesso' });
     },
@@ -193,26 +179,6 @@ export default function FloatingRadiologyAnalyzer() {
     },
   });
 
-  const shareMutation = useMutation({
-    mutationFn: async () => {
-      if (!result || !shareEmail) throw new Error('Missing data');
-      return apiRequest('POST', '/api/radiology/share', {
-        recipientEmail: shareEmail,
-        contentScope: shareScope,
-        analysisData: result,
-        patientContext: { age: patientAge, sex: patientSex, clinicalHistory: patientHistory, anatomicalRegion },
-      });
-    },
-    onSuccess: () => {
-      setShowShareDialog(false);
-      setShareEmail('');
-      toast({ title: 'Análise radiológica enviada', description: `Preparada para ${shareEmail}` });
-    },
-    onError: () => {
-      toast({ title: 'Erro ao enviar', variant: 'destructive' });
-    },
-  });
-
   const generateImmersiveImageMutation = useMutation({
     mutationFn: async () => {
       if (!result) throw new Error('No analysis result');
@@ -276,6 +242,14 @@ export default function FloatingRadiologyAnalyzer() {
     setImmersiveImage(null);
   };
 
+  const saveImmersiveImage = () => {
+    if (!immersiveImage) return;
+    const link = document.createElement('a');
+    link.href = `data:image/png;base64,${immersiveImage}`;
+    link.download = `radiologia-pacs-${new Date().toISOString().slice(0, 10)}.png`;
+    link.click();
+  };
+
   if (!user || !['doctor', 'admin'].includes(user.role)) return null;
 
   if (!isOpen) {
@@ -283,7 +257,7 @@ export default function FloatingRadiologyAnalyzer() {
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-[10.5rem] right-6 z-40 w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center hover:scale-110"
-        title="Análise de Estudo"
+        title="Análise de Estudo Radiológico"
       >
         <Scan className="h-5 w-5" />
       </button>
@@ -293,6 +267,7 @@ export default function FloatingRadiologyAnalyzer() {
   const panelWidth = isExpanded ? 'w-[560px]' : 'w-[380px]';
   const panelHeight = isExpanded ? 'max-h-[90vh]' : 'max-h-[65vh]';
   const severityLevel = result?.severity_level?.level ?? 1;
+  const analysisLocked = !!result && !savedToStudy;
 
   return (
     <>
@@ -404,12 +379,14 @@ export default function FloatingRadiologyAnalyzer() {
 
                   <Button
                     onClick={() => analyzeMutation.mutate()}
-                    disabled={analyzeMutation.isPending}
+                    disabled={analyzeMutation.isPending || analysisLocked}
                     className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
                     size="sm"
                   >
                     {analyzeMutation.isPending ? (
                       <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Analisando...</>
+                    ) : analysisLocked ? (
+                      <><Zap className="h-3 w-3 mr-1" /> Salve ou limpe para novo estudo</>
                     ) : (
                       <><Zap className="h-3 w-3 mr-1" /> Analisar Radiografia</>
                     )}
@@ -418,7 +395,7 @@ export default function FloatingRadiologyAnalyzer() {
                   {result && (
                     <Button
                       onClick={() => generateImmersiveImageMutation.mutate()}
-                      disabled={generateImmersiveImageMutation.isPending || !result}
+                      disabled={generateImmersiveImageMutation.isPending}
                       className="w-full bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 text-white"
                       size="sm"
                     >
@@ -438,7 +415,7 @@ export default function FloatingRadiologyAnalyzer() {
                       <div className="rounded-lg overflow-hidden border border-rose-500/30">
                         <img
                           src={`data:image/png;base64,${immersiveImage}`}
-                          alt="Painel PACS Imersivo - Análise Radiológica"
+                          alt="Painel PACS Imersivo"
                           className="w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
                           onClick={() => {
                             const w = window.open();
@@ -448,7 +425,12 @@ export default function FloatingRadiologyAnalyzer() {
                           }}
                         />
                       </div>
-                      <p className="text-[9px] text-muted-foreground text-center">Clique na imagem para visualizar em tela cheia</p>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" className="flex-1 text-[10px] h-6" onClick={saveImmersiveImage}>
+                          <Download className="h-3 w-3 mr-1" /> Salvar Imagem
+                        </Button>
+                      </div>
+                      <p className="text-[9px] text-muted-foreground text-center">Clique na imagem para tela cheia</p>
                     </div>
                   )}
                 </div>
@@ -456,6 +438,38 @@ export default function FloatingRadiologyAnalyzer() {
 
               {result && (
                 <div className="space-y-3">
+                  <Card className="border-l-4" style={{ borderLeftColor: result.probabilistic_diagnosis.presumptive.color }}>
+                    <CardContent className="p-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <Stethoscope className="h-3.5 w-3.5 text-primary" />
+                          <p className="text-xs font-semibold">Diagnóstico Presuntivo</p>
+                        </div>
+                        <Badge className={`text-[9px] text-white ${SEVERITY_COLORS[severityLevel] || 'bg-gray-500'}`}>
+                          {result.severity_level.label} ({severityLevel}/5)
+                        </Badge>
+                      </div>
+                      <p className="text-xs font-bold" style={{ color: result.probabilistic_diagnosis.presumptive.color }}>
+                        {result.probabilistic_diagnosis.presumptive.name} ({result.probabilistic_diagnosis.presumptive.confidence})
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{result.probabilistic_diagnosis.presumptive.reasoning}</p>
+                    </CardContent>
+                  </Card>
+
+                  {result.clinical_comment && (
+                    <Card className="border-red-500/30 bg-red-500/5">
+                      <CardContent className="p-2">
+                        <p className="text-[10px] text-foreground leading-relaxed font-medium">{result.clinical_comment}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <Card className="border-green-500/20">
+                    <CardContent className="p-2">
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">{result.recommended_conduct}</p>
+                    </CardContent>
+                  </Card>
+
                   <div className="flex gap-1.5 flex-wrap">
                     <Button
                       onClick={() => saveToStudyMutation.mutate()}
@@ -475,308 +489,29 @@ export default function FloatingRadiologyAnalyzer() {
                     <Button size="sm" variant="outline" onClick={() => setShowAssociateDialog(true)} className="flex-1 min-w-0">
                       <User className="h-3 w-3 mr-1" /> Paciente
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => setShowShareDialog(true)} className="flex-1 min-w-0">
-                      <Mail className="h-3 w-3 mr-1" /> Email
+                  </div>
+
+                  <div className="flex gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        setIsOpen(false);
+                        setLocation('/fhir-dashboard');
+                      }}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" /> Aprofundamento
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={clearAll}
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" /> Limpar Tudo
                     </Button>
                   </div>
-
-                  {result.clinical_comment && (
-                    <Card className="border-red-500/30 bg-red-500/5">
-                      <CardContent className="p-2">
-                        <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mb-1 flex items-center gap-1">
-                          <Siren className="h-3 w-3" /> Comentário Clínico
-                        </p>
-                        <p className="text-[10px] text-foreground leading-relaxed font-medium">{result.clinical_comment}</p>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  <Card className="border-l-4" style={{ borderLeftColor: result.probabilistic_diagnosis.presumptive.color }}>
-                    <CardContent className="p-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <Stethoscope className="h-3.5 w-3.5 text-primary" />
-                          <p className="text-xs font-semibold">Diagnóstico Presuntivo</p>
-                        </div>
-                        <Badge className={`text-[9px] text-white ${SEVERITY_COLORS[severityLevel] || 'bg-gray-500'}`}>
-                          {result.severity_level.label} ({severityLevel}/5)
-                        </Badge>
-                      </div>
-                      <p className="text-xs font-bold" style={{ color: result.probabilistic_diagnosis.presumptive.color }}>
-                        {result.probabilistic_diagnosis.presumptive.name} ({result.probabilistic_diagnosis.presumptive.confidence})
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{result.probabilistic_diagnosis.presumptive.reasoning}</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-indigo-500/20">
-                    <CardContent className="p-2">
-                      <p className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1">
-                        <Eye className="h-3 w-3" /> Achado Principal
-                      </p>
-                      <p className="text-[10px] font-medium">{result.radiology_findings.dominant_pathology}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        Região: {result.radiology_findings.anatomical_region} | Lateralidade: {result.radiology_findings.laterality} | Impacto: {result.radiology_findings.clinical_impact_percentage}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{result.radiology_findings.description}</p>
-                    </CardContent>
-                  </Card>
-
-                  {result.color_coded_regions && result.color_coded_regions.length > 0 && (
-                    <>
-                      <p className="text-[10px] font-semibold flex items-center gap-1">
-                        <Palette className="h-3 w-3" /> Regiões Coloridas
-                      </p>
-                      <div className="space-y-1">
-                        {result.color_coded_regions.map((r, i) => (
-                          <div key={i} className="flex items-start gap-2 p-1.5 rounded border bg-muted/30">
-                            <div className="w-3 h-3 rounded-full shrink-0 mt-0.5" style={{ backgroundColor: r.color_hex }} />
-                            <div className="flex-1 min-w-0 text-[10px]">
-                              <p className="font-medium">{r.region} — {r.finding}</p>
-                            </div>
-                            <Badge variant="outline" className={`text-[8px] shrink-0 ${r.risk_level === 'alto' ? 'border-red-500 text-red-500' : r.risk_level === 'moderado' ? 'border-amber-500 text-amber-500' : ''}`}>
-                              {r.risk_level}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  <div>
-                    <p className="text-[10px] font-semibold mb-1.5 flex items-center gap-1">
-                      <ClipboardList className="h-3 w-3" /> Diagnósticos Diferenciais
-                    </p>
-                    <div className="space-y-1">
-                      {result.probabilistic_diagnosis.differentials.map((d, i) => (
-                        <div key={i} className="flex items-center gap-2 p-1.5 rounded border bg-muted/30">
-                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color || DX_COLORS[i % DX_COLORS.length] }} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[10px] font-medium truncate">{d.name}</p>
-                            <p className="text-[9px] text-muted-foreground truncate">{d.reasoning}</p>
-                          </div>
-                          <Badge variant="outline" className="text-[9px] shrink-0">{d.confidence}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {result.probabilistic_diagnosis.differentials.length > 0 && (
-                    <div className="h-[140px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={[
-                            { name: result.probabilistic_diagnosis.presumptive.name, probability: parseFloat(result.probabilistic_diagnosis.presumptive.confidence) || 0 },
-                            ...result.probabilistic_diagnosis.differentials.map(d => ({
-                              name: d.name,
-                              probability: parseFloat(d.confidence) || 0,
-                            }))
-                          ]}
-                          layout="vertical"
-                          margin={{ left: 10 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                          <XAxis type="number" domain={[0, 100]} unit="%" tick={{ fontSize: 9 }} />
-                          <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 9 }} />
-                          <Tooltip formatter={(val: number) => `${val}%`} />
-                          <Bar dataKey="probability" radius={[0, 4, 4, 0]}>
-                            {[result.probabilistic_diagnosis.presumptive, ...result.probabilistic_diagnosis.differentials].map((_, idx) => (
-                              <Cell key={idx} fill={DX_COLORS[idx % DX_COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  <Card className="border-green-500/20">
-                    <CardContent className="p-2">
-                      <p className="text-[10px] font-semibold text-green-600 dark:text-green-400 mb-1 flex items-center gap-1">
-                        <Shield className="h-3 w-3" /> Conduta Recomendada
-                      </p>
-                      <p className="text-[10px] text-muted-foreground leading-relaxed">{result.recommended_conduct}</p>
-                    </CardContent>
-                  </Card>
-
-                  {result.action_plan && (result.action_plan.immediate_actions.length > 0 || result.action_plan.follow_up.length > 0 || result.action_plan.monitoring.length > 0) && (
-                    <>
-                      <button
-                        onClick={() => setShowActionPlan(!showActionPlan)}
-                        className="w-full flex items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground"
-                      >
-                        <span className="flex items-center gap-1">
-                          <Siren className="h-3 w-3" /> Plano de Ação
-                        </span>
-                        {showActionPlan ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                      </button>
-                      {showActionPlan && (
-                        <Card className="border-orange-500/20">
-                          <CardContent className="p-2 space-y-2">
-                            {result.action_plan.immediate_actions.length > 0 && (
-                              <div>
-                                <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mb-0.5">Ações Imediatas</p>
-                                {result.action_plan.immediate_actions.map((a, i) => (
-                                  <p key={i} className="text-[10px] text-muted-foreground flex items-start gap-1"><span className="text-red-500">•</span> {a}</p>
-                                ))}
-                              </div>
-                            )}
-                            {result.action_plan.follow_up.length > 0 && (
-                              <div>
-                                <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mb-0.5">Acompanhamento</p>
-                                {result.action_plan.follow_up.map((a, i) => (
-                                  <p key={i} className="text-[10px] text-muted-foreground flex items-start gap-1"><span className="text-amber-500">•</span> {a}</p>
-                                ))}
-                              </div>
-                            )}
-                            {result.action_plan.monitoring.length > 0 && (
-                              <div>
-                                <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 mb-0.5">Monitoramento</p>
-                                {result.action_plan.monitoring.map((a, i) => (
-                                  <p key={i} className="text-[10px] text-muted-foreground flex items-start gap-1"><span className="text-blue-500">•</span> {a}</p>
-                                ))}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      )}
-                    </>
-                  )}
-
-                  <button
-                    onClick={() => setShowAnatomical(!showAnatomical)}
-                    className="w-full flex items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    <span className="flex items-center gap-1">
-                      <Layers className="h-3 w-3" /> Overlay Anatômico
-                    </span>
-                    {showAnatomical ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                  </button>
-                  {showAnatomical && result.anatomical_overlay.length > 0 && (
-                    <div className="space-y-1">
-                      {result.anatomical_overlay.map((s, i) => (
-                        <div key={i} className={`p-1.5 rounded border text-[10px] ${s.status === 'alterado' ? 'border-red-500/20 bg-red-500/5' : s.status === 'suspeito' ? 'border-amber-500/20 bg-amber-500/5' : 'border-green-500/20 bg-green-500/5'}`}>
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">{s.structure}</span>
-                            <Badge variant="outline" className="text-[8px]">{s.status} — {s.relevance_percentage}</Badge>
-                          </div>
-                          <p className="text-muted-foreground">{s.comment}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => setShowPrognosis(!showPrognosis)}
-                    className="w-full flex items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    <span className="flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3" /> Estimativa Prognóstica
-                    </span>
-                    {showPrognosis ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                  </button>
-                  {showPrognosis && (
-                    <Card className="border-blue-500/20">
-                      <CardContent className="p-2 text-[10px] space-y-1">
-                        <p><span className="font-semibold">Gravidade:</span> {result.prognostic_estimation.severity_score}</p>
-                        <p><span className="font-semibold">Risco Progressão:</span> {result.prognostic_estimation.functional_progression_risk}</p>
-                        <p><span className="font-semibold">Risco Intervenção:</span> {result.prognostic_estimation.intervention_risk}</p>
-                        <p><span className="font-semibold">Modelo:</span> {result.prognostic_estimation.prognosis_model}</p>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  <button
-                    onClick={() => setShowSpecialties(!showSpecialties)}
-                    className="w-full flex items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    <span className="flex items-center gap-1">
-                      <Star className="h-3 w-3" /> Relevância Multi-Especialidade
-                    </span>
-                    {showSpecialties ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                  </button>
-                  {showSpecialties && result.multi_specialty_relevance.length > 0 && (
-                    <div className="space-y-1">
-                      {result.multi_specialty_relevance.map((s, i) => (
-                        <div key={i} className="flex items-center gap-2 p-1.5 rounded border bg-muted/30 text-[10px]">
-                          <span className="font-medium">{s.specialty}</span>
-                          <span className="flex-1 text-muted-foreground truncate">{s.relevance}</span>
-                          <Badge variant="outline" className={`text-[8px] ${s.urgency === 'urgente' ? 'border-red-500 text-red-500' : s.urgency === 'alta' ? 'border-amber-500 text-amber-500' : ''}`}>
-                            {s.urgency}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => setShowTechQuality(!showTechQuality)}
-                    className="w-full flex items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    <span className="flex items-center gap-1">
-                      <Activity className="h-3 w-3" /> Qualidade Técnica
-                    </span>
-                    {showTechQuality ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                  </button>
-                  {showTechQuality && (
-                    <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(result.technical_quality).filter(([k]) => k !== 'score').map(([key, val]) => (
-                        <div key={key} className="p-2 rounded-lg bg-muted/50 border">
-                          <p className="text-[10px] text-muted-foreground uppercase">{key}</p>
-                          <p className="text-xs font-medium">{val as string}</p>
-                        </div>
-                      ))}
-                      <div className="p-2 rounded-lg bg-muted/50 border col-span-2">
-                        <p className="text-[10px] text-muted-foreground uppercase">Score Geral</p>
-                        <p className="text-xs font-medium">{result.technical_quality.score}/5</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => setShowReport(!showReport)}
-                    className="w-full flex items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    <span className="flex items-center gap-1">
-                      <FileText className="h-3 w-3" /> Laudo Formal
-                    </span>
-                    {showReport ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                  </button>
-                  {showReport && (
-                    <Card className="border-blue-500/20">
-                      <CardContent className="p-2 text-[10px] space-y-1">
-                        <p><span className="font-semibold">Exame:</span> {result.formal_report.exam}</p>
-                        <p><span className="font-semibold">Técnica:</span> {result.formal_report.technique}</p>
-                        <p className="leading-relaxed"><span className="font-semibold">Achados:</span> {result.formal_report.findings}</p>
-                        <p className="leading-relaxed"><span className="font-semibold">Impressão:</span> {result.formal_report.diagnostic_impression}</p>
-                        <p className="leading-relaxed"><span className="font-semibold">Recomendações:</span> {result.formal_report.recommendations}</p>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {result.lay_summary && result.lay_summary.length > 0 && (
-                    <Card className="border-blue-500/20">
-                      <CardContent className="p-2">
-                        <p className="text-xs font-medium mb-1">Resumo para o Paciente</p>
-                        {result.lay_summary.map((line, i) => (
-                          <p key={i} className="text-[10px] text-muted-foreground leading-relaxed">{line}</p>
-                        ))}
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {result.educational_note?.didactic_note && (
-                    <Card className="border-purple-500/20">
-                      <CardContent className="p-2 text-[10px]">
-                        <p className="font-semibold text-purple-600 dark:text-purple-400 mb-1 flex items-center gap-1">
-                          <BookOpen className="h-3 w-3" /> Nota Educacional
-                        </p>
-                        <p className="text-muted-foreground leading-relaxed">{result.educational_note.didactic_note}</p>
-                        {result.educational_note.next_steps && (
-                          <p className="text-muted-foreground mt-1"><span className="font-medium">Próximos passos:</span> {result.educational_note.next_steps}</p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
 
                   <div className="flex items-start gap-1.5 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
                     <AlertTriangle className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
@@ -820,58 +555,6 @@ export default function FloatingRadiologyAnalyzer() {
               disabled={!selectedPatientId || associateMutation.isPending}
             >
               {associateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Associar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="h-4 w-4" /> Enviar Análise por Email
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm">Email do Destinatário</Label>
-              <Input
-                type="email"
-                value={shareEmail}
-                onChange={(e) => setShareEmail(e.target.value)}
-                placeholder="medico@hospital.com"
-              />
-            </div>
-            <div>
-              <Label className="text-sm mb-2 block">Conteúdo a Enviar</Label>
-              <RadioGroup value={shareScope} onValueChange={setShareScope} className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="study_analysis" id="rsa" />
-                  <Label htmlFor="rsa" className="text-xs">Estudo + Análise</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="analysis_only" id="rao" />
-                  <Label htmlFor="rao" className="text-xs">Somente Análise</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="report_only" id="rro" />
-                  <Label htmlFor="rro" className="text-xs">Somente Laudo</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="full_summary" id="rfs" />
-                  <Label htmlFor="rfs" className="text-xs">Resumo Completo</Label>
-                </div>
-              </RadioGroup>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowShareDialog(false)}>Cancelar</Button>
-            <Button
-              onClick={() => shareMutation.mutate()}
-              disabled={!shareEmail || shareMutation.isPending}
-            >
-              {shareMutation.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
-              Enviar
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -421,6 +421,7 @@ export default function Header() {
       items: [
         { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, faIcon: "fas fa-chart-line", roles: ["admin", "doctor", "patient"] },
         { path: "/assistant", label: "Assistente IA", icon: BrainCircuit, faIcon: "fas fa-robot", roles: ["admin", "doctor", "patient"] },
+        { path: "/fhir-dashboard", label: "Análise de Estudos", icon: HeartPulse, faIcon: "fas fa-heartbeat", roles: ["admin", "doctor"] },
       ],
     },
     {
@@ -479,7 +480,6 @@ export default function Header() {
         { path: "/epidemiological-reports", label: "Epidemiologia", icon: Activity, faIcon: "fas fa-chart-area", roles: ["admin", "doctor"] },
         { path: "/reports", label: "Relatórios", icon: FileBarChart, faIcon: "fas fa-file-chart-line", roles: ["admin", "doctor"] },
         { path: "/analytics", label: "Analytics", icon: BarChart3, faIcon: "fas fa-chart-bar", roles: ["admin"] },
-        { path: "/fhir-dashboard", label: "FHIR R4 & ECG", icon: HeartPulse, faIcon: "fas fa-heartbeat", roles: ["admin", "doctor"] },
       ],
     },
     {
