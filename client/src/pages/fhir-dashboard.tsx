@@ -308,6 +308,7 @@ export default function FHIRDashboard() {
   const [radImage, setRadImage] = useState<string | null>(null);
   const [radImagePreview, setRadImagePreview] = useState<string | null>(null);
   const [radResult, setRadResult] = useState<RadiologyAnalysisResult | null>(null);
+  const [radImmersiveImage, setRadImmersiveImage] = useState<string | null>(null);
   const [radPatientAge, setRadPatientAge] = useState('');
   const [radPatientSex, setRadPatientSex] = useState('');
   const [radPatientHistory, setRadPatientHistory] = useState('');
@@ -469,8 +470,10 @@ export default function FHIRDashboard() {
       const res = await apiRequest('POST', '/api/radiology/analyze', data);
       return res.json();
     },
-    onSuccess: (data: RadiologyAnalysisResult) => {
-      setRadResult(data);
+    onSuccess: (data: any) => {
+      const { immersive_image, ...analysisData } = data;
+      setRadResult(analysisData as RadiologyAnalysisResult);
+      setRadImmersiveImage(immersive_image || null);
       toast({ title: 'Análise radiológica concluída' });
     },
     onError: () => {
@@ -934,6 +937,7 @@ export default function FHIRDashboard() {
                 radImage={radImage}
                 radImagePreview={radImagePreview}
                 radResult={radResult}
+                radImmersiveImage={radImmersiveImage}
                 radPatientAge={radPatientAge}
                 setRadPatientAge={setRadPatientAge}
                 radPatientSex={radPatientSex}
@@ -2108,6 +2112,7 @@ interface RadiologyEngineTabProps {
   radImage: string | null;
   radImagePreview: string | null;
   radResult: RadiologyAnalysisResult | null;
+  radImmersiveImage: string | null;
   radPatientAge: string;
   setRadPatientAge: (v: string) => void;
   radPatientSex: string;
@@ -2127,7 +2132,7 @@ interface RadiologyEngineTabProps {
 }
 
 function RadiologyEngineTab({
-  radImage, radImagePreview, radResult,
+  radImage, radImagePreview, radResult, radImmersiveImage,
   radPatientAge, setRadPatientAge, radPatientSex, setRadPatientSex,
   radPatientHistory, setRadPatientHistory, radAnatomicalRegion, setRadAnatomicalRegion,
   isRadDragOver, handleRadDrop, handleRadDragOver, handleRadDragLeave,
@@ -2479,6 +2484,27 @@ function RadiologyEngineTab({
                 {radResult.educational_note.next_steps && (
                   <p className="text-sm text-muted-foreground mt-2"><span className="font-medium">Próximos passos:</span> {radResult.educational_note.next_steps}</p>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {radImmersiveImage && (
+            <Card className="border-indigo-500/30 overflow-hidden">
+              <CardHeader className="p-3 pb-0">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-indigo-500" /> Visualização Imersiva PACS
+                  {isPermanentAdmin && <Badge className="ml-2 bg-indigo-500 text-white text-[10px]">gpt-image-1</Badge>}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3">
+                <img
+                  src={`data:image/png;base64,${radImmersiveImage}`}
+                  alt="Radiology Immersive PACS Visualization"
+                  className="w-full h-auto rounded-lg border"
+                />
+                <p className="text-[10px] text-muted-foreground text-center mt-2">
+                  Imagem gerada por IA — Ilustrativa, não substitui laudo médico
+                </p>
               </CardContent>
             </Card>
           )}

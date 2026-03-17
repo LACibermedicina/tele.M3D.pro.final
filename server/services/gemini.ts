@@ -1385,6 +1385,76 @@ Seja extremamente detalhado, didático e baseado em evidências. Use padrão CBR
       throw geminiError || openaiError;
     }
   }
+  async generateRadiologyPACSImagePrompt(analysisData: any): Promise<string> {
+    const findings = analysisData.radiology_findings || {};
+    const diagnosis = analysisData.probabilistic_diagnosis?.presumptive?.name || 'Estudo Radiológico';
+    const severity = analysisData.severity_level?.label || 'Moderado';
+    const region = findings.anatomical_region || 'Região não especificada';
+    const laterality = findings.laterality || 'N/A';
+    const dominantPathology = findings.dominant_pathology || 'Achado não identificado';
+    const impactPct = findings.clinical_impact_percentage || '0%';
+    const formalReport = analysisData.formal_report || {};
+    const laySummary = (analysisData.lay_summary || []).join(' ');
+    const colorRegions = (analysisData.color_coded_regions || []).slice(0, 6).map((r: any) =>
+      `"${r.region}": ${r.finding} (${r.color_name} ${r.color_hex}, risco: ${r.risk_level})`
+    ).join('. ');
+    const differentials = (analysisData.probabilistic_diagnosis?.differentials || []).slice(0, 4).map((d: any) =>
+      `${d.name}: ${d.confidence}`
+    ).join(', ');
+    const prognostic = analysisData.prognostic_estimation || {};
+    const techQuality = analysisData.technical_quality || {};
+
+    return `Create an immersive PACS-style radiology workstation visual panel — a hyper-realistic medical image synthesis for radiology educational interface. Dark hospital interface background (#1a1a2e).
+
+ALL TEXT MUST BE IN PORTUGUESE (BRAZIL). Use large, bold, high-contrast fonts (minimum 16pt equivalent). White text on dark backgrounds. Avoid small or condensed text. Prioritize legibility over density.
+
+STYLE: Advanced medical workstation UI, RSNA teaching atlas hybrid, AI diagnostic heatmap overlay, ultra-clean vector + radiograph fusion.
+
+VISUAL LAYOUT — 6 BLOCKS:
+
+BLOCK 1 (TOP LEFT) — "RX ORIGINAL":
+- Show a stylized radiograph of "${region}" with "${laterality}" laterality
+- Highlight the dominant pathology "${dominantPathology}" with an organic RED polygon overlay
+- Caption: "Achado principal: ${dominantPathology} (~${impactPct} impacto clínico)"
+
+BLOCK 2 (TOP CENTER) — "OVERLAY TOPOGRÁFICO":
+- Same radiograph base with transparent anatomical mapping overlay
+- AI-style pathological heatmap gradient (orange to intense red) focused on pathology area
+- Up to 8 critical structures with connected white arrows
+- Probabilistic relevance percentage labels on key structures
+
+BLOCK 3 (TOP RIGHT) — "ANATOMIA NORMAL COMPARATIVA":
+- Clean anatomical medical illustration of normal "${region}" for comparison
+- Green highlights showing healthy anatomical landmarks
+- Label: "Referência Atlas"
+
+BLOCK 4 (BOTTOM LEFT) — "IMAGEM ANATÔMICA FUNCIONAL":
+- Biomechanical/pathological conceptual illustration
+- Show stress zones, instability, degeneration, or deformity relevant to "${dominantPathology}"
+- Compare normal (verde) vs pathological (vermelho/laranja) with clear labels
+- Bold laterality marker: "${laterality}"
+
+BLOCK 5 (BOTTOM CENTER) — DADOS ESTRUTURADOS:
+- "ESTIMATIVA PROGNÓSTICA": Gravidade: ${prognostic.severity_score || severity}, Risco progressão: ${prognostic.functional_progression_risk || 'N/A'}, Risco intervenção: ${prognostic.intervention_risk || 'N/A'}
+- "DIAGNÓSTICO DIFERENCIAL": ${differentials}
+- "LAUDO FORMAL": Exame: ${formalReport.exam || region}, Impressão: ${formalReport.diagnostic_impression || diagnosis}
+- "RESUMO LEIGO": ${laySummary}
+
+BLOCK 6 (BOTTOM RIGHT) — RESUMO CLÍNICO:
+- Qualidade técnica: ${techQuality.score || 3}/5
+- Nota educacional
+- Barra inferior vermelha: "Correlacione clinicamente. Relevância %, prognóstico, DDx e conduta incluídos."
+
+TOP BANNER: "RESUMO CLÍNICO-RADIOLÓGICO IMERSIVO: ${region} — ${dominantPathology}" in white/red text.
+
+COLOR SEMANTICS: Vermelho = alto risco clínico, Laranja = risco moderado, Amarelo = secundário, Azul = referência anatômica, Verde = comparação normal.
+
+Regiões coloridas da análise: ${colorRegions}
+
+GRAPHICAL RULES: Organic medical polygons, thin clinical arrows, no decorative elements, high contrast clinical readability, real radiology workstation appearance. All text in Portuguese. Prioritize font size and legibility over information density.
+
+Generate ONE single integrated immersive medical radiology panel.`;
+  }
 }
 
 export const geminiService = new GeminiService();

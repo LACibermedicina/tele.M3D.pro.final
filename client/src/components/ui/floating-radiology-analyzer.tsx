@@ -168,9 +168,10 @@ export default function FloatingRadiologyAnalyzer() {
       return res.json();
     },
     onSuccess: (data: any) => {
-      setResult(data);
+      const { immersive_image, ...analysisData } = data;
+      setResult(analysisData);
       setSavedToStudy(false);
-      setImmersiveImage(null);
+      setImmersiveImage(immersive_image || null);
       toast({ title: 'Radiografia analisada com sucesso' });
     },
     onError: () => {
