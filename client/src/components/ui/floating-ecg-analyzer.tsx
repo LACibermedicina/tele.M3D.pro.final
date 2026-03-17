@@ -100,7 +100,7 @@ export default function FloatingECGAnalyzer() {
       const dy = cy - dragRef.current.startY;
       setPos({
         x: Math.max(0, Math.min(window.innerWidth - size.w, dragRef.current.origX + dx)),
-        y: Math.max(0, Math.min(window.innerHeight - 60, dragRef.current.origY + dy)),
+        y: Math.max(0, Math.min(window.innerHeight - size.h, dragRef.current.origY + dy)),
       });
     };
     const cleanup = () => {
@@ -116,7 +116,7 @@ export default function FloatingECGAnalyzer() {
     window.addEventListener('mouseup', cleanup);
     window.addEventListener('touchmove', onMove);
     window.addEventListener('touchend', cleanup);
-  }, [pos, size.w]);
+  }, [pos, size]);
 
   const onResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
