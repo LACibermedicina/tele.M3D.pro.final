@@ -3,7 +3,6 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -12,8 +11,8 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Scan, X, Upload, Zap, Loader2, Minimize2, Maximize2,
-  AlertTriangle, Save, BookOpen, User, Stethoscope,
+  Scan, X, Upload, Zap, Loader2,
+  Save, User, AlertTriangle, Stethoscope,
   ImageIcon, Trash2, ExternalLink, Download
 } from 'lucide-react';
 
@@ -25,55 +24,15 @@ const SEVERITY_COLORS: Record<number, string> = {
   5: 'bg-red-700',
 };
 
-const ANATOMICAL_REGIONS = [
-  'Tórax (PA)', 'Tórax (Lateral)', 'Crânio', 'Coluna Cervical', 'Coluna Torácica',
-  'Coluna Lombar', 'Abdome', 'Pelve', 'Ombro', 'Cotovelo', 'Punho/Mão',
-  'Quadril', 'Joelho', 'Tornozelo/Pé', 'Seios da Face', 'Outro'
-];
-
-interface RadiologyResult {
-  radiology_findings: {
-    dominant_pathology: string;
-    anatomical_region: string;
-    clinical_impact_percentage: string;
-    laterality: string;
-    description: string;
-  };
-  anatomical_overlay: Array<{ structure: string; relevance_percentage: string; comment: string; status: string }>;
-  normal_comparison: { description: string; key_differences: string[] };
-  pathophysiology_model: string;
-  probabilistic_diagnosis: {
-    presumptive: { name: string; confidence: string; color: string; reasoning: string };
-    differentials: Array<{ name: string; confidence: string; color: string; reasoning: string }>;
-  };
-  prognostic_estimation: { severity_score: string; functional_progression_risk: string; intervention_risk: string; prognosis_model: string };
-  formal_report: { exam: string; technique: string; findings: string; diagnostic_impression: string; recommendations: string };
-  lay_summary: string[];
-  educational_note: { quality_score: number; quality_assessment: string; didactic_note: string; next_steps: string };
-  severity_level: { level: number; label: string; description: string };
-  recommended_conduct: string;
-  multi_specialty_relevance: Array<{ specialty: string; relevance: string; urgency: string }>;
-  technical_quality: { projection: string; rotation: string; centering: string; penetration: string; collimation: string; artifacts: string; score: number };
-  color_coded_regions: Array<{ region: string; color_hex: string; color_name: string; finding: string; risk_level: string }>;
-  clinical_comment: string;
-  action_plan: { immediate_actions: string[]; follow_up: string[]; monitoring: string[] };
-  disclaimer: string;
-}
-
 export default function FloatingRadiologyAnalyzer() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [radImage, setRadImage] = useState<string | null>(null);
   const [radPreview, setRadPreview] = useState<string | null>(null);
-  const [result, setResult] = useState<RadiologyResult | null>(null);
+  const [result, setResult] = useState<any>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [patientAge, setPatientAge] = useState('');
-  const [patientSex, setPatientSex] = useState('');
-  const [patientHistory, setPatientHistory] = useState('');
-  const [anatomicalRegion, setAnatomicalRegion] = useState('');
   const [savedToStudy, setSavedToStudy] = useState(false);
   const [showAssociateDialog, setShowAssociateDialog] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState('');
@@ -89,22 +48,13 @@ export default function FloatingRadiologyAnalyzer() {
   const analyzeMutation = useMutation({
     mutationFn: async () => {
       if (!radImage) throw new Error('No image');
-      const patientContext: Record<string, string> = {};
-      if (patientAge) patientContext.age = patientAge;
-      if (patientSex) patientContext.sex = patientSex;
-      if (patientHistory) patientContext.clinicalHistory = patientHistory;
-      if (anatomicalRegion) patientContext.anatomicalRegion = anatomicalRegion;
-      const res = await apiRequest('POST', '/api/radiology/analyze', {
-        imageBase64: radImage,
-        patientContext,
-      });
+      const res = await apiRequest('POST', '/api/radiology/analyze', { imageBase64: radImage, patientContext: {} });
       return res.json();
     },
-    onSuccess: (data: RadiologyResult) => {
+    onSuccess: (data: any) => {
       setResult(data);
       setSavedToStudy(false);
       setImmersiveImage(null);
-      setIsExpanded(true);
       toast({ title: 'Radiografia analisada com sucesso' });
     },
     onError: () => {
@@ -116,36 +66,20 @@ export default function FloatingRadiologyAnalyzer() {
     mutationFn: async () => {
       if (!result) throw new Error('No result');
       const content = [
-        `## Achado Principal`,
-        `**${result.radiology_findings.dominant_pathology}** (${result.radiology_findings.anatomical_region})`,
-        result.radiology_findings.description,
+        `## Achado: ${result.radiology_findings?.dominant_pathology} (${result.radiology_findings?.anatomical_region})`,
+        result.radiology_findings?.description || '',
         ``,
-        `## Diagnóstico Presuntivo`,
-        `**${result.probabilistic_diagnosis.presumptive.name}** (${result.probabilistic_diagnosis.presumptive.confidence})`,
-        result.probabilistic_diagnosis.presumptive.reasoning,
+        `## Diagnóstico: ${result.probabilistic_diagnosis?.presumptive?.name} (${result.probabilistic_diagnosis?.presumptive?.confidence})`,
+        result.probabilistic_diagnosis?.presumptive?.reasoning || '',
         ``,
-        `## Diagnósticos Diferenciais`,
-        ...result.probabilistic_diagnosis.differentials.map(d => `- ${d.name}: ${d.confidence} - ${d.reasoning}`),
+        `## Conduta: ${result.recommended_conduct || ''}`,
+        `## Gravidade: ${result.severity_level?.label} (${result.severity_level?.level}/5)`,
         ``,
-        `## Conduta Recomendada`,
-        result.recommended_conduct,
-        ``,
-        `## Gravidade: ${result.severity_level.label} (${result.severity_level.level}/5)`,
-        result.severity_level.description,
-        ``,
-        `## Laudo Formal`,
-        `Exame: ${result.formal_report.exam}`,
-        `Achados: ${result.formal_report.findings}`,
-        `Impressão: ${result.formal_report.diagnostic_impression}`,
-        `Recomendações: ${result.formal_report.recommendations}`,
-        ``,
-        `---`,
-        `Contexto: ${patientAge ? `Idade: ${patientAge}` : ''} ${patientSex ? `Sexo: ${patientSex}` : ''} ${anatomicalRegion ? `Região: ${anatomicalRegion}` : ''}`.trim(),
         `Data: ${new Date().toLocaleString('pt-BR')}`,
       ].join('\n');
 
       return apiRequest('POST', '/api/doctor-notes', {
-        title: `Radiologia - ${result.probabilistic_diagnosis.presumptive.name} (${new Date().toLocaleDateString('pt-BR')})`,
+        title: `Radiologia - ${result.probabilistic_diagnosis?.presumptive?.name} (${new Date().toLocaleDateString('pt-BR')})`,
         content,
         folder: 'radiology_study',
         color: 'purple',
@@ -154,7 +88,7 @@ export default function FloatingRadiologyAnalyzer() {
     onSuccess: () => {
       setSavedToStudy(true);
       queryClient.invalidateQueries({ queryKey: ['/api/doctor-notes'] });
-      toast({ title: 'Análise salva para estudo', description: 'Acesse pelo painel Study Notes' });
+      toast({ title: 'Estudo salvo' });
     },
     onError: () => {
       toast({ title: 'Erro ao salvar', variant: 'destructive' });
@@ -167,7 +101,7 @@ export default function FloatingRadiologyAnalyzer() {
       return apiRequest('POST', '/api/radiology/associate', {
         patientId: selectedPatientId,
         analysisData: result,
-        patientContext: { age: patientAge, sex: patientSex, clinicalHistory: patientHistory, anatomicalRegion },
+        patientContext: {},
       });
     },
     onSuccess: () => {
@@ -181,18 +115,16 @@ export default function FloatingRadiologyAnalyzer() {
 
   const generateImmersiveImageMutation = useMutation({
     mutationFn: async () => {
-      if (!result) throw new Error('No analysis result');
-      const res = await apiRequest('POST', '/api/radiology/generate-immersive-image', {
-        analysisData: result,
-      });
+      if (!result) throw new Error('No result');
+      const res = await apiRequest('POST', '/api/radiology/generate-immersive-image', { analysisData: result });
       return res.json();
     },
     onSuccess: (data: { immersive_image: string }) => {
       setImmersiveImage(data.immersive_image);
-      toast({ title: 'Imagem descritiva avançada gerada com sucesso' });
+      toast({ title: 'Imagem descritiva avançada gerada' });
     },
     onError: () => {
-      toast({ title: 'Erro ao gerar imagem descritiva', variant: 'destructive' });
+      toast({ title: 'Erro ao gerar imagem', variant: 'destructive' });
     },
   });
 
@@ -234,20 +166,8 @@ export default function FloatingRadiologyAnalyzer() {
     setRadImage(null);
     setRadPreview(null);
     setResult(null);
-    setPatientAge('');
-    setPatientSex('');
-    setPatientHistory('');
-    setAnatomicalRegion('');
     setSavedToStudy(false);
     setImmersiveImage(null);
-  };
-
-  const saveImmersiveImage = () => {
-    if (!immersiveImage) return;
-    const link = document.createElement('a');
-    link.href = `data:image/png;base64,${immersiveImage}`;
-    link.download = `radiologia-pacs-${new Date().toISOString().slice(0, 10)}.png`;
-    link.click();
   };
 
   if (!user || !['doctor', 'admin'].includes(user.role)) return null;
@@ -264,28 +184,21 @@ export default function FloatingRadiologyAnalyzer() {
     );
   }
 
-  const panelWidth = isExpanded ? 'w-[560px]' : 'w-[380px]';
-  const panelHeight = isExpanded ? 'max-h-[90vh]' : 'max-h-[65vh]';
   const severityLevel = result?.severity_level?.level ?? 1;
   const analysisLocked = !!result;
 
   return (
     <>
-      <div className={`fixed bottom-4 right-4 md:right-20 z-50 ${panelWidth} ${panelHeight} flex flex-col`}>
+      <div className="fixed bottom-4 right-4 md:right-20 z-50 w-[360px] max-h-[70vh] flex flex-col">
         <Card className="flex flex-col h-full border-indigo-500/30 shadow-2xl bg-background/95 backdrop-blur-sm">
           <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between border-b shrink-0">
             <CardTitle className="text-sm flex items-center gap-2">
               <Scan className="h-4 w-4 text-indigo-500" />
               Análise de Estudo
             </CardTitle>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsExpanded(!isExpanded)}>
-                {isExpanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsOpen(false)}>
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsOpen(false)}>
+              <X className="h-3 w-3" />
+            </Button>
           </CardHeader>
 
           <ScrollArea className="flex-1 overflow-auto">
@@ -297,84 +210,18 @@ export default function FloatingRadiologyAnalyzer() {
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-                    isDragOver
-                      ? 'border-indigo-500 bg-indigo-500/10'
-                      : 'border-indigo-500/30 hover:border-indigo-500/50 hover:bg-indigo-500/5'
+                    isDragOver ? 'border-indigo-500 bg-indigo-500/10' : 'border-indigo-500/30 hover:border-indigo-500/50 hover:bg-indigo-500/5'
                   }`}
                 >
                   <Upload className="h-8 w-8 mx-auto text-indigo-400 mb-2" />
-                  <p className="text-sm font-medium">
-                    {isDragOver ? 'Solte a imagem aqui' : 'Arraste ou clique para upload'}
-                  </p>
+                  <p className="text-sm font-medium">{isDragOver ? 'Solte a imagem aqui' : 'Arraste ou clique para upload'}</p>
                   <p className="text-xs text-muted-foreground mt-1">PNG, JPG - Imagem Radiográfica</p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-                  />
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
                 </div>
               ) : (
                 <div className="space-y-2">
                   <div className="relative rounded-lg overflow-hidden border">
-                    <img src={radPreview} alt="Radiografia" className="w-full h-auto max-h-32 object-contain bg-black" />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-1 right-1 h-6 w-6"
-                      onClick={clearAll}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] text-muted-foreground">Idade</label>
-                      <Input
-                        value={patientAge}
-                        onChange={(e) => setPatientAge(e.target.value)}
-                        placeholder="Ex: 65"
-                        className="h-7 text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-muted-foreground">Sexo</label>
-                      <Select value={patientSex} onValueChange={setPatientSex}>
-                        <SelectTrigger className="h-7 text-xs">
-                          <SelectValue placeholder="Sexo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Masculino</SelectItem>
-                          <SelectItem value="female">Feminino</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-muted-foreground">Região Anatômica</label>
-                    <Select value={anatomicalRegion} onValueChange={setAnatomicalRegion}>
-                      <SelectTrigger className="h-7 text-xs">
-                        <SelectValue placeholder="Selecionar região..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ANATOMICAL_REGIONS.map(r => (
-                          <SelectItem key={r} value={r}>{r}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-muted-foreground">Histórico Clínico</label>
-                    <Input
-                      value={patientHistory}
-                      onChange={(e) => setPatientHistory(e.target.value)}
-                      placeholder="Queixa, antecedentes..."
-                      className="h-7 text-xs"
-                    />
+                    <img src={radPreview} alt="Radiografia" className="w-full h-auto max-h-28 object-contain bg-black" />
                   </div>
 
                   <Button
@@ -391,8 +238,31 @@ export default function FloatingRadiologyAnalyzer() {
                       <><Zap className="h-3 w-3 mr-1" /> Analisar Radiografia</>
                     )}
                   </Button>
+                </div>
+              )}
 
-                  {result && (
+              {result && (
+                <div className="space-y-2">
+                  <Card className="border-l-4" style={{ borderLeftColor: result.probabilistic_diagnosis?.presumptive?.color || '#6366F1' }}>
+                    <CardContent className="p-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <Stethoscope className="h-3.5 w-3.5 text-primary" />
+                          <p className="text-xs font-semibold">Diagnóstico</p>
+                        </div>
+                        <Badge className={`text-[9px] text-white ${SEVERITY_COLORS[severityLevel] || 'bg-gray-500'}`}>
+                          {result.severity_level?.label} ({severityLevel}/5)
+                        </Badge>
+                      </div>
+                      <p className="text-xs font-bold" style={{ color: result.probabilistic_diagnosis?.presumptive?.color }}>
+                        {result.probabilistic_diagnosis?.presumptive?.name} ({result.probabilistic_diagnosis?.presumptive?.confidence})
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">{result.recommended_conduct}</p>
+
+                  <div className="flex flex-col gap-1.5">
                     <Button
                       onClick={() => generateImmersiveImageMutation.mutate()}
                       disabled={generateImmersiveImageMutation.isPending}
@@ -400,18 +270,41 @@ export default function FloatingRadiologyAnalyzer() {
                       size="sm"
                     >
                       {generateImmersiveImageMutation.isPending ? (
-                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Gerando Imagem PACS...</>
+                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Gerando...</>
                       ) : (
                         <><ImageIcon className="h-3 w-3 mr-1" /> Gerar Imagem Descritiva Avançada</>
                       )}
                     </Button>
-                  )}
+
+                    <Button
+                      onClick={() => saveToStudyMutation.mutate()}
+                      disabled={saveToStudyMutation.isPending || savedToStudy}
+                      className={`w-full ${!savedToStudy ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white' : ''}`}
+                      variant={savedToStudy ? 'secondary' : 'default'}
+                      size="sm"
+                    >
+                      {saveToStudyMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : savedToStudy ? <><Save className="h-3 w-3 mr-1" /> Salvo</> : <><Save className="h-3 w-3 mr-1" /> Salvar Estudo</>}
+                    </Button>
+
+                    <Button size="sm" className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white" onClick={() => setShowAssociateDialog(true)}>
+                      <User className="h-3 w-3 mr-1" /> Vincular a Paciente
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white"
+                      onClick={() => { setIsOpen(false); setLocation('/fhir-dashboard'); }}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" /> Aprofundamento
+                    </Button>
+
+                    <Button size="sm" variant="destructive" className="w-full" onClick={clearAll}>
+                      <Trash2 className="h-3 w-3 mr-1" /> Limpar Tudo
+                    </Button>
+                  </div>
 
                   {immersiveImage && (
                     <div className="space-y-1">
-                      <p className="text-[10px] font-semibold flex items-center gap-1 text-rose-600 dark:text-rose-400">
-                        <ImageIcon className="h-3 w-3" /> Painel PACS Imersivo
-                      </p>
                       <div className="rounded-lg overflow-hidden border border-rose-500/30">
                         <img
                           src={`data:image/png;base64,${immersiveImage}`}
@@ -419,99 +312,20 @@ export default function FloatingRadiologyAnalyzer() {
                           className="w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
                           onClick={() => {
                             const w = window.open();
-                            if (w) {
-                              w.document.write(`<html><head><title>Painel PACS Imersivo</title><style>body{margin:0;background:#1a1a2e;display:flex;justify-content:center;align-items:center;min-height:100vh;}</style></head><body><img src="data:image/png;base64,${immersiveImage}" style="max-width:100%;max-height:100vh;object-fit:contain;" /></body></html>`);
-                            }
+                            if (w) w.document.write(`<html><head><title>PACS Imersivo</title><style>body{margin:0;background:#1a1a2e;display:flex;justify-content:center;align-items:center;min-height:100vh;}</style></head><body><img src="data:image/png;base64,${immersiveImage}" style="max-width:100%;max-height:100vh;object-fit:contain;" /></body></html>`);
                           }}
                         />
                       </div>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline" className="flex-1 text-[10px] h-6" onClick={saveImmersiveImage}>
-                          <Download className="h-3 w-3 mr-1" /> Salvar Imagem
-                        </Button>
-                      </div>
-                      <p className="text-[9px] text-muted-foreground text-center">Clique na imagem para tela cheia</p>
+                      <Button size="sm" variant="outline" className="w-full text-[10px] h-6" onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = `data:image/png;base64,${immersiveImage}`;
+                        link.download = `radiologia-pacs-${new Date().toISOString().slice(0, 10)}.png`;
+                        link.click();
+                      }}>
+                        <Download className="h-3 w-3 mr-1" /> Salvar Imagem
+                      </Button>
                     </div>
                   )}
-                </div>
-              )}
-
-              {result && (
-                <div className="space-y-3">
-                  <Card className="border-l-4" style={{ borderLeftColor: result.probabilistic_diagnosis.presumptive.color }}>
-                    <CardContent className="p-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <Stethoscope className="h-3.5 w-3.5 text-primary" />
-                          <p className="text-xs font-semibold">Diagnóstico Presuntivo</p>
-                        </div>
-                        <Badge className={`text-[9px] text-white ${SEVERITY_COLORS[severityLevel] || 'bg-gray-500'}`}>
-                          {result.severity_level.label} ({severityLevel}/5)
-                        </Badge>
-                      </div>
-                      <p className="text-xs font-bold" style={{ color: result.probabilistic_diagnosis.presumptive.color }}>
-                        {result.probabilistic_diagnosis.presumptive.name} ({result.probabilistic_diagnosis.presumptive.confidence})
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{result.probabilistic_diagnosis.presumptive.reasoning}</p>
-                    </CardContent>
-                  </Card>
-
-                  {result.clinical_comment && (
-                    <Card className="border-red-500/30 bg-red-500/5">
-                      <CardContent className="p-2">
-                        <p className="text-[10px] text-foreground leading-relaxed font-medium">{result.clinical_comment}</p>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  <Card className="border-green-500/20">
-                    <CardContent className="p-2">
-                      <p className="text-[10px] text-muted-foreground leading-relaxed">{result.recommended_conduct}</p>
-                    </CardContent>
-                  </Card>
-
-                  <div className="flex gap-1.5 flex-wrap">
-                    <Button
-                      onClick={() => saveToStudyMutation.mutate()}
-                      disabled={saveToStudyMutation.isPending || savedToStudy}
-                      variant={savedToStudy ? 'secondary' : 'default'}
-                      className={`flex-1 min-w-0 ${!savedToStudy ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700' : ''}`}
-                      size="sm"
-                    >
-                      {saveToStudyMutation.isPending ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : savedToStudy ? (
-                        <><BookOpen className="h-3 w-3 mr-1" /> Salvo</>
-                      ) : (
-                        <><Save className="h-3 w-3 mr-1" /> Salvar</>
-                      )}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setShowAssociateDialog(true)} className="flex-1 min-w-0">
-                      <User className="h-3 w-3 mr-1" /> Paciente
-                    </Button>
-                  </div>
-
-                  <div className="flex gap-1.5">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => {
-                        setIsOpen(false);
-                        setLocation('/fhir-dashboard');
-                      }}
-                    >
-                      <ExternalLink className="h-3 w-3 mr-1" /> Aprofundamento
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="flex-1"
-                      onClick={clearAll}
-                    >
-                      <Trash2 className="h-3 w-3 mr-1" /> Limpar Tudo
-                    </Button>
-                  </div>
 
                   <div className="flex items-start gap-1.5 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
                     <AlertTriangle className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
@@ -533,27 +347,18 @@ export default function FloatingRadiologyAnalyzer() {
           </DialogHeader>
           <div className="space-y-3">
             <Select value={selectedPatientId} onValueChange={setSelectedPatientId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecionar paciente..." />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Selecionar paciente..." /></SelectTrigger>
               <SelectContent>
                 {patients.map((p: any) => {
                   const name = p.resource?.name?.[0]?.text || p.resource?.name?.[0]?.given?.join(' ') || p.resource?.id;
-                  return (
-                    <SelectItem key={p.resource?.id} value={p.resource?.id || ''}>
-                      {name}
-                    </SelectItem>
-                  );
+                  return <SelectItem key={p.resource?.id} value={p.resource?.id || ''}>{name}</SelectItem>;
                 })}
               </SelectContent>
             </Select>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAssociateDialog(false)}>Cancelar</Button>
-            <Button
-              onClick={() => associateMutation.mutate()}
-              disabled={!selectedPatientId || associateMutation.isPending}
-            >
+            <Button onClick={() => associateMutation.mutate()} disabled={!selectedPatientId || associateMutation.isPending}>
               {associateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Associar'}
             </Button>
           </DialogFooter>
