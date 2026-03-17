@@ -20523,7 +20523,7 @@ ${combinedText.slice(0, 8000)}`;
 
   // ===== FHIR R4 Dashboard + ECG Analysis Engine Routes =====
 
-  // ECG Analysis via GPT-4o Vision
+  // ECG Analysis via Gemini AI Vision (with OpenAI fallback)
   app.post('/api/ecg/analyze', requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
