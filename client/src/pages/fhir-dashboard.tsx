@@ -193,18 +193,21 @@ function SavedStudiesSidebar() {
     queryKey: ['/api/doctor-notes'],
   });
 
-  const ecgStudies = (notes || []).filter((n: any) => n.folder === 'ecg_study' && !n.patientId).slice(0, 5);
-  const radStudies = (notes || []).filter((n: any) => n.folder === 'radiology_study' && !n.patientId).slice(0, 5);
+  const allEcgUnlinked = (notes || []).filter((n: any) => n.folder === 'ecg_study' && !n.patientId);
+  const allRadUnlinked = (notes || []).filter((n: any) => n.folder === 'radiology_study' && !n.patientId);
+  const ecgStudies = allEcgUnlinked.slice(0, 5);
+  const radStudies = allRadUnlinked.slice(0, 5);
+  const totalUnlinked = allEcgUnlinked.length + allRadUnlinked.length;
   const ecgLinked = (notes || []).filter((n: any) => n.folder === 'ecg_study' && n.patientId).length;
   const radLinked = (notes || []).filter((n: any) => n.folder === 'radiology_study' && n.patientId).length;
-  const hasUnlinked = ecgStudies.length > 0 || radStudies.length > 0;
+  const hasUnlinked = totalUnlinked > 0;
 
   return (
     <Card>
       <CardHeader className="p-3 pb-1">
         <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center justify-between">
           <span>Estudos Não Vinculados</span>
-          <Badge variant="outline" className="text-[9px]">{ecgStudies.length + radStudies.length}</Badge>
+          <Badge variant="outline" className="text-[9px]">{totalUnlinked}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="p-3 pt-1">
@@ -226,7 +229,7 @@ function SavedStudiesSidebar() {
             {ecgStudies.length > 0 && (
               <div>
                 <p className="text-[10px] font-semibold text-red-500 uppercase tracking-wide mb-1 flex items-center gap-1">
-                  <Heart className="h-3 w-3" /> ECG ({ecgStudies.length})
+                  <Heart className="h-3 w-3" /> ECG ({allEcgUnlinked.length})
                 </p>
                 <div className="space-y-1">
                   {ecgStudies.map((s: any) => (
@@ -245,7 +248,7 @@ function SavedStudiesSidebar() {
             {radStudies.length > 0 && (
               <div>
                 <p className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide mb-1 flex items-center gap-1">
-                  <Scan className="h-3 w-3" /> Radiologia ({radStudies.length})
+                  <Scan className="h-3 w-3" /> Radiologia ({allRadUnlinked.length})
                 </p>
                 <div className="space-y-1">
                   {radStudies.map((s: any) => (
