@@ -57,6 +57,10 @@ export default function FloatingRadiologyAnalyzer() {
   const [immersiveImage, setImmersiveImage] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showDifferentials, setShowDifferentials] = useState(false);
+  const [patientAge, setPatientAge] = useState('');
+  const [patientSex, setPatientSex] = useState('');
+  const [patientHistory, setPatientHistory] = useState('');
+  const [anatomicalRegion, setAnatomicalRegion] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [pos, setPos] = useState(DEFAULT_POS);
@@ -164,7 +168,12 @@ export default function FloatingRadiologyAnalyzer() {
   const analyzeMutation = useMutation({
     mutationFn: async () => {
       if (!radImage) throw new Error('No image');
-      const res = await apiRequest('POST', '/api/radiology/analyze', { imageBase64: radImage, patientContext: {} });
+      const patientContext: any = {};
+      if (patientAge) patientContext.age = parseInt(patientAge);
+      if (patientSex) patientContext.sex = patientSex;
+      if (patientHistory) patientContext.clinicalHistory = patientHistory;
+      if (anatomicalRegion) patientContext.anatomicalRegion = anatomicalRegion;
+      const res = await apiRequest('POST', '/api/radiology/analyze', { imageBase64: radImage, patientContext });
       return res.json();
     },
     onSuccess: (data: any) => {
@@ -374,6 +383,19 @@ export default function FloatingRadiologyAnalyzer() {
                   <div className="relative rounded-lg overflow-hidden border">
                     <img src={radPreview} alt="Radiografia" className="w-full h-auto max-h-28 object-contain bg-black" />
                   </div>
+
+                  {!result && (
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <Input placeholder="Idade" value={patientAge} onChange={e => setPatientAge(e.target.value)} className="h-7 text-xs" type="number" />
+                      <select value={patientSex} onChange={e => setPatientSex(e.target.value)} className="h-7 text-xs rounded-md border border-input bg-background px-2">
+                        <option value="">Sexo</option>
+                        <option value="M">Masculino</option>
+                        <option value="F">Feminino</option>
+                      </select>
+                      <Input placeholder="Região anatômica" value={anatomicalRegion} onChange={e => setAnatomicalRegion(e.target.value)} className="h-7 text-xs col-span-2" />
+                      <Input placeholder="História clínica" value={patientHistory} onChange={e => setPatientHistory(e.target.value)} className="h-7 text-xs col-span-2" />
+                    </div>
+                  )}
 
                   <Button
                     onClick={() => analyzeMutation.mutate()}
