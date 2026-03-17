@@ -1069,9 +1069,7 @@ export default function FHIRDashboard() {
               </>
             )}
 
-            {!ecgResult && (
-              <SavedStudiesSidebar />
-            )}
+            <SavedStudiesSidebar />
 
             {/* Disclaimer */}
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
