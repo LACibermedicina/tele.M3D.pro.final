@@ -20580,6 +20580,101 @@ The image should look like a high-quality medical dashboard visualization, NOT a
     }
   });
 
+  app.post('/api/ecg/generate-detail-image', requireAuth, async (req: any, res: any) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Apenas médicos e administradores podem gerar imagens' });
+      }
+
+      const { analysisData } = req.body;
+      if (!analysisData) {
+        return res.status(400).json({ message: 'Dados da análise são obrigatórios' });
+      }
+
+      const { generateImageBuffer } = await import('./replit_integrations/image/client');
+
+      const diagnosis = analysisData.presumptive_diagnosis?.name || 'ECG Analysis';
+      const confidence = analysisData.presumptive_diagnosis?.confidence || 'N/A';
+      const severity = analysisData.severity_level?.label || 'Moderado';
+      const severityLevel = analysisData.severity_level?.level || 2;
+      const interpretation = analysisData.cardiac_interpretation || '';
+      const conduct = analysisData.recommended_conduct || '';
+      const techReport = analysisData.technical_report || '';
+      const keyFindings = (analysisData.key_findings || []).slice(0, 5).join('; ');
+      const clinicalComment = analysisData.clinical_comment || '';
+
+      const differentials = (analysisData.differential_diagnoses || []).slice(0, 5).map((d: any) =>
+        `${d.name}: ${d.confidence} (${d.color || '#888'})`
+      ).join(', ');
+
+      const colorAnnotations = (analysisData.color_coded_annotations || []).slice(0, 6).map((a: any) =>
+        `${a.region}: ${a.hypothesis} ${a.probability} (${a.color_name} ${a.color_hex})`
+      ).join('. ');
+
+      const metrics = analysisData.ecg_metrics || {};
+      const metricsStr = Object.entries(metrics).map(([k, v]) => `${k}: ${v}`).join(', ');
+
+      const actionPlan = analysisData.action_plan || {};
+      const immediateActions = (actionPlan.immediate_actions || []).slice(0, 3).join('; ');
+
+      const imagePrompt = `Create a detailed didactic ECG analysis educational panel — a hyper-realistic medical teaching visualization. Dark clinical interface background (#0f172a).
+
+STYLE: Advanced cardiology workstation UI, AHA/ESC teaching atlas hybrid, AI diagnostic overlay, clean medical vector illustration.
+
+VISUAL LAYOUT — STRUCTURED EDUCATIONAL PANEL:
+
+TOP BANNER: "ANÁLISE DIDÁTICA ECG — ${diagnosis}" in white/red text. Severity: ${severity} (${severityLevel}/5).
+
+SECTION 1 (TOP LEFT) — "TRAÇADO ECG ANOTADO":
+- Show a stylized 12-lead ECG trace representation
+- Color-code different waveform segments with semantic colors:
+  - P wave regions in blue (#3B82F6)
+  - QRS complex in green (#22C55E) if normal, red (#EF4444) if abnormal
+  - ST segment highlighted based on findings
+  - T wave regions appropriately colored
+- Annotate key findings: ${keyFindings}
+- ECG metrics overlay: ${metricsStr}
+
+SECTION 2 (TOP RIGHT) — "HIPÓTESES DIAGNÓSTICAS":
+- Color-coded diagnostic hypothesis bars with percentages
+- Primary: ${diagnosis} (${confidence}) — prominent red/orange bar
+- Differentials: ${differentials}
+- Each hypothesis has its own color bar with percentage label
+- Visual probability distribution chart
+
+SECTION 3 (MIDDLE) — "INTERPRETAÇÃO CARDÍACA":
+- ${interpretation}
+- Clinical comment: ${clinicalComment}
+- Color-coded annotation regions: ${colorAnnotations}
+
+SECTION 4 (BOTTOM LEFT) — "CONDUTA E PLANO DE AÇÃO":
+- Severity badge: ${severity} (${severityLevel}/5) with appropriate color (green=1, yellow=2, orange=3, red=4-5)
+- Recommended conduct text: ${conduct}
+- Immediate actions: ${immediateActions}
+
+SECTION 5 (BOTTOM RIGHT) — "LAUDO TÉCNICO":
+- Brief technical report summary: ${techReport}
+- Image quality and diagnostic assessment
+
+COLOR SEMANTICS: Red (#EF4444) = ischemia/high risk, Blue (#3B82F6) = hypertrophy/reference, Green (#22C55E) = normal, Yellow (#EAB308) = moderate risk, Purple (#8B5CF6) = arrhythmia.
+
+GRAPHICAL RULES: Clean medical typography, thin clinical lines, high contrast readability, semantic color hierarchy, no decorative elements. All text in Portuguese.
+
+Generate ONE single integrated didactic ECG analysis panel that is hyper-informative, visually clean, clinically actionable, educationally robust, and fully case-specific.`;
+
+      const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
+      const detailImage = imageBuffer.toString('base64');
+      console.log('ECG detail didactic image generated successfully');
+      res.json({ detail_image: detailImage });
+    } catch (error) {
+      console.error('ECG detail image generation error:', error);
+      res.status(500).json({
+        message: 'Erro ao gerar imagem detalhada do ECG. Tente novamente em alguns instantes.'
+      });
+    }
+  });
+
   app.post('/api/ecg/associate', requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
