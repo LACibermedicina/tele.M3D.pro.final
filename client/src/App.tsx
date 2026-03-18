@@ -1,4 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
+import { useEffect } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { queryClient } from "./lib/queryClient";
@@ -6,6 +7,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import InactivityMonitor from "@/components/inactivity-monitor";
+import { onForceDisconnect } from "@/hooks/use-websocket";
+import { useToast } from "@/hooks/use-toast";
+import { disconnectAllMediaServices } from "@/components/inactivity-monitor";
 import { NavigationProvider } from "@/contexts/NavigationContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Dashboard from "@/pages/dashboard";
@@ -85,6 +89,26 @@ import { ResponsiveDashboard } from "@/components/responsive-dashboard";
 
 // Global shortcuts hooks
 import { useGlobalShortcuts, useCommandEvents, useApplicationShortcuts } from "@/hooks/use-shortcuts";
+
+function ForceDisconnectGuard() {
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    const unsubscribe = onForceDisconnect((_reason, message) => {
+      disconnectAllMediaServices();
+      toast({
+        title: 'Sessão encerrada pelo administrador',
+        description: message,
+        variant: 'destructive',
+      });
+      setLocation('/login');
+    });
+    return unsubscribe;
+  }, [toast, setLocation]);
+
+  return null;
+}
 
 function RecordsRouter() {
   const { user } = useAuth();
@@ -633,6 +657,7 @@ function App() {
                 <TooltipProvider>
                   <Toaster />
                   <InactivityMonitor />
+                  <ForceDisconnectGuard />
                   <Router />
                 </TooltipProvider>
               </VoiceAssistantProvider>
