@@ -3680,7 +3680,8 @@ ${clinicalSummary}`;
       const { duration, meetingNotes, completionStatus, endReason } = req.body;
       
       const finalStatus = completionStatus === 'completed' ? 'completed' : 
-                          completionStatus === 'incomplete' ? 'incomplete' : 'ended';
+                          completionStatus === 'incomplete' ? 'incomplete' :
+                          completionStatus === 'timed_out' ? 'timed_out' : 'ended';
       
       const consultation = await storage.updateVideoConsultation(req.params.id, {
         status: finalStatus,

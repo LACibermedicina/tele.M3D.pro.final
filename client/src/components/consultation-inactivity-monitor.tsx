@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { disconnectAllMediaServices } from "@/components/inactivity-monitor";
 
 const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click"];
+const VIDEO_CHECK_INTERVAL_MS = 3000;
 
 interface ConsultationInactivityMonitorProps {
   consultationId: string;
@@ -29,6 +30,8 @@ export default function ConsultationInactivityMonitor({
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownEndRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevFrameDataRef = useRef<string | null>(null);
   const showWarningRef = useRef(false);
   const endCalledRef = useRef(false);
   const onTimeoutRef = useRef(onTimeout);
@@ -65,6 +68,7 @@ export default function ConsultationInactivityMonitor({
     if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
     if (countdownTimerRef.current) { clearInterval(countdownTimerRef.current); countdownTimerRef.current = null; }
     if (countdownEndRef.current) { clearTimeout(countdownEndRef.current); countdownEndRef.current = null; }
+    if (videoCheckRef.current) { clearInterval(videoCheckRef.current); videoCheckRef.current = null; }
   }, []);
 
   const endConsultation = useCallback(async (reason: string) => {
@@ -75,11 +79,16 @@ export default function ConsultationInactivityMonitor({
     disconnectAllMediaServices();
 
     try {
+      await apiRequest("POST", `/api/video-consultations/${consultationId}/leave`, {});
+    } catch {
+    }
+
+    try {
       await apiRequest("POST", `/api/video-consultations/${consultationId}/end`, {
         duration: 0,
-        meetingNotes: `Consulta encerrada automaticamente: ${reason}`,
-        completionStatus: "incomplete",
-        endReason: reason,
+        meetingNotes: `Consulta encerrada automaticamente por ${reason === "inactivity" ? "inatividade do usuário" : "silêncio prolongado (sem áudio/vídeo)"}`,
+        completionStatus: "timed_out",
+        endReason: `auto_timeout_${reason}`,
       });
     } catch (err) {
       console.error("Failed to end consultation via API:", err);
@@ -142,12 +151,42 @@ export default function ConsultationInactivityMonitor({
     endCalledRef.current = false;
     resetInactivityTimer();
     resetSilenceTimer();
+    startVideoActivityMonitor();
   }, [clearAllTimers, resetInactivityTimer, resetSilenceTimer]);
 
   const handleEndNow = useCallback(() => {
     clearAllTimers();
     endConsultation(triggerReason);
   }, [clearAllTimers, endConsultation, triggerReason]);
+
+  const checkVideoActivity = useCallback(() => {
+    const videoElements = document.querySelectorAll("video");
+    for (const videoEl of videoElements) {
+      if (videoEl.videoWidth === 0 || videoEl.videoHeight === 0 || videoEl.paused) continue;
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 16;
+        canvas.height = 16;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) continue;
+        ctx.drawImage(videoEl, 0, 0, 16, 16);
+        const currentData = canvas.toDataURL("image/png");
+        if (prevFrameDataRef.current && currentData !== prevFrameDataRef.current) {
+          if (!showWarningRef.current) {
+            resetSilenceTimer();
+          }
+        }
+        prevFrameDataRef.current = currentData;
+        return;
+      } catch {
+      }
+    }
+  }, [resetSilenceTimer]);
+
+  const startVideoActivityMonitor = useCallback(() => {
+    if (videoCheckRef.current) { clearInterval(videoCheckRef.current); videoCheckRef.current = null; }
+    videoCheckRef.current = setInterval(checkVideoActivity, VIDEO_CHECK_INTERVAL_MS);
+  }, [checkVideoActivity]);
 
   useEffect(() => {
     if (!isJoined || !consultationId) {
@@ -199,6 +238,7 @@ export default function ConsultationInactivityMonitor({
     };
 
     setupAudioMonitor();
+    startVideoActivityMonitor();
 
     return () => {
       ACTIVITY_EVENTS.forEach((event) => {
@@ -210,7 +250,7 @@ export default function ConsultationInactivityMonitor({
         try { audioCtx.close(); } catch {}
       }
     };
-  }, [isJoined, consultationId, clearAllTimers, resetInactivityTimer, resetSilenceTimer]);
+  }, [isJoined, consultationId, clearAllTimers, resetInactivityTimer, resetSilenceTimer, startVideoActivityMonitor]);
 
   if (!showWarning || !isJoined) return null;
 
