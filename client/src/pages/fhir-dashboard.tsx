@@ -860,6 +860,7 @@ export default function FHIRDashboard() {
                   )}
                 </CardContent>
               </Card>
+              </DraggableDashboardPanel>
             )}
 
             {editingPatient && (
@@ -913,7 +914,6 @@ export default function FHIRDashboard() {
                   </div>
                 </DialogContent>
               </Dialog>
-              </DraggableDashboardPanel>
             )}
 
             {activeTab === 'observations' && (
