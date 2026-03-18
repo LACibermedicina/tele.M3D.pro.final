@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import LanguageSelector from "@/components/ui/language-selector";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/use-admin";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines, ChevronDown, CalendarX2, CreditCard, Coins, HeartPulse } from "lucide-react";
@@ -28,6 +29,7 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const { user, logout } = useAuth();
+  const isAdmin = useIsAdmin();
   const { toast } = useToast();
   const { voiceMode, setVoiceMode, hasDecided } = useVoiceAssistant();
   const { mobileMenuStyle, sidebarCollapsed, setSidebarCollapsed, navDockMode } = useLayoutSettings();
@@ -421,7 +423,7 @@ export default function Header() {
       label: "Principal",
       items: [
         { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, faIcon: "fas fa-chart-line", roles: ["admin", "doctor", "patient"] },
-        { path: "/assistant", label: "Assistente IA", icon: BrainCircuit, faIcon: "fas fa-robot", roles: ["admin", "doctor", "patient"] },
+        { path: "/assistant", label: "Assistente Virtual", icon: BrainCircuit, faIcon: "fas fa-robot", roles: ["admin", "doctor", "patient"] },
         { path: "/fhir-dashboard", label: "Análise de Estudos", icon: HeartPulse, faIcon: "fas fa-heartbeat", roles: ["admin", "doctor"] },
       ],
     },
@@ -458,9 +460,9 @@ export default function Header() {
     },
     {
       category: "comunicacao",
-      label: "Comunicação & IA",
+      label: "Comunicação",
       items: [
-        { path: "/whatsapp", label: "WhatsApp IA", icon: MessageCircle, faIcon: "fab fa-whatsapp", roles: ["admin", "doctor"] },
+        { path: "/whatsapp", label: "WhatsApp", icon: MessageCircle, faIcon: "fab fa-whatsapp", roles: ["admin", "doctor"] },
         { path: "/medical-references", label: "Referências Médicas", icon: BookOpenCheck, faIcon: "fas fa-file-pdf", roles: ["admin", "doctor"] },
         { path: "/coffee-room", label: "Cafeteria Virtual", icon: Coffee, faIcon: "fas fa-mug-hot", roles: ["doctor"] },
       ],
@@ -942,7 +944,7 @@ export default function Header() {
                       ) : (
                         <div>
                           <p className="text-sm font-semibold text-foreground">Tele&lt;M3D&gt;</p>
-                          <p className="text-xs text-muted-foreground">Telemedicina com IA</p>
+                          <p className="text-xs text-muted-foreground">Telemedicina</p>
                         </div>
                       )}
                     </div>
@@ -1477,7 +1479,7 @@ export default function Header() {
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{voiceMode ? "Desativar IAM3D" : "Ativar IAM3D"}</p>
+                  <p>{voiceMode ? (isAdmin ? "Desativar IAM3D" : "Desativar Assistente") : (isAdmin ? "Ativar IAM3D" : "Ativar Assistente")}</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -1573,7 +1575,7 @@ export default function Header() {
                       onClick={() => {
                         toast({
                           title: "ℹ️ Informações Gerais",
-                          description: "Tele<M3D> - Sistema de Telemedicina com IA",
+                          description: "Tele<M3D> - Sistema de Telemedicina",
                         });
                         navigate('/features');
                       }}

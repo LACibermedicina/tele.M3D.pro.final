@@ -236,11 +236,11 @@ export default function CreditsPage() {
               <span className="font-semibold">10 TM3D</span>
             </div>
             <div className="flex justify-between">
-              <span>Análise de Exames com IA</span>
+              <span>Análise de Exames</span>
               <span className="font-semibold">15 TM3D</span>
             </div>
             <div className="flex justify-between">
-              <span>Consulta ao Assistente IA</span>
+              <span>Consulta ao Assistente Virtual</span>
               <span className="font-semibold">5 TM3D</span>
             </div>
             <div className="flex justify-between">

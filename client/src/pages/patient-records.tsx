@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/use-admin";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,7 @@ interface MyConsultations {
 
 export default function PatientRecords() {
   const { user } = useAuth();
+  const isAdmin = useIsAdmin();
   const [, navigate] = useLocation();
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
@@ -253,7 +255,7 @@ export default function PatientRecords() {
           </TabsContent>
 
           <TabsContent value="requests" className="space-y-4">
-            {renderRequestsList(allRequests, navigate)}
+            {renderRequestsList(allRequests, navigate, isAdmin)}
           </TabsContent>
 
           <TabsContent value="prescriptions" className="space-y-4">
@@ -331,7 +333,7 @@ export default function PatientRecords() {
                   Nova Solicitação
                 </Button>
               </div>
-              {renderRequestsList(allRequests, navigate)}
+              {renderRequestsList(allRequests, navigate, isAdmin)}
             </div>
           )}
         </div>
@@ -349,7 +351,7 @@ export default function PatientRecords() {
   );
 }
 
-function renderRequestsList(requests: any[], navigate: (path: string) => void) {
+function renderRequestsList(requests: any[], navigate: (path: string) => void, isAdmin: boolean) {
   if (requests.length === 0) {
     return (
       <Card>
@@ -410,7 +412,7 @@ function renderRequestsList(requests: any[], navigate: (path: string) => void) {
           <div className="bg-muted/40 rounded-lg p-3">
             <h4 className="text-sm font-medium flex items-center gap-2 mb-1">
               <Activity className="w-3 h-3" />
-              Avaliação Clínica (IA)
+              Avaliação Clínica{isAdmin ? ' (IA)' : ''}
             </h4>
             <p className="text-sm text-muted-foreground">{req.clinicalPresentation}</p>
           </div>

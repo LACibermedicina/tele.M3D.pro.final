@@ -1,4 +1,5 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { useIsAdmin } from "@/hooks/use-admin"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -188,8 +189,8 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
               <Brain className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-medium">Assistente IAM3D</span>
-              <p className="text-xs text-muted-foreground">Triagem e orientações por IA</p>
+              <span className="text-sm font-medium">Assistente Virtual</span>
+              <p className="text-xs text-muted-foreground">Triagem e orientações</p>
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>

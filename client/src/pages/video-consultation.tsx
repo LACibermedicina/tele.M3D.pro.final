@@ -19,6 +19,7 @@ import { FormattedText } from '@/components/ui/formatted-text';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsAdmin } from '@/hooks/use-admin';
 import {
   Video,
   VideoOff,
@@ -82,6 +83,7 @@ export default function VideoConsultation() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const isAdmin = useIsAdmin();
   const { messages: wsMessages } = useWebSocket();
   const patientId = params?.patientId || '';
   const [consultationId, setConsultationId] = useState<string>('');
@@ -891,7 +893,7 @@ export default function VideoConsultation() {
     <Card className={`flex flex-col overflow-hidden ${heightClass || 'h-full'}`}>
       <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30">
         <Brain className="h-4 w-4 text-green-600" />
-        <span className="text-xs font-semibold">Interconsulta IAM3D</span>
+        <span className="text-xs font-semibold">{isAdmin ? 'Interconsulta IAM3D' : 'Interconsulta'}</span>
         {iam3dNotes.length > 0 && <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-purple-100 text-purple-800">🔬 {iam3dNotes.length}</Badge>}
         {aiLoading && <Loader2 className="h-3 w-3 animate-spin ml-auto text-green-600" />}
       </div>
@@ -900,12 +902,12 @@ export default function VideoConsultation() {
           {iam3dNotes.length > 0 && (
             <div className="mb-2">
               <div className="flex items-center gap-1 mb-1">
-                <span className="text-[10px] font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wide">Hipóteses Diagnósticas IAM3D</span>
+                <span className="text-[10px] font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wide">{isAdmin ? 'Hipóteses Diagnósticas IAM3D' : 'Hipóteses Diagnósticas'}</span>
               </div>
               {iam3dNotes.slice(-1).map((note) => (
                 <Card key={note.id} className="p-2 bg-purple-50 dark:bg-purple-950 border-purple-300 dark:border-purple-700 border-l-4 border-l-purple-600" data-testid={`message-iam3d-${note.id}`}>
                   <div className="flex items-center gap-1 mb-1">
-                    <span className="text-[10px] font-bold text-purple-700 dark:text-purple-400">🔬 IAM3D</span>
+                    <span className="text-[10px] font-bold text-purple-700 dark:text-purple-400">{isAdmin ? '🔬 IAM3D' : '🔬 Análise'}</span>
                     <span className="text-[9px] text-muted-foreground ml-auto">
                       {new Date(note.timestamp || note.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </span>
@@ -920,7 +922,7 @@ export default function VideoConsultation() {
                     {iam3dNotes.slice(0, -1).reverse().map((note) => (
                       <Card key={note.id} className="p-2 bg-purple-50/50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800 opacity-75">
                         <div className="flex items-center gap-1 mb-0.5">
-                          <span className="text-[10px] font-semibold text-purple-600">IAM3D</span>
+                          <span className="text-[10px] font-semibold text-purple-600">{isAdmin ? 'IAM3D' : 'Análise'}</span>
                           <span className="text-[9px] text-muted-foreground ml-auto">
                             {new Date(note.timestamp || note.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                           </span>
@@ -937,14 +939,14 @@ export default function VideoConsultation() {
           {aiNotes.length === 0 && iam3dNotes.length === 0 && (
             <div className="text-center py-4">
               <Brain className="h-6 w-6 mx-auto mb-1 text-muted-foreground opacity-50" />
-              <p className="text-xs text-muted-foreground">Pergunte à IA ou adicione anotações para ativar o IAM3D</p>
+              <p className="text-xs text-muted-foreground">{isAdmin ? 'Pergunte à IA ou adicione anotações para ativar o IAM3D' : 'Pergunte ou adicione anotações para ativar a análise'}</p>
             </div>
           )}
           {aiNotes.map((note) => (
             <Card key={note.id} className={`p-2 ${note.type === 'ai_query' ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800' : 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800'}`} data-testid={`message-ai-${note.id}`}>
               <div className="flex items-center gap-1 mb-0.5">
                 {note.type === 'ai_query' ? <Stethoscope className="h-3 w-3 text-blue-600" /> : <Brain className="h-3 w-3 text-green-600" />}
-                <span className="text-[10px] font-semibold">{note.type === 'ai_query' ? 'Pergunta' : 'IA'}</span>
+                <span className="text-[10px] font-semibold">{note.type === 'ai_query' ? 'Pergunta' : (isAdmin ? 'IA' : 'Resposta')}</span>
               </div>
               <FormattedText content={note.content} className="text-xs" />
             </Card>
@@ -1208,7 +1210,7 @@ export default function VideoConsultation() {
                 {chatNotes.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{chatNotes.length}</Badge>}
               </TabsTrigger>
               <TabsTrigger value="ai" className="flex items-center gap-1 text-xs" data-testid="tab-ai">
-                <Brain className="h-3.5 w-3.5" /> IA
+                <Brain className="h-3.5 w-3.5" /> {isAdmin ? 'IA' : 'Análise'}
                 {aiLoading && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
               </TabsTrigger>
               <TabsTrigger value="transcription" className="flex items-center gap-1 text-xs">
@@ -1255,13 +1257,13 @@ export default function VideoConsultation() {
                 {iam3dNotes.length > 0 && (
                   <div className="mb-3">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wide">Interconsulta IAM3D</span>
+                      <span className="text-xs font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wide">{isAdmin ? 'Interconsulta IAM3D' : 'Interconsulta'}</span>
                       <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-[10px]">{iam3dNotes.length}</Badge>
                     </div>
                     {iam3dNotes.slice(-1).map((note) => (
                       <Card key={note.id} className="p-3 bg-purple-50 dark:bg-purple-950 border-purple-300 dark:border-purple-700 border-l-4 border-l-purple-600">
                         <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-xs font-bold text-purple-700 dark:text-purple-400">🔬 IAM3D — Hipóteses Diagnósticas</span>
+                          <span className="text-xs font-bold text-purple-700 dark:text-purple-400">{isAdmin ? '🔬 IAM3D — Hipóteses Diagnósticas' : '🔬 Hipóteses Diagnósticas'}</span>
                           <span className="text-xs text-muted-foreground ml-auto">{new Date(note.timestamp || note.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                       <FormattedText content={note.content} className="text-sm" />
@@ -1274,7 +1276,7 @@ export default function VideoConsultation() {
                         {iam3dNotes.slice(0, -1).reverse().map((note) => (
                           <Card key={note.id} className="p-2 bg-purple-50/50 dark:bg-purple-950/50 border-purple-200 opacity-75">
                             <div className="flex items-center gap-1 mb-0.5">
-                              <span className="text-[10px] font-semibold text-purple-600">IAM3D</span>
+                              <span className="text-[10px] font-semibold text-purple-600">{isAdmin ? 'IAM3D' : 'Análise'}</span>
                               <span className="text-[10px] text-muted-foreground ml-auto">{new Date(note.timestamp || note.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                             <FormattedText content={note.content} className="text-xs" />
@@ -1286,18 +1288,18 @@ export default function VideoConsultation() {
                   <div className="border-t border-dashed border-muted-foreground/30 my-2" />
                 </div>
               )}
-              {aiNotes.length === 0 && iam3dNotes.length === 0 && <div className="text-center py-8"><Brain className="h-8 w-8 mx-auto mb-2 text-muted-foreground" /><p className="text-sm text-muted-foreground">Faça perguntas diagnósticas ou adicione anotações para ativar o IAM3D.</p></div>}
+              {aiNotes.length === 0 && iam3dNotes.length === 0 && <div className="text-center py-8"><Brain className="h-8 w-8 mx-auto mb-2 text-muted-foreground" /><p className="text-sm text-muted-foreground">{isAdmin ? 'Faça perguntas diagnósticas ou adicione anotações para ativar o IAM3D.' : 'Faça perguntas diagnósticas ou adicione anotações para ativar a análise.'}</p></div>}
               {aiNotes.map((note) => (
                 <Card key={note.id} className={`p-3 ${note.type === 'ai_query' ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800' : 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800'}`}>
                   <div className="flex items-center gap-1.5 mb-1">
                     {note.type === 'ai_query' ? <Stethoscope className="h-3.5 w-3.5 text-blue-600" /> : <Brain className="h-3.5 w-3.5 text-green-600" />}
-                    <span className="text-xs font-semibold">{note.type === 'ai_query' ? 'Sua pergunta' : 'Resposta da IA'}</span>
+                    <span className="text-xs font-semibold">{note.type === 'ai_query' ? 'Sua pergunta' : (isAdmin ? 'Resposta da IA' : 'Resposta')}</span>
                     <span className="text-xs text-muted-foreground ml-auto">{new Date(note.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                   <FormattedText content={note.content} className="text-sm" />
                 </Card>
               ))}
-              {aiLoading && <Card className="p-3 bg-green-50 dark:bg-green-950"><div className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin text-green-600" /><span className="text-sm text-muted-foreground">IA analisando...</span></div></Card>}
+              {aiLoading && <Card className="p-3 bg-green-50 dark:bg-green-950"><div className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin text-green-600" /><span className="text-sm text-muted-foreground">Analisando...</span></div></Card>}
             </div></ScrollArea>
             <div className="p-3 border-t flex gap-2">
               <Textarea placeholder="Faça uma pergunta diagnóstica..." value={aiQuery} onChange={(e) => setAiQuery(e.target.value)}
@@ -1376,7 +1378,7 @@ export default function VideoConsultation() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
             <TabsList className="w-full grid grid-cols-4 h-9 rounded-none">
               <TabsTrigger value="chat" className="text-xs gap-1"><MessageSquare className="h-3 w-3" /> Chat</TabsTrigger>
-              <TabsTrigger value="ai" className="text-xs gap-1"><Brain className="h-3 w-3" /> IA</TabsTrigger>
+              <TabsTrigger value="ai" className="text-xs gap-1"><Brain className="h-3 w-3" /> {isAdmin ? 'IA' : 'Análise'}</TabsTrigger>
               <TabsTrigger value="transcription" className="text-xs gap-1"><AudioLines className="h-3 w-3" /> Trans.</TabsTrigger>
               <TabsTrigger value="notes" className="text-xs gap-1"><FileText className="h-3 w-3" /> Notas</TabsTrigger>
             </TabsList>

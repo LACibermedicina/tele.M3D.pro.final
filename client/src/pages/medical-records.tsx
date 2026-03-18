@@ -15,6 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/use-admin";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { z } from "zod";
@@ -66,6 +67,7 @@ export default function MedicalRecords() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const isAdmin = useIsAdmin();
   const isDoctor = user?.role === 'doctor' || user?.role === 'admin';
   const [, setLocation] = useLocation();
 
@@ -136,15 +138,15 @@ export default function MedicalRecords() {
         form.setValue('treatment', response.analysis.treatment || '');
         form.setValue('prescription', response.analysis.prescription || '');
         toast({
-          title: "Análise IA Concluída",
-          description: "Os campos foram preenchidos com as sugestões da IA.",
+          title: "Análise Concluída",
+          description: "Os campos foram preenchidos com as sugestões.",
         });
       }
     },
     onError: () => {
       toast({
         title: "Erro na Análise",
-        description: "Erro ao gerar análise IA. Tente novamente.",
+        description: "Erro ao gerar análise. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -456,7 +458,7 @@ export default function MedicalRecords() {
                       )} />
                       <div className="flex items-center space-x-2">
                         <Button type="button" variant="outline" onClick={handleAnalyzeSymptoms} disabled={analyzeSymptomsMutation.isPending}>
-                          {analyzeSymptomsMutation.isPending ? "Analisando..." : "Analisar com IA"}
+                          {analyzeSymptomsMutation.isPending ? "Analisando..." : "Analisar Sintomas"}
                         </Button>
                       </div>
                       <FormField control={form.control} name="diagnosis" render={({ field }) => (
@@ -1025,11 +1027,11 @@ export default function MedicalRecords() {
                                         )}
                                         {rec.diagnosticHypotheses && rec.diagnosticHypotheses.length > 0 && (
                                           <div className="mt-2">
-                                            <span className="font-medium text-xs text-muted-foreground">Hipóteses Diagnósticas (IA):</span>
+                                            <span className="font-medium text-xs text-muted-foreground">Hipóteses Diagnósticas{isAdmin ? ' (IA)' : ''}:</span>
                                             <div className="flex flex-wrap gap-1.5 mt-1">
                                               {rec.diagnosticHypotheses.map((h: any, i: number) => (
                                                 <Badge key={i} variant="outline" className="text-xs">
-                                                  {h.condition} ({h.probability}%)
+                                                  {h.condition}{isAdmin ? ` (${h.probability}%)` : ''}
                                                 </Badge>
                                               ))}
                                             </div>
@@ -1064,7 +1066,7 @@ export default function MedicalRecords() {
                                         <div className="flex items-center gap-2">
                                           <Activity className="w-4 h-4 text-purple-600" />
                                           <span className="font-medium text-sm">{exam.examType}</span>
-                                          {exam.analyzedByAI && (
+                                          {exam.analyzedByAI && isAdmin && (
                                             <Badge variant="outline" className="text-purple-600 text-xs">IA</Badge>
                                           )}
                                         </div>
@@ -1185,12 +1187,12 @@ export default function MedicalRecords() {
                               )}
                               {record.diagnosticHypotheses && (
                                 <div>
-                                  <h4 className="font-medium text-sm text-muted-foreground mb-2">Hipóteses Diagnósticas (IA)</h4>
+                                  <h4 className="font-medium text-sm text-muted-foreground mb-2">Hipóteses Diagnósticas{isAdmin ? ' (IA)' : ''}</h4>
                                   <div className="space-y-2">
                                     {record.diagnosticHypotheses.map((h: any, i: number) => (
                                       <div key={i} className="flex items-center justify-between text-sm bg-muted/30 p-2 rounded">
                                         <span>{h.condition}</span>
-                                        <Badge variant="outline">{h.probability}%</Badge>
+                                        {isAdmin && <Badge variant="outline">{h.probability}%</Badge>}
                                       </div>
                                     ))}
                                   </div>
@@ -1227,7 +1229,7 @@ export default function MedicalRecords() {
                                   {format(new Date(exam.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                                 </p>
                               </div>
-                              {exam.analyzedByAI && (
+                              {exam.analyzedByAI && isAdmin && (
                                 <Badge variant="outline" className="text-purple-600">Analisado por IA</Badge>
                               )}
                             </div>

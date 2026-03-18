@@ -566,7 +566,7 @@ export default function FloatingChatbot() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  minimize({ id: 'floating-chatbot', label: 'Chatbot IA', icon: 'message-circle' });
+                  minimize({ id: 'floating-chatbot', label: isAdmin ? 'Chatbot IA' : 'Chatbot', icon: 'message-circle' });
                   setIsOpen(false);
                   if (synthRef.current) synthRef.current.cancel();
                 }}

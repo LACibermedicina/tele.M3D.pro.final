@@ -1065,59 +1065,63 @@ export default function FHIRDashboard() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-red-500/20">
-                  <CardHeader className="p-3 pb-1">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Stethoscope className="h-4 w-4 text-red-500" />
-                      Diagnóstico %
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-3 pt-0">
-                    <div className="h-[200px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={dxChartData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={40}
-                            outerRadius={70}
-                            paddingAngle={3}
-                            dataKey="value"
-                            label={({ name, value }) => `${value}%`}
-                          >
-                            {dxChartData.map((_, idx) => (
-                              <Cell key={idx} fill={DX_COLORS[idx % DX_COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(val: number) => `${val}%`} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="space-y-1 mt-2">
-                      {dxChartData.map((item, idx) => (
-                        <div key={item.name} className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DX_COLORS[idx % DX_COLORS.length] }} />
-                            <span className="truncate max-w-[120px]">{item.name}</span>
+                {isAdmin && (
+                  <Card className="border-red-500/20">
+                    <CardHeader className="p-3 pb-1">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Stethoscope className="h-4 w-4 text-red-500" />
+                        Diagnóstico %
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0">
+                      <div className="h-[200px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={dxChartData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={40}
+                              outerRadius={70}
+                              paddingAngle={3}
+                              dataKey="value"
+                              label={({ name, value }) => `${value}%`}
+                            >
+                              {dxChartData.map((_, idx) => (
+                                <Cell key={idx} fill={DX_COLORS[idx % DX_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(val: number) => `${val}%`} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="space-y-1 mt-2">
+                        {dxChartData.map((item, idx) => (
+                          <div key={item.name} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DX_COLORS[idx % DX_COLORS.length] }} />
+                              <span className="truncate max-w-[120px]">{item.name}</span>
+                            </div>
+                            <span className="font-semibold">{item.value}%</span>
                           </div>
-                          <span className="font-semibold">{item.value}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-                <Card>
-                  <CardHeader className="p-3 pb-1">
-                    <CardTitle className="text-sm">Resumo Técnico</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-3 pt-0">
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {ecgResult.technical_summary}
-                    </p>
-                  </CardContent>
-                </Card>
+                {isAdmin && (
+                  <Card>
+                    <CardHeader className="p-3 pb-1">
+                      <CardTitle className="text-sm">Resumo Técnico</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0">
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {ecgResult.technical_summary}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <Card>
                   <CardHeader className="p-3 pb-1">
@@ -1692,7 +1696,7 @@ function ECGEngineTab({
           <CardTitle className="flex items-center gap-2">
             <Heart className="h-5 w-5 text-red-500" />
             Análise de ECG
-            {isPermanentAdmin && <Badge className="ml-2 bg-blue-500 text-white text-[10px]">Gemini AI Vision</Badge>}
+            {isAdmin && isPermanentAdmin && <Badge className="ml-2 bg-blue-500 text-white text-[10px]">Gemini AI Vision</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1890,8 +1894,8 @@ function ECGEngineTab({
                 <Card className="border-indigo-500/30 overflow-hidden">
                   <CardHeader className="p-3 pb-0">
                     <CardTitle className="text-sm flex items-center gap-2">
-                      <Eye className="h-4 w-4 text-indigo-500" /> Visualização Imersiva AI
-                      {isPermanentAdmin && <Badge className="ml-2 bg-indigo-500 text-white text-[10px]">gpt-image-1</Badge>}
+                      <Eye className="h-4 w-4 text-indigo-500" /> Visualização Imersiva
+                      {isAdmin && isPermanentAdmin && <Badge className="ml-2 bg-indigo-500 text-white text-[10px]">gpt-image-1</Badge>}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-3">
@@ -1901,7 +1905,7 @@ function ECGEngineTab({
                       className="w-full h-auto rounded-lg border"
                     />
                     <p className="text-[10px] text-muted-foreground text-center mt-2">
-                      Imagem gerada por IA — Ilustrativa, não substitui laudo médico
+                      {isAdmin ? 'Imagem gerada por IA — Ilustrativa, não substitui laudo médico' : 'Ilustrativa, não substitui laudo médico'}
                     </p>
                   </CardContent>
                 </Card>
@@ -2214,7 +2218,7 @@ function RadiologyEngineTab({
           <CardTitle className="flex items-center gap-2">
             <Scan className="h-5 w-5 text-indigo-500" />
             Análise de Estudos
-            {isPermanentAdmin && <Badge variant="outline" className="text-xs">Gemini 2.0 Flash</Badge>}
+            {isAdmin && isPermanentAdmin && <Badge variant="outline" className="text-xs">Gemini 2.0 Flash</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -2453,7 +2457,7 @@ function RadiologyEngineTab({
                 <p><span className="font-semibold">Gravidade:</span> {radResult.prognostic_estimation.severity_score}</p>
                 <p><span className="font-semibold">Risco Progressão:</span> {radResult.prognostic_estimation.functional_progression_risk}</p>
                 <p><span className="font-semibold">Risco Intervenção:</span> {radResult.prognostic_estimation.intervention_risk}</p>
-                <p><span className="font-semibold">Modelo:</span> {radResult.prognostic_estimation.prognosis_model}</p>
+                {isAdmin && <p><span className="font-semibold">Modelo:</span> {radResult.prognostic_estimation.prognosis_model}</p>}
               </CardContent>
             )}
           </Card>
@@ -2480,46 +2484,50 @@ function RadiologyEngineTab({
             )}
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowTechQuality(!showTechQuality)}>
-              <CardTitle className="text-sm flex items-center justify-between">
-                <span className="flex items-center gap-2"><Activity className="h-4 w-4" /> Qualidade Técnica</span>
-                {showTechQuality ? <span className="text-xs text-muted-foreground">Recolher</span> : <span className="text-xs text-muted-foreground">Expandir</span>}
-              </CardTitle>
-            </CardHeader>
-            {showTechQuality && (
-              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {Object.entries(radResult.technical_quality).filter(([k]) => k !== 'score').map(([key, val]) => (
-                  <div key={key} className="p-2 rounded-lg bg-muted/50 border">
-                    <p className="text-xs text-muted-foreground uppercase">{key}</p>
-                    <p className="text-sm font-medium">{val as string}</p>
+          {isAdmin && (
+            <Card>
+              <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowTechQuality(!showTechQuality)}>
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span className="flex items-center gap-2"><Activity className="h-4 w-4" /> Qualidade Técnica</span>
+                  {showTechQuality ? <span className="text-xs text-muted-foreground">Recolher</span> : <span className="text-xs text-muted-foreground">Expandir</span>}
+                </CardTitle>
+              </CardHeader>
+              {showTechQuality && (
+                <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {Object.entries(radResult.technical_quality).filter(([k]) => k !== 'score').map(([key, val]) => (
+                    <div key={key} className="p-2 rounded-lg bg-muted/50 border">
+                      <p className="text-xs text-muted-foreground uppercase">{key}</p>
+                      <p className="text-sm font-medium">{val as string}</p>
+                    </div>
+                  ))}
+                  <div className="p-2 rounded-lg bg-muted/50 border">
+                    <p className="text-xs text-muted-foreground uppercase">Score</p>
+                    <p className="text-sm font-medium">{radResult.technical_quality.score}/5</p>
                   </div>
-                ))}
-                <div className="p-2 rounded-lg bg-muted/50 border">
-                  <p className="text-xs text-muted-foreground uppercase">Score</p>
-                  <p className="text-sm font-medium">{radResult.technical_quality.score}/5</p>
-                </div>
-              </CardContent>
-            )}
-          </Card>
+                </CardContent>
+              )}
+            </Card>
+          )}
 
-          <Card>
-            <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowReport(!showReport)}>
-              <CardTitle className="text-sm flex items-center justify-between">
-                <span className="flex items-center gap-2"><FileText className="h-4 w-4" /> Laudo Formal (CBR/RSNA)</span>
-                {showReport ? <span className="text-xs text-muted-foreground">Recolher</span> : <span className="text-xs text-muted-foreground">Expandir</span>}
-              </CardTitle>
-            </CardHeader>
-            {showReport && (
-              <CardContent className="space-y-2 text-sm">
-                <p><span className="font-semibold">Exame:</span> {radResult.formal_report.exam}</p>
-                <p><span className="font-semibold">Técnica:</span> {radResult.formal_report.technique}</p>
-                <p className="leading-relaxed"><span className="font-semibold">Achados:</span> {radResult.formal_report.findings}</p>
-                <p className="leading-relaxed"><span className="font-semibold">Impressão:</span> {radResult.formal_report.diagnostic_impression}</p>
-                <p className="leading-relaxed"><span className="font-semibold">Recomendações:</span> {radResult.formal_report.recommendations}</p>
-              </CardContent>
-            )}
-          </Card>
+          {isAdmin && (
+            <Card>
+              <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowReport(!showReport)}>
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span className="flex items-center gap-2"><FileText className="h-4 w-4" /> Laudo Formal (CBR/RSNA)</span>
+                  {showReport ? <span className="text-xs text-muted-foreground">Recolher</span> : <span className="text-xs text-muted-foreground">Expandir</span>}
+                </CardTitle>
+              </CardHeader>
+              {showReport && (
+                <CardContent className="space-y-2 text-sm">
+                  <p><span className="font-semibold">Exame:</span> {radResult.formal_report.exam}</p>
+                  <p><span className="font-semibold">Técnica:</span> {radResult.formal_report.technique}</p>
+                  <p className="leading-relaxed"><span className="font-semibold">Achados:</span> {radResult.formal_report.findings}</p>
+                  <p className="leading-relaxed"><span className="font-semibold">Impressão:</span> {radResult.formal_report.diagnostic_impression}</p>
+                  <p className="leading-relaxed"><span className="font-semibold">Recomendações:</span> {radResult.formal_report.recommendations}</p>
+                </CardContent>
+              )}
+            </Card>
+          )}
 
           {radResult.lay_summary && radResult.lay_summary.length > 0 && (
             <Card className="border-blue-500/20">
@@ -2551,7 +2559,7 @@ function RadiologyEngineTab({
               <CardHeader className="p-3 pb-0">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Eye className="h-4 w-4 text-indigo-500" /> Visualização Imersiva PACS
-                  {isPermanentAdmin && <Badge className="ml-2 bg-indigo-500 text-white text-[10px]">gpt-image-1</Badge>}
+                  {isAdmin && isPermanentAdmin && <Badge className="ml-2 bg-indigo-500 text-white text-[10px]">gpt-image-1</Badge>}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-3">
@@ -2561,7 +2569,7 @@ function RadiologyEngineTab({
                   className="w-full h-auto rounded-lg border"
                 />
                 <p className="text-[10px] text-muted-foreground text-center mt-2">
-                  Imagem gerada por IA — Ilustrativa, não substitui laudo médico
+                  {isAdmin ? 'Imagem gerada por IA — Ilustrativa, não substitui laudo médico' : 'Ilustrativa, não substitui laudo médico'}
                 </p>
               </CardContent>
             </Card>
