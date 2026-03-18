@@ -460,7 +460,7 @@ export default function Header() {
     },
     {
       category: "comunicacao",
-      label: "Comunicação",
+      label: isAdmin ? "Comunicação & IA" : "Comunicação",
       items: [
         { path: "/whatsapp", label: "WhatsApp", icon: MessageCircle, faIcon: "fab fa-whatsapp", roles: ["admin", "doctor"] },
         { path: "/medical-references", label: "Referências Médicas", icon: BookOpenCheck, faIcon: "fas fa-file-pdf", roles: ["admin", "doctor"] },

@@ -111,6 +111,11 @@
     "secure_access": "Accesso Sicuro",
     "data_protection": "Protezione Dati"
   },
+  "assistant": {
+    "greeting_neutral": "Ciao! Sono il tuo assistente medico virtuale. Posso aiutarti con il triage dei sintomi, la prenotazione di appuntamenti, le chiamate urgenti con medici di turno e altro. Tocca il microfono per iniziare.",
+    "state_speaking_neutral": "Rispondendo...",
+    "title_neutral": "Assistente Virtuale"
+  },
   "footer": {
     "copyright": "© 2024 Tele<M3D> - Sistema di Telemedicina",
     "all_rights_reserved": "Tutti i diritti riservati"

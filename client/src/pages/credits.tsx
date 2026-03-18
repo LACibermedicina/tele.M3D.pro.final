@@ -238,7 +238,7 @@ export default function CreditsPage() {
               <span className="font-semibold">10 TM3D</span>
             </div>
             <div className="flex justify-between">
-              <span>Análise de Exames</span>
+              <span>{isAdmin ? 'Análise de Exames com IA' : 'Análise de Exames'}</span>
               <span className="font-semibold">15 TM3D</span>
             </div>
             <div className="flex justify-between">
