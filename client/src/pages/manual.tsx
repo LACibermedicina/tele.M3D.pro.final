@@ -34,7 +34,7 @@ const visitorSections: Section[] = [
         text: `O Tele<M3D> Pro oferece acesso limitado para visitantes que ainda não possuem conta. Como visitante, você pode:
 
 - Explorar as funcionalidades do sistema na página de **Features**
-- Interagir com o **assistente de voz IAM3D**
+- Interagir com o **assistente de voz**
 - Utilizar o **chatbot** de informações gerais
 - Registrar-se como Paciente, Médico ou Administrador
 - Acessar consultas via **links temporários de acesso**`
@@ -43,15 +43,15 @@ const visitorSections: Section[] = [
   },
   {
     id: "v-iam3d",
-    title: "Assistente de Voz IAM3D",
+    title: "Assistente de Voz",
     icon: <Mic className="h-5 w-5" />,
     content: [
       {
-        title: "O que é o IAM3D?",
-        text: `O IAM3D (Intelligent Autonomous Medical 3D) é o assistente de voz com interface visual de esfera animada em tela cheia. Ele utiliza a Web Speech API para reconhecimento e síntese de voz.
+        title: "O que é o Assistente de Voz?",
+        text: `O Assistente de Voz é um assistente inteligente com interface visual de esfera animada em tela cheia. Ele utiliza a Web Speech API para reconhecimento e síntese de voz.
 
 Como visitante, você pode:
-- **Ativar o assistente** clicando no ícone de microfone ou dizendo "Olá IAM3D"
+- **Ativar o assistente** clicando no ícone de microfone ou dizendo "Olá Assistente"
 - **Fazer perguntas gerais** sobre a plataforma e suas funcionalidades
 - **Solicitar informações** sobre como se registrar e começar a usar o sistema
 - **Acesso de emergência**: Diga "emergência" ou "192" para receber orientações de emergência médica (SAMU)
@@ -74,7 +74,7 @@ O assistente exibe badges de segurança de acordo com o nível de acesso (visita
 - Perguntas frequentes sobre teleconsultas
 - Informações sobre segurança e privacidade dos dados
 
-O chatbot é alimentado por IA com referências da OMS, Ministério da Saúde do Brasil e DSM-5.`
+O chatbot oferece orientações com referências da OMS, Ministério da Saúde do Brasil e DSM-5.`
       }
     ]
   },
@@ -87,10 +87,10 @@ O chatbot é alimentado por IA com referências da OMS, Ministério da Saúde do
         title: "Explorando as Funcionalidades",
         text: `A página de Features apresenta todas as capacidades do sistema:
 
-- **Teleconsultas por Vídeo**: Consultas em tempo real com IA diagnóstica integrada
+- **Teleconsultas por Vídeo**: Consultas em tempo real com suporte diagnóstico integrado
 - **Triagem por Protocolo de Manchester**: Classificação automática de risco em 5 níveis
 - **Prontuários Eletrônicos**: Gestão completa de registros médicos
-- **WhatsApp IA**: Comunicação inteligente médico-paciente
+- **WhatsApp**: Comunicação inteligente médico-paciente
 - **Carteira Digital TM3D**: Sistema de créditos e pagamentos
 - **NFTs Médicos**: Tokenização de dados clínicos anonimizados
 - **Exportação FHIR R4**: Exportação de dados em padrões internacionais
@@ -109,7 +109,7 @@ Explore cada funcionalidade para entender como o sistema pode beneficiar sua pr�
         text: `Para se registrar no Tele<M3D>, clique em "Registrar" na página inicial. Existem três perfis:
 
 - **Paciente**: Solicitar consultas, acessar prontuários, usar a carteira digital
-- **Médico**: Acesso completo a gestão clínica, teleconsultas, prescrições e IA médica
+- **Médico**: Acesso completo a gestão clínica, teleconsultas, prescrições e suporte médico
 - **Administrador**: Gerenciamento do sistema, configurações, relatórios e gestão financeira
 
 Preencha o formulário com seus dados pessoais e profissionais. Após o registro, faça login com e-mail e senha.`
@@ -179,7 +179,7 @@ Os links temporários são seguros e possuem tempo de expiração configurável 
 - 🇨🇳 中文 (ZH)
 - 🇵🇾 Guaraní (GN)
 
-O chatbot e o assistente de voz IAM3D também respondem no idioma selecionado. O reconhecimento de voz (STT) e a síntese de fala (TTS) são ajustados automaticamente para o locale correspondente.`
+O chatbot e o assistente de voz também respondem no idioma selecionado. O reconhecimento de voz (STT) e a síntese de fala (TTS) são ajustados automaticamente para o locale correspondente.`
       }
     ]
   }
@@ -197,7 +197,7 @@ const patientSections: Section[] = [
 
 - **Status das Consultas**: Veja consultas pendentes, aceitas e em andamento
 - **Próximas Consultas**: Lista de consultas agendadas com contagem regressiva
-- **Assistente IA**: Acesso rápido ao chatbot médico e ao IAM3D
+- **Assistente Virtual**: Acesso rápido ao chatbot médico e ao assistente de voz
 - **Notificações**: Alertas em tempo real sobre consultas, mensagens e atualizações
 - **Ações Rápidas**: Botões para solicitar consulta, acessar prontuário e ver prescrições
 
@@ -220,10 +220,10 @@ O painel se adapta automaticamente para desktop e mobile, oferecendo a melhor ex
 - O sistema mostrará médicos disponíveis naquela especialidade
 - Escolha um médico e envie sua solicitação
 
-**2. Por Triagem com IA**
+**2. Por Triagem Automatizada**
 - Descreva seus sintomas em linguagem natural
-- A IA realizará uma triagem automática pelo **Protocolo de Manchester** (5 níveis)
-- Com base na análise, a IA recomendará a especialidade mais adequada
+- O sistema realizará uma triagem automática pelo **Protocolo de Manchester** (5 níveis)
+- Com base na análise, será recomendada a especialidade mais adequada
 - O sistema classificará a urgência: 🔴 Emergência, 🟠 Muito Urgente, 🟡 Urgente, 🟢 Padrão, 🔵 Não Urgente
 - Médicos disponíveis serão sugeridos com base na triagem
 
@@ -280,7 +280,7 @@ Ao final da consulta, você poderá avaliar o atendimento e receber um resumo co
 - **Download PDF**: Faça download do PDF da prescrição com assinatura digital do médico
 - **Histórico**: Acesse prescrições anteriores mesmo após a validade
 
-As prescrições são geradas pelo médico, podendo ser criadas manualmente ou auto-geradas pela IA após a consulta.`
+As prescrições são geradas pelo médico, podendo ser criadas manualmente ou auto-geradas após a consulta.`
       }
     ]
   },
@@ -342,7 +342,7 @@ Acesse a exportação pelo menu do seu perfil ou na página de prontuários.`
 Custos das principais funcionalidades:
 - Teleconsulta por Vídeo: 50 TM3D
 - Mensagem WhatsApp: 10 TM3D
-- Análise IA de Exame: 15 TM3D
+- Análise de Exame: 15 TM3D
 - Relatório Epidemiológico: 20 TM3D
 
 Acesse "Carteira" no menu para gerenciar seus créditos e visualizar o histórico de transações.`
@@ -387,19 +387,19 @@ Ideal para consultas urgentes ou quando você precisa de atendimento rápido.`
   },
   {
     id: "p-iam3d",
-    title: "Assistente de Voz IAM3D",
+    title: "Assistente de Voz",
     icon: <Mic className="h-5 w-5" />,
     content: [
       {
-        title: "Usando o IAM3D como Paciente",
-        text: `O assistente de voz IAM3D oferece funcionalidades específicas para pacientes:
+        title: "Usando o Assistente de Voz como Paciente",
+        text: `O assistente de voz oferece funcionalidades específicas para pacientes:
 
 - **Consultas Rápidas**: Pergunte sobre medicamentos, efeitos colaterais e orientações gerais
 - **Consulta Urgente**: Diga "urgência" ou "preciso de consulta urgente" para ser conectado a um médico de plantão disponível
 - **Navegação por Voz**: Peça para navegar a uma página específica ("ir para prescrições", "abrir prontuário")
 - **Emergência (192)**: Diga "emergência" para receber orientações do SAMU
 
-O IAM3D exibe um badge de segurança com seu nível de acesso (paciente) para garantir transparência.`
+O assistente exibe um badge de segurança com seu nível de acesso (paciente) para garantir transparência.`
       }
     ]
   },
@@ -450,7 +450,7 @@ O timeout padrão é configurado pelo administrador do sistema.`
         text: `O ícone de sino no canto superior direito exibe suas notificações em tempo real:
 
 - **Consultas**: Notificações de aceitação, início e encerramento de consultas
-- **Mensagens**: Alertas de novas mensagens do WhatsApp IA
+- **Mensagens**: Alertas de novas mensagens do WhatsApp
 - **Prescrições**: Aviso quando uma nova prescrição é emitida
 - **Sistema**: Avisos de manutenção, atualizações e lembretes
 
@@ -491,7 +491,7 @@ O painel é responsivo e se adapta para desktop (layout completo) e mobile (layo
 
 - **Status Online**: Ative para aparecer como disponível na plataforma
 - **Consulta Imediata**: Permita que pacientes da sala de espera solicitem consulta instantânea
-- **Modo Plantão 24h**: Ative para ficar disponível continuamente para consultas urgentes — o IAM3D pode direcionar pacientes diretamente para médicos de plantão
+- **Modo Plantão 24h**: Ative para ficar disponível continuamente para consultas urgentes — o sistema pode direcionar pacientes diretamente para médicos de plantão
 - **Horários Semanais**: Configure dias da semana, horários de início/fim e duração padrão das consultas`
       }
     ]
@@ -550,7 +550,7 @@ O painel é responsivo e se adapta para desktop (layout completo) e mobile (layo
         text: `Durante a consulta, você tem acesso a:
 
 - **Chat em Tempo Real**: Troque mensagens com o paciente
-- **IA Diagnóstica**: Envie perguntas clínicas e receba respostas baseadas em evidências (OMS, MS-Brasil, DSM-5)
+- **Suporte Diagnóstico**: Envie perguntas clínicas e receba respostas baseadas em evidências (OMS, MS-Brasil, DSM-5)
 - **Transcrição Automática**: Transcrição de áudio em tempo real (Chrome/Edge)
 - **Compartilhamento de Tela**: Mostre exames, prontuários ou explicações visuais
 - **Notas Clínicas**: Faça anotações salvas automaticamente
@@ -574,8 +574,8 @@ Esses códigos têm validade configurável e são descartados após o uso.`
     icon: <CheckCircle className="h-5 w-5" />,
     content: [
       {
-        title: "Auto-Geração pela IA",
-        text: `Ao finalizar uma consulta, a IA automaticamente gera:
+        title: "Auto-Geração Pós-Consulta",
+        text: `Ao finalizar uma consulta, o sistema automaticamente gera:
 
 - **Prescrições**: Medicamentos com dosagens, baseados no diálogo da consulta
 - **Pedidos de Exames**: Exames laboratoriais e de imagem sugeridos
@@ -583,7 +583,7 @@ Esses códigos têm validade configurável e são descartados após o uso.`
 - **Follow-up**: Sugestões de acompanhamento e retorno
 - **Análise de Interações Medicamentosas**: Verificação automática de interações entre medicamentos prescritos e medicamentos em uso pelo paciente
 
-Todos os itens são sugestões da IA — você pode revisar, editar, aprovar ou rejeitar cada um antes da finalização.`
+Todos os itens são sugestões automatizadas — você pode revisar, editar, aprovar ou rejeitar cada um antes da finalização.`
       },
       {
         title: "Classificação Diagnóstica",
@@ -591,10 +591,10 @@ Todos os itens são sugestões da IA — você pode revisar, editar, aprovar ou 
 
 - **CID-10/CID-11**: Código de classificação internacional de doenças
 - **DSM-5/DSM-5-TR**: Classificação para condições de saúde mental
-- **Nível de Confiança**: Indicador de confiança da IA na classificação (alto, médio, baixo)
+- **Nível de Confiança**: Indicador de confiança na classificação (alto, médio, baixo)
 - **Diagnósticos Diferenciais**: Lista de diagnósticos alternativos considerados
 
-A IA sugere a classificação automaticamente com base na transcrição e notas da consulta. O médico revisa e confirma antes do registro final.`
+O sistema sugere a classificação automaticamente com base na transcrição e notas da consulta. O médico revisa e confirma antes do registro final.`
       }
     ]
   },
@@ -611,7 +611,7 @@ A IA sugere a classificação automaticamente com base na transcrição e notas 
 - **Criar Novos Registros**: Adicione registros com subjective, objective, assessment e plan
 - **Anexar Exames**: Vincule resultados de exames ao prontuário
 - **Gerar Relatórios PDF**: Exporte prontuários completos em PDF
-- **Consultar IA**: Peça à IA para analisar o histórico e sugerir diagnósticos ou tratamentos
+- **Consultar Assistente**: Solicite análise do histórico com sugestões de diagnósticos ou tratamentos
 
 Os prontuários são acessíveis durante teleconsultas, permitindo consulta em tempo real durante o atendimento.`
       }
@@ -628,7 +628,7 @@ Os prontuários são acessíveis durante teleconsultas, permitindo consulta em t
 
 - **Criação Manual**: Adicione medicamentos com dosagem, via, frequência e duração
 - **Busca em Bases Externas**: Pesquise medicamentos em RxNorm (NIH), OpenFDA e ANVISA/RENAME com seletor de localidade (Brasil, EUA, Global)
-- **Auto-Geração por IA**: Prescrições sugeridas automaticamente após consultas
+- **Auto-Geração**: Prescrições sugeridas automaticamente após consultas
 - **Templates**: Use modelos pré-definidos para prescrições comuns
 - **PDF com Assinatura Digital**: Gere PDF da prescrição com sua assinatura digital
 - **Compartilhamento**: Envie a prescrição diretamente ao paciente`
@@ -667,20 +667,20 @@ As notas são privadas e acessíveis apenas pelo médico que as criou. Ideais pa
   },
   {
     id: "d-whatsapp",
-    title: "WhatsApp IA",
+    title: "WhatsApp",
     icon: <MessageCircle className="h-5 w-5" />,
     content: [
       {
         title: "Central de Mensagens",
-        text: `O módulo WhatsApp IA permite comunicação inteligente médico-paciente:
+        text: `O módulo WhatsApp permite comunicação inteligente médico-paciente:
 
 - **Lista de Pacientes**: Todos os pacientes com status online/offline em tempo real
 - **Chat**: Interface com histórico completo de mensagens
 - **Painel Clínico**: Informações do paciente (histórico, prescrições, exames) no painel lateral
 - **Toggle de Resposta**: Controle se o paciente pode responder (habilitado/desabilitado)
-- **IA Automática**: Mensagens recebidas são analisadas pela IA para detectar solicitações de agendamento e questões clínicas
+- **Análise Automática**: Mensagens recebidas são analisadas para detectar solicitações de agendamento e questões clínicas
 
-Cores das mensagens: Doutor(a) em azul, Paciente em cinza, IA MedPro com indicador especial.`
+Cores das mensagens: Doutor(a) em azul, Paciente em cinza, Sistema com indicador especial.`
       }
     ]
   },
@@ -697,7 +697,7 @@ Cores das mensagens: Doutor(a) em azul, Paciente em cinza, IA MedPro com indicad
 - **Urgência**: Indique o nível de urgência do parecer solicitado
 - **Documentação**: Anexe resumo do caso, exames relevantes e perguntas específicas
 - **Acompanhamento**: Acompanhe o status da solicitação (pendente, aceita, respondida)
-- **IAM3D Inter-Consulta**: Durante uma videoconsulta, use o IAM3D para solicitar um especialista para participar em tempo real
+- **Inter-Consulta**: Durante uma videoconsulta, solicite um especialista para participar em tempo real
 
 As inter-consultas são registradas no prontuário do paciente para documentação completa.`
       }
@@ -727,10 +727,10 @@ As inter-consultas são registradas no prontuário do paciente para documentaç�
     content: [
       {
         title: "Análise Epidemiológica",
-        text: `Em "Epidemiologia", a IA analisa dados clínicos agregados:
+        text: `Em "Epidemiologia", o sistema analisa dados clínicos agregados:
 
-- **Visão Geral**: Resumo com análise IA dos dados do período
-- **Sintomas/MeSH**: Frequência de sintomas com códigos MeSH extraídos pela IA
+- **Visão Geral**: Resumo com análise dos dados do período
+- **Sintomas/MeSH**: Frequência de sintomas com códigos MeSH extraídos automaticamente
 - **Diagnósticos**: Tendências diagnósticas com códigos ICD
 - **Classificação de Risco**: Distribuição por nível de triagem (Manchester)
 
@@ -808,20 +808,20 @@ Acesse a exportação pela página do paciente ou pelo menu de prontuários.`
   },
   {
     id: "d-iam3d",
-    title: "IAM3D para Médicos",
+    title: "Assistente de Voz para Médicos",
     icon: <Mic className="h-5 w-5" />,
     content: [
       {
-        title: "Assistente de Voz IAM3D",
-        text: `O IAM3D oferece funcionalidades avançadas para médicos:
+        title: "Assistente de Voz",
+        text: `O assistente de voz oferece funcionalidades avançadas para médicos:
 
 - **Consultas Clínicas por Voz**: Pergunte sobre protocolos, medicamentos e diagnósticos
 - **Inter-Consulta por Voz**: Durante uma videoconsulta, solicite um especialista por voz
-- **Chamadas Urgentes**: O IAM3D pode direcionar pacientes em situação urgente para médicos de plantão
+- **Chamadas Urgentes**: O sistema pode direcionar pacientes em situação urgente para médicos de plantão
 - **Navegação por Voz**: Acesse qualquer funcionalidade da plataforma por comando de voz
 - **Badge de Segurança**: Indicador visual do nível de acesso (médico) para transparência
 
-O IAM3D é especialmente útil durante consultas, permitindo consultas à IA sem sair da interface de vídeo.`
+O assistente é especialmente útil durante consultas, permitindo consultas sem sair da interface de vídeo.`
       }
     ]
   },
@@ -894,15 +894,15 @@ Acesse a opção de bloqueio pela página do paciente ou pela lista de pacientes
   },
   {
     id: "d-ai-medications",
-    title: "Geração de Medicamentos por IA",
+    title: "Geração de Medicamentos",
     icon: <Sparkles className="h-5 w-5" />,
     content: [
       {
-        title: "Planos de Tratamento Gerados por IA",
-        text: `A IA pode gerar listas completas de medicamentos para tratamento:
+        title: "Planos de Tratamento",
+        text: `O sistema pode gerar listas completas de medicamentos para tratamento:
 
-- **Baseado em Diagnóstico**: Informe o diagnóstico e a IA sugere medicamentos apropriados
-- **Sintomas e Histórico**: A IA considera sintomas relatados e histórico do paciente
+- **Baseado em Diagnóstico**: Informe o diagnóstico e o sistema sugere medicamentos apropriados
+- **Sintomas e Histórico**: O sistema considera sintomas relatados e histórico do paciente
 - **Plano Completo**: Inclui medicamento, dosagem, via de administração, frequência e duração
 - **Interações**: Verificação automática de interações com medicamentos em uso pelo paciente
 - **Revisão Médica**: Todas as sugestões são revisáveis — edite, aprove ou rejeite cada item
@@ -965,9 +965,9 @@ Complete as consultas pendentes para manter o registro clínico atualizado e com
       },
       {
         title: "Widgets Flutuantes",
-        text: `Chatbot IA e Notas de Estudo possuem controle de minimização:
+        text: `Chatbot e Notas de Estudo possuem controle de minimização:
 
-- **Chatbot IA**: Minimize com o botão (—) → restaure pelo dock lateral
+- **Chatbot**: Minimize com o botão (—) → restaure pelo dock lateral
 - **Notas de Estudo**: Minimize com o botão (—) → restaure pelo dock lateral
 - **Ícones no Dock**: Cada widget tem seu próprio ícone identificável no dock`
       }
@@ -986,7 +986,7 @@ const adminSections: Section[] = [
         text: `O dashboard administrativo possui tema escuro e apresenta:
 
 - **Métricas do Sistema**: Usuários ativos, consultas realizadas, receita gerada
-- **Status dos Serviços**: Indicadores de saúde do banco de dados, WebSocket, IA e Agora
+- **Status dos Serviços**: Indicadores de saúde do banco de dados, WebSocket e serviços
 - **Atividade Recente**: Log de ações recentes no sistema
 - **Alertas**: Notificações de erros, problemas de performance e eventos críticos
 - **Acesso Rápido**: Links para configurações, gestão de usuários e relatórios`
@@ -1022,7 +1022,7 @@ const adminSections: Section[] = [
 
 - **Expiração de Links**: Tempo de validade dos links de consulta temporários
 - **Expiração de Tokens**: Tempo de validade dos tokens de acesso
-- **Triagem por IA**: Ative/desative a triagem automática pelo Protocolo de Manchester
+- **Triagem Automatizada**: Ative/desative a triagem automática pelo Protocolo de Manchester
 - **Timeout de Inatividade**: Configure o tempo de inatividade antes do auto-logout (em minutos)
 - **E-mail PayPal**: Configure o e-mail de destino para pagamentos PayPal
 - **Configurações Financeiras**: Taxa de câmbio TM3D/USD, limites de transação
@@ -1049,7 +1049,7 @@ Cada alteração é salva imediatamente e afeta todos os usuários do sistema.`
         title: "Custos de Funcionalidades",
         text: `Configure o custo em TM3D de cada funcionalidade (15 funcionalidades):
 
-- Teleconsulta por vídeo, mensagem WhatsApp, análise IA, relatórios, etc.
+- Teleconsulta por vídeo, mensagem WhatsApp, análise de exames, relatórios, etc.
 - Ajuste os preços conforme a estratégia de monetização
 - As alterações são aplicadas imediatamente a todas as novas transações`
       },
@@ -1104,12 +1104,12 @@ Exporte relatórios em diferentes formatos para apresentações e análises.`
     icon: <BookOpen className="h-5 w-5" />,
     content: [
       {
-        title: "Gerenciando Referências da IA",
-        text: `Em "Referências Médicas", gerencie as bases de conhecimento da IA:
+        title: "Gerenciando Referências Médicas",
+        text: `Em "Referências Médicas", gerencie as bases de conhecimento do sistema:
 
 - **Adicionar Referências**: Faça upload de protocolos, diretrizes e artigos
 - **Prioridades**: Configure a prioridade de cada referência para uso diagnóstico
-- **Ativar/Desativar**: Controle quais referências a IA utiliza
+- **Ativar/Desativar**: Controle quais referências o sistema utiliza
 - **Formatos Suportados**: PDF, texto e documentos formatados
 - **Referências Padrão**: O sistema inclui diretrizes OMS, MS-Brasil e DSM-5 como base`
       }
@@ -1167,7 +1167,7 @@ Os farmacêuticos possuem um dashboard dedicado com funcionalidades específicas
 
 Variáveis de ambiente necessárias:
 - DATABASE_URL (obrigatório): Conexão PostgreSQL
-- GEMINI_API_KEY (obrigatório): API de IA médica
+- GEMINI_API_KEY (obrigatório): API de serviço médico
 - AGORA_APP_ID / AGORA_APP_CERTIFICATE (opcional): Vídeo via Agora.io
 - SESSION_SECRET (opcional): Criptografia de sessão
 - PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET (opcional): Pagamentos PayPal

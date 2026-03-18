@@ -71,18 +71,18 @@ export default function Installation() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-sm">
               {[
                 { icon: <Video className="h-3.5 w-3.5" />, label: "Teleconsultas (Agora)" },
-                { icon: <Brain className="h-3.5 w-3.5" />, label: "IA Médica" },
-                { icon: <Activity className="h-3.5 w-3.5" />, label: "Triagem IA" },
+                { icon: <Brain className="h-3.5 w-3.5" />, label: "Suporte Médico" },
+                { icon: <Activity className="h-3.5 w-3.5" />, label: "Triagem" },
                 { icon: <Pill className="h-3.5 w-3.5" />, label: "Farmácia LGPD" },
                 { icon: <FileText className="h-3.5 w-3.5" />, label: "PMD v1.0 (CFM)" },
                 { icon: <Shield className="h-3.5 w-3.5" />, label: "Assinatura Digital" },
                 { icon: <Globe className="h-3.5 w-3.5" />, label: "FHIR R4 Export" },
                 { icon: <CreditCard className="h-3.5 w-3.5" />, label: "PayPal/Stripe/PIX" },
                 { icon: <Wallet className="h-3.5 w-3.5" />, label: "Wallet TM3D/NFTs" },
-                { icon: <Mic className="h-3.5 w-3.5" />, label: "IAM3D Voice" },
+                { icon: <Mic className="h-3.5 w-3.5" />, label: "Assistente de Voz" },
                 { icon: <Star className="h-3.5 w-3.5" />, label: "Avaliação Consultas" },
                 { icon: <Users className="h-3.5 w-3.5" />, label: "Equipes Médicas" },
-                { icon: <MessageCircle className="h-3.5 w-3.5" />, label: "WhatsApp IA" },
+                { icon: <MessageCircle className="h-3.5 w-3.5" />, label: "WhatsApp" },
                 { icon: <Languages className="h-3.5 w-3.5" />, label: "Multilíngue (8)" },
               ].map((mod, idx) => (
                 <div key={idx} className="flex items-center gap-1.5 text-muted-foreground">
@@ -153,7 +153,7 @@ export default function Installation() {
                       Configure as seguintes variáveis no painel Secrets do Replit:
                     </p>
                     <CodeBlock title="Obrigatórias" code={`DATABASE_URL=postgresql://user:pass@host:5432/dbname
-GEMINI_API_KEY=sua_chave_gemini_api`} />
+GEMINI_API_KEY=sua_chave_api`} />
                     <CodeBlock title="Teleconsultas (Agora)" code={`AGORA_APP_ID=seu_agora_app_id
 AGORA_APP_CERTIFICATE=seu_agora_certificate`} />
                     <CodeBlock title="Pagamentos — PayPal" code={`PAYPAL_CLIENT_ID=seu_paypal_client_id
@@ -166,12 +166,12 @@ STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...`} />
                     <CodeBlock title="Pagamentos — PagBank (PIX/Boleto)" code={`PAGBANK_TOKEN=seu_pagbank_token
 PAGBANK_SANDBOX=true`} />
-                    <CodeBlock title="WhatsApp IA (opcional)" code={`WHATSAPP_ACCESS_TOKEN=seu_whatsapp_token
+                    <CodeBlock title="WhatsApp (opcional)" code={`WHATSAPP_ACCESS_TOKEN=seu_whatsapp_token
 WHATSAPP_PHONE_NUMBER_ID=seu_phone_id
 WHATSAPP_WEBHOOK_VERIFY_TOKEN=seu_webhook_verify_token`} />
-                    <CodeBlock title="IA Fallback, Sessão e URL" code={`SESSION_SECRET=uma_chave_secreta_longa
-AI_INTEGRATIONS_OPENAI_API_KEY=sua_chave_openai
-AI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1
+                    <CodeBlock title="Fallback, Sessão e URL" code={`SESSION_SECRET=uma_chave_secreta_longa
+AI_INTEGRATIONS_OPENAI_API_KEY=sua_chave_fallback
+AI_INTEGRATIONS_OPENAI_BASE_URL=https://seu-servico-fallback/v1
 BASE_URL=https://seu-dominio.com`} />
                   </div>
 
@@ -231,8 +231,8 @@ npm install`} />
                   <CodeBlock title="Criar arquivo .env" code={`# ── Banco de dados PostgreSQL ──
 DATABASE_URL=postgresql://postgres:senha@localhost:5432/telemed3
 
-# ── IA - Google Gemini (obrigatório) ──
-GEMINI_API_KEY=sua_chave_gemini_api
+# ── Suporte Médico (obrigatório) ──
+GEMINI_API_KEY=sua_chave_api
 
 # ── Agora.io para teleconsultas (opcional) ──
 AGORA_APP_ID=seu_agora_app_id
@@ -252,11 +252,11 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 PAGBANK_TOKEN=seu_pagbank_token
 PAGBANK_SANDBOX=true
 
-# ── OpenAI como fallback de IA (opcional) ──
-AI_INTEGRATIONS_OPENAI_API_KEY=sua_chave_openai
-AI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1
+# ── Fallback (opcional) ──
+AI_INTEGRATIONS_OPENAI_API_KEY=sua_chave_fallback
+AI_INTEGRATIONS_OPENAI_BASE_URL=https://seu-servico-fallback/v1
 
-# ── WhatsApp IA (opcional) ──
+# ── WhatsApp (opcional) ──
 WHATSAPP_ACCESS_TOKEN=seu_whatsapp_token
 WHATSAPP_PHONE_NUMBER_ID=seu_phone_id
 WHATSAPP_WEBHOOK_VERIFY_TOKEN=seu_webhook_verify_token
@@ -345,8 +345,8 @@ fi
 
 if [ -z "$GEMINI_API_KEY" ]; then
     echo "[AVISO] GEMINI_API_KEY não configurada."
-    echo "  A IA médica não funcionará sem esta chave."
-    echo "  Obtenha em: https://aistudio.google.com/apikey"
+    echo "  O suporte médico não funcionará sem esta chave."
+    echo "  Obtenha a chave no portal do provedor."
 else
     echo "[OK] GEMINI_API_KEY configurada"
 fi
@@ -380,8 +380,8 @@ echo "  http://localhost:5000"
 echo ""
 echo "Módulos incluídos:"
 echo "  - Teleconsultas por vídeo (Agora WebRTC)"
-echo "  - IA Médica (Gemini + OpenAI fallback)"
-echo "  - Triagem IA (Manchester Protocol / WHO ETAT)"
+echo "  - Suporte Médico (com fallback automático)"
+echo "  - Triagem (Manchester Protocol / WHO ETAT)"
 echo "  - Farmácia (prescrições, dispensação, LGPD)"
 echo "  - PMD v1.0 (Prontuário Digital CFM/LGPD/RGPD)"
 echo "  - Prontuário Unificado (timeline consolidada)"
@@ -389,10 +389,10 @@ echo "  - Assinatura Digital (ICP-Brasil A3 / RSA-SHA256)"
 echo "  - Exportação FHIR R4 (BR, US, EU, Internacional)"
 echo "  - Pagamentos (PayPal, Stripe, PagBank PIX/Boleto)"
 echo "  - Wallet Digital (TM3D, NFTs, Broker)"
-echo "  - IAM3D Voice Assistant (STT/TTS multilíngue)"
+echo "  - Assistente de Voz (STT/TTS multilíngue)"
 echo "  - Avaliação de Consultas (1-5 estrelas)"
 echo "  - Equipes Médicas e Inter-Consultas"
-echo "  - WhatsApp IA"
+echo "  - WhatsApp"
 echo "  - Multilíngue (PT, EN, ES, FR, DE, IT, ZH, GN)"
 echo "============================================"`} />
               </CardContent>
@@ -418,7 +418,7 @@ echo "============================================"`} />
                   </p>
                   <CodeBlock title="Executar no servidor (como root)" code={`curl -fsSL https://raw.githubusercontent.com/LACibermedicina/tele.M3D.pro/main/install.sh | sudo bash`} />
                   <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                    O script clona o repositório do GitHub, configura o banco de dados, compila a aplicação e inicia o serviço com PM2. Inclui todos os módulos: farmácia, PMD, assinatura digital, pagamentos (PayPal/Stripe/PIX), triagem IA, IAM3D, equipes médicas, avaliação de consultas e suporte multilíngue.
+                    O script clona o repositório do GitHub, configura o banco de dados, compila a aplicação e inicia o serviço com PM2. Inclui todos os módulos: farmácia, PMD, assinatura digital, pagamentos (PayPal/Stripe/PIX), triagem automatizada, assistente de voz, equipes médicas, avaliação de consultas e suporte multilíngue.
                   </p>
                 </div>
 
@@ -554,7 +554,7 @@ docker-compose logs -f app`} />
                   <div className="space-y-2 text-sm">
                     {[
                       "Configurar DATABASE_URL com banco de produção (Neon, Supabase, AWS RDS)",
-                      "Definir GEMINI_API_KEY para IA médica (Google Gemini)",
+                      "Definir GEMINI_API_KEY para suporte médico",
                       "Configurar AGORA_APP_ID e AGORA_APP_CERTIFICATE para teleconsultas",
                       "Configurar PAYPAL_CLIENT_ID/SECRET e PAYPAL_MODE=production",
                       "Configurar STRIPE_SECRET_KEY e STRIPE_WEBHOOK_SECRET",
@@ -599,7 +599,7 @@ docker-compose logs -f app`} />
                     <div className="grid grid-cols-1 gap-1">
                       {[
                         { key: "DATABASE_URL", desc: "URL de conexão PostgreSQL" },
-                        { key: "GEMINI_API_KEY", desc: "Chave da API Google Gemini para IA médica" },
+                        { key: "GEMINI_API_KEY", desc: "Chave da API para suporte médico" },
                         { key: "SESSION_SECRET", desc: "Segredo para sessões e JWT" },
                       ].map((v) => (
                         <div key={v.key} className="flex items-center gap-2 p-1.5 rounded bg-green-50 dark:bg-green-900/10">
@@ -650,8 +650,8 @@ docker-compose logs -f app`} />
                     <h4 className="font-semibold text-orange-700 dark:text-orange-400 mb-1">Outros</h4>
                     <div className="grid grid-cols-1 gap-1">
                       {[
-                        { key: "AI_INTEGRATIONS_OPENAI_API_KEY", desc: "Chave OpenAI (fallback de IA)" },
-                        { key: "AI_INTEGRATIONS_OPENAI_BASE_URL", desc: "URL base da API OpenAI" },
+                        { key: "AI_INTEGRATIONS_OPENAI_API_KEY", desc: "Chave do serviço de fallback" },
+                        { key: "AI_INTEGRATIONS_OPENAI_BASE_URL", desc: "URL base do serviço de fallback" },
                         { key: "WHATSAPP_ACCESS_TOKEN", desc: "Token do WhatsApp Business API" },
                         { key: "WHATSAPP_PHONE_NUMBER_ID", desc: "ID do número WhatsApp" },
                         { key: "WHATSAPP_WEBHOOK_VERIFY_TOKEN", desc: "Token de verificação do webhook WhatsApp" },
@@ -696,7 +696,7 @@ docker-compose logs -f app`} />
                     { name: "pharmacy_dispensing", desc: "Registros de dispensação" },
                     { name: "pharmacy_reports", desc: "Relatórios da farmácia (LGPD)" },
                     { name: "digital_signatures", desc: "Assinaturas digitais ICP-Brasil" },
-                    { name: "post_consultation_items", desc: "Itens pós-consulta (IA)" },
+                    { name: "post_consultation_items", desc: "Itens pós-consulta (auto-gerados)" },
                     { name: "diagnostic_inferences", desc: "CID-10/11 e DSM-5/TR" },
                     { name: "doctor_notes", desc: "Anotações do médico" },
                     { name: "doctor_schedule", desc: "Horários e plantão" },
@@ -713,7 +713,7 @@ docker-compose logs -f app`} />
                     { name: "doctor_patient_blocks", desc: "Bloqueio de pacientes por médico" },
                     { name: "pending_notifications", desc: "Notificações pendentes" },
                     { name: "system_settings", desc: "Configurações do sistema (Admin)" },
-                    { name: "whatsapp_messages", desc: "Mensagens WhatsApp IA" },
+                    { name: "whatsapp_messages", desc: "Mensagens WhatsApp" },
                   ].map((table) => (
                     <div key={table.name} className="flex items-center gap-2 p-2 rounded-md bg-muted/30">
                       <Database className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
