@@ -57,3 +57,31 @@ export async function editImages(
   return imageBytes;
 }
 
+/**
+ * Edit a base64-encoded image with an overlay prompt.
+ * Uses gpt-image-1 model via Replit AI Integrations.
+ */
+export async function editImageFromBase64(
+  base64Image: string,
+  prompt: string,
+  size: "1024x1024" | "512x512" | "256x256" = "1024x1024"
+): Promise<Buffer> {
+  const imageBuffer = Buffer.from(base64Image, "base64");
+  const isJpeg = imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8;
+  const mimeType = isJpeg ? "image/jpeg" : "image/png";
+  const fileName = isJpeg ? "ecg-original.jpg" : "ecg-original.png";
+  const imageFile = await toFile(imageBuffer, fileName, {
+    type: mimeType,
+  });
+
+  const response = await openai.images.edit({
+    model: "gpt-image-1",
+    image: imageFile,
+    prompt,
+    size,
+  });
+
+  const resultBase64 = response.data[0]?.b64_json ?? "";
+  return Buffer.from(resultBase64, "base64");
+}
+

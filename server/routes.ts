@@ -20817,7 +20817,7 @@ ${combinedText.slice(0, 8000)}`;
 
       let immersiveImage: string | null = null;
       const generateECGImmersiveImage = async (): Promise<string | null> => {
-        const { generateImageBuffer } = await import('./replit_integrations/image/client');
+        const { editImageFromBase64 } = await import('./replit_integrations/image/client');
         const findings = result.key_findings?.slice(0, 5)?.join('; ') || 'ECG analysis';
         const diagnosis = result.presumptive_diagnosis?.name || 'ECG';
         const severity = result.severity_level?.label || 'Moderado';
@@ -20825,36 +20825,30 @@ ${combinedText.slice(0, 8000)}`;
           `Region "${a.region}": ${a.hypothesis} (${a.color_name} ${a.color_hex})`
         ).join('. ');
 
-        const imagePrompt = `Create an immersive PACS-style ECG summary visualization panel — a hyper-realistic medical image synthesis for cardiology educational interface. Dark hospital interface background (#1a1a2e).
+        const overlayPrompt = `This is a real ECG tracing image. Overlay pedagogical diagnostic annotations directly on top of the original ECG waveform. DO NOT replace or redraw the ECG — keep the original tracing fully visible as the base.
 
-ALL TEXT MUST BE IN ${langName.toUpperCase()}. Use large, bold, high-contrast fonts (minimum 18pt equivalent). White text on dark backgrounds. Avoid small or condensed text. Every label, title, and description MUST be written in ${langName}.
+ALL ANNOTATIONS AND LABELS MUST BE IN ${langName.toUpperCase()}.
 
-VISUAL LAYOUT — 4 BLOCKS:
+OVERLAY INSTRUCTIONS:
+1. DIAGNOSTIC ANNOTATIONS — Draw color-coded semi-transparent highlight regions over the relevant parts of the ECG waveform:
+   ${annotations}
+   Use semantic colors: Red (#EF4444) = ischemia/infarction, Blue (#3B82F6) = hypertrophy/conduction, Green (#22C55E) = normal, Yellow (#EAB308) = moderate risk, Purple (#8B5CF6) = arrhythmia
 
-BLOCK 1 (TOP) — ECG SUMMARY:
-- Title: "ECG Analysis — ${diagnosis}" in white bold text (translated to ${langName})
-- Severity badge: "${severity}" in top-right corner with appropriate color
-- Stylized ECG waveform trace across center with subtle grid pattern (ECG paper style)
+2. ARROWS AND LABELS — Add clear arrows pointing from each annotation label to the specific ECG segment it refers to. Labels must be in ${langName}, large, bold, high-contrast, and legible (white or bright colored text with dark outline/shadow for readability).
 
-BLOCK 2 (MIDDLE) — COLOR-CODED ANNOTATIONS:
-- Color-coded annotation regions overlaid on the waveform:
-  ${annotations}
-- Semantic colors: Red (#EF4444) = ischemia/infarction, Blue (#3B82F6) = hypertrophy/conduction, Green (#22C55E) = normal, Yellow (#EAB308) = moderate risk, Purple (#8B5CF6) = arrhythmia
-- Each annotation with clear ${langName} label and connecting arrows
+3. HEADER BANNER — Add a semi-transparent dark banner at the top with:
+   - Title: "ECG Analysis — ${diagnosis}" (in ${langName})
+   - Severity badge: "${severity}" with appropriate color indicator
 
-BLOCK 3 (BOTTOM LEFT) — KEY FINDINGS:
-- Key findings in readable list: ${findings}
-- Each finding with colored indicator dot
+4. KEY FINDINGS PANEL — Add a small semi-transparent dark panel in a corner listing:
+   ${findings}
+   Each finding with a colored indicator dot.
 
-BLOCK 4 (BOTTOM RIGHT) — CLINICAL DATA:
-- Diagnosis: ${diagnosis}
-- Severity: ${severity}
+5. FOOTER STRIP — Semi-transparent dark strip at the bottom: "AI-generated ECG Summary • Does not replace professional medical evaluation" (in ${langName}).
 
-BOTTOM BAR: "AI-generated ECG Summary • Does not replace professional medical evaluation" (in ${langName}) on dark strip.
+RULES: Keep the original ECG tracing clearly visible underneath all overlays. Use semi-transparent backgrounds for panels so the ECG shows through. All text must be OCR-legible — no gibberish. Professional medical annotation style.`;
 
-GRAPHICAL RULES: Professional medical infographic, clean typography, high contrast, real cardiology workstation appearance. All labels in ${langName}. No decorative elements. Prioritize legibility. Only use OCR-legible text — no gibberish or incoherent characters.`;
-
-        const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
+        const imageBuffer = await editImageFromBase64(imageBase64, overlayPrompt, '1024x1024');
         return imageBuffer.toString('base64');
       };
 

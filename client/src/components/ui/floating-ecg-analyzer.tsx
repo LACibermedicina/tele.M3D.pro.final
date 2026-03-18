@@ -419,9 +419,19 @@ export default function FloatingECGAnalyzer() {
                   </div>
 
                   <Button
-                    onClick={() => ecgMutation.mutate()}
-                    disabled={ecgMutation.isPending || analysisLocked}
-                    className="w-full bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 relative overflow-hidden"
+                    onClick={() => {
+                      if (analysisLocked) {
+                        if (result && !savedToStudy) {
+                          setShowClearConfirm(true);
+                        } else {
+                          clearAll();
+                        }
+                      } else {
+                        ecgMutation.mutate();
+                      }
+                    }}
+                    disabled={ecgMutation.isPending}
+                    className={`w-full relative overflow-hidden ${analysisLocked ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700' : 'bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700'}`}
                     size="sm"
                   >
                     {ecgMutation.isPending && analysisProgress > 0 && (
@@ -434,7 +444,7 @@ export default function FloatingECGAnalyzer() {
                       {ecgMutation.isPending ? (
                         <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Analisando... {analysisProgress > 0 ? `${analysisProgress}%` : ''}</>
                       ) : analysisLocked ? (
-                        <><Zap className="h-3 w-3 mr-1" /> Limpe para novo estudo</>
+                        <><Trash2 className="h-3 w-3 mr-1" /> Limpe para novo estudo</>
                       ) : (
                         <><Zap className="h-3 w-3 mr-1" /> Analisar ECG (3x)</>
                       )}
