@@ -154,8 +154,9 @@ export default function Installation() {
                     <p className="text-sm text-muted-foreground mb-2">
                       Configure as seguintes variáveis no painel Secrets do Replit:
                     </p>
-                    <CodeBlock title="Obrigatórias" code={`DATABASE_URL=postgresql://user:pass@host:5432/dbname
-GEMINI_API_KEY=sua_chave_gemini_api`} />
+                    <CodeBlock title="Obrigatórias" code={isAdmin
+                      ? `DATABASE_URL=postgresql://user:pass@host:5432/dbname\nGEMINI_API_KEY=sua_chave_gemini_api`
+                      : `DATABASE_URL=postgresql://user:pass@host:5432/dbname\nMEDICAL_SERVICE_KEY=sua_chave_servico_medico`} />
                     <CodeBlock title="Teleconsultas (Agora)" code={`AGORA_APP_ID=seu_agora_app_id
 AGORA_APP_CERTIFICATE=seu_agora_certificate`} />
                     <CodeBlock title="Pagamentos — PayPal" code={`PAYPAL_CLIENT_ID=seu_paypal_client_id
@@ -171,10 +172,9 @@ PAGBANK_SANDBOX=true`} />
                     <CodeBlock title="WhatsApp (opcional)" code={`WHATSAPP_ACCESS_TOKEN=seu_whatsapp_token
 WHATSAPP_PHONE_NUMBER_ID=seu_phone_id
 WHATSAPP_WEBHOOK_VERIFY_TOKEN=seu_webhook_verify_token`} />
-                    <CodeBlock title={isAdmin ? "IA Fallback, Sessão e URL" : "Fallback, Sessão e URL"} code={`SESSION_SECRET=uma_chave_secreta_longa
-AI_INTEGRATIONS_OPENAI_API_KEY=sua_chave_openai
-AI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1
-BASE_URL=https://seu-dominio.com`} />
+                    <CodeBlock title={isAdmin ? "IA Fallback, Sessão e URL" : "Sessão e URL"} code={isAdmin
+                      ? `SESSION_SECRET=uma_chave_secreta_longa\nAI_INTEGRATIONS_OPENAI_API_KEY=sua_chave_openai\nAI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1\nBASE_URL=https://seu-dominio.com`
+                      : `SESSION_SECRET=uma_chave_secreta_longa\nFALLBACK_SERVICE_KEY=sua_chave_fallback\nBASE_URL=https://seu-dominio.com`} />
                   </div>
 
                   <div>
@@ -230,10 +230,10 @@ npm install`} />
                     <Badge variant="outline">2</Badge>
                     Configurar Variáveis de Ambiente
                   </h3>
-                  <CodeBlock title="Criar arquivo .env" code={`# ── Banco de dados PostgreSQL ──
+                  <CodeBlock title="Criar arquivo .env" code={isAdmin ? `# ── Banco de dados PostgreSQL ──
 DATABASE_URL=postgresql://postgres:senha@localhost:5432/telemed3
 
-# ── ` + (isAdmin ? 'IA - Google Gemini' : 'Suporte Médico') + ` (obrigatório) ──
+# ── IA - Google Gemini (obrigatório) ──
 GEMINI_API_KEY=sua_chave_gemini_api
 
 # ── Agora.io para teleconsultas (opcional) ──
@@ -254,11 +254,45 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 PAGBANK_TOKEN=seu_pagbank_token
 PAGBANK_SANDBOX=true
 
-# ── ` + (isAdmin ? 'OpenAI como fallback de IA' : 'Fallback') + ` (opcional) ──
+# ── OpenAI como fallback de IA (opcional) ──
 AI_INTEGRATIONS_OPENAI_API_KEY=sua_chave_openai
 AI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1
 
-# ── ` + (isAdmin ? 'WhatsApp IA' : 'WhatsApp') + ` (opcional) ──
+# ── WhatsApp IA (opcional) ──
+WHATSAPP_ACCESS_TOKEN=seu_whatsapp_token
+WHATSAPP_PHONE_NUMBER_ID=seu_phone_id
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=seu_webhook_verify_token
+
+# ── Sessão e URL ──
+SESSION_SECRET=uma_chave_secreta_longa_e_aleatoria
+BASE_URL=https://seu-dominio.com` : `# ── Banco de dados PostgreSQL ──
+DATABASE_URL=postgresql://postgres:senha@localhost:5432/telemed3
+
+# ── Serviço Médico (obrigatório) ──
+MEDICAL_SERVICE_KEY=sua_chave_servico_medico
+
+# ── Agora.io para teleconsultas (opcional) ──
+AGORA_APP_ID=seu_agora_app_id
+AGORA_APP_CERTIFICATE=seu_agora_certificate
+
+# ── PayPal (opcional) ──
+PAYPAL_CLIENT_ID=seu_paypal_client_id
+PAYPAL_CLIENT_SECRET=seu_paypal_client_secret
+PAYPAL_MODE=sandbox
+
+# ── Stripe (opcional) ──
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# ── PagBank PIX/Boleto (opcional) ──
+PAGBANK_TOKEN=seu_pagbank_token
+PAGBANK_SANDBOX=true
+
+# ── Serviço Fallback (opcional) ──
+FALLBACK_SERVICE_KEY=sua_chave_fallback
+
+# ── WhatsApp (opcional) ──
 WHATSAPP_ACCESS_TOKEN=seu_whatsapp_token
 WHATSAPP_PHONE_NUMBER_ID=seu_phone_id
 WHATSAPP_WEBHOOK_VERIFY_TOKEN=seu_webhook_verify_token
@@ -345,13 +379,19 @@ else
     echo "[OK] DATABASE_URL configurada"
 fi
 
-if [ -z "$GEMINI_API_KEY" ]; then
+` + (isAdmin ? `if [ -z "$GEMINI_API_KEY" ]; then
     echo "[AVISO] GEMINI_API_KEY não configurada."
-    echo "  ` + (isAdmin ? 'A IA médica' : 'O suporte médico') + ` não funcionará sem esta chave."
-    echo "  ` + (isAdmin ? 'Obtenha em: https://aistudio.google.com/apikey' : 'Obtenha a chave no portal do provedor.') + `"
+    echo "  A IA médica não funcionará sem esta chave."
+    echo "  Obtenha em: https://aistudio.google.com/apikey"
 else
     echo "[OK] GEMINI_API_KEY configurada"
-fi
+fi` : `if [ -z "$MEDICAL_SERVICE_KEY" ]; then
+    echo "[AVISO] Chave do serviço médico não configurada."
+    echo "  O suporte médico não funcionará sem esta chave."
+    echo "  Obtenha a chave no portal do provedor."
+else
+    echo "[OK] Serviço médico configurado"
+fi`) + `
 
 if [ -z "$AGORA_APP_ID" ]; then
     echo "[INFO] AGORA_APP_ID não configurada (opcional)."
@@ -477,7 +517,7 @@ services:
       - "5000:5000"
     environment:
       - DATABASE_URL=postgresql://postgres:senha@db:5432/telemed3
-      - GEMINI_API_KEY=\${GEMINI_API_KEY}
+      - ` + (isAdmin ? 'GEMINI_API_KEY=${GEMINI_API_KEY}' : 'MEDICAL_SERVICE_KEY=${MEDICAL_SERVICE_KEY}') + `
       - SESSION_SECRET=\${SESSION_SECRET}
       - AGORA_APP_ID=\${AGORA_APP_ID}
       - AGORA_APP_CERTIFICATE=\${AGORA_APP_CERTIFICATE}
@@ -489,8 +529,7 @@ services:
       - STRIPE_WEBHOOK_SECRET=\${STRIPE_WEBHOOK_SECRET}
       - PAGBANK_TOKEN=\${PAGBANK_TOKEN}
       - PAGBANK_SANDBOX=\${PAGBANK_SANDBOX:-true}
-      - AI_INTEGRATIONS_OPENAI_API_KEY=\${AI_INTEGRATIONS_OPENAI_API_KEY}
-      - AI_INTEGRATIONS_OPENAI_BASE_URL=\${AI_INTEGRATIONS_OPENAI_BASE_URL}
+      - ` + (isAdmin ? 'AI_INTEGRATIONS_OPENAI_API_KEY=${AI_INTEGRATIONS_OPENAI_API_KEY}\n      - AI_INTEGRATIONS_OPENAI_BASE_URL=${AI_INTEGRATIONS_OPENAI_BASE_URL}' : 'FALLBACK_SERVICE_KEY=${FALLBACK_SERVICE_KEY}') + `
       - NODE_ENV=production
     volumes:
       - uploads:/app/client/public/uploads
@@ -556,7 +595,7 @@ docker-compose logs -f app`} />
                   <div className="space-y-2 text-sm">
                     {[
                       "Configurar DATABASE_URL com banco de produção (Neon, Supabase, AWS RDS)",
-                      isAdmin ? "Definir GEMINI_API_KEY para IA médica (Google Gemini)" : "Definir GEMINI_API_KEY para suporte médico",
+                      isAdmin ? "Definir GEMINI_API_KEY para IA médica (Google Gemini)" : "Definir chave do serviço médico",
                       "Configurar AGORA_APP_ID e AGORA_APP_CERTIFICATE para teleconsultas",
                       "Configurar PAYPAL_CLIENT_ID/SECRET e PAYPAL_MODE=production",
                       "Configurar STRIPE_SECRET_KEY e STRIPE_WEBHOOK_SECRET",
@@ -601,7 +640,7 @@ docker-compose logs -f app`} />
                     <div className="grid grid-cols-1 gap-1">
                       {[
                         { key: "DATABASE_URL", desc: "URL de conexão PostgreSQL" },
-                        { key: "GEMINI_API_KEY", desc: isAdmin ? "Chave da API Google Gemini para IA médica" : "Chave da API para suporte médico" },
+                        { key: isAdmin ? "GEMINI_API_KEY" : "MEDICAL_SERVICE_KEY", desc: isAdmin ? "Chave da API Google Gemini para IA médica" : "Chave da API para suporte médico" },
                         { key: "SESSION_SECRET", desc: "Segredo para sessões e JWT" },
                       ].map((v) => (
                         <div key={v.key} className="flex items-center gap-2 p-1.5 rounded bg-green-50 dark:bg-green-900/10">
@@ -652,8 +691,8 @@ docker-compose logs -f app`} />
                     <h4 className="font-semibold text-orange-700 dark:text-orange-400 mb-1">Outros</h4>
                     <div className="grid grid-cols-1 gap-1">
                       {[
-                        { key: "AI_INTEGRATIONS_OPENAI_API_KEY", desc: isAdmin ? "Chave OpenAI (fallback de IA)" : "Chave do serviço de fallback" },
-                        { key: "AI_INTEGRATIONS_OPENAI_BASE_URL", desc: isAdmin ? "URL base da API OpenAI" : "URL base do serviço de fallback" },
+                        { key: isAdmin ? "AI_INTEGRATIONS_OPENAI_API_KEY" : "FALLBACK_SERVICE_KEY", desc: isAdmin ? "Chave OpenAI (fallback de IA)" : "Chave do serviço de fallback" },
+                        ...(isAdmin ? [{ key: "AI_INTEGRATIONS_OPENAI_BASE_URL", desc: "URL base da API OpenAI" }] : []),
                         { key: "WHATSAPP_ACCESS_TOKEN", desc: "Token do WhatsApp Business API" },
                         { key: "WHATSAPP_PHONE_NUMBER_ID", desc: "ID do número WhatsApp" },
                         { key: "WHATSAPP_WEBHOOK_VERIFY_TOKEN", desc: "Token de verificação do webhook WhatsApp" },

@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Heart, X, Upload, Zap, Loader2, Minus,
-  Save, User, UserPlus, AlertTriangle, Stethoscope,
+  Save, User, UserPlus, AlertTriangle, Stethoscope, FileText,
   ImageIcon, Trash2, ExternalLink, Download, GripVertical, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useMinimizedPanels } from '@/contexts/MinimizedPanelsContext';
@@ -506,6 +506,21 @@ export default function FloatingECGAnalyzer() {
                   )}
 
                   <p className="text-[10px] text-muted-foreground leading-relaxed">{result.recommended_conduct}</p>
+
+                  {isAdmin && result.technical_report && (
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => setShowDifferentials(prev => !prev)}
+                        className="flex items-center gap-1 text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:text-foreground transition-colors w-full"
+                      >
+                        <FileText className="h-3 w-3" />
+                        Laudo Técnico (Admin)
+                      </button>
+                      <div className="p-2 rounded bg-blue-50/50 dark:bg-blue-900/10 border border-blue-200/50 dark:border-blue-800/50">
+                        <p className="text-[9px] text-muted-foreground whitespace-pre-wrap leading-relaxed">{result.technical_report}</p>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex flex-col gap-1.5">
                     <Button
