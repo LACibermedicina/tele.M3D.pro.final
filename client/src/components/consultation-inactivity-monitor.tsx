@@ -7,7 +7,7 @@ import { disconnectAllMediaServices } from "@/components/inactivity-monitor";
 
 const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click"];
 const VIDEO_CHECK_INTERVAL_MS = 3000;
-const REMOTE_AUDIO_CHECK_INTERVAL_MS = 2000;
+const AUDIO_LEVEL_THRESHOLD = 5;
 
 interface ConsultationInactivityMonitorProps {
   consultationId: string;
@@ -33,12 +33,14 @@ export default function ConsultationInactivityMonitor({
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownEndRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const remoteAudioCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevFrameDataRef = useRef<string | null>(null);
   const showWarningRef = useRef(false);
   const endCalledRef = useRef(false);
   const onTimeoutRef = useRef(onTimeout);
-  const localStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analysersRef = useRef<Map<string, { analyser: AnalyserNode; source: MediaStreamAudioSourceNode }>>(new Map());
+  const animFrameRef = useRef<number | null>(null);
+  const trackedStreamsRef = useRef<Set<string>>(new Set());
   onTimeoutRef.current = onTimeout;
 
   const configRef = useRef({
@@ -76,13 +78,21 @@ export default function ConsultationInactivityMonitor({
     if (countdownTimerRef.current) { clearInterval(countdownTimerRef.current); countdownTimerRef.current = null; }
     if (countdownEndRef.current) { clearTimeout(countdownEndRef.current); countdownEndRef.current = null; }
     if (videoCheckRef.current) { clearInterval(videoCheckRef.current); videoCheckRef.current = null; }
-    if (remoteAudioCheckRef.current) { clearInterval(remoteAudioCheckRef.current); remoteAudioCheckRef.current = null; }
   }, []);
 
-  const stopLocalStream = useCallback(() => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
-      localStreamRef.current = null;
+  const cleanupAudioAnalysis = useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    analysersRef.current.forEach((entry) => {
+      try { entry.source.disconnect(); } catch {}
+    });
+    analysersRef.current.clear();
+    trackedStreamsRef.current.clear();
+    if (audioContextRef.current) {
+      try { audioContextRef.current.close(); } catch {}
+      audioContextRef.current = null;
     }
   }, []);
 
@@ -91,7 +101,7 @@ export default function ConsultationInactivityMonitor({
     endCalledRef.current = true;
     setIsEnding(true);
 
-    stopLocalStream();
+    cleanupAudioAnalysis();
     disconnectAllMediaServices();
 
     try {
@@ -119,7 +129,7 @@ export default function ConsultationInactivityMonitor({
     });
 
     onTimeoutRef.current();
-  }, [consultationId, toast, stopLocalStream]);
+  }, [consultationId, toast, cleanupAudioAnalysis]);
 
   const startCountdown = useCallback((reason: "inactivity" | "silence") => {
     if (showWarningRef.current) return;
@@ -183,32 +193,10 @@ export default function ConsultationInactivityMonitor({
     }
   }, [resetSilenceTimer]);
 
-  const checkRemoteAudio = useCallback(() => {
-    const audioElements = document.querySelectorAll("audio");
-    const videoElements = document.querySelectorAll("video");
-    const allMedia = [...Array.from(audioElements), ...Array.from(videoElements)] as HTMLMediaElement[];
-    for (const el of allMedia) {
-      if (!el.paused && !el.muted && el.srcObject) {
-        const stream = el.srcObject as MediaStream;
-        const audioTracks = stream.getAudioTracks();
-        for (const track of audioTracks) {
-          if (track.enabled && track.readyState === "live") {
-            if (!showWarningRef.current) {
-              resetSilenceTimer();
-            }
-            return;
-          }
-        }
-      }
-    }
-  }, [resetSilenceTimer]);
-
   const startMediaActivityMonitors = useCallback(() => {
     if (videoCheckRef.current) { clearInterval(videoCheckRef.current); videoCheckRef.current = null; }
     videoCheckRef.current = setInterval(checkVideoActivity, VIDEO_CHECK_INTERVAL_MS);
-    if (remoteAudioCheckRef.current) { clearInterval(remoteAudioCheckRef.current); remoteAudioCheckRef.current = null; }
-    remoteAudioCheckRef.current = setInterval(checkRemoteAudio, REMOTE_AUDIO_CHECK_INTERVAL_MS);
-  }, [checkVideoActivity, checkRemoteAudio]);
+  }, [checkVideoActivity]);
 
   const handleStayConnected = useCallback(() => {
     clearAllTimers();
@@ -245,38 +233,56 @@ export default function ConsultationInactivityMonitor({
       window.addEventListener(event, handleActivity, { passive: true });
     });
 
-    let audioCtx: AudioContext | null = null;
-    let analyser: AnalyserNode | null = null;
-    let animFrameId: number | null = null;
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
+    }
 
-    const setupLocalAudioMonitor = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
-        if (!stream) return;
+    const scanAndAttachStreams = () => {
+      const ctx = audioContextRef.current;
+      if (!ctx || ctx.state === "closed") return;
 
-        localStreamRef.current = stream;
-        audioCtx = new AudioContext();
-        const source = audioCtx.createMediaStreamSource(stream);
-        analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(analyser);
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-        const checkAudio = () => {
-          if (!analyser || !audioCtx) return;
-          analyser.getByteFrequencyData(dataArray);
-          const avg = dataArray.reduce((sum, v) => sum + v, 0) / dataArray.length;
-          if (avg > 5 && !showWarningRef.current) {
-            resetSilenceTimer();
+      const mediaElements = [...document.querySelectorAll("audio"), ...document.querySelectorAll("video")] as HTMLMediaElement[];
+      for (const el of mediaElements) {
+        if (el.srcObject && el.srcObject instanceof MediaStream) {
+          const stream = el.srcObject;
+          const streamId = stream.id;
+          if (trackedStreamsRef.current.has(streamId)) continue;
+          const audioTracks = stream.getAudioTracks();
+          if (audioTracks.length === 0) continue;
+          try {
+            const source = ctx.createMediaStreamSource(stream);
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+            analysersRef.current.set(streamId, { analyser, source });
+            trackedStreamsRef.current.add(streamId);
+          } catch {
           }
-          animFrameId = requestAnimationFrame(checkAudio);
-        };
-        checkAudio();
-      } catch {
+        }
       }
     };
 
-    setupLocalAudioMonitor();
+    const checkAllAudioLevels = () => {
+      scanAndAttachStreams();
+
+      let hasActivity = false;
+      analysersRef.current.forEach((entry) => {
+        const dataArray = new Uint8Array(entry.analyser.frequencyBinCount);
+        entry.analyser.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((sum, v) => sum + v, 0) / dataArray.length;
+        if (avg > AUDIO_LEVEL_THRESHOLD) {
+          hasActivity = true;
+        }
+      });
+
+      if (hasActivity && !showWarningRef.current) {
+        resetSilenceTimer();
+      }
+
+      animFrameRef.current = requestAnimationFrame(checkAllAudioLevels);
+    };
+
+    animFrameRef.current = requestAnimationFrame(checkAllAudioLevels);
     startMediaActivityMonitors();
 
     return () => {
@@ -284,13 +290,9 @@ export default function ConsultationInactivityMonitor({
         window.removeEventListener(event, handleActivity);
       });
       clearAllTimers();
-      if (animFrameId) cancelAnimationFrame(animFrameId);
-      if (audioCtx) {
-        try { audioCtx.close(); } catch {}
-      }
-      stopLocalStream();
+      cleanupAudioAnalysis();
     };
-  }, [isJoined, consultationId, configLoaded, clearAllTimers, resetInactivityTimer, resetSilenceTimer, startMediaActivityMonitors, stopLocalStream]);
+  }, [isJoined, consultationId, configLoaded, clearAllTimers, resetInactivityTimer, resetSilenceTimer, startMediaActivityMonitors, cleanupAudioAnalysis]);
 
   if (!showWarning || !isJoined) return null;
 
