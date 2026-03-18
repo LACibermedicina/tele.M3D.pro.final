@@ -255,8 +255,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Store consultation rooms: consultationId -> { doctor: WebSocket[], patient: WebSocket[] }
   const consultationRooms = new Map<string, { doctor: WebSocket[], patient: WebSocket[] }>();
 
-  // Store user types for mass disconnect: userId -> userType
-  const clientUserTypes = new Map<string, 'doctor' | 'patient' | 'visitor'>();
+  // Store user roles for mass disconnect: userId -> actual role from JWT/DB
+  const clientUserRoles = new Map<string, string>();
   
   wss.on('connection', (ws: WebSocket, req) => {
     console.log('Client connected to WebSocket');
@@ -274,6 +274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Verify JWT token and extract user info with proper signature verification
     let userId: string;
     let userType: 'doctor' | 'patient' | 'visitor';
+    let userRole: string = '';
     let consultationId: string | undefined;
     
     try {
@@ -296,6 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (payload.type === 'doctor_auth') {
         userId = payload.doctorId;
         userType = 'doctor';
+        userRole = payload.role || 'doctor';
         if (!userId) {
           console.log('WebSocket connection denied: Invalid JWT payload - missing doctorId');
           ws.close(1008, 'Invalid token payload');
@@ -304,7 +306,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (payload.type === 'patient_auth') {
         userId = payload.patientId;
         userType = 'patient';
-        consultationId = payload.consultationId; // Required for patient tokens
+        userRole = 'patient';
+        consultationId = payload.consultationId;
         if (!userId || !consultationId) {
           console.log('WebSocket connection denied: Invalid JWT payload - missing patientId or consultationId');
           ws.close(1008, 'Invalid token payload');
@@ -313,6 +316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (payload.type === 'visitor_auth') {
         userId = payload.visitorId || payload.userId;
         userType = 'visitor';
+        userRole = 'visitor';
         if (!userId) {
           console.log('WebSocket connection denied: Invalid JWT payload - missing visitorId');
           ws.close(1008, 'Invalid token payload');
@@ -334,8 +338,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       authenticatedClients.set(userId, []);
     }
     authenticatedClients.get(userId)?.push(ws);
-    clientUserTypes.set(userId, userType);
-    console.log(`${userType} ${userId} connected to WebSocket`);
+    clientUserRoles.set(userId, userRole);
+    console.log(`${userType} ${userId} (role: ${userRole}) connected to WebSocket`);
     
     if (userType === 'patient' && consultationId) {
       if (!consultationRooms.has(consultationId)) {
@@ -356,7 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         if (clients.length === 0) {
           authenticatedClients.delete(userId);
-          clientUserTypes.delete(userId);
+          clientUserRoles.delete(userId);
         }
       }
       
@@ -13906,8 +13910,8 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         timestamp: new Date().toISOString(),
       });
 
-      clientUserTypes.forEach((uType, clientUserId) => {
-        if (uType !== 'doctor') return;
+      clientUserRoles.forEach((role, clientUserId) => {
+        if (role !== 'doctor') return;
         const clients = authenticatedClients.get(clientUserId);
         if (!clients) return;
         clients.forEach((ws) => {
