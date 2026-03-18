@@ -16411,6 +16411,36 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
+  app.get('/api/system-settings/public/consultation-timeouts', async (_req: Request, res: Response) => {
+    try {
+      const keys = [
+        'consultation_inactivity_timeout_minutes',
+        'consultation_silence_timeout_minutes',
+        'consultation_countdown_seconds',
+      ];
+      const results: Record<string, string> = {};
+      const defaults: Record<string, string> = {
+        consultation_inactivity_timeout_minutes: '10',
+        consultation_silence_timeout_minutes: '20',
+        consultation_countdown_seconds: '30',
+      };
+      for (const key of keys) {
+        const setting = await db.select()
+          .from(systemSettings)
+          .where(eq(systemSettings.settingKey, key))
+          .limit(1);
+        results[key] = setting.length > 0 ? setting[0].settingValue : defaults[key];
+      }
+      res.json(results);
+    } catch {
+      res.json({
+        consultation_inactivity_timeout_minutes: '10',
+        consultation_silence_timeout_minutes: '20',
+        consultation_countdown_seconds: '30',
+      });
+    }
+  });
+
   app.get('/api/system-settings/:key', async (req: Request, res: Response) => {
     try {
       if (!req.user || !['admin', 'doctor'].includes(req.user.role)) {
@@ -22139,6 +22169,30 @@ async function initializeDefaultSystemSettings() {
       settingType: 'boolean',
       description: 'Confirmação automática de leitura de prescrições pelo farmacêutico',
       category: 'pharmacy',
+      isEditable: true,
+    },
+    {
+      settingKey: 'consultation_inactivity_timeout_minutes',
+      settingValue: '10',
+      settingType: 'number',
+      description: 'Tempo de inatividade do usuário (sem mouse/teclado/toque) antes do aviso de desconexão durante consultas por vídeo (em minutos)',
+      category: 'consultations',
+      isEditable: true,
+    },
+    {
+      settingKey: 'consultation_silence_timeout_minutes',
+      settingValue: '20',
+      settingType: 'number',
+      description: 'Tempo de silêncio (sem atividade de áudio/vídeo) antes do aviso de desconexão durante consultas por vídeo (em minutos)',
+      category: 'consultations',
+      isEditable: true,
+    },
+    {
+      settingKey: 'consultation_countdown_seconds',
+      settingValue: '30',
+      settingType: 'number',
+      description: 'Duração da contagem regressiva do aviso de desconexão da consulta (em segundos)',
+      category: 'consultations',
       isEditable: true,
     },
   ];

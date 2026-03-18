@@ -52,6 +52,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWebSocket } from '@/hooks/use-websocket';
+import ConsultationInactivityMonitor from '@/components/consultation-inactivity-monitor';
 
 type ConsultationNote = {
   id: string;
@@ -1474,6 +1475,15 @@ export default function VideoConsultation() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConsultationInactivityMonitor
+        consultationId={consultationId}
+        isJoined={joined}
+        onTimeout={() => {
+          leaveChannel();
+          setLocation('/schedule');
+        }}
+      />
     </>
   );
 }

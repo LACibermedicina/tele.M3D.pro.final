@@ -34,6 +34,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebSocket } from '@/hooks/use-websocket';
+import ConsultationInactivityMonitor from '@/components/consultation-inactivity-monitor';
 
 const SpeechRecognitionAPI = typeof window !== 'undefined'
   ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -636,6 +637,15 @@ export default function PatientVideoConsultation() {
           </>
         )}
       </div>
+
+      <ConsultationInactivityMonitor
+        consultationId={consultationId}
+        isJoined={joined}
+        onTimeout={() => {
+          leaveChannel();
+          setLocation('/my-consultations');
+        }}
+      />
     </div>
   );
 }

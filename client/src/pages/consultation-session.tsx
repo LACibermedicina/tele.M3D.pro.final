@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import ConsultationInactivityMonitor from '@/components/consultation-inactivity-monitor';
 
 export default function ConsultationSession() {
   const [, params] = useRoute('/consultation-session/:sessionId');
@@ -529,6 +530,17 @@ export default function ConsultationSession() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConsultationInactivityMonitor
+        consultationId={sessionId}
+        isJoined={joined}
+        onTimeout={() => {
+          localVideoTrack?.close();
+          localAudioTrack?.close();
+          client?.leave();
+          navigate('/my-consultations');
+        }}
+      />
     </div>
   );
 }

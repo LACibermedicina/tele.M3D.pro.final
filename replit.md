@@ -51,6 +51,7 @@ The application features an Express.js backend and a React frontend, with shared
 - **External Wallet Integration:** Tab in wallet for linking MetaMask/WalletConnect and managing withdrawal requests.
 - **Wallet Audit Log:** Comprehensive transaction auditing with action type filtering and weekly reports.
 - **Inactivity Detection & Auto-Logout:** Configurable inactivity timeout with a prompt and auto-logout, disconnecting Agora services.
+- **Consultation Inactivity Auto-Close:** Dedicated consultation-level inactivity monitor with three admin-configurable timeouts: user inactivity (default 10min), audio/video silence (default 20min), and countdown duration (default 30s). Shows animated progress bar warning modal with "Continuar Conectado" / "Encerrar" options. Disconnects Agora and updates consultation status on timeout. Settings exposed via `/api/system-settings/public/consultation-timeouts` endpoint.
 - **Patient Data Export (HL7 FHIR R4):** Standardized patient data export compliant with international healthcare standards (fhir-br, fhir-us, fhir-eu, fhir-intl) in JSON or PDF, with de-identification options.
 - **Pharmacy Integration System:** Comprehensive pharmacy module with pharmacist user role, prescription verification, dispensing, and LGPD-compliant reporting.
 - **PMD v1.0 (Prontuário Médico Digital):** CFM/LGPD/RGPD-compliant structured medical records with audit logs and flexible export options.
