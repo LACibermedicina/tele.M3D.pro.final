@@ -1385,86 +1385,164 @@ Seja extremamente detalhado, didático e baseado em evidências. Use padrão CBR
       throw geminiError || openaiError;
     }
   }
-  async generateRadiologyPACSImage(analysisData: any): Promise<string | null> {
-    try {
-      const { generateImageBuffer } = await import('../replit_integrations/image/client');
-      const imagePrompt = await this.generateRadiologyPACSImagePrompt(analysisData);
-      const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
-      console.log('Radiology immersive PACS image generated via service');
-      return imageBuffer.toString('base64');
-    } catch (error) {
-      console.error('generateRadiologyPACSImage error (non-blocking):', error instanceof Error ? error.message : error);
-      return null;
+  private static readonly LANGUAGE_MAP: Record<string, string> = {
+    pt: 'Portuguese (Brazil)',
+    en: 'English',
+    es: 'Spanish',
+    fr: 'French',
+    it: 'Italian',
+    de: 'German',
+    zh: 'Chinese (Simplified)',
+    gn: 'Guaraní',
+  };
+
+  async generateRadiologyPACSImage(analysisData: any, language?: string): Promise<string | null> {
+    const maxAttempts = 2;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const { generateImageBuffer } = await import('../replit_integrations/image/client');
+        const imagePrompt = this.generateRadiologyPACSImagePrompt(analysisData, language);
+        const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
+        if (!imageBuffer || imageBuffer.length === 0) {
+          throw new Error('Empty image buffer returned');
+        }
+        console.log(`Radiology immersive PACS image generated (attempt ${attempt})`);
+        return imageBuffer.toString('base64');
+      } catch (error) {
+        console.error(`generateRadiologyPACSImage attempt ${attempt} error:`, error instanceof Error ? error.message : error);
+        if (attempt === maxAttempts) {
+          return null;
+        }
+        console.log('Retrying radiology image generation...');
+      }
     }
+    return null;
   }
 
-  async generateRadiologyPACSImagePrompt(analysisData: any): Promise<string> {
+  generateRadiologyPACSImagePrompt(analysisData: any, language?: string): string {
+    const langName = GeminiService.LANGUAGE_MAP[language || 'pt'] || 'Portuguese (Brazil)';
     const findings = analysisData.radiology_findings || {};
-    const diagnosis = analysisData.probabilistic_diagnosis?.presumptive?.name || 'Estudo Radiológico';
-    const severity = analysisData.severity_level?.label || 'Moderado';
-    const region = findings.anatomical_region || 'Região não especificada';
+    const diagnosis = analysisData.probabilistic_diagnosis?.presumptive?.name || 'Radiological Study';
+    const severity = analysisData.severity_level?.label || 'Moderate';
+    const severityLevel = analysisData.severity_level?.level || 3;
+    const region = findings.anatomical_region || 'Unspecified region';
     const laterality = findings.laterality || 'N/A';
-    const dominantPathology = findings.dominant_pathology || 'Achado não identificado';
+    const dominantPathology = findings.dominant_pathology || 'Finding not identified';
     const impactPct = findings.clinical_impact_percentage || '0%';
+    const description = findings.description || '';
     const formalReport = analysisData.formal_report || {};
-    const laySummary = (analysisData.lay_summary || []).join(' ');
-    const colorRegions = (analysisData.color_coded_regions || []).slice(0, 6).map((r: any) =>
-      `"${r.region}": ${r.finding} (${r.color_name} ${r.color_hex}, risco: ${r.risk_level})`
+    const laySummary = (analysisData.lay_summary || []).slice(0, 3).join(' | ');
+    const colorRegions = (analysisData.color_coded_regions || []).slice(0, 8).map((r: any) =>
+      `"${r.region}": ${r.finding} (${r.color_name} ${r.color_hex}, risk: ${r.risk_level})`
     ).join('. ');
-    const differentials = (analysisData.probabilistic_diagnosis?.differentials || []).slice(0, 4).map((d: any) =>
+    const differentials = (analysisData.probabilistic_diagnosis?.differentials || []).slice(0, 5).map((d: any) =>
       `${d.name}: ${d.confidence}`
     ).join(', ');
+    const presumptive = analysisData.probabilistic_diagnosis?.presumptive || {};
     const prognostic = analysisData.prognostic_estimation || {};
     const techQuality = analysisData.technical_quality || {};
+    const anatomicalOverlay = (analysisData.anatomical_overlay || []).slice(0, 10).map((a: any) =>
+      `${a.structure}: ${a.relevance_percentage} (${a.status})`
+    ).join(', ');
+    const actionPlan = analysisData.action_plan || {};
+    const educationalNote = analysisData.educational_note || {};
+    const multiSpecialty = (analysisData.multi_specialty_relevance || []).slice(0, 4).map((s: any) =>
+      `${s.specialty}: ${s.relevance} (${s.urgency})`
+    ).join(', ');
+    const recommendedConduct = analysisData.recommended_conduct || '';
 
-    return `Create an immersive PACS-style radiology workstation visual panel — a hyper-realistic medical image synthesis for radiology educational interface. Dark hospital interface background (#1a1a2e).
+    return `ROLE: You are a hyper-realistic medical image synthesis engine specialized in radiology educational interfaces.
 
-ALL TEXT MUST BE IN PORTUGUESE (BRAZIL). Use large, bold, high-contrast fonts (minimum 16pt equivalent). White text on dark backgrounds. Avoid small or condensed text. Prioritize legibility over density.
+TASK: Create ONE single immersive PACS-style radiology workstation visual panel derived from the analyzed radiographic pathology below.
 
-STYLE: Advanced medical workstation UI, RSNA teaching atlas hybrid, AI diagnostic heatmap overlay, ultra-clean vector + radiograph fusion.
+CRITICAL TEXT RULES:
+- ALL text in the image MUST be in ${langName}.
+- Use LARGE, BOLD, high-contrast fonts (minimum 18pt equivalent for labels, 14pt for data).
+- White text on dark backgrounds (#1a1a2e base). Red accents for critical findings.
+- Every word must be a real, recognizable word in ${langName} — legible enough for OCR software to read.
+- Do NOT generate decorative, placeholder, or nonsensical text. Every text element must directly correspond to a clinical finding from the data below.
+- Do NOT invent findings not present in the analysis data. Only display what is provided.
+- Eliminate any text that does not have interpretive coherence with the image content.
 
-VISUAL LAYOUT — 6 BLOCKS:
+STYLE: Advanced medical workstation UI simulating a real senior radiologist's PACS screen. Dark hospital interface. RSNA teaching atlas hybrid. AI diagnostic heatmap overlay. Ultra-clean vector + radiograph fusion. Metallic panel borders. HUD-style metadata overlays.
 
-BLOCK 1 (TOP LEFT) — "RX ORIGINAL":
-- Show a stylized radiograph of "${region}" with "${laterality}" laterality
-- Highlight the dominant pathology "${dominantPathology}" with an organic RED polygon overlay
-- Caption: "Achado principal: ${dominantPathology} (~${impactPct} impacto clínico)"
+TOP BANNER (full width):
+"${region} — ${dominantPathology}" in white/red text.
+Corner metadata: "Senior Radiologist | Severity: ${severityLevel}/5 | ${severity}"
 
-BLOCK 2 (TOP CENTER) — "OVERLAY TOPOGRÁFICO":
-- Same radiograph base with transparent anatomical mapping overlay
-- AI-style pathological heatmap gradient (orange to intense red) focused on pathology area
-- Up to 8 critical structures with connected white arrows
-- Probabilistic relevance percentage labels on key structures
+VISUAL LAYOUT — 6 BLOCKS (3 top, 3 bottom):
 
-BLOCK 3 (TOP RIGHT) — "ANATOMIA NORMAL COMPARATIVA":
-- Clean anatomical medical illustration of normal "${region}" for comparison
-- Green highlights showing healthy anatomical landmarks
-- Label: "Referência Atlas"
+BLOCK 1 (TOP LEFT) — "RX ORIGINAL" with red square icon:
+- Stylized radiograph of "${region}" (${laterality} laterality)
+- Single dominant pathology highlighted with organic RED polygon: "${dominantPathology}"
+- Caption below: "${dominantPathology} (~${impactPct} clinical impact)"
+- Do NOT add multiple highlights — only the dominant finding
 
-BLOCK 4 (BOTTOM LEFT) — "IMAGEM ANATÔMICA FUNCIONAL":
-- Biomechanical/pathological conceptual illustration
-- Show stress zones, instability, degeneration, or deformity relevant to "${dominantPathology}"
-- Compare normal (verde) vs pathological (vermelho/laranja) with clear labels
+BLOCK 2 (TOP CENTER) — "TOPOGRAPHIC OVERLAY" with target icon:
+- Same radiograph base with transparent anatomical mapping
+- AI-style pathological heatmap gradient (orange → intense red) focused on pathology zone
+- Up to 10 critical structures with connected white arrows: ${anatomicalOverlay}
+- Lateral probabilistic relevance table integrated in panel corner
+
+BLOCK 3 (TOP RIGHT) — "NORMAL COMPARATIVE ANATOMY" with green square icon:
+- Clean anatomical medical atlas-style illustration of NORMAL "${region}"
+- Green highlights on healthy landmarks equivalent to the pathological area
+- Label: "Atlas Reference — Normal"
+
+BLOCK 4 (BOTTOM LEFT) — "FUNCTIONAL ANATOMICAL IMAGE":
+- Biomechanical/pathological conceptual illustration of "${dominantPathology}"
+- Highlight stress zones, instability, degeneration, or deformity
+- Side-by-side comparison: normal (green label) vs pathological (red/orange label)
 - Bold laterality marker: "${laterality}"
+- ${description}
 
-BLOCK 5 (BOTTOM CENTER) — DADOS ESTRUTURADOS:
-- "ESTIMATIVA PROGNÓSTICA": Gravidade: ${prognostic.severity_score || severity}, Risco progressão: ${prognostic.functional_progression_risk || 'N/A'}, Risco intervenção: ${prognostic.intervention_risk || 'N/A'}
-- "DIAGNÓSTICO DIFERENCIAL": ${differentials}
-- "LAUDO FORMAL": Exame: ${formalReport.exam || region}, Impressão: ${formalReport.diagnostic_impression || diagnosis}
-- "RESUMO LEIGO": ${laySummary}
+BLOCK 5 (BOTTOM CENTER) — STRUCTURED DATA BLOCKS (stacked, red line separators):
+Block 5a: "PROGNOSTIC ESTIMATION"
+- Severity: ${prognostic.severity_score || severity}
+- Functional progression risk: ${prognostic.functional_progression_risk || 'N/A'}
+- Intervention risk: ${prognostic.intervention_risk || 'N/A'}
+- Prognosis model: ${prognostic.prognosis_model || 'N/A'}
 
-BLOCK 6 (BOTTOM RIGHT) — RESUMO CLÍNICO:
-- Qualidade técnica: ${techQuality.score || 3}/5
-- Nota educacional
-- Barra inferior vermelha: "Correlacione clinicamente. Relevância %, prognóstico, DDx e conduta incluídos."
+Block 5b: "DIFFERENTIAL DIAGNOSIS (Probabilities)"
+- ${presumptive.name}: ${presumptive.confidence} (${presumptive.color || 'red'})
+- ${differentials}
 
-TOP BANNER: "RESUMO CLÍNICO-RADIOLÓGICO IMERSIVO: ${region} — ${dominantPathology}" in white/red text.
+Block 5c: "FORMAL HOSPITAL REPORT (CBR/RSNA)"
+- Exam: ${formalReport.exam || region}
+- Technique: ${formalReport.technique || 'Adequate'}
+- Findings: ${formalReport.findings || description}
+- Diagnostic impression: ${formalReport.diagnostic_impression || diagnosis}
+- Recommendations: ${formalReport.recommendations || recommendedConduct}
 
-COLOR SEMANTICS: Vermelho = alto risco clínico, Laranja = risco moderado, Amarelo = secundário, Azul = referência anatômica, Verde = comparação normal.
+Block 5d: "LAY SUMMARY" (yellow box):
+- ${laySummary}
 
-Regiões coloridas da análise: ${colorRegions}
+BLOCK 6 (BOTTOM RIGHT) — CLINICAL SUMMARY PANEL:
+Block 6a: "EDUCATIONAL ANALYSIS"
+- Technical quality: ${techQuality.score || 3}/5 (Projection: ${techQuality.projection || 'N/A'}, Penetration: ${techQuality.penetration || 'N/A'})
+- Educational note: ${educationalNote.didactic_note || 'N/A'}
 
-GRAPHICAL RULES: Organic medical polygons, thin clinical arrows, no decorative elements, high contrast clinical readability, real radiology workstation appearance. All text in Portuguese. Prioritize font size and legibility over information density.
+Block 6b: "MULTI-SPECIALTY RELEVANCE"
+- ${multiSpecialty}
+
+Block 6c: "ACTION PLAN"
+- Immediate: ${(actionPlan.immediate_actions || []).slice(0, 2).join('; ')}
+- Follow-up: ${(actionPlan.follow_up || []).slice(0, 2).join('; ')}
+
+BOTTOM BAR (full width, red):
+"Correlate clinically. Relevance %, prognosis, DDx and conduct included."
+
+COLOR SEMANTICS: Red = high clinical risk, Orange = moderate risk, Yellow = secondary involvement, Blue = anatomical reference, Green = normal comparison.
+
+Color-coded regions from analysis: ${colorRegions}
+
+GRAPHICAL RULES:
+- Organic medical polygons, thin clinical arrows
+- NO decorative elements, NO filler text, NO generic anatomy
+- All visual and textual outputs MUST adapt to actual radiographic findings listed above
+- High contrast clinical readability — real radiology workstation appearance
+- Prioritize font size and legibility over information density
+- Every text element must be a coherent, real word in ${langName}
 
 Generate ONE single integrated immersive medical radiology panel.`;
   }

@@ -20884,7 +20884,7 @@ Generate ONE single integrated didactic ECG analysis panel that is hyper-informa
         return res.status(403).json({ message: 'Apenas médicos e administradores podem analisar radiografias' });
       }
 
-      const { imageBase64, patientContext } = req.body;
+      const { imageBase64, patientContext, language } = req.body;
       if (!imageBase64) {
         return res.status(400).json({ message: 'Imagem radiográfica (base64) é obrigatória' });
       }
@@ -20892,7 +20892,7 @@ Generate ONE single integrated didactic ECG analysis panel that is hyper-informa
       const { geminiService } = await import('./services/gemini');
       const result = await geminiService.analyzeRadiologyImage(imageBase64, patientContext || {});
 
-      const immersiveImage = await geminiService.generateRadiologyPACSImage(result);
+      const immersiveImage = await geminiService.generateRadiologyPACSImage(result, language);
       res.json({ ...result, immersive_image: immersiveImage });
     } catch (error) {
       console.error('Radiology analysis error:', error);
@@ -20909,13 +20909,13 @@ Generate ONE single integrated didactic ECG analysis panel that is hyper-informa
         return res.status(403).json({ message: 'Apenas médicos e administradores podem gerar imagens' });
       }
 
-      const { analysisData } = req.body;
+      const { analysisData, language } = req.body;
       if (!analysisData) {
         return res.status(400).json({ message: 'Dados da análise são obrigatórios' });
       }
 
       const { geminiService } = await import('./services/gemini');
-      const immersiveImage = await geminiService.generateRadiologyPACSImage(analysisData);
+      const immersiveImage = await geminiService.generateRadiologyPACSImage(analysisData, language);
       if (!immersiveImage) {
         return res.status(500).json({ message: 'Falha ao gerar imagem imersiva' });
       }

@@ -20,6 +20,7 @@ import {
   Save, User, UserPlus, AlertTriangle, Stethoscope,
   ImageIcon, Trash2, ExternalLink, Download, GripVertical, ChevronDown, ChevronUp
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const SEVERITY_COLORS: Record<number, string> = {
   1: 'bg-green-500',
@@ -37,6 +38,7 @@ const MAX_SIZE = { w: 700, h: 900 };
 export default function FloatingRadiologyAnalyzer() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -173,7 +175,8 @@ export default function FloatingRadiologyAnalyzer() {
       if (patientSex) patientContext.sex = patientSex;
       if (patientHistory) patientContext.clinicalHistory = patientHistory;
       if (anatomicalRegion) patientContext.anatomicalRegion = anatomicalRegion;
-      const res = await apiRequest('POST', '/api/radiology/analyze', { imageBase64: radImage, patientContext });
+      const currentLang = i18n.resolvedLanguage || i18n.language || 'pt';
+      const res = await apiRequest('POST', '/api/radiology/analyze', { imageBase64: radImage, patientContext, language: currentLang });
       return res.json();
     },
     onSuccess: (data: any) => {
@@ -242,7 +245,8 @@ export default function FloatingRadiologyAnalyzer() {
   const generateImmersiveImageMutation = useMutation({
     mutationFn: async () => {
       if (!result) throw new Error('No result');
-      const res = await apiRequest('POST', '/api/radiology/generate-immersive-image', { analysisData: result });
+      const currentLang = i18n.resolvedLanguage || i18n.language || 'pt';
+      const res = await apiRequest('POST', '/api/radiology/generate-immersive-image', { analysisData: result, language: currentLang });
       return res.json();
     },
     onSuccess: (data: { immersive_image: string }) => {

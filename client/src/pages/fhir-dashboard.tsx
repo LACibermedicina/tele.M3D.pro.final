@@ -26,6 +26,7 @@ import {
   ClipboardList, Calendar, Shield, Scan, Eye, Layers, Target,
   CheckCircle, XCircle, Palette, Siren, TrendingUp, Star, BookOpen
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const ECG_COLORS: Record<string, string> = {
   flutter: '#EF4444',
@@ -291,6 +292,7 @@ function SavedStudiesSidebar() {
 export default function FHIRDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState('patients');
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -467,7 +469,8 @@ export default function FHIRDashboard() {
 
   const radAnalysisMutation = useMutation({
     mutationFn: async (data: { imageBase64: string; patientContext: any }) => {
-      const res = await apiRequest('POST', '/api/radiology/analyze', data);
+      const currentLang = i18n.resolvedLanguage || i18n.language || 'pt';
+      const res = await apiRequest('POST', '/api/radiology/analyze', { ...data, language: currentLang });
       return res.json();
     },
     onSuccess: (data: any) => {
