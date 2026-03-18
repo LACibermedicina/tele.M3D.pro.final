@@ -30,7 +30,7 @@ export default function Header() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const { voiceMode, setVoiceMode, hasDecided } = useVoiceAssistant();
-  const { mobileMenuStyle, sidebarCollapsed, setSidebarCollapsed } = useLayoutSettings();
+  const { mobileMenuStyle, sidebarCollapsed, setSidebarCollapsed, navDockMode } = useLayoutSettings();
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -530,6 +530,172 @@ export default function Header() {
     refetchInterval: 60000,
   });
   const pendingPostCount = pendingPostItems?.length || 0;
+
+  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  if (!isMobileView && (navDockMode === 'left' || navDockMode === 'right')) {
+    return (
+      <DockableNavBar>
+        <div className="flex flex-col items-center w-full gap-1 py-1">
+          <Link href="/" data-testid="link-logo">
+            <div className="w-10 h-10 flex items-center justify-center mb-1">
+              <img 
+                src={telemedLogo} 
+                alt="Tele<M3D> Logo" 
+                className="w-full h-full object-contain"
+                style={{ filter: 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+              />
+            </div>
+          </Link>
+          <div className="w-8 border-t border-white/20 mb-1" />
+          <TooltipProvider>
+            {filteredGroups.map((group) =>
+              group.items.map((item) => {
+                const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                const IconComponent = item.icon;
+                const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
+                return (
+                  <Tooltip key={item.path}>
+                    <TooltipTrigger asChild>
+                      <Link href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}>
+                        <div
+                          className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
+                            isActive ? "text-white shadow-md" : "text-white/60 hover:text-white hover:bg-white/10"
+                          }`}
+                          style={{
+                            background: isActive ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" : "transparent"
+                          }}
+                        >
+                          <IconComponent className="h-4 w-4" />
+                          {hasBadge && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                              {pendingPostCount > 9 ? '9+' : pendingPostCount}
+                            </span>
+                          )}
+                        </div>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side={navDockMode === 'left' ? 'right' : 'left'} className="bg-primary text-white font-medium px-3 py-1.5">
+                      <p className="text-white text-xs">{item.label}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })
+            )}
+          </TooltipProvider>
+          <div className="w-8 border-t border-white/20 my-1" />
+          {user && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/profile">
+                    <Avatar className="w-8 h-8 cursor-pointer">
+                      <AvatarFallback className="text-white font-semibold text-[10px]" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
+                        {getUserInitials(user.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side={navDockMode === 'left' ? 'right' : 'left'}>
+                  <p>{user.name}</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={handleLogout} className="w-10 h-10 rounded-xl flex items-center justify-center text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={navDockMode === 'left' ? 'right' : 'left'}>
+                  <p>Sair</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+        <CommandPalette 
+          isOpen={isCommandPaletteOpen} 
+          onClose={() => setIsCommandPaletteOpen(false)}
+          userRole={user?.role}
+        />
+      </DockableNavBar>
+    );
+  }
+
+  if (!isMobileView && navDockMode === 'floating') {
+    return (
+      <DockableNavBar>
+        <div className="flex items-center gap-1 px-1">
+          <Link href="/" data-testid="link-logo">
+            <div className="w-8 h-8 flex items-center justify-center shrink-0">
+              <img 
+                src={telemedLogo} 
+                alt="Tele<M3D> Logo" 
+                className="w-full h-full object-contain"
+                style={{ filter: 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+              />
+            </div>
+          </Link>
+          <div className="h-6 w-px bg-white/20 mx-1" />
+          <TooltipProvider>
+            <nav className="flex items-center gap-0.5 flex-wrap">
+              {filteredGroups.map((group) =>
+                group.items.map((item) => {
+                  const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                  const IconComponent = item.icon;
+                  const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
+                  return (
+                    <Tooltip key={item.path}>
+                      <TooltipTrigger asChild>
+                        <Link href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}>
+                          <div
+                            className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                              isActive ? "text-white shadow-md" : "text-white/60 hover:text-white hover:bg-white/10"
+                            }`}
+                            style={{
+                              background: isActive ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" : "transparent"
+                            }}
+                          >
+                            <IconComponent className="h-3.5 w-3.5" />
+                            {hasBadge && (
+                              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[7px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">!</span>
+                            )}
+                          </div>
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-primary text-white font-medium px-2 py-1">
+                        <p className="text-white text-xs">{item.label}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })
+              )}
+            </nav>
+          </TooltipProvider>
+          {user && (
+            <>
+              <div className="h-6 w-px bg-white/20 mx-1" />
+              <Link href="/profile">
+                <Avatar className="w-7 h-7 cursor-pointer">
+                  <AvatarFallback className="text-white font-semibold text-[9px]" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
+                    {getUserInitials(user.name)}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+              <button onClick={handleLogout} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/50 hover:text-red-400 transition-all">
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
+            </>
+          )}
+        </div>
+        <CommandPalette 
+          isOpen={isCommandPaletteOpen} 
+          onClose={() => setIsCommandPaletteOpen(false)}
+          userRole={user?.role}
+        />
+      </DockableNavBar>
+    );
+  }
 
   return (
     <DockableNavBar>
