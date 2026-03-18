@@ -161,6 +161,45 @@ Este guia fornece exemplos práticos baseados na implementação atual do sistem
 
 ---
 
+## 🎛️ DASHBOARD INTERATIVO
+
+### Painéis Arrastáveis
+```
+1. Todos os painéis do dashboard podem ser reorganizados
+2. Passe o mouse sobre um painel para ver os controles (grip, minimizar, fechar)
+3. Arraste pela barra de grip para reposicionar
+4. Posições são salvas automaticamente entre sessões
+5. Use "Reset Layout" para restaurar o layout padrão
+```
+
+### Dock de Painéis Minimizados
+```
+1. Clique no ícone "—" para minimizar um painel
+2. O painel aparece como ícone no dock lateral (desktop) ou barra inferior (mobile)
+3. Clique no ícone para restaurar o painel
+4. O dock pode ser movido entre esquerda/direita (desktop)
+5. "Restaurar todos" para reabrir todos os painéis minimizados
+```
+
+### Toolbox Unificado
+```
+1. Barra flutuante de ferramentas com todos os atalhos de navegação
+2. Atalhos filtrados pelo papel do usuário (médico, admin, paciente)
+3. Arraste para reposicionar; se solto perto das bordas, acopla automaticamente
+4. Modo compacto: apenas ícones (sem rótulos)
+5. Minimizar para o dock lateral via botão "—"
+```
+
+### Widgets Flutuantes com Minimização
+```
+1. Chatbot IA: botão "—" minimiza para dock → clique no ícone para restaurar
+2. Notas de Estudo: botão "—" minimiza para dock → clique no ícone para restaurar
+3. Análise ECG: botão "—" minimiza para dock → clique no ícone para restaurar
+4. Análise Radiológica: botão "—" minimiza para dock → clique no ícone para restaurar
+```
+
+---
+
 ## 🔧 FUNCIONALIDADES DETALHADAS
 
 ### Dashboard Widgets
@@ -376,5 +415,5 @@ Este guia fornece exemplos práticos baseados na implementação atual do sistem
 
 ---
 
-*Última atualização: Setembro 2025 | Versão: 2.2*
+*Última atualização: Março 2026 | Versão: 3.5*
 *Baseado na implementação atual do sistema*

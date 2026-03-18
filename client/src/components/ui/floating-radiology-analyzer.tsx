@@ -16,10 +16,11 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Scan, X, Upload, Zap, Loader2,
+  Scan, X, Upload, Zap, Loader2, Minus,
   Save, User, UserPlus, AlertTriangle, Stethoscope,
   ImageIcon, Trash2, ExternalLink, Download, GripVertical, ChevronDown, ChevronUp
 } from 'lucide-react';
+import { useMinimizedPanels } from '@/contexts/MinimizedPanelsContext';
 import { useTranslation } from 'react-i18next';
 
 const SEVERITY_COLORS: Record<number, string> = {
@@ -41,12 +42,17 @@ export default function FloatingRadiologyAnalyzer() {
   const { i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const { minimize, isMinimized: isDockMinimized } = useMinimizedPanels();
 
   useEffect(() => {
     const handler = () => setIsOpen(true);
     window.addEventListener('open-radiology-widget', handler);
     return () => window.removeEventListener('open-radiology-widget', handler);
   }, []);
+
+  useEffect(() => {
+    if (!isDockMinimized('floating-radiology')) setIsOpen(true);
+  }, [isDockMinimized]);
   const [radImage, setRadImage] = useState<string | null>(null);
   const [radPreview, setRadPreview] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
@@ -358,6 +364,9 @@ export default function FloatingRadiologyAnalyzer() {
               </Button>
               <Button variant="ghost" size="icon" className="h-6 w-6" title="Criar novo paciente" onClick={(e) => { e.stopPropagation(); setShowCreatePatientDialog(true); }}>
                 <UserPlus className="h-3 w-3 text-emerald-500" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6" title="Minimizar" onClick={(e) => { e.stopPropagation(); setIsOpen(false); minimize({ id: 'floating-radiology', label: 'Análise Radiológica', icon: 'scan' }); }}>
+                <Minus className="h-3 w-3" />
               </Button>
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}>
                 <X className="h-3 w-3" />

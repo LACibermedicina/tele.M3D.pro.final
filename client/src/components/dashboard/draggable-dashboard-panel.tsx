@@ -72,15 +72,15 @@ export default function DraggableDashboardPanel({
 
   if (isMobile) {
     return (
-      <div className={`relative group ${className}`} data-panel-id={id}>
-        <div className="absolute top-1 right-1 z-10 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+      <div className={`relative ${className}`} data-panel-id={id}>
+        <div className="absolute top-1 right-1 z-10 flex items-center gap-0.5 bg-background/70 backdrop-blur-sm rounded px-0.5"
           onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleMinimize}>
-            <Minus className="h-3 w-3" />
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleMinimize}>
+            <Minus className="h-3.5 w-3.5" />
           </Button>
           {showClose && (
-            <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive" onClick={handleClose}>
-              <X className="h-3 w-3" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-destructive/20 hover:text-destructive" onClick={handleClose}>
+              <X className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
@@ -53,10 +54,61 @@ function getIcon(iconName: string): LucideIcon {
 
 export default function MinimizedPanelDock() {
   const { minimizedPanels, restore, restoreAll, dockSide, setDockSide } = useMinimizedPanels();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   if (minimizedPanels.length === 0) return null;
 
   const isLeft = dockSide === "left";
+
+  if (isMobile) {
+    return (
+      <div
+        className="fixed bottom-0 left-0 right-0 z-40 flex items-center gap-1 py-1.5 px-2 bg-background/95 backdrop-blur-sm border-t shadow-lg"
+        style={{ overflowX: "auto" }}
+      >
+        {minimizedPanels.map(panel => {
+          const Icon = getIcon(panel.icon);
+          return (
+            <Tooltip key={panel.id}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 relative shrink-0 hover:bg-primary/10"
+                  onClick={() => restore(panel.id)}
+                >
+                  <Icon className="h-4 w-4" />
+                  {panel.badge !== undefined && panel.badge > 0 && (
+                    <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 text-[9px] flex items-center justify-center">
+                      {panel.badge > 99 ? "99+" : panel.badge}
+                    </Badge>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><p>{panel.label}</p></TooltipContent>
+            </Tooltip>
+          );
+        })}
+        {minimizedPanels.length > 1 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground" onClick={restoreAll}>
+                <RotateCcw className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top"><p>Restaurar todos</p></TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

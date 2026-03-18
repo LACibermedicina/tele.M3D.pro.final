@@ -17,10 +17,11 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Heart, X, Upload, Zap, Loader2,
+  Heart, X, Upload, Zap, Loader2, Minus,
   Save, User, UserPlus, AlertTriangle, Stethoscope,
   ImageIcon, Trash2, ExternalLink, Download, GripVertical, ChevronDown, ChevronUp
 } from 'lucide-react';
+import { useMinimizedPanels } from '@/contexts/MinimizedPanelsContext';
 
 const SEVERITY_COLORS: Record<number, string> = {
   1: 'bg-green-500',
@@ -42,12 +43,17 @@ export default function FloatingECGAnalyzer() {
   const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
+  const { minimize, isMinimized: isDockMinimized } = useMinimizedPanels();
 
   useEffect(() => {
     const handler = () => setIsOpen(true);
     window.addEventListener('open-ecg-widget', handler);
     return () => window.removeEventListener('open-ecg-widget', handler);
   }, []);
+
+  useEffect(() => {
+    if (!isDockMinimized('floating-ecg')) setIsOpen(true);
+  }, [isDockMinimized]);
   const [ecgImage, setEcgImage] = useState<string | null>(null);
   const [ecgPreview, setEcgPreview] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
@@ -372,6 +378,9 @@ export default function FloatingECGAnalyzer() {
               </Button>
               <Button variant="ghost" size="icon" className="h-6 w-6" title="Criar novo paciente" onClick={(e) => { e.stopPropagation(); setShowCreatePatientDialog(true); }}>
                 <UserPlus className="h-3 w-3 text-emerald-500" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6" title="Minimizar" onClick={(e) => { e.stopPropagation(); setIsOpen(false); minimize({ id: 'floating-ecg', label: 'Análise ECG', icon: 'heart' }); }}>
+                <Minus className="h-3 w-3" />
               </Button>
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}>
                 <X className="h-3 w-3" />
