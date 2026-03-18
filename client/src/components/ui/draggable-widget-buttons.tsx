@@ -15,7 +15,7 @@ function DraggableQuickActions({ userRole }: { userRole: string }) {
     <div
       data-draggable-root
       className="fixed z-40"
-      style={position.x >= 0 ? { left: position.x, top: position.y } : { bottom: 80, right: 80 }}
+      style={position.x >= 0 ? { left: position.x, top: position.y } : { bottom: 80, left: 80 }}
     >
       <div className="relative group/qa">
         <div
@@ -48,7 +48,7 @@ export default function DraggableWidgetButtons() {
       <div
         data-draggable-root
         className="fixed z-40 flex flex-col-reverse items-center gap-3"
-        style={position.x >= 0 ? { left: position.x, top: position.y } : { bottom: 16, right: 24 }}
+        style={position.x >= 0 ? { left: position.x, top: position.y } : { bottom: 16, left: 24 }}
       >
         <button
           onClick={() => window.dispatchEvent(new Event('open-chatbot-widget'))}

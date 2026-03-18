@@ -215,7 +215,7 @@ export default function UnifiedToolbox() {
   const { t } = useTranslation();
   const [location, navigate] = useLocation();
   const { minimize, isMinimized } = useMinimizedPanels();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
   const [detachedPaths, setDetachedPaths] = useState<string[]>(loadDetached);
 
@@ -359,16 +359,24 @@ export default function UnifiedToolbox() {
         style={getDockedStyle()}
         data-draggable-root
       >
-        <div className={`flex items-center gap-1 px-2 py-1 border-b bg-muted/30 ${isHorizontal ? "" : ""}`}>
+        <div
+          className={`flex items-center gap-1 px-2 py-1 border-b bg-muted/30 cursor-pointer select-none hover:bg-muted/50 transition-colors ${isHorizontal ? "" : ""}`}
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest('button, [role="button"]')) return;
+            setCollapsed(!collapsed);
+          }}
+        >
           <div
             className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground"
             onMouseDown={onDragStart}
             onTouchStart={onDragStart}
+            onClick={e => e.stopPropagation()}
           >
             <GripVertical className="h-3.5 w-3.5" />
           </div>
           <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
           {!collapsed && <span className="text-xs font-medium text-muted-foreground flex-1">Toolbox</span>}
+          {collapsed && <span className="text-[10px] text-muted-foreground">Menu</span>}
           <div className="flex items-center gap-0.5" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setCollapsed(!collapsed)}>
               {collapsed ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronUp className="h-2.5 w-2.5" />}
