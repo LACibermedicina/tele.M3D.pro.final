@@ -51,8 +51,9 @@ import {
   X,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useWebSocket } from '@/hooks/use-websocket';
+import { useWebSocket, onForceDisconnect } from '@/hooks/use-websocket';
 import ConsultationInactivityMonitor from '@/components/consultation-inactivity-monitor';
+import { disconnectAllMediaServices } from '@/components/inactivity-monitor';
 
 type ConsultationNote = {
   id: string;
@@ -327,6 +328,20 @@ export default function VideoConsultation() {
       }
     }
   }, [wsMessages, consultationId]);
+
+  useEffect(() => {
+    const unsubscribe = onForceDisconnect((_reason, message) => {
+      disconnectAllMediaServices();
+      leaveChannel();
+      toast({
+        title: 'Sessão encerrada',
+        description: message,
+        variant: 'destructive',
+      });
+      setLocation('/schedule');
+    });
+    return unsubscribe;
+  }, []);
 
   const joinChannel = async () => {
     if (!client || !agoraConfig || joined) return;

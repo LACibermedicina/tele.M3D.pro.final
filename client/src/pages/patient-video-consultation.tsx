@@ -33,8 +33,9 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { useWebSocket } from '@/hooks/use-websocket';
+import { useWebSocket, onForceDisconnect } from '@/hooks/use-websocket';
 import ConsultationInactivityMonitor from '@/components/consultation-inactivity-monitor';
+import { disconnectAllMediaServices } from '@/components/inactivity-monitor';
 
 const SpeechRecognitionAPI = typeof window !== 'undefined'
   ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -334,6 +335,20 @@ export default function PatientVideoConsultation() {
     }, 8000);
     return () => clearInterval(pollInterval);
   }, [consultationId]);
+
+  useEffect(() => {
+    const unsubscribe = onForceDisconnect((_reason, message) => {
+      disconnectAllMediaServices();
+      leaveChannel();
+      toast({
+        title: 'Sessão encerrada',
+        description: message,
+        variant: 'destructive',
+      });
+      setLocation('/my-consultations');
+    });
+    return unsubscribe;
+  }, []);
 
   const joinChannel = async () => {
     if (!client || !agoraConfig || joined) return;

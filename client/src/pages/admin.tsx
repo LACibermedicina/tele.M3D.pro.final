@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, ShieldCheck, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings, CreditCard, Pill, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Shield, ShieldCheck, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings, CreditCard, Pill, ArrowUpDown, ArrowUp, ArrowDown, Unplug, Stethoscope, ServerCrash } from 'lucide-react';
 import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { formatErrorForToast } from '@/lib/error-handler';
@@ -300,6 +300,47 @@ export default function AdminPage() {
       setSelectedErrorLog(null);
       setResolveNotes('');
       toast({ title: 'Sucesso', description: 'Erro marcado como resolvido com sucesso' });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: 'destructive' });
+    }
+  });
+
+  const [disconnectConfirm, setDisconnectConfirm] = useState<'users' | 'doctors' | 'services' | null>(null);
+
+  const disconnectAllUsersMutation = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/admin/disconnect-all-users', {}),
+    onSuccess: async (response) => {
+      const data = await response.json();
+      setDisconnectConfirm(null);
+      toast({ title: 'Sucesso', description: data.message });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: 'destructive' });
+    }
+  });
+
+  const disconnectAllDoctorsMutation = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/admin/disconnect-all-doctors', {}),
+    onSuccess: async (response) => {
+      const data = await response.json();
+      setDisconnectConfirm(null);
+      toast({ title: 'Sucesso', description: data.message });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: 'destructive' });
+    }
+  });
+
+  const disconnectAllServicesMutation = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/admin/disconnect-all-services', {}),
+    onSuccess: async (response) => {
+      const data = await response.json();
+      setDisconnectConfirm(null);
+      toast({ title: 'Sucesso', description: data.message });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -1270,6 +1311,132 @@ export default function AdminPage() {
 
         {/* Security Tab */}
         <TabsContent value="security" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Unplug className="h-5 w-5 text-red-500" />
+                Controle de Conexões
+              </CardTitle>
+              <CardDescription>
+                Desconectar sessões ativas de usuários, médicos ou todos os serviços (WebSocket + Agora)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="border-yellow-500/30">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-yellow-600" />
+                      <h4 className="font-semibold">Todos os Usuários</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Encerra todas as conexões WebSocket ativas exceto a do administrador atual.</p>
+                    {disconnectConfirm === 'users' ? (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-red-600">Confirma a desconexão de todos os usuários?</p>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={() => disconnectAllUsersMutation.mutate()}
+                            disabled={disconnectAllUsersMutation.isPending}
+                          >
+                            {disconnectAllUsersMutation.isPending ? 'Desconectando...' : 'Confirmar'}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setDisconnectConfirm(null)}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="w-full border-yellow-500/50 text-yellow-700 hover:bg-yellow-50 dark:text-yellow-400 dark:hover:bg-yellow-900/20"
+                        onClick={() => setDisconnectConfirm('users')}
+                      >
+                        <Unplug className="h-4 w-4 mr-2" />
+                        Desconectar Todos os Usuários
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="border-orange-500/30">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Stethoscope className="h-5 w-5 text-orange-600" />
+                      <h4 className="font-semibold">Todos os Médicos</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Encerra apenas as conexões WebSocket de usuários identificados como médicos.</p>
+                    {disconnectConfirm === 'doctors' ? (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-red-600">Confirma a desconexão de todos os médicos?</p>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={() => disconnectAllDoctorsMutation.mutate()}
+                            disabled={disconnectAllDoctorsMutation.isPending}
+                          >
+                            {disconnectAllDoctorsMutation.isPending ? 'Desconectando...' : 'Confirmar'}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setDisconnectConfirm(null)}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="w-full border-orange-500/50 text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-900/20"
+                        onClick={() => setDisconnectConfirm('doctors')}
+                      >
+                        <Stethoscope className="h-4 w-4 mr-2" />
+                        Desconectar Todos os Médicos
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="border-red-500/30">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <ServerCrash className="h-5 w-5 text-red-600" />
+                      <h4 className="font-semibold">Todos os Serviços</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Encerra todas as conexões WebSocket E notifica todas as salas de consulta para desconectar Agora.</p>
+                    {disconnectConfirm === 'services' ? (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-red-600">Confirma a desconexão de TODOS os serviços? Isto afetará todas as consultas ativas.</p>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={() => disconnectAllServicesMutation.mutate()}
+                            disabled={disconnectAllServicesMutation.isPending}
+                          >
+                            {disconnectAllServicesMutation.isPending ? 'Desconectando...' : 'Confirmar'}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setDisconnectConfirm(null)}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="w-full border-red-500/50 text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                        onClick={() => setDisconnectConfirm('services')}
+                      >
+                        <ServerCrash className="h-4 w-4 mr-2" />
+                        Desconectar Todos os Serviços
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Security Events</CardTitle>

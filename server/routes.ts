@@ -254,6 +254,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Store consultation rooms: consultationId -> { doctor: WebSocket[], patient: WebSocket[] }
   const consultationRooms = new Map<string, { doctor: WebSocket[], patient: WebSocket[] }>();
+
+  // Store user types for mass disconnect: userId -> userType
+  const clientUserTypes = new Map<string, 'doctor' | 'patient' | 'visitor'>();
   
   wss.on('connection', (ws: WebSocket, req) => {
     console.log('Client connected to WebSocket');
@@ -331,6 +334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       authenticatedClients.set(userId, []);
     }
     authenticatedClients.get(userId)?.push(ws);
+    clientUserTypes.set(userId, userType);
     console.log(`${userType} ${userId} connected to WebSocket`);
     
     if (userType === 'patient' && consultationId) {
@@ -352,6 +356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         if (clients.length === 0) {
           authenticatedClients.delete(userId);
+          clientUserTypes.delete(userId);
         }
       }
       
@@ -13844,6 +13849,135 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     } catch (error) {
       console.error('Admin user unblock error:', error);
       res.status(500).json({ message: 'Failed to unblock user' });
+    }
+  });
+
+  // Mass disconnect all users
+  app.post('/api/admin/disconnect-all-users', requireAuth, async (req: any, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
+      const user = req.user as User;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied: admin privileges required' });
+      }
+
+      let disconnectedCount = 0;
+      const adminMessage = JSON.stringify({
+        type: 'force-disconnect',
+        reason: 'admin_disconnect_all',
+        message: 'Sua sessão foi encerrada pelo administrador.',
+        timestamp: new Date().toISOString(),
+      });
+
+      authenticatedClients.forEach((clients, clientUserId) => {
+        if (clientUserId === user.id) return;
+        clients.forEach((ws) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            try {
+              ws.send(adminMessage);
+              ws.close(4000, 'Admin disconnect');
+              disconnectedCount++;
+            } catch {}
+          }
+        });
+      });
+
+      res.json({ message: `${disconnectedCount} conexões encerradas com sucesso.`, disconnectedCount });
+    } catch (error) {
+      console.error('Admin disconnect all users error:', error);
+      res.status(500).json({ message: 'Failed to disconnect users' });
+    }
+  });
+
+  // Mass disconnect all doctors only
+  app.post('/api/admin/disconnect-all-doctors', requireAuth, async (req: any, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
+      const user = req.user as User;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied: admin privileges required' });
+      }
+
+      let disconnectedCount = 0;
+      const adminMessage = JSON.stringify({
+        type: 'force-disconnect',
+        reason: 'admin_disconnect_doctors',
+        message: 'Sua sessão foi encerrada pelo administrador.',
+        timestamp: new Date().toISOString(),
+      });
+
+      clientUserTypes.forEach((uType, clientUserId) => {
+        if (uType !== 'doctor') return;
+        const clients = authenticatedClients.get(clientUserId);
+        if (!clients) return;
+        clients.forEach((ws) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            try {
+              ws.send(adminMessage);
+              ws.close(4000, 'Admin disconnect');
+              disconnectedCount++;
+            } catch {}
+          }
+        });
+      });
+
+      res.json({ message: `${disconnectedCount} conexões de médicos encerradas com sucesso.`, disconnectedCount });
+    } catch (error) {
+      console.error('Admin disconnect all doctors error:', error);
+      res.status(500).json({ message: 'Failed to disconnect doctors' });
+    }
+  });
+
+  // Mass disconnect all services (WebSocket + consultation rooms Agora termination)
+  app.post('/api/admin/disconnect-all-services', requireAuth, async (req: any, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
+      const user = req.user as User;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied: admin privileges required' });
+      }
+
+      let disconnectedCount = 0;
+      let roomsTerminated = 0;
+
+      const forceDisconnectMsg = JSON.stringify({
+        type: 'force-disconnect',
+        reason: 'admin_disconnect_services',
+        message: 'Todos os serviços foram encerrados pelo administrador. Reconecte quando necessário.',
+        timestamp: new Date().toISOString(),
+      });
+
+      consultationRooms.forEach((room, roomId) => {
+        const allRoomClients = [...room.doctor, ...room.patient];
+        allRoomClients.forEach((ws) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            try { ws.send(forceDisconnectMsg); } catch {}
+          }
+        });
+        roomsTerminated++;
+      });
+
+      authenticatedClients.forEach((clients, clientUserId) => {
+        if (clientUserId === user.id) return;
+        clients.forEach((ws) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            try {
+              ws.send(forceDisconnectMsg);
+              ws.close(4000, 'Admin disconnect services');
+              disconnectedCount++;
+            } catch {}
+          }
+        });
+      });
+
+      res.json({
+        message: `${disconnectedCount} conexões e ${roomsTerminated} salas de consulta encerradas.`,
+        disconnectedCount,
+        roomsTerminated,
+      });
+    } catch (error) {
+      console.error('Admin disconnect all services error:', error);
+      res.status(500).json({ message: 'Failed to disconnect services' });
     }
   });
 

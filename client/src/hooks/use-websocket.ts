@@ -1,8 +1,17 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 interface WebSocketMessage {
   type: string;
   data: any;
+}
+
+type ForceDisconnectHandler = (reason: string, message: string) => void;
+
+const forceDisconnectHandlers = new Set<ForceDisconnectHandler>();
+
+export function onForceDisconnect(handler: ForceDisconnectHandler): () => void {
+  forceDisconnectHandlers.add(handler);
+  return () => { forceDisconnectHandlers.delete(handler); };
 }
 
 export function useWebSocket() {
@@ -68,8 +77,14 @@ export function useWebSocket() {
 
         wsRef.current.onmessage = (event) => {
           try {
-            const message: WebSocketMessage = JSON.parse(event.data);
-            setMessages(prev => [...prev.slice(-99), message]); // Keep last 100 messages
+            const message = JSON.parse(event.data);
+            if (message.type === 'force-disconnect') {
+              forceDisconnectHandlers.forEach((handler) => {
+                try { handler(message.reason || 'admin_disconnect', message.message || 'Sua sessão foi encerrada pelo administrador.'); } catch {}
+              });
+              return;
+            }
+            setMessages(prev => [...prev.slice(-99), message]);
           } catch (error) {
             console.error('Error parsing WebSocket message:', error);
           }
