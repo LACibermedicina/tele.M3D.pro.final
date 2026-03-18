@@ -14479,12 +14479,14 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     }
   });
 
-  // Transfer TMC credits between users
+  // Legacy direct transfer (admin-only, bypasses escrow for admin convenience)
   app.post('/api/tmc/transfer', requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Use /api/tmc/transfer-request para transferências com aprovação' });
+      }
       
-      // Validate request body with Zod
       const validationResult = tmcTransferSchema.safeParse(req.body);
       if (!validationResult.success) {
         return res.status(400).json({ 
@@ -14511,6 +14513,81 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       console.error('TMC transfer error:', error);
       const message = error instanceof Error ? error.message : 'Failed to transfer TMC credits';
       res.status(400).json({ message });
+    }
+  });
+
+  // Credit Transfer Request (escrow-based with approval)
+  app.post('/api/tmc/transfer-request', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+      const { toUserId, amount, reason } = req.body;
+      if (!toUserId || !amount || amount <= 0) {
+        return res.status(400).json({ message: 'Dados inválidos' });
+      }
+      if (user.id === toUserId) {
+        return res.status(400).json({ message: 'Não é possível transferir para si mesmo' });
+      }
+      const transfer = await storage.createCreditTransferRequest(user.id, toUserId, amount, reason);
+      const newBalance = await storage.getUserBalance(user.id);
+      res.json({ transfer, newBalance, message: `Solicitação de transferência de ${amount} créditos enviada` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao criar transferência';
+      res.status(400).json({ message });
+    }
+  });
+
+  app.post('/api/tmc/transfer-respond', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+      const { transferId, action } = req.body;
+      if (!transferId || !['accept', 'reject'].includes(action)) {
+        return res.status(400).json({ message: 'Dados inválidos' });
+      }
+      const transfer = await storage.respondToCreditTransfer(transferId, user.id, action);
+      const newBalance = await storage.getUserBalance(user.id);
+      res.json({ transfer, newBalance, message: action === 'accept' ? 'Transferência aceita' : 'Transferência recusada' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao responder transferência';
+      res.status(400).json({ message });
+    }
+  });
+
+  app.post('/api/tmc/transfer-cancel', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+      const { transferId } = req.body;
+      if (!transferId) return res.status(400).json({ message: 'ID da transferência obrigatório' });
+      const transfer = await storage.cancelCreditTransfer(transferId, user.id);
+      const newBalance = await storage.getUserBalance(user.id);
+      res.json({ transfer, newBalance, message: 'Transferência cancelada' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao cancelar transferência';
+      res.status(400).json({ message });
+    }
+  });
+
+  app.get('/api/tmc/transfers/pending', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+      const transfers = await storage.getPendingTransfersForUser(user.id);
+      res.json(transfers);
+    } catch (error) {
+      res.status(500).json({ message: 'Falha ao buscar transferências pendentes' });
+    }
+  });
+
+  app.get('/api/tmc/transfers/history', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+      const transfers = await storage.getSentTransfersByUser(user.id);
+      res.json(transfers);
+    } catch (error) {
+      res.status(500).json({ message: 'Falha ao buscar histórico de transferências' });
     }
   });
 
@@ -22189,6 +22266,27 @@ async function migrateFhirTables() {
     console.log('✓ FHIR tables migrated successfully');
   } catch (error) {
     console.error('Failed to migrate FHIR tables:', error);
+  }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS credit_transfers (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        from_user_id UUID NOT NULL REFERENCES users(id),
+        to_user_id UUID NOT NULL REFERENCES users(id),
+        amount INTEGER NOT NULL,
+        reason TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        escrow_transaction_id UUID REFERENCES tmc_transactions(id),
+        completion_transaction_id UUID REFERENCES tmc_transactions(id),
+        responded_at TIMESTAMP,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    console.log('✓ Credit transfers table migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate credit transfers table:', error);
   }
 }
 

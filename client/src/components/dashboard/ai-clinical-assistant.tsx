@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Brain, Lightbulb, BookOpen, Mic, ClipboardList, Pill } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DiagnosticHypothesis {
   condition?: string;
@@ -37,6 +38,8 @@ export default function AIClinicalAssistant() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [diagnosticResults, setDiagnosticResults] = useState<DiagnosticAnalysisResponse | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   // Get recent transcriptions from consultations
   const { data: recentTranscriptions, isLoading: transcriptionsLoading, error: transcriptionsError } = useQuery<ConsultationTranscription[]>({
@@ -118,7 +121,7 @@ export default function AIClinicalAssistant() {
           <div className="ai-indicator w-8 h-8 rounded-lg flex items-center justify-center">
             <i className="fas fa-brain text-white text-sm"></i>
           </div>
-          <CardTitle>Assistente Clínico IA</CardTitle>
+          <CardTitle>{isAdmin ? 'Assistente Clínico IA' : 'Assistente Clínico'}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="p-6 space-y-4">
@@ -138,6 +141,7 @@ export default function AIClinicalAssistant() {
                 <span data-testid={`hypothesis-condition-${index}`}>
                   {hypothesis.condition || hypothesis.diagnosis || hypothesis.name}
                 </span>
+                {isAdmin && (
                 <Badge 
                   className={
                     (hypothesis.probability || hypothesis.confidence || 0) >= 80 ? "bg-primary text-primary-foreground" :
@@ -148,13 +152,14 @@ export default function AIClinicalAssistant() {
                 >
                   {hypothesis.probability || hypothesis.confidence || 0}%
                 </Badge>
+                )}
               </div>
             ))}
             
             {diagnosticResults?.analysis && (
               <div className="mt-3 p-3 bg-muted/30 rounded-lg">
                 <p className="text-sm text-muted-foreground">
-                  <strong>Análise IA:</strong> {diagnosticResults.analysis}
+                  <strong>{isAdmin ? 'Análise IA:' : 'Análise Assistida:'}</strong> {diagnosticResults.analysis}
                 </p>
               </div>
             )}
@@ -169,7 +174,7 @@ export default function AIClinicalAssistant() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Análise de Sintomas com IA</DialogTitle>
+                <DialogTitle>{isAdmin ? 'Análise de Sintomas com IA' : 'Análise de Sintomas'}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>

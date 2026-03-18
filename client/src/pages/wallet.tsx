@@ -278,29 +278,63 @@ export default function WalletPage() {
 
   const transferMutation = useMutation({
     mutationFn: async (data: { toUserId: string; amount: number; reason: string }) => {
-      const response = await fetch("/api/tmc/transfer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Falha na transferência");
-      }
-      return response.json();
+      const response = await apiRequest("POST", "/api/tmc/transfer-request", data);
+      return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tmc/balance"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tmc/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tmc/transfers/history"] });
       setTransferAmount("");
       setTransferUserId("");
       setTransferReason("");
-      setTransferOpen(false);
-      toast({ title: "Transferência realizada", description: "Créditos TM3D transferidos com sucesso!" });
+      toast({ title: "Solicitação enviada", description: data.message || "O destinatário precisa aceitar a transferência." });
     },
     onError: (error: any) => {
       toast({ title: "Erro", description: error.message || "Falha na transferência", variant: "destructive" });
     },
+  });
+
+  const transferRespondMutation = useMutation({
+    mutationFn: async (data: { transferId: string; action: 'accept' | 'reject' }) => {
+      const response = await apiRequest("POST", "/api/tmc/transfer-respond", data);
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tmc/balance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tmc/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tmc/transfers/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tmc/transfers/history"] });
+      toast({ title: "Sucesso", description: data.message });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const transferCancelMutation = useMutation({
+    mutationFn: async (transferId: string) => {
+      const response = await apiRequest("POST", "/api/tmc/transfer-cancel", { transferId });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tmc/balance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tmc/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tmc/transfers/history"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tmc/transfers/pending"] });
+      toast({ title: "Cancelada", description: data.message });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const { data: pendingTransfers = [] } = useQuery<any[]>({
+    queryKey: ["/api/tmc/transfers/pending"],
+  });
+
+  const { data: transferHistory = [] } = useQuery<any[]>({
+    queryKey: ["/api/tmc/transfers/history"],
   });
 
   const handleTransfer = () => {
@@ -395,7 +429,7 @@ export default function WalletPage() {
       </div>
 
       <Tabs defaultValue="comprar" className="space-y-4">
-        <TabsList className={`grid w-full max-w-3xl ${isAdmin ? 'grid-cols-6' : 'grid-cols-2'}`}>
+        <TabsList className={`grid w-full max-w-3xl ${isAdmin ? 'grid-cols-6' : 'grid-cols-3'}`}>
           <TabsTrigger value="comprar" className="flex items-center gap-1.5">
             <ShoppingCart className="h-4 w-4" />
             <span className="hidden sm:inline">Comprar</span>
@@ -404,12 +438,12 @@ export default function WalletPage() {
             <History className="h-4 w-4" />
             <span className="hidden sm:inline">Histórico</span>
           </TabsTrigger>
+          <TabsTrigger value="transferir" className="flex items-center gap-1.5">
+            <Send className="h-4 w-4" />
+            <span className="hidden sm:inline">Transferir</span>
+          </TabsTrigger>
           {isAdmin && (
             <>
-              <TabsTrigger value="transferir" className="flex items-center gap-1.5">
-                <Send className="h-4 w-4" />
-                <span className="hidden sm:inline">Transferir</span>
-              </TabsTrigger>
               <TabsTrigger value="custos" className="flex items-center gap-1.5">
                 <Info className="h-4 w-4" />
                 <span className="hidden sm:inline">Custos</span>
@@ -802,17 +836,65 @@ export default function WalletPage() {
           )}
         </TabsContent>
 
-        {isAdmin && (<TabsContent value="transferir" className="space-y-4">
+        <TabsContent value="transferir" className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Send className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Transferir Créditos</h2>
           </div>
 
+          {pendingTransfers.length > 0 && (
+            <Card className="border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                  Transferências Pendentes ({pendingTransfers.length})
+                </CardTitle>
+                <CardDescription>Transferências aguardando sua aprovação</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {pendingTransfers.map((t: any) => (
+                  <div key={t.id} className="flex items-center justify-between p-3 rounded-lg border bg-background">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">
+                        <span className="text-green-600 dark:text-green-400">+{t.amount}</span> TM3D
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        De: {t.fromUserId.slice(0, 8)}...
+                        {t.reason && ` • ${t.reason}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Expira: {t.expiresAt ? new Date(t.expiresAt).toLocaleDateString('pt-BR') : '—'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => transferRespondMutation.mutate({ transferId: t.id, action: 'accept' })}
+                        disabled={transferRespondMutation.isPending}
+                      >
+                        <Check className="h-3 w-3 mr-1" /> Aceitar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => transferRespondMutation.mutate({ transferId: t.id, action: 'reject' })}
+                        disabled={transferRespondMutation.isPending}
+                      >
+                        Recusar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Enviar Créditos TM3D</CardTitle>
-                <CardDescription>Transfira créditos para outro usuário da plataforma</CardDescription>
+                <CardDescription>Envie uma solicitação de transferência para outro usuário</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -854,7 +936,7 @@ export default function WalletPage() {
                   ) : (
                     <Send className="h-4 w-4 mr-1" />
                   )}
-                  Transferir Créditos
+                  Solicitar Transferência
                 </Button>
               </CardContent>
             </Card>
@@ -865,12 +947,12 @@ export default function WalletPage() {
                   <div className="flex items-start gap-3">
                     <Info className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
                     <div className="text-sm space-y-2">
-                      <p className="font-medium text-blue-700 dark:text-blue-300">Como transferir créditos</p>
+                      <p className="font-medium text-blue-700 dark:text-blue-300">Como funciona</p>
                       <ul className="text-blue-600 dark:text-blue-400 space-y-1 text-xs">
-                        <li>1. Solicite o ID do usuário destinatário</li>
-                        <li>2. Informe a quantidade de créditos desejada</li>
-                        <li>3. A transferência é instantânea e irreversível</li>
-                        <li>4. O saldo do destinatário é atualizado imediatamente</li>
+                        <li>1. Informe o ID do destinatário e o valor</li>
+                        <li>2. Seus créditos ficam em custódia (escrow)</li>
+                        <li>3. O destinatário aceita ou recusa em até 72h</li>
+                        <li>4. Se recusada ou expirada, os créditos são devolvidos</li>
                       </ul>
                     </div>
                   </div>
@@ -900,7 +982,77 @@ export default function WalletPage() {
               </Card>
             </div>
           </div>
-        </TabsContent>)}
+
+          {transferHistory.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <History className="h-4 w-4" /> Histórico de Transferências
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transferHistory.slice(0, 20).map((t: any) => {
+                      const isSender = t.fromUserId === user?.id;
+                      const statusColors: Record<string, string> = {
+                        pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
+                        accepted: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+                        rejected: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
+                        cancelled: 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300',
+                        expired: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
+                      };
+                      const statusLabels: Record<string, string> = {
+                        pending: 'Pendente', accepted: 'Aceita', rejected: 'Recusada',
+                        cancelled: 'Cancelada', expired: 'Expirada',
+                      };
+                      return (
+                        <TableRow key={t.id}>
+                          <TableCell className="text-xs">{new Date(t.createdAt).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell className="text-xs">
+                            {isSender ? (
+                              <span className="flex items-center gap-1 text-red-600"><ArrowUpRight className="h-3 w-3" /> Enviada</span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-green-600"><ArrowDownLeft className="h-3 w-3" /> Recebida</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm font-medium">{t.amount} TM3D</TableCell>
+                          <TableCell>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[t.status] || ''}`}>
+                              {statusLabels[t.status] || t.status}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {t.status === 'pending' && isSender && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs h-7"
+                                onClick={() => transferCancelMutation.mutate(t.id)}
+                                disabled={transferCancelMutation.isPending}
+                              >
+                                Cancelar
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
 
         {isAdmin && (<TabsContent value="custos" className="space-y-4">
           <div className="flex items-center gap-2 mb-2">

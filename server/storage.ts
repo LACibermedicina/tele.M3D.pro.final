@@ -24,7 +24,8 @@ import {
   type DoctorNote, type InsertDoctorNote,
   postConsultationItems, type PostConsultationItem, type InsertPostConsultationItem,
   diagnosticInferences, type DiagnosticInference, type InsertDiagnosticInference,
-  consultationAccessTokens, type ConsultationAccessToken, type InsertConsultationAccessToken
+  consultationAccessTokens, type ConsultationAccessToken, type InsertConsultationAccessToken,
+  creditTransfers, type CreditTransfer, type InsertCreditTransfer
 } from "@shared/schema";
 
 export type ErrorLog = typeof errorLogs.$inferSelect;
@@ -43,7 +44,7 @@ export type TmcConfig = typeof tmcConfig.$inferSelect;
 export type InsertTmcConfig = z.infer<typeof insertTmcConfigSchema>;
 
 import { db } from "./db";
-import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, or, desc, gte, lte, sql } from "drizzle-orm";
 import crypto from "crypto";
 
 export interface IStorage {
@@ -256,6 +257,14 @@ export interface IStorage {
   getPatientChatThreadsByPatient(patientId: string): Promise<PatientChatThread[]>;
   getPatientChatThreadsByDoctor(doctorId: string): Promise<PatientChatThread[]>;
   updatePatientChatThread(id: string, thread: Partial<InsertPatientChatThread>): Promise<PatientChatThread | undefined>;
+
+  // Credit Transfers with Approval
+  createCreditTransferRequest(fromUserId: string, toUserId: string, amount: number, reason?: string): Promise<CreditTransfer>;
+  respondToCreditTransfer(transferId: string, userId: string, action: 'accept' | 'reject'): Promise<CreditTransfer>;
+  cancelCreditTransfer(transferId: string, userId: string): Promise<CreditTransfer>;
+  getPendingTransfersForUser(userId: string): Promise<CreditTransfer[]>;
+  getSentTransfersByUser(userId: string): Promise<CreditTransfer[]>;
+  getCreditTransfer(id: string): Promise<CreditTransfer | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2057,6 +2066,184 @@ export class DatabaseStorage implements IStorage {
       .where(eq(consultationAccessTokens.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  async createCreditTransferRequest(fromUserId: string, toUserId: string, amount: number, reason?: string): Promise<CreditTransfer> {
+    return await db.transaction(async (tx) => {
+      const [sender] = await tx.select({ tmcCredits: users.tmcCredits })
+        .from(users).where(eq(users.id, fromUserId)).for('update');
+      if (!sender || sender.tmcCredits < amount) {
+        throw new Error('Saldo insuficiente para transferência');
+      }
+      const [recipient] = await tx.select({ id: users.id })
+        .from(users).where(eq(users.id, toUserId));
+      if (!recipient) {
+        throw new Error('Destinatário não encontrado');
+      }
+
+      const balanceBefore = sender.tmcCredits;
+      const balanceAfter = balanceBefore - amount;
+      await tx.update(users).set({ tmcCredits: balanceAfter }).where(eq(users.id, fromUserId));
+
+      const [escrowTx] = await tx.insert(tmcTransactions).values({
+        userId: fromUserId,
+        type: 'transfer',
+        amount: -amount,
+        reason: `Escrow: transferência pendente - ${reason || 'Sem motivo'}`,
+        functionUsed: 'transfer_escrow',
+        relatedUserId: toUserId,
+        balanceBefore,
+        balanceAfter,
+      }).returning();
+
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 72);
+
+      const [transfer] = await tx.insert(creditTransfers).values({
+        fromUserId,
+        toUserId,
+        amount,
+        reason: reason || null,
+        status: 'pending',
+        escrowTransactionId: escrowTx.id,
+        expiresAt,
+      }).returning();
+
+      return transfer;
+    });
+  }
+
+  async respondToCreditTransfer(transferId: string, userId: string, action: 'accept' | 'reject'): Promise<CreditTransfer> {
+    return await db.transaction(async (tx) => {
+      const [transfer] = await tx.select().from(creditTransfers)
+        .where(eq(creditTransfers.id, transferId)).for('update');
+      if (!transfer) throw new Error('Transferência não encontrada');
+      if (transfer.status !== 'pending') throw new Error('Transferência já foi processada');
+      if (transfer.toUserId !== userId) throw new Error('Apenas o destinatário pode responder');
+      if (transfer.expiresAt && new Date() > new Date(transfer.expiresAt)) {
+        await tx.update(creditTransfers).set({ status: 'expired', respondedAt: new Date() })
+          .where(eq(creditTransfers.id, transferId));
+        const [sender] = await tx.select({ tmcCredits: users.tmcCredits })
+          .from(users).where(eq(users.id, transfer.fromUserId)).for('update');
+        const refundBefore = sender?.tmcCredits || 0;
+        await tx.update(users).set({ tmcCredits: refundBefore + transfer.amount })
+          .where(eq(users.id, transfer.fromUserId));
+        await tx.insert(tmcTransactions).values({
+          userId: transfer.fromUserId, type: 'credit', amount: transfer.amount,
+          reason: 'Reembolso: transferência expirada', functionUsed: 'transfer_refund',
+          relatedUserId: transfer.toUserId, balanceBefore: refundBefore,
+          balanceAfter: refundBefore + transfer.amount,
+        });
+        throw new Error('Transferência expirada');
+      }
+
+      if (action === 'accept') {
+        const [recipient] = await tx.select({ tmcCredits: users.tmcCredits })
+          .from(users).where(eq(users.id, transfer.toUserId)).for('update');
+        const toBefore = recipient?.tmcCredits || 0;
+        const toAfter = toBefore + transfer.amount;
+        await tx.update(users).set({ tmcCredits: toAfter }).where(eq(users.id, transfer.toUserId));
+
+        const [completionTx] = await tx.insert(tmcTransactions).values({
+          userId: transfer.toUserId, type: 'transfer', amount: transfer.amount,
+          reason: `Transferência recebida - ${transfer.reason || ''}`, functionUsed: 'transfer_received',
+          relatedUserId: transfer.fromUserId, balanceBefore: toBefore, balanceAfter: toAfter,
+        }).returning();
+
+        const [updated] = await tx.update(creditTransfers)
+          .set({ status: 'accepted', respondedAt: new Date(), completionTransactionId: completionTx.id })
+          .where(eq(creditTransfers.id, transferId)).returning();
+        return updated;
+      } else {
+        const [sender] = await tx.select({ tmcCredits: users.tmcCredits })
+          .from(users).where(eq(users.id, transfer.fromUserId)).for('update');
+        const refundBefore = sender?.tmcCredits || 0;
+        await tx.update(users).set({ tmcCredits: refundBefore + transfer.amount })
+          .where(eq(users.id, transfer.fromUserId));
+        await tx.insert(tmcTransactions).values({
+          userId: transfer.fromUserId, type: 'credit', amount: transfer.amount,
+          reason: 'Reembolso: transferência recusada', functionUsed: 'transfer_refund',
+          relatedUserId: transfer.toUserId, balanceBefore: refundBefore,
+          balanceAfter: refundBefore + transfer.amount,
+        });
+
+        const [updated] = await tx.update(creditTransfers)
+          .set({ status: 'rejected', respondedAt: new Date() })
+          .where(eq(creditTransfers.id, transferId)).returning();
+        return updated;
+      }
+    });
+  }
+
+  async cancelCreditTransfer(transferId: string, userId: string): Promise<CreditTransfer> {
+    return await db.transaction(async (tx) => {
+      const [transfer] = await tx.select().from(creditTransfers)
+        .where(eq(creditTransfers.id, transferId)).for('update');
+      if (!transfer) throw new Error('Transferência não encontrada');
+      if (transfer.status !== 'pending') throw new Error('Transferência já foi processada');
+      if (transfer.fromUserId !== userId) throw new Error('Apenas o remetente pode cancelar');
+
+      const [sender] = await tx.select({ tmcCredits: users.tmcCredits })
+        .from(users).where(eq(users.id, transfer.fromUserId)).for('update');
+      const refundBefore = sender?.tmcCredits || 0;
+      await tx.update(users).set({ tmcCredits: refundBefore + transfer.amount })
+        .where(eq(users.id, transfer.fromUserId));
+      await tx.insert(tmcTransactions).values({
+        userId: transfer.fromUserId, type: 'credit', amount: transfer.amount,
+        reason: 'Reembolso: transferência cancelada', functionUsed: 'transfer_refund',
+        balanceBefore: refundBefore, balanceAfter: refundBefore + transfer.amount,
+      });
+
+      const [updated] = await tx.update(creditTransfers)
+        .set({ status: 'cancelled', respondedAt: new Date() })
+        .where(eq(creditTransfers.id, transferId)).returning();
+      return updated;
+    });
+  }
+
+  async getPendingTransfersForUser(userId: string): Promise<CreditTransfer[]> {
+    const now = new Date();
+    const pending = await db.select().from(creditTransfers)
+      .where(and(eq(creditTransfers.toUserId, userId), eq(creditTransfers.status, 'pending')))
+      .orderBy(desc(creditTransfers.createdAt));
+
+    const active: CreditTransfer[] = [];
+    for (const t of pending) {
+      if (t.expiresAt && new Date(t.expiresAt) < now) {
+        try {
+          await db.transaction(async (tx) => {
+            await tx.update(creditTransfers).set({ status: 'expired', respondedAt: now })
+              .where(eq(creditTransfers.id, t.id));
+            const [sender] = await tx.select({ tmcCredits: users.tmcCredits })
+              .from(users).where(eq(users.id, t.fromUserId)).for('update');
+            const refundBefore = sender?.tmcCredits || 0;
+            await tx.update(users).set({ tmcCredits: refundBefore + t.amount })
+              .where(eq(users.id, t.fromUserId));
+            await tx.insert(tmcTransactions).values({
+              userId: t.fromUserId, type: 'credit', amount: t.amount,
+              reason: 'Reembolso: transferência expirada', functionUsed: 'transfer_refund',
+              relatedUserId: t.toUserId, balanceBefore: refundBefore,
+              balanceAfter: refundBefore + t.amount,
+            });
+          });
+        } catch (e) { /* already expired or concurrent */ }
+      } else {
+        active.push(t);
+      }
+    }
+    return active;
+  }
+
+  async getSentTransfersByUser(userId: string): Promise<CreditTransfer[]> {
+    return await db.select().from(creditTransfers)
+      .where(or(eq(creditTransfers.fromUserId, userId), eq(creditTransfers.toUserId, userId)))
+      .orderBy(desc(creditTransfers.createdAt));
+  }
+
+  async getCreditTransfer(id: string): Promise<CreditTransfer | undefined> {
+    const [result] = await db.select().from(creditTransfers)
+      .where(eq(creditTransfers.id, id));
+    return result || undefined;
   }
 }
 

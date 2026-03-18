@@ -23,6 +23,11 @@ import {
 } from 'lucide-react';
 import { useMinimizedPanels } from '@/contexts/MinimizedPanelsContext';
 
+function useIsAdmin() {
+  const { user } = useAuth();
+  return user?.role === 'admin';
+}
+
 const SEVERITY_COLORS: Record<number, string> = {
   1: 'bg-green-500',
   2: 'bg-yellow-500',
@@ -44,6 +49,7 @@ export default function FloatingECGAnalyzer() {
   const [isOpen, setIsOpen] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const { minimize, isMinimized: isDockMinimized } = useMinimizedPanels();
+  const isAdmin = useIsAdmin();
 
   useEffect(() => {
     const handler = () => setIsOpen(true);
@@ -467,7 +473,7 @@ export default function FloatingECGAnalyzer() {
                         </Badge>
                       </div>
                       <p className="text-xs font-bold" style={{ color: result.presumptive_diagnosis?.color }}>
-                        {result.presumptive_diagnosis?.name} ({result.presumptive_diagnosis?.confidence})
+                        {result.presumptive_diagnosis?.name}{isAdmin && ` (${result.presumptive_diagnosis?.confidence})`}
                       </p>
                     </CardContent>
                   </Card>
@@ -485,7 +491,7 @@ export default function FloatingECGAnalyzer() {
                         <div key={i} className="flex items-center gap-1.5 px-1.5 py-1 rounded bg-muted/40 border border-border/50">
                           <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color || '#6B7280' }} />
                           <span className="text-[10px] font-medium flex-1 truncate">{d.name}</span>
-                          <Badge variant="outline" className="text-[8px] h-4 px-1">{d.confidence}</Badge>
+                          {isAdmin && <Badge variant="outline" className="text-[8px] h-4 px-1">{d.confidence}</Badge>}
                         </div>
                       ))}
                       {showDifferentials && result.differential_diagnoses.some((d: any) => d.key_indicators?.length > 0) && (

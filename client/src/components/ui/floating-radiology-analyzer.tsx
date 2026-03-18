@@ -23,6 +23,11 @@ import {
 import { useMinimizedPanels } from '@/contexts/MinimizedPanelsContext';
 import { useTranslation } from 'react-i18next';
 
+function useIsAdmin() {
+  const { user } = useAuth();
+  return user?.role === 'admin';
+}
+
 const SEVERITY_COLORS: Record<number, string> = {
   1: 'bg-green-500',
   2: 'bg-yellow-500',
@@ -43,6 +48,7 @@ export default function FloatingRadiologyAnalyzer() {
   const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const { minimize, isMinimized: isDockMinimized } = useMinimizedPanels();
+  const isAdmin = useIsAdmin();
 
   useEffect(() => {
     const handler = () => setIsOpen(true);
@@ -448,7 +454,7 @@ export default function FloatingRadiologyAnalyzer() {
                         </Badge>
                       </div>
                       <p className="text-xs font-bold" style={{ color: result.probabilistic_diagnosis?.presumptive?.color }}>
-                        {result.probabilistic_diagnosis?.presumptive?.name} ({result.probabilistic_diagnosis?.presumptive?.confidence})
+                        {result.probabilistic_diagnosis?.presumptive?.name}{isAdmin && ` (${result.probabilistic_diagnosis?.presumptive?.confidence})`}
                       </p>
                     </CardContent>
                   </Card>
@@ -466,7 +472,7 @@ export default function FloatingRadiologyAnalyzer() {
                         <div key={i} className="flex items-center gap-1.5 px-1.5 py-1 rounded bg-muted/40 border border-border/50">
                           <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color || '#6B7280' }} />
                           <span className="text-[10px] font-medium flex-1 truncate">{d.name}</span>
-                          <Badge variant="outline" className="text-[8px] h-4 px-1">{d.confidence}</Badge>
+                          {isAdmin && <Badge variant="outline" className="text-[8px] h-4 px-1">{d.confidence}</Badge>}
                         </div>
                       ))}
                       {showDifferentials && result.probabilistic_diagnosis.differentials.some((d: any) => d.key_indicators?.length > 0) && (

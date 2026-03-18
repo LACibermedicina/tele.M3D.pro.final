@@ -2011,6 +2011,25 @@ export const insertFhirObservationSchema = createInsertSchema(fhirObservations).
 export type InsertFhirObservation = z.infer<typeof insertFhirObservationSchema>;
 export type FhirObservation = typeof fhirObservations.$inferSelect;
 
+// Credit Transfer Requests - escrow-based transfer with approval
+export const creditTransfers = pgTable("credit_transfers", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  fromUserId: uuid("from_user_id").references(() => users.id).notNull(),
+  toUserId: uuid("to_user_id").references(() => users.id).notNull(),
+  amount: integer("amount").notNull(),
+  reason: text("reason"),
+  status: text("status").notNull().default("pending"), // pending, accepted, rejected, cancelled, expired
+  escrowTransactionId: uuid("escrow_transaction_id").references(() => tmcTransactions.id),
+  completionTransactionId: uuid("completion_transaction_id").references(() => tmcTransactions.id),
+  respondedAt: timestamp("responded_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCreditTransferSchema = createInsertSchema(creditTransfers).omit({ id: true, createdAt: true });
+export type InsertCreditTransfer = z.infer<typeof insertCreditTransferSchema>;
+export type CreditTransfer = typeof creditTransfers.$inferSelect;
+
 // TMC system types
 export interface TmcBalance {
   userId: string;

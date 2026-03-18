@@ -1582,6 +1582,7 @@ function ECGEngineTab({
   const { toast } = useToast();
   const { user } = useAuth();
   const isPermanentAdmin = useIsPermanentAdmin();
+  const isAdmin = user?.role === 'admin';
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showAssociateDialog, setShowAssociateDialog] = useState(false);
   const [shareEmail, setShareEmail] = useState('');
@@ -1843,7 +1844,7 @@ function ECGEngineTab({
                     </Badge>
                   </div>
                   <p className="text-base font-bold" style={{ color: ecgResult.presumptive_diagnosis?.color }}>
-                    {ecgResult.presumptive_diagnosis?.name} ({ecgResult.presumptive_diagnosis?.confidence})
+                    {ecgResult.presumptive_diagnosis?.name}{isAdmin && ` (${ecgResult.presumptive_diagnosis?.confidence})`}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">{ecgResult.presumptive_diagnosis?.reasoning}</p>
                   {ecgResult.severity_level?.description && (
@@ -1975,13 +1976,13 @@ function ECGEngineTab({
                         <p className="text-sm font-medium">{d.name}</p>
                         <p className="text-xs text-muted-foreground">{d.reasoning}</p>
                       </div>
-                      <Badge variant="outline" className="text-xs shrink-0">{d.confidence}</Badge>
+                      {isAdmin && <Badge variant="outline" className="text-xs shrink-0">{d.confidence}</Badge>}
                     </div>
                   ))}
                 </CardContent>
               </Card>
 
-              {/* Diagnosis Bar Chart */}
+              {isAdmin && (
               <Card className="border-blue-500/20">
                 <CardHeader className="p-3 pb-0">
                   <CardTitle className="text-sm">Probabilidades Diagnósticas</CardTitle>
@@ -2011,6 +2012,7 @@ function ECGEngineTab({
                   </div>
                 </CardContent>
               </Card>
+              )}
 
               {/* Recommended Conduct */}
               <Card className="border-green-500/20">
@@ -2024,7 +2026,7 @@ function ECGEngineTab({
                 </CardContent>
               </Card>
 
-              {/* Technical Report */}
+              {isAdmin && (
               <Card className="border-indigo-500/20">
                 <CardHeader className="p-3 pb-0">
                   <CardTitle className="text-sm flex items-center gap-2">
@@ -2035,6 +2037,7 @@ function ECGEngineTab({
                   <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{ecgResult.technical_report}</p>
                 </CardContent>
               </Card>
+              )}
 
               {/* Annotation Legend */}
               {ecgResult.visual_annotation_instructions && Object.keys(ecgResult.visual_annotation_instructions).length > 0 && (
@@ -2194,6 +2197,7 @@ function RadiologyEngineTab({
 }: RadiologyEngineTabProps) {
   const { user } = useAuth();
   const isPermanentAdmin = useIsPermanentAdmin();
+  const isAdmin = user?.role === 'admin';
   const [showReport, setShowReport] = useState(false);
   const [showAnatomical, setShowAnatomical] = useState(false);
   const [showPrognosis, setShowPrognosis] = useState(false);
@@ -2305,7 +2309,7 @@ function RadiologyEngineTab({
                 </Badge>
               </div>
               <p className="text-base font-bold" style={{ color: radResult.probabilistic_diagnosis.presumptive.color }}>
-                {radResult.probabilistic_diagnosis.presumptive.name} ({radResult.probabilistic_diagnosis.presumptive.confidence})
+                {radResult.probabilistic_diagnosis.presumptive.name}{isAdmin && ` (${radResult.probabilistic_diagnosis.presumptive.confidence})`}
               </p>
               <p className="text-sm text-muted-foreground mt-1">{radResult.probabilistic_diagnosis.presumptive.reasoning}</p>
             </CardContent>
@@ -2361,7 +2365,7 @@ function RadiologyEngineTab({
                     <p className="text-sm font-medium">{d.name}</p>
                     <p className="text-xs text-muted-foreground">{d.reasoning}</p>
                   </div>
-                  <Badge variant="outline">{d.confidence}</Badge>
+                  {isAdmin && <Badge variant="outline">{d.confidence}</Badge>}
                 </div>
               ))}
             </CardContent>
