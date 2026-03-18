@@ -20732,7 +20732,8 @@ ${combinedText.slice(0, 8000)}`;
   app.get('/api/ecg/analyze/progress/:jobId', requireAuth, (req: any, res: any) => {
     const progress = ecgAnalysisProgress.get(req.params.jobId);
     if (!progress) return res.json({ pass: 0, total: 3, percent: 0 });
-    res.json({ ...progress, percent: Math.round((progress.pass / progress.total) * 100) });
+    const passPercents: Record<number, number> = { 0: 0, 1: 33, 2: 66, 3: 100 };
+    res.json({ ...progress, percent: passPercents[progress.pass] ?? Math.floor((progress.pass / progress.total) * 100) });
   });
 
   app.post('/api/ecg/analyze', requireAuthOrMcp, async (req: any, res: any) => {
