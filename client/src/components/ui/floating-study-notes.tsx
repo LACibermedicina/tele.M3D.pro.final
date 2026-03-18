@@ -162,7 +162,7 @@ export default function FloatingStudyNotes() {
             Study Notes
             <Badge variant="secondary" className="text-[10px]">{notes.length}</Badge>
           </CardTitle>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={startNewNote}>
               <Plus className="h-3 w-3" />
             </Button>

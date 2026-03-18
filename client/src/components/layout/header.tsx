@@ -558,30 +558,24 @@ export default function Header() {
                   const IconComponent = item.icon;
                   const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
                   return (
-                    <Tooltip key={item.path}>
-                      <TooltipTrigger asChild>
-                        <Link href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}>
-                          <div
-                            className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
-                              isActive ? "text-white shadow-md" : "text-white/60 hover:text-white hover:bg-white/10"
-                            }`}
-                            style={{
-                              background: isActive ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" : "transparent"
-                            }}
-                          >
-                            <IconComponent className="h-4 w-4 shrink-0" />
-                            {hasBadge && (
-                              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                                {pendingPostCount > 9 ? '9+' : pendingPostCount}
-                              </span>
-                            )}
-                          </div>
-                        </Link>
-                      </TooltipTrigger>
-                      <TooltipContent side={tooltipSide} className="bg-primary text-white font-medium px-3 py-1.5">
-                        <p className="text-white text-xs">{item.label}</p>
-                      </TooltipContent>
-                    </Tooltip>
+                    <Link key={item.path} href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}>
+                      <div
+                        className={`relative w-full rounded-xl flex items-center gap-2.5 px-2.5 py-2 transition-all duration-200 ${
+                          isActive ? "text-white shadow-md" : "text-white/60 hover:text-white hover:bg-white/10"
+                        }`}
+                        style={{
+                          background: isActive ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" : "transparent"
+                        }}
+                      >
+                        <IconComponent className="h-4 w-4 shrink-0" />
+                        <span className="text-xs font-medium truncate opacity-0 group-hover/dock:opacity-100 transition-opacity duration-300 whitespace-nowrap hidden group-hover/dock:inline">{item.label}</span>
+                        {hasBadge && (
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                            {pendingPostCount > 9 ? '9+' : pendingPostCount}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
                   );
                 })}
               </div>

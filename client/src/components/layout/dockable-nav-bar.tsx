@@ -163,7 +163,7 @@ export default function DockableNavBar({ children }: { children: React.ReactNode
     return (
       <div
         ref={containerRef}
-        className={`fixed top-0 ${side} bottom-0 z-50 w-16 bg-slate-900/95 backdrop-blur-md border-slate-700 flex flex-col items-center py-2 gap-1 overflow-y-auto overflow-x-hidden group/dock`}
+        className={`fixed top-0 ${side} bottom-0 z-50 w-16 hover:w-52 bg-slate-900/95 backdrop-blur-md border-slate-700 flex flex-col items-center py-2 gap-1 overflow-y-auto overflow-x-hidden group/dock transition-[width] duration-300`}
       >
         <div
           className="cursor-grab active:cursor-grabbing opacity-30 group-hover/dock:opacity-80 transition-opacity mb-1 hidden md:flex"

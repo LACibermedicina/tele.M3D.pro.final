@@ -522,7 +522,7 @@ export default function FloatingChatbot() {
                 Assistente Virtual IA - Tele{"<"}M3D{">"}
               </CardTitle>
             </div>
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center space-x-1" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
               {isVoiceActive && (
                 <Button
                   variant="ghost"
