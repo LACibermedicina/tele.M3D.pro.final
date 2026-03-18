@@ -534,9 +534,10 @@ export default function Header() {
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 768;
 
   if (!isMobileView && (navDockMode === 'left' || navDockMode === 'right')) {
+    const tooltipSide = navDockMode === 'left' ? 'right' as const : 'left' as const;
     return (
       <DockableNavBar>
-        <div className="flex flex-col items-center w-full gap-1 py-1">
+        <div className="group/sidebar flex flex-col items-center w-full gap-0.5 py-1 transition-all duration-300">
           <Link href="/" data-testid="link-logo">
             <div className="w-10 h-10 flex items-center justify-center mb-1">
               <img 
@@ -549,39 +550,42 @@ export default function Header() {
           </Link>
           <div className="w-8 border-t border-white/20 mb-1" />
           <TooltipProvider>
-            {filteredGroups.map((group) =>
-              group.items.map((item) => {
-                const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
-                const IconComponent = item.icon;
-                const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
-                return (
-                  <Tooltip key={item.path}>
-                    <TooltipTrigger asChild>
-                      <Link href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}>
-                        <div
-                          className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
-                            isActive ? "text-white shadow-md" : "text-white/60 hover:text-white hover:bg-white/10"
-                          }`}
-                          style={{
-                            background: isActive ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" : "transparent"
-                          }}
-                        >
-                          <IconComponent className="h-4 w-4" />
-                          {hasBadge && (
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                              {pendingPostCount > 9 ? '9+' : pendingPostCount}
-                            </span>
-                          )}
-                        </div>
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side={navDockMode === 'left' ? 'right' : 'left'} className="bg-primary text-white font-medium px-3 py-1.5">
-                      <p className="text-white text-xs">{item.label}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })
-            )}
+            {filteredGroups.map((group, groupIdx) => (
+              <div key={group.category} className="w-full flex flex-col items-center gap-0.5">
+                {groupIdx > 0 && <div className="w-6 border-t border-white/10 my-0.5" />}
+                {group.items.map((item) => {
+                  const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                  const IconComponent = item.icon;
+                  const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
+                  return (
+                    <Tooltip key={item.path}>
+                      <TooltipTrigger asChild>
+                        <Link href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}>
+                          <div
+                            className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
+                              isActive ? "text-white shadow-md" : "text-white/60 hover:text-white hover:bg-white/10"
+                            }`}
+                            style={{
+                              background: isActive ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" : "transparent"
+                            }}
+                          >
+                            <IconComponent className="h-4 w-4 shrink-0" />
+                            {hasBadge && (
+                              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                                {pendingPostCount > 9 ? '9+' : pendingPostCount}
+                              </span>
+                            )}
+                          </div>
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side={tooltipSide} className="bg-primary text-white font-medium px-3 py-1.5">
+                        <p className="text-white text-xs">{item.label}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            ))}
           </TooltipProvider>
           <div className="w-8 border-t border-white/20 my-1" />
           {user && (
@@ -596,7 +600,7 @@ export default function Header() {
                     </Avatar>
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent side={navDockMode === 'left' ? 'right' : 'left'}>
+                <TooltipContent side={tooltipSide}>
                   <p>{user.name}</p>
                 </TooltipContent>
               </Tooltip>
@@ -606,13 +610,180 @@ export default function Header() {
                     <LogOut className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side={navDockMode === 'left' ? 'right' : 'left'}>
+                <TooltipContent side={tooltipSide}>
                   <p>Sair</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
         </div>
+        <CommandPalette 
+          isOpen={isCommandPaletteOpen} 
+          onClose={() => setIsCommandPaletteOpen(false)}
+          userRole={user?.role}
+        />
+      </DockableNavBar>
+    );
+  }
+
+  if (!isMobileView && navDockMode === 'bottom') {
+    return (
+      <DockableNavBar>
+        <header className="border-t bg-slate-900/95 backdrop-blur-md border-slate-700 shadow-lg w-full" data-testid="header-main">
+          <div className="w-full px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-14">
+              <div className="flex items-center space-x-3">
+                <Link href="/" data-testid="link-logo">
+                  <div className="w-10 h-10 flex items-center justify-center">
+                    <img 
+                      src={telemedLogo} 
+                      alt="Tele<M3D> Logo" 
+                      className="w-full h-full object-contain"
+                      style={{ filter: 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+                    />
+                  </div>
+                </Link>
+              </div>
+
+              <TooltipProvider>
+                <nav className="flex items-center space-x-1" data-testid="nav-main">
+                  {filteredGroups.map((group, groupIdx) => {
+                    const groupHasActive = group.items.some(item => location === item.path || (location === "/" && item.path === "/dashboard"));
+                    const FirstIcon = group.items[0]?.icon;
+
+                    if (group.items.length === 1) {
+                      const item = group.items[0];
+                      const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                      const IconComponent = item.icon;
+                      return (
+                        <div key={group.category} className="flex items-center">
+                          {groupIdx > 0 && <div className="mx-1 h-6 w-px bg-white/10" />}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Link href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`w-9 h-9 rounded-lg transition-all duration-300 hover:scale-110 ${
+                                    isActive ? "text-white shadow-md" : "text-white/60 hover:text-white hover:bg-white/10"
+                                  }`}
+                                  style={{
+                                    background: isActive ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" : "transparent"
+                                  }}
+                                >
+                                  <IconComponent className="h-4.5 w-4.5" />
+                                </Button>
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
+                              <p className="text-white">{item.label}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={group.category} className="flex items-center">
+                        {groupIdx > 0 && <div className="mx-1 h-6 w-px bg-white/10" />}
+                        <DropdownMenu>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  className={`h-9 px-2 rounded-lg transition-all duration-300 ${
+                                    groupHasActive ? "text-white shadow-md" : "text-white/60 hover:text-white hover:bg-white/10"
+                                  }`}
+                                  style={{
+                                    background: groupHasActive ? "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" : "transparent"
+                                  }}
+                                  data-testid={`dropdown-nav-${group.category}`}
+                                >
+                                  <div className="relative flex items-center gap-0.5">
+                                    {FirstIcon && <FirstIcon className={`h-4.5 w-4.5 ${groupHasActive ? 'text-white' : ''}`} />}
+                                    <ChevronDown className={`h-3 w-3 ${groupHasActive ? 'text-white/70' : ''} opacity-60 rotate-180`} />
+                                  </div>
+                                </Button>
+                              </DropdownMenuTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="bg-primary text-white font-medium px-3 py-2 shadow-lg">
+                              <p className="text-white">{group.label}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <DropdownMenuContent align="center" side="top" className="w-56 bg-background/95 backdrop-blur-lg border-primary/20 shadow-2xl">
+                            <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                              {group.label}
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {group.items.map((item) => {
+                              const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                              const IconComponent = item.icon;
+                              const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
+                              return (
+                                <DropdownMenuItem
+                                  key={item.path}
+                                  onClick={() => navigate(item.path)}
+                                  className={`cursor-pointer py-2.5 px-3 transition-all ${isActive ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-primary/5'}`}
+                                  data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}
+                                >
+                                  <IconComponent className={`mr-3 h-4 w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                                  <span className="flex-1">{item.label}</span>
+                                  {hasBadge && (
+                                    <span className="ml-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                      {pendingPostCount > 9 ? '9+' : pendingPostCount}
+                                    </span>
+                                  )}
+                                </DropdownMenuItem>
+                              );
+                            })}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    );
+                  })}
+                </nav>
+              </TooltipProvider>
+
+              <div className="flex items-center space-x-2">
+                {user && (
+                  <>
+                    {user.role !== 'visitor' && creditData !== undefined && (
+                      <Link href="/wallet">
+                        <Badge className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-2 py-0.5 text-[10px] font-semibold hover:from-amber-600 hover:to-orange-600 transition-all flex items-center gap-1">
+                          <Coins className="w-3 h-3" />
+                          <span>{creditBalance} TMC</span>
+                        </Badge>
+                      </Link>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-white/10 transition-colors" data-testid="button-user-menu">
+                          <Avatar className="w-8 h-8">
+                            <AvatarFallback className="text-white font-semibold text-[10px]" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
+                              {getUserInitials(user.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" side="top" className="w-56">
+                        <DropdownMenuLabel>
+                          <p className="font-semibold">{user.name}</p>
+                          <p className="text-xs text-muted-foreground font-normal">{getRoleDisplay(user.role)}</p>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => navigate('/profile')}><User className="mr-2 h-4 w-4" />{t("auth.profile")}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate('/profile')}><Settings className="mr-2 h-4 w-4" />{t("auth.settings")}</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive"><LogOut className="mr-2 h-4 w-4" />{t("auth.logout")}</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
         <CommandPalette 
           isOpen={isCommandPaletteOpen} 
           onClose={() => setIsCommandPaletteOpen(false)}
