@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, createContext, useContext } from "react";
 import { Link, useLocation } from "wouter";
 import { useDraggable } from "@/hooks/use-draggable";
 import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
@@ -13,7 +13,7 @@ import {
   ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield,
   Stethoscope, StickyNote, Video, Pill, Activity, AlertCircle,
   Microscope, Wallet, FileBarChart, Gem, TrendingUp, Coffee,
-  HeartPulse, CreditCard, UserPlus,
+  HeartPulse, CreditCard, UserPlus, ExternalLink,
   type LucideIcon
 } from "lucide-react";
 
@@ -122,6 +122,120 @@ function getNavGroups(userRole: string | undefined, t: (k: string) => string): N
   })).filter(g => g.items.length > 0);
 }
 
+const ICON_MAP: Record<string, LucideIcon> = {
+  "/dashboard": LayoutDashboard, "/assistant": BrainCircuit, "/fhir-dashboard": HeartPulse,
+  "/patients": Users, "/schedule": CalendarClock, "/records": FileText,
+  "/prescriptions": ClipboardList, "/inter-consultation": Stethoscope,
+  "/doctor-notes": StickyNote, "/doctor-referrals": UserPlus,
+  "/consultation-request": Stethoscope, "/immediate-consultation": Video,
+  "/my-consultations": CalendarClock, "/incomplete-consultations": AlertCircle,
+  "/post-consultation-review": ClipboardList, "/diagnostic-review": Microscope,
+  "/whatsapp": MessageCircle, "/medical-references": BookOpenCheck, "/coffee-room": Coffee,
+  "/wallet": Wallet, "/nft-management": Gem, "/broker": TrendingUp,
+  "/epidemiological-reports": Activity, "/reports": FileBarChart, "/analytics": BarChart3,
+  "/pharmacy": Pill, "/admin": Shield, "/admin/payments": CreditCard,
+};
+
+const DETACHED_STORAGE_KEY = "unified_toolbox_detached";
+
+function loadDetached(): string[] {
+  try {
+    const v = localStorage.getItem(DETACHED_STORAGE_KEY);
+    return v ? JSON.parse(v) : [];
+  } catch { return []; }
+}
+
+function saveDetached(paths: string[]) {
+  try { localStorage.setItem(DETACHED_STORAGE_KEY, JSON.stringify(paths)); } catch {}
+}
+
+function DetachedNavPanel({ path, label, icon: Icon, onReattach }: {
+  path: string; label: string; icon: LucideIcon; onReattach: (path: string) => void;
+}) {
+  const [location] = useLocation();
+  const { minimize, isMinimized } = useMinimizedPanels();
+  const [wasMinimized, setWasMinimized] = useState(false);
+  const panelId = `detached-${path.replace(/\//g, "-")}`;
+  const iconName = path.replace(/^\//, "").replace(/\//g, "-") || "link";
+
+  const { position, isDragging, onDragStart } = useDraggable({
+    storageKey: `detached_nav_${path}`,
+    defaultPosition: { x: -1, y: -1 },
+    constrainToWindow: true,
+  });
+
+  const handleMinimize = useCallback(() => {
+    minimize({ id: panelId, label, icon: iconName });
+  }, [minimize, panelId, label, iconName]);
+
+  const handleClose = useCallback(() => {
+    onReattach(path);
+  }, [onReattach, path]);
+
+  useEffect(() => {
+    if (isMinimized(panelId)) {
+      setWasMinimized(true);
+    } else if (wasMinimized) {
+      setWasMinimized(false);
+    }
+  }, [isMinimized, panelId, wasMinimized]);
+
+  if (isMinimized(panelId)) return null;
+
+  const isActive = location === path;
+  const style: React.CSSProperties = position.x >= 0 && position.y >= 0
+    ? { position: "fixed", left: position.x, top: position.y, zIndex: isDragging ? 9999 : 46 }
+    : { position: "fixed", right: 220, top: 70, zIndex: 46 };
+
+  return (
+    <div
+      className={`bg-background/95 backdrop-blur-md border shadow-xl rounded-lg transition-all duration-200 ${isDragging ? "opacity-90 shadow-2xl" : ""}`}
+      style={style}
+      data-draggable-root
+    >
+      <div className="flex items-center gap-1 px-1.5 py-1 border-b bg-muted/30 rounded-t-lg">
+        <div
+          className="cursor-grab active:cursor-grabbing p-0.5 text-muted-foreground hover:text-foreground"
+          onMouseDown={onDragStart}
+          onTouchStart={onDragStart}
+        >
+          <GripVertical className="h-3 w-3" />
+        </div>
+        <Icon className="h-3 w-3 text-muted-foreground" />
+        <span className="text-[10px] font-medium text-muted-foreground flex-1 truncate max-w-[100px]">{label}</span>
+        <div className="flex items-center gap-0.5" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-4 w-4" onClick={handleMinimize}>
+                <Minus className="h-2 w-2" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>Minimizar</p></TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-4 w-4 hover:bg-destructive/20 hover:text-destructive" onClick={handleClose}>
+                <X className="h-2 w-2" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>Retornar ao Toolbox</p></TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+      <div className="p-1">
+        <Link href={path}>
+          <button className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs w-full transition-colors ${
+            isActive ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          }`}>
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{label}</span>
+          </button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 type DockMode = "floating" | "top" | "bottom" | "left" | "right";
 
 const EDGE_THRESHOLD_PCT = 0.10;
@@ -135,6 +249,7 @@ export default function UnifiedToolbox() {
   const { minimize, isMinimized } = useMinimizedPanels();
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const [detachedPaths, setDetachedPaths] = useState<string[]>(loadDetached);
 
   const [visible, setVisible] = useState(() => {
     try { return localStorage.getItem(STORAGE_KEY_VISIBLE) !== "false"; } catch { return true; }
@@ -195,21 +310,57 @@ export default function UnifiedToolbox() {
     try { localStorage.setItem(STORAGE_KEY_VISIBLE, "false"); } catch {}
   }, [minimize]);
 
+  const [wasMinimizedToDock, setWasMinimizedToDock] = useState(false);
+
   const handleClose = useCallback(() => {
     setVisible(false);
+    setWasMinimizedToDock(false);
     try { localStorage.setItem(STORAGE_KEY_VISIBLE, "false"); } catch {}
   }, []);
 
   useEffect(() => {
-    if (!isMinimized("unified-toolbox") && !visible) {
+    if (isMinimized("unified-toolbox")) {
+      setWasMinimizedToDock(true);
+    } else if (wasMinimizedToDock && !visible) {
       setVisible(true);
+      setWasMinimizedToDock(false);
       try { localStorage.setItem(STORAGE_KEY_VISIBLE, "true"); } catch {}
     }
-  }, [isMinimized, visible]);
+  }, [isMinimized, visible, wasMinimizedToDock]);
 
-  if (isMobile || !visible || !user) return null;
+  const handleDetach = useCallback((path: string) => {
+    setDetachedPaths(prev => {
+      const next = [...prev, path];
+      saveDetached(next);
+      return next;
+    });
+  }, []);
 
-  const filteredGroups = getNavGroups(user.role, t);
+  const handleReattach = useCallback((path: string) => {
+    setDetachedPaths(prev => {
+      const next = prev.filter(p => p !== path);
+      saveDetached(next);
+      return next;
+    });
+  }, []);
+
+  const filteredGroups = user ? getNavGroups(user.role, t) : [];
+
+  const allItems = filteredGroups.flatMap(g => g.items);
+  const detachedItems = allItems.filter(item => detachedPaths.includes(item.path));
+
+  const detachedPanels = detachedItems.map(item => (
+    <DetachedNavPanel
+      key={item.path}
+      path={item.path}
+      label={item.label}
+      icon={item.icon}
+      onReattach={handleReattach}
+    />
+  ));
+
+  if (isMobile || !user) return <>{detachedPanels}</>;
+  if (!visible) return <>{detachedPanels}</>;
 
   const isDocked = dockMode !== "floating";
   const isHorizontal = dockMode === "top" || dockMode === "bottom";
@@ -229,79 +380,99 @@ export default function UnifiedToolbox() {
   };
 
   return (
-    <div
-      className={`bg-background/95 backdrop-blur-md border shadow-xl transition-all duration-200 ${
-        isDocked ? "" : "rounded-xl"
-      } ${isDragging ? "opacity-90 shadow-2xl" : ""} ${
-        isHorizontal ? "rounded-none" : ""
-      } ${isVertical ? "rounded-none overflow-y-auto" : ""}`}
-      style={getDockedStyle()}
-      data-draggable-root
-    >
-      <div className={`flex items-center gap-1 px-2 py-1 border-b bg-muted/30 ${isHorizontal ? "" : ""}`}>
-        <div
-          className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground"
-          onMouseDown={onDragStart}
-          onTouchStart={onDragStart}
-        >
-          <GripVertical className="h-3.5 w-3.5" />
+    <>
+      {detachedPanels}
+      <div
+        className={`bg-background/95 backdrop-blur-md border shadow-xl transition-all duration-200 ${
+          isDocked ? "" : "rounded-xl"
+        } ${isDragging ? "opacity-90 shadow-2xl" : ""} ${
+          isHorizontal ? "rounded-none" : ""
+        } ${isVertical ? "rounded-none overflow-y-auto" : ""}`}
+        style={getDockedStyle()}
+        data-draggable-root
+      >
+        <div className={`flex items-center gap-1 px-2 py-1 border-b bg-muted/30 ${isHorizontal ? "" : ""}`}>
+          <div
+            className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground"
+            onMouseDown={onDragStart}
+            onTouchStart={onDragStart}
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </div>
+          <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+          {!collapsed && <span className="text-xs font-medium text-muted-foreground flex-1">Toolbox</span>}
+          <div className="flex items-center gap-0.5" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
+            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setCollapsed(!collapsed)}>
+              {collapsed ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronUp className="h-2.5 w-2.5" />}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={handleMinimize}>
+              <Minus className="h-2.5 w-2.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-5 w-5 hover:bg-destructive/20 hover:text-destructive" onClick={handleClose}>
+              <X className="h-2.5 w-2.5" />
+            </Button>
+          </div>
         </div>
-        <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
-        {!collapsed && <span className="text-xs font-medium text-muted-foreground flex-1">Toolbox</span>}
-        <div className="flex items-center gap-0.5" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
-          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setCollapsed(!collapsed)}>
-            {collapsed ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronUp className="h-2.5 w-2.5" />}
-          </Button>
-          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={handleMinimize}>
-            <Minus className="h-2.5 w-2.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-5 w-5 hover:bg-destructive/20 hover:text-destructive" onClick={handleClose}>
-            <X className="h-2.5 w-2.5" />
-          </Button>
-        </div>
-      </div>
 
-      {!collapsed && (
-        <div className={`p-1.5 ${isHorizontal ? "flex items-center gap-1 overflow-x-auto" : isVertical ? "space-y-0.5" : "space-y-0.5"} max-h-[calc(100vh-120px)] overflow-y-auto`}>
-          {filteredGroups.map((group, gi) => (
-            <div key={group.category}>
-              {gi > 0 && (isHorizontal ? <Separator orientation="vertical" className="h-6 mx-1" /> : <Separator className="my-1" />)}
-              {!isHorizontal && !collapsed && (
-                <div className="px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                  {group.label}
+        {!collapsed && (
+          <div className={`p-1.5 ${isHorizontal ? "flex items-center gap-1 overflow-x-auto" : isVertical ? "space-y-0.5" : "space-y-0.5"} max-h-[calc(100vh-120px)] overflow-y-auto`}>
+            {filteredGroups.map((group, gi) => (
+              <div key={group.category}>
+                {gi > 0 && (isHorizontal ? <Separator orientation="vertical" className="h-6 mx-1" /> : <Separator className="my-1" />)}
+                {!isHorizontal && !collapsed && (
+                  <div className="px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    {group.label}
+                  </div>
+                )}
+                <div className={isHorizontal ? "flex items-center gap-0.5" : "space-y-0.5"}>
+                  {group.items
+                    .filter(item => !detachedPaths.includes(item.path))
+                    .map(item => {
+                    const ItemIcon = item.icon;
+                    const isActive = location === item.path;
+                    return (
+                      <div key={item.path} className="group relative flex items-center">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Link href={item.path}>
+                              <button
+                                className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs w-full transition-colors ${
+                                  isActive
+                                    ? "bg-primary/10 text-primary font-medium"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                }`}
+                              >
+                                <ItemIcon className="h-3.5 w-3.5 shrink-0" />
+                                {!isHorizontal && <span className="truncate">{item.label}</span>}
+                              </button>
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent side={isVertical ? (dockMode === "left" ? "right" : "left") : "bottom"}>
+                            <p>{item.label}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        {!isHorizontal && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
+                                onClick={(e) => { e.stopPropagation(); handleDetach(item.path); }}
+                              >
+                                <ExternalLink className="h-2.5 w-2.5 text-muted-foreground" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right"><p>Destacar como painel flutuante</p></TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
-              <div className={isHorizontal ? "flex items-center gap-0.5" : "space-y-0.5"}>
-                {group.items.map(item => {
-                  const Icon = item.icon;
-                  const isActive = location === item.path;
-                  return (
-                    <Tooltip key={item.path}>
-                      <TooltipTrigger asChild>
-                        <Link href={item.path}>
-                          <button
-                            className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs w-full transition-colors ${
-                              isActive
-                                ? "bg-primary/10 text-primary font-medium"
-                                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                            }`}
-                          >
-                            <Icon className="h-3.5 w-3.5 shrink-0" />
-                            {!isHorizontal && <span className="truncate">{item.label}</span>}
-                          </button>
-                        </Link>
-                      </TooltipTrigger>
-                      <TooltipContent side={isVertical ? (dockMode === "left" ? "right" : "left") : "bottom"}>
-                        <p>{item.label}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  );
-                })}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }

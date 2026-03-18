@@ -190,6 +190,16 @@ Este guia fornece exemplos práticos baseados na implementação atual do sistem
 5. Minimizar para o dock lateral via botão "—"
 ```
 
+### Itens Destacáveis do Toolbox
+```
+1. No Toolbox, passe o mouse sobre qualquer item de navegação
+2. Clique no ícone de "destacar" (seta externa) que aparece à direita
+3. O item se torna um painel flutuante independente
+4. Arraste pelo grip para reposicionar o painel destacado
+5. Botão "—" minimiza para dock; botão "X" retorna o item ao Toolbox
+6. Itens destacados persistem entre sessões
+```
+
 ### Widgets Flutuantes com Minimização
 ```
 1. Chatbot IA: botão "—" minimiza para dock → clique no ícone para restaurar
