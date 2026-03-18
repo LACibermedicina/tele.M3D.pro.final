@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { MessageCircle, X, Send, Brain, Calendar, Stethoscope, Minimize2, Maximize2, ClipboardList, Users, Activity, FileText, HeartPulse, BarChart3, Mic, MicOff, Volume2, VolumeX, AudioLines } from 'lucide-react';
+import { useDraggable } from '@/hooks/use-draggable';
+import { MessageCircle, X, Send, Brain, Calendar, Stethoscope, Minimize2, Maximize2, ClipboardList, Users, Activity, FileText, HeartPulse, BarChart3, Mic, MicOff, Volume2, VolumeX, AudioLines, GripVertical } from 'lucide-react';
 
 interface SuggestedAppointment {
   dateIso: string;
@@ -68,6 +69,13 @@ export default function FloatingChatbot() {
   
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+
+  const { position: chatPos, onDragStart: onChatDragStart } = useDraggable({
+    storageKey: 'chatbot-widget',
+    defaultPosition: { x: -1, y: -1 },
+    constrainToWindow: true,
+    elementSize: { w: 384, h: 500 },
+  });
 
   useEffect(() => {
     const handler = () => setIsOpen(true);
@@ -493,11 +501,20 @@ export default function FloatingChatbot() {
   return (
     <>
     {voicePromptDialog}
-    <div className="fixed bottom-20 right-6 z-50">
+    <div
+      data-draggable-root
+      className="fixed z-50"
+      style={chatPos.x >= 0 ? { left: chatPos.x, top: chatPos.y } : { bottom: 80, right: 24 }}
+    >
       <Card className={`w-96 shadow-xl border-2 border-white/20 dark:border-gray-700 backdrop-blur-sm ${isMinimized ? 'h-16' : 'h-[500px]'} transition-all duration-300`}>
-        <CardHeader className="pb-3 border-b bg-gradient-to-r from-primary to-medical-primary text-white rounded-t-lg">
+        <CardHeader
+          className="pb-3 border-b bg-gradient-to-r from-primary to-medical-primary text-white rounded-t-lg cursor-grab active:cursor-grabbing select-none"
+          onMouseDown={onChatDragStart}
+          onTouchStart={onChatDragStart}
+        >
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 pointer-events-none">
+              <GripVertical className="w-4 h-4 text-white/60" />
               <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
                 <Brain className="w-4 h-4" />
               </div>

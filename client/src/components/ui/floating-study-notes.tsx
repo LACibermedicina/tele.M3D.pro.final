@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDraggable } from '@/hooks/use-draggable';
 import {
   BookOpen, X, Plus, Trash2, Save, Minimize2, Maximize2,
-  StickyNote, Search, Pin, PinOff
+  StickyNote, Search, Pin, PinOff, GripVertical
 } from 'lucide-react';
 
 interface StudyNote {
@@ -29,6 +30,13 @@ export default function FloatingStudyNotes() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+
+  const { position: notesPos, onDragStart: onNotesDragStart } = useDraggable({
+    storageKey: 'study-notes-widget',
+    defaultPosition: { x: -1, y: -1 },
+    constrainToWindow: true,
+    elementSize: { w: 340, h: 400 },
+  });
 
   useEffect(() => {
     const handler = () => setIsOpen(true);
@@ -137,10 +145,19 @@ export default function FloatingStudyNotes() {
   const panelHeight = isExpanded ? 'max-h-[85vh]' : 'max-h-[60vh]';
 
   return (
-    <div className={`fixed bottom-4 right-[412px] z-50 ${panelWidth} ${panelHeight} flex flex-col`}>
+    <div
+      data-draggable-root
+      className={`fixed z-50 ${panelWidth} ${panelHeight} flex flex-col`}
+      style={notesPos.x >= 0 ? { left: notesPos.x, top: notesPos.y } : { bottom: 16, right: 412 }}
+    >
       <Card className="flex flex-col h-full border-amber-500/30 shadow-2xl bg-background/95 backdrop-blur-sm">
-        <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between border-b shrink-0">
-          <CardTitle className="text-sm flex items-center gap-2">
+        <CardHeader
+          className="p-3 pb-2 flex flex-row items-center justify-between border-b shrink-0 cursor-grab active:cursor-grabbing select-none"
+          onMouseDown={onNotesDragStart}
+          onTouchStart={onNotesDragStart}
+        >
+          <CardTitle className="text-sm flex items-center gap-2 pointer-events-none">
+            <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
             <BookOpen className="h-4 w-4 text-amber-500" />
             Study Notes
             <Badge variant="secondary" className="text-[10px]">{notes.length}</Badge>

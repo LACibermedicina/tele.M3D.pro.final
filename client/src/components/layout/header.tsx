@@ -20,6 +20,7 @@ import telemedLogo from "@/assets/logo-fundo.png";
 import userIcon from "@/assets/user-icon.png";
 import { useVoiceAssistant } from "@/contexts/VoiceAssistantContext";
 import { useLayoutSettings } from "@/contexts/LayoutSettingsContext";
+import DockableNavBar from "@/components/layout/dockable-nav-bar";
 
 export default function Header() {
   const [location, navigate] = useLocation();
@@ -531,6 +532,7 @@ export default function Header() {
   const pendingPostCount = pendingPostItems?.length || 0;
 
   return (
+    <DockableNavBar>
     <header 
       className={`border-b sticky top-0 z-50 transition-all duration-300 w-full ${
         isScrolled 
@@ -1515,5 +1517,6 @@ export default function Header() {
         </div>
       )}
     </header>
+    </DockableNavBar>
   );
 }
