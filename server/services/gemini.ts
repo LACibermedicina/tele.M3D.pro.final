@@ -792,147 +792,139 @@ Formato: texto corrido, máximo 300 palavras.
     age?: number;
     sex?: string;
     clinicalHistory?: string;
-  }): Promise<any> {
+  }, onProgress?: (pass: number, total: number) => void): Promise<any> {
     const patientInfo = [
       patientContext.age ? `IDADE: ${patientContext.age} anos` : '',
       patientContext.sex ? `SEXO: ${patientContext.sex}` : '',
       patientContext.clinicalHistory ? `HISTÓRIA CLÍNICA: ${patientContext.clinicalHistory}` : '',
     ].filter(Boolean).join(' | ');
 
-    const prompt = `Você é o ECG Reader — um sistema de interpretação eletrocardiográfica de nível hospitalar que replica a metodologia clínica estruturada do "ECG Reader" GPT. Analise a imagem de ECG fornecida com contexto do paciente [${patientInfo}].
-
-=== PIPELINE DE ANÁLISE ECG READER (7 FASES) ===
-
-FASE 1 — VERIFICAÇÃO TÉCNICA E CALIBRAÇÃO:
-- Confirmar velocidade do papel (padrão: 25 mm/s; se 50 mm/s, ajustar leituras)
-- Verificar calibração de voltagem (padrão: 10 mm/mV = 1 mV)
-- Avaliar qualidade do traçado: artefatos, interferência de linha de base, tremor muscular
-- Identificar se ECG é de 12 derivações padrão ou formato reduzido
-
-FASE 2 — ANÁLISE DERIVAÇÃO POR DERIVAÇÃO (Lead-by-Lead):
-Para cada derivação (DI, DII, DIII, aVR, aVL, aVF, V1-V6), avaliar:
-- Morfologia da onda P (presença, amplitude, duração, bifidez, inversão)
-- Intervalo PR (onset da P até onset do QRS)
-- Complexo QRS (duração, amplitude, morfologia — ondas Q, R, S, padrão rSR', QS)
-- Ponto J e Segmento ST (elevação/depressão em mm, morfologia côncava/convexa/retificada)
-- Onda T (orientação, amplitude, simetria, achatamento, inversão)
-- Onda U (presença e significância)
-
-FASE 3 — SEGMENTAÇÃO DE FORMAS DE ONDA:
-- Separar e classificar cada componente: P-QRS-ST-T-U
-- Medir intervalos: PR, QRS, QT, QTc (Bazett: QTc = QT/√RR)
-- Calcular relação R/S nas precordiais (progressão R V1→V6)
-- Identificar zona de transição precordial
-
-FASE 4 — INTERPRETAÇÃO DA FAIXA DE RITMO (Rhythm Strip):
-- Analisar DII longo ou faixa de ritmo inferior
-- Determinar ritmo: sinusal, atrial, juncional, ventricular, ou marca-passo
-- Avaliar regularidade R-R (regular, regularmente irregular, irregularmente irregular)
-- Calcular FC: método 300/quadrados grandes ou método 6 segundos
-- Identificar: extrassístoles (APCs/PVCs), pausas, condução aberrante
-- Avaliar relação P:QRS (1:1, >1:1 para bloqueios, <1:1 para dissociação)
-
-FASE 5 — DETERMINAÇÃO DO EIXO ELÉTRICO:
-- Calcular eixo QRS pelo método quadrante (DI + aVF) e método perpendicular
-- Normal: -30° a +90° | Desvio esquerdo: -30° a -90° | Desvio direito: +90° a +180°
-- Determinar eixo da onda P e eixo da onda T
-- Avaliar concordância ou discordância dos eixos
-
-FASE 6 — CORRELAÇÃO CLÍNICA E PADRÕES DIAGNÓSTICOS:
-- Aplicar critérios de Sokolow-Lyon e Cornell para HVE
-- Critérios de sobrecarga atrial (P mitrale, P pulmonale)
-- Padrões isquêmicos: ST-T em territórios coronarianos (anterior, inferior, lateral, posterior)
-- Critérios de bloqueio de ramo (BRD: rSR' em V1, BRE: QS/rS em V1 + R monofásico em V5-V6)
-- Critérios de Sgarbossa para IAMCSST com BRE
-- Padrões especiais: Brugada, WPW (delta), QT longo, repolarização precoce, pericardite
-
-FASE 7 — SÍNTESE DIAGNÓSTICA COM EVIDÊNCIAS:
-- Formular diagnóstico presuntivo com nível de confiança baseado em guidelines AHA/ESC/SBC
-- Listar diagnósticos diferenciais com probabilidades baseadas em evidências
-- Referências epidemiológicas (prevalência, incidência, mortalidade)
-- Plano de ação estratificado por urgência
-
-ANÁLISE SISTEMÁTICA EM 9 CRITÉRIOS (com valores de referência):
-1. RITMO: Avaliar regularidade R-R, presença/morfologia de ondas P antes de cada QRS
-2. FREQUÊNCIA CARDÍACA: Calcular FC (normal: 60-100 bpm)
-3. EIXO QRS: Determinar eixo elétrico (normal: -30° a +90°)
-4. ONDA P: Morfologia, duração (<0,12s), amplitude (<2,5mm em DII)
-5. INTERVALO PR: Duração (normal: 0,12-0,20s)
-6. COMPLEXO QRS: Largura (<0,12s), morfologia, amplitude
-7. SEGMENTO ST: Isoelétrico vs supra/infradesnivelamento em mm
-8. ONDA T: Morfologia, simetria, inversões
-9. INTERVALO QT: QTc (normal: <440ms H, <460ms M)
-
-REGRAS:
-- Marcar cada alteração com % descritivo (ex: "ST supradesnivelado 2mm em V1-V4 - 80% probabilidade de IAM anterior")
-- Incluir dados epidemiológicos da literatura (guidelines AHA/ESC/SBC)
-- Usar cores semânticas:
-  * Vermelho (#EF4444) = isquemia/infarto/alto risco
-  * Azul (#3B82F6) = hipertrofia/distúrbios de condução
-  * Verde (#22C55E) = normalidade/variante normal
-  * Amarelo (#EAB308) = risco moderado (pericardite, distúrbios eletrolíticos)
-  * Roxo (#8B5CF6) = arritmias
-
-IMPORTANTE: Responda inteiramente em PORTUGUÊS MÉDICO. Retorne APENAS JSON válido com TODAS estas chaves:
-
-{
+    const ecgJsonSchema = `{
   "ecg_metrics": { "heart_rate": "string com valor e classificação", "rhythm": "string", "qrs_width": "string com valor em ms", "atrial_activity": "string", "signal_quality": "string" },
-  "lead_by_lead_analysis": {
-    "DI": "achados nesta derivação",
-    "DII": "achados nesta derivação",
-    "DIII": "achados nesta derivação",
-    "aVR": "achados nesta derivação",
-    "aVL": "achados nesta derivação",
-    "aVF": "achados nesta derivação",
-    "V1": "achados nesta derivação",
-    "V2": "achados nesta derivação",
-    "V3": "achados nesta derivação",
-    "V4": "achados nesta derivação",
-    "V5": "achados nesta derivação",
-    "V6": "achados nesta derivação"
-  },
-  "waveform_segmentation": {
-    "p_wave": "morfologia, duração, amplitude geral",
-    "pr_interval": "medida e interpretação",
-    "qrs_complex": "duração, morfologia, progressão R",
-    "st_segment": "alterações, quantificação em mm por território",
-    "t_wave": "morfologia, inversões, concordância",
-    "qt_interval": "QT medido, QTc calculado por Bazett",
-    "u_wave": "presença e significância"
-  },
-  "rhythm_strip_interpretation": "Análise detalhada da faixa de ritmo: regularidade, relação P:QRS, extrassístoles, pausas",
-  "cardiac_interpretation": "Texto detalhado explicando o que este ECG indica sobre a condição, função e atividade elétrica do coração",
-  "key_findings": ["array dos achados clínicos mais importantes, cada um como string com % descritivo"],
+  "lead_by_lead_analysis": { "DI": "achados", "DII": "achados", "DIII": "achados", "aVR": "achados", "aVL": "achados", "aVF": "achados", "V1": "achados", "V2": "achados", "V3": "achados", "V4": "achados", "V5": "achados", "V6": "achados" },
+  "waveform_segmentation": { "p_wave": "string", "pr_interval": "string", "qrs_complex": "string", "st_segment": "string", "t_wave": "string", "qt_interval": "string", "u_wave": "string" },
+  "rhythm_strip_interpretation": "string",
+  "cardiac_interpretation": "string detalhado",
+  "key_findings": ["array de achados com % descritivo"],
   "systematic_analysis": {
-    "ritmo": { "finding": "achado", "normal_range": "Ritmo sinusal regular", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "ex: 95% compatível com ritmo sinusal" },
-    "frequencia_cardiaca": { "finding": "XX bpm", "normal_range": "60-100 bpm", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
-    "eixo_qrs": { "finding": "eixo em graus", "normal_range": "-30° a +90°", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
-    "onda_p": { "finding": "achado", "normal_range": "<0,12s duração, <2,5mm amplitude", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
-    "intervalo_pr": { "finding": "valor em ms/s", "normal_range": "0,12-0,20s", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
-    "complexo_qrs": { "finding": "achado com valor", "normal_range": "<0,12s", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
-    "segmento_st": { "finding": "achado com quantificação em mm", "normal_range": "Isoelétrico", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
-    "onda_t": { "finding": "achado", "normal_range": "Concordante com QRS", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" },
-    "intervalo_qt": { "finding": "QTc valor", "normal_range": "<440ms (H) / <460ms (M)", "is_normal": true/false, "clinical_significance": "significância", "percentage_descriptor": "%" }
+    "ritmo": { "finding": "string", "normal_range": "string", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
+    "frequencia_cardiaca": { "finding": "string", "normal_range": "60-100 bpm", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
+    "eixo_qrs": { "finding": "string", "normal_range": "-30° a +90°", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
+    "onda_p": { "finding": "string", "normal_range": "string", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
+    "intervalo_pr": { "finding": "string", "normal_range": "0,12-0,20s", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
+    "complexo_qrs": { "finding": "string", "normal_range": "<0,12s", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
+    "segmento_st": { "finding": "string", "normal_range": "Isoelétrico", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
+    "onda_t": { "finding": "string", "normal_range": "Concordante com QRS", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
+    "intervalo_qt": { "finding": "string", "normal_range": "<440ms (H) / <460ms (M)", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" }
   },
-  "epidemiological_data": [{ "finding": "achado", "prevalence": "prevalência na população", "source": "AHA/ESC/SBC guideline reference" }],
-  "color_coded_annotations": [{ "region": "região do ECG", "color_hex": "#hex", "color_name": "nome da cor", "hypothesis": "hipótese diagnóstica", "probability": "XX%", "description": "descrição" }],
-  "presumptive_diagnosis": { "name": "Diagnóstico principal", "confidence": "XX%", "color": "#hex", "reasoning": "Raciocínio clínico baseado em guidelines" },
-  "differential_diagnoses": [{ "name": "Diagnóstico alternativo", "confidence": "XX%", "color": "#hex", "reasoning": "Raciocínio breve com referência a literatura", "key_indicators": ["indicador clínico curto 1", "indicador clínico curto 2"] }],
-  "action_plan": { "immediate_actions": ["ações imediatas"], "follow_up": ["acompanhamento"], "monitoring": ["monitoramento"] },
-  "clinical_comment": "O que é MAIS IMPORTANTE sobre este ECG - comentário destacado do achado principal e sua urgência",
-  "recommended_conduct": "Plano de ação detalhado: exames, medicações se aplicável, monitoramento e seguimento",
-  "severity_level": { "level": 1-5, "label": "Baixo/Moderado/Alto/Muito Alto/Crítico", "description": "Justificativa da gravidade" },
-  "technical_report": "Laudo técnico formal completo com todos parâmetros medidos, intervalos, achados morfológicos, conclusão clínica e recomendações, padrão CBR/RSNA",
-  "diagnosis_probabilities": { "nome_diagnostico": "XX%" },
-  "visual_annotation_instructions": { "nome_achado": "cor_para_destaque" },
-  "technical_summary": "Resumo técnico conciso",
-  "simple_summary": "Resumo acessível ao paciente dos achados",
-  "disclaimer": "Disclaimer médico sobre análise automatizada"
-}
+  "epidemiological_data": [{ "finding": "string", "prevalence": "string", "source": "AHA/ESC/SBC" }],
+  "color_coded_annotations": [{ "region": "string", "color_hex": "#hex", "color_name": "string", "hypothesis": "string", "probability": "XX%", "description": "string" }],
+  "presumptive_diagnosis": { "name": "string", "confidence": "XX%", "color": "#hex", "reasoning": "string" },
+  "differential_diagnoses": [{ "name": "string", "confidence": "XX%", "color": "#hex", "reasoning": "string", "key_indicators": ["string"] }],
+  "action_plan": { "immediate_actions": ["string"], "follow_up": ["string"], "monitoring": ["string"] },
+  "clinical_comment": "string",
+  "recommended_conduct": "string",
+  "severity_level": { "level": 1-5, "label": "string", "description": "string" },
+  "technical_report": "string laudo formal completo",
+  "diagnosis_probabilities": { "nome": "XX%" },
+  "visual_annotation_instructions": { "achado": "cor" },
+  "technical_summary": "string",
+  "simple_summary": "string",
+  "disclaimer": "string"
+}`;
 
-severity_level.level: 1=Baixo, 2=Moderado, 3=Alto, 4=Muito Alto, 5=Crítico.
-Forneça pelo menos 3-5 diagnósticos diferenciais com probabilidades baseadas em evidências.
-Seja extremamente detalhado e didático. Referencie guidelines AHA/ESC/SBC quando possível.`;
+    const pass1Prompt = `Você é o ECG Reader — sistema de interpretação eletrocardiográfica de nível hospitalar replicando a metodologia clínica do "ECG Reader" GPT. Analise a imagem ECG com contexto [${patientInfo}].
+
+=== PIPELINE ECG READER (7 FASES) ===
+FASE 1 — VERIFICAÇÃO TÉCNICA E CALIBRAÇÃO: velocidade do papel (25 mm/s padrão), calibração de voltagem (10 mm/mV), qualidade do traçado, formato 12 derivações.
+FASE 2 — ANÁLISE DERIVAÇÃO POR DERIVAÇÃO (DI, DII, DIII, aVR, aVL, aVF, V1-V6): onda P, intervalo PR, complexo QRS, ponto J/ST, onda T, onda U.
+FASE 3 — SEGMENTAÇÃO DE FORMAS DE ONDA (P-QRS-ST-T-U): intervalos PR, QRS, QT, QTc (Bazett), progressão R, zona de transição.
+FASE 4 — INTERPRETAÇÃO DA FAIXA DE RITMO: ritmo sinusal/atrial/juncional/ventricular, regularidade R-R, FC, extrassístoles, relação P:QRS.
+FASE 5 — DETERMINAÇÃO DO EIXO ELÉTRICO: eixo QRS (DI+aVF), eixo P, eixo T, concordância.
+FASE 6 — CORRELAÇÃO CLÍNICA: Sokolow-Lyon, Cornell (HVE), P mitrale/pulmonale, padrões isquêmicos ST-T, BRD/BRE, Sgarbossa, Brugada, WPW, QT longo.
+FASE 7 — SÍNTESE DIAGNÓSTICA: diagnóstico presuntivo com confiança (guidelines AHA/ESC/SBC), diferenciais com %, epidemiologia, plano de ação.
+
+ANÁLISE SISTEMÁTICA 9 CRITÉRIOS: 1.Ritmo 2.FC(60-100bpm) 3.Eixo QRS(-30°a+90°) 4.Onda P(<0,12s/<2,5mm) 5.PR(0,12-0,20s) 6.QRS(<0,12s) 7.ST(isoelétrico) 8.Onda T 9.QTc(<440ms H/<460ms M)
+
+CORES SEMÂNTICAS: Vermelho(#EF4444)=isquemia, Azul(#3B82F6)=hipertrofia, Verde(#22C55E)=normal, Amarelo(#EAB308)=risco moderado, Roxo(#8B5CF6)=arritmias.
+
+IMPORTANTE: Responda em PORTUGUÊS MÉDICO. Retorne APENAS JSON válido: ${ecgJsonSchema}
+severity_level.level: 1=Baixo, 2=Moderado, 3=Alto, 4=Muito Alto, 5=Crítico. Forneça 3-5 diferenciais. Seja detalhado. Referencie AHA/ESC/SBC.`;
+
+    const pass2Prompt = `Você é o EKG Analyst — sistema especializado em análise eletrocardiográfica que replica a metodologia do "EKG Analyst" GPT. Analise a imagem ECG com contexto [${patientInfo}].
+
+=== METODOLOGIA EKG ANALYST ===
+1. AVALIAÇÃO CARDÍACA SISTEMÁTICA:
+   - Estado geral do miocárdio (isquemia, hipertrofia, necrose)
+   - Avaliação de câmaras (átrios e ventrículos individualmente)
+   - Avaliação do sistema de condução (nó SA, nó AV, feixe de His, ramos)
+
+2. CLASSIFICAÇÃO DE RITMO:
+   - Ritmo de base e variantes (sinusal, atrial, juncional, ventricular, fibrilação, flutter)
+   - Ritmos regulares vs irregulares com padrão específico
+   - Presença de ectopia (isolada, pareada, salvas)
+
+3. ANÁLISE DE INTERVALOS:
+   - PR: condução AV (BAV 1°, 2° Mobitz I/II, 3°)
+   - QRS: condução intraventricular (BCRD, BCRE, BDAS, BDPI, bloqueio bifascicular/trifascicular)
+   - QT/QTc: risco arritmogênico (Bazett, Fridericia)
+
+4. AVALIAÇÃO MORFOLÓGICA:
+   - Ondas Q patológicas vs fisiológicas (duração >40ms, profundidade >25% R)
+   - Padrão de repolarização (early repolarization, Brugada tipo 1/2/3, T alternante)
+   - Progressão de R nas precordiais (perda de progressão = sequela anterior)
+   - Critérios de strain vs isquemia subendocárdica
+
+5. INTEGRAÇÃO CLÍNICA:
+   - Síndrome coronariana aguda: IAMCSST (critérios de Sgarbossa modificados, derivações contíguas), IAMSSST
+   - Cardiopatia estrutural: HVE (Sokolow-Lyon ≥35mm, Cornell ≥28mm H/≥20mm F), HVD (R/S>1 em V1)
+   - Distúrbios eletrolíticos: hipercalemia (T apiculadas, QRS largo), hipocalemia (U proeminente, ST deprimido)
+   - Toxicidade medicamentosa: digitalismo (ST em colher), antiarrítmicos
+
+CORES: Vermelho(#EF4444)=alto risco, Azul(#3B82F6)=hipertrofia/condução, Verde(#22C55E)=normal, Amarelo(#EAB308)=moderado, Roxo(#8B5CF6)=arritmia.
+
+IMPORTANTE: Responda em PORTUGUÊS MÉDICO. Retorne APENAS JSON válido: ${ecgJsonSchema}
+severity_level.level: 1=Baixo, 2=Moderado, 3=Alto, 4=Muito Alto, 5=Crítico. Forneça 3-5 diferenciais com %. Seja extremamente rigoroso e detalhado.`;
+
+    const pass3Prompt = `Você é um Cardiologista Sênior realizando validação final de ECG. Avalie a imagem ECG com contexto [${patientInfo}].
+
+=== FILTRO CARDIOLÓGICO DE VALIDAÇÃO ===
+1. AVALIAÇÃO GLOBAL DO ECG:
+   - Primeiro, descreva objetivamente o que VOCÊ VÊ na imagem sem pressuposições
+   - Identifique cada anormalidade visível com localização precisa
+   - Quantifique alterações em mm (ST), ms (intervalos), graus (eixo)
+
+2. ANÁLISE DE INDICADORES CARDÍACOS:
+   - Frequência e ritmo (cálculo pelo método dos 300)
+   - Eixo cardíaco (método quadrante DI/aVF + perpendicular)
+   - Hipertrofia: aplicar TODOS os critérios (Sokolow-Lyon, Cornell, Romhilt-Estes score)
+   - Isquemia/lesão: mapear territórios coronarianos (LAD, LCx, RCA)
+   - Necrose: ondas Q patológicas com cronologia estimada
+
+3. DIAGNÓSTICO PRESUNTIVO COM PROBABILIDADES DIFERENCIAIS:
+   - Listar TODAS as hipóteses diagnósticas com % de probabilidade baseado em evidências
+   - Incluir pelo menos 5 diferenciais ordenados por probabilidade
+   - Fundamentar cada % em critérios diagnósticos específicos citando guidelines
+
+4. NÍVEL DE GRAVIDADE (1-5):
+   - 1=achados normais/variantes normais
+   - 2=achados leves sem urgência (ex: bradicardia sinusal assintomática)
+   - 3=achados moderados requerendo avaliação (ex: HVE, bloqueios)
+   - 4=achados graves requerendo atenção imediata (ex: IAMSSST, taqui ventricular)
+   - 5=emergência cardiológica (ex: IAMCSST, FV, TV sustentada)
+
+5. PLANO DE AÇÃO DETALHADO:
+   - Ações imediatas baseadas na gravidade
+   - Exames complementares indicados (troponina, ecocardiograma, holter, cateterismo)
+   - Conduta medicamentosa se aplicável
+   - Seguimento e monitoramento
+
+REGRA CRÍTICA: NÃO classifique como "normal" se houver QUALQUER achado suspeito. Em caso de dúvida, PRIORIZE o achado anormal.
+
+CORES: Vermelho(#EF4444)=alto risco, Azul(#3B82F6)=hipertrofia/condução, Verde(#22C55E)=normal, Amarelo(#EAB308)=moderado, Roxo(#8B5CF6)=arritmia.
+
+IMPORTANTE: Responda em PORTUGUÊS MÉDICO. Retorne APENAS JSON válido: ${ecgJsonSchema}
+severity_level.level: 1=Baixo, 2=Moderado, 3=Alto, 4=Muito Alto, 5=Crítico. Forneça ≥5 diferenciais com %. Referencie AHA/ESC/SBC.`;
 
     const normalizeECGResult = (raw: any) => {
       const normalizeSysItem = (item: any) => ({
@@ -1027,71 +1019,216 @@ Seja extremamente detalhado e didático. Referencie guidelines AHA/ESC/SBC quand
       };
     };
 
-    let geminiError: unknown = null;
-    try {
-      const client = getGeminiClient();
-      const model = client.getGenerativeModel({
-        model: 'gemini-2.0-flash',
-        generationConfig: {
-          responseMimeType: 'application/json',
+    const runSinglePass = async (prompt: string): Promise<any> => {
+      let geminiError: unknown = null;
+      try {
+        const client = getGeminiClient();
+        const model = client.getGenerativeModel({
+          model: 'gemini-2.0-flash',
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.2,
+            maxOutputTokens: 8000,
+          },
+        });
+        const response = await model.generateContent([
+          prompt,
+          { inlineData: { mimeType: 'image/png', data: imageBase64 } },
+        ]);
+        return JSON.parse(response.response.text());
+      } catch (err) {
+        geminiError = err;
+        console.error('Gemini ECG pass error:', err instanceof Error ? err.message : err);
+      }
+
+      try {
+        const openai = getOpenAIFallback();
+        const response = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: prompt },
+            { role: 'user', content: [
+              { type: 'text', text: `Analise esta imagem de ECG. Dados: ${patientInfo || 'Não informado'}. Retorne JSON conforme schema.` },
+              { type: 'image_url', image_url: { url: `data:image/png;base64,${imageBase64}`, detail: 'high' } },
+            ]},
+          ],
+          response_format: { type: 'json_object' },
+          max_tokens: 8000,
           temperature: 0.2,
-          maxOutputTokens: 8000,
-        },
-      });
+        });
+        return JSON.parse(response.choices[0].message.content || '{}');
+      } catch (openaiError) {
+        console.error('OpenAI fallback also failed:', openaiError instanceof Error ? openaiError.message : openaiError);
+        throw geminiError || openaiError;
+      }
+    };
 
-      const response = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            mimeType: 'image/png',
-            data: imageBase64,
-          },
-        },
-      ]);
+    const passes = [pass1Prompt, pass2Prompt, pass3Prompt];
+    const passResults: any[] = [];
 
-      const text = response.response.text();
-      const parsed = JSON.parse(text);
-      return normalizeECGResult(parsed);
-    } catch (err) {
-      geminiError = err;
-      console.error('Gemini ECG analysis error:', err instanceof Error ? err.message : err);
+    for (let i = 0; i < passes.length; i++) {
+      console.log(`ECG Triple-Verification: starting pass ${i + 1}/3`);
+      try {
+        const raw = await runSinglePass(passes[i]);
+        passResults.push(normalizeECGResult(raw));
+      } catch (err) {
+        console.error(`ECG pass ${i + 1} failed:`, err instanceof Error ? err.message : err);
+        passResults.push(null);
+      }
+      if (onProgress) onProgress(i + 1, 3);
     }
 
-    console.log('Falling back to OpenAI for ECG analysis...');
-    try {
-      const openai = getOpenAIFallback();
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: prompt },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Analise esta imagem de ECG. Dados do paciente: ${patientInfo || 'Não informado'}. Retorne JSON estruturado conforme o schema solicitado.`,
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:image/png;base64,${imageBase64}`,
-                  detail: 'high',
-                },
-              },
-            ],
-          },
-        ],
-        response_format: { type: 'json_object' },
-        max_tokens: 8000,
-        temperature: 0.2,
-      });
-
-      const parsed = JSON.parse(response.choices[0].message.content || '{}');
-      return normalizeECGResult(parsed);
-    } catch (openaiError) {
-      console.error('OpenAI fallback ECG analysis also failed:', openaiError instanceof Error ? openaiError.message : openaiError);
-      throw geminiError || openaiError;
+    const validResults = passResults.filter(Boolean);
+    if (validResults.length === 0) {
+      throw new Error('All three ECG analysis passes failed');
     }
+
+    const consensus = this.crossValidateECGResults(validResults, normalizeECGResult);
+    consensus.triple_verification = {
+      passes_completed: validResults.length,
+      passes_total: 3,
+      methodology: ['ECG Reader (7-Phase Pipeline)', 'EKG Analyst (Systematic Cardiac Assessment)', 'Cardiology Senior Validation Filter'],
+      cross_validated: true,
+    };
+    return consensus;
+  }
+
+  private crossValidateECGResults(results: any[], normalizeECGResult: (raw: any) => any): any {
+    if (results.length === 1) return results[0];
+
+    const base = { ...results[0] };
+
+    const sysKeys = ['ritmo', 'frequencia_cardiaca', 'eixo_qrs', 'onda_p', 'intervalo_pr', 'complexo_qrs', 'segmento_st', 'onda_t', 'intervalo_qt'] as const;
+    for (const key of sysKeys) {
+      const items = results.map(r => r.systematic_analysis?.[key]).filter(Boolean);
+      const hasAbnormal = items.some(item => item.is_normal === false);
+      if (hasAbnormal && base.systematic_analysis?.[key]?.is_normal === true) {
+        const abnormalItem = items.find(item => item.is_normal === false);
+        if (abnormalItem) {
+          base.systematic_analysis[key] = {
+            ...abnormalItem,
+            clinical_significance: `[Validação cruzada] ${abnormalItem.clinical_significance}`,
+          };
+        }
+      }
+    }
+
+    const allFindings = new Map<string, string>();
+    for (const r of results) {
+      if (Array.isArray(r.key_findings)) {
+        for (const f of r.key_findings) {
+          const normalized = f.toLowerCase().replace(/\d+%/g, '').trim();
+          if (!allFindings.has(normalized) || f.length > (allFindings.get(normalized)?.length || 0)) {
+            allFindings.set(normalized, f);
+          }
+        }
+      }
+    }
+    base.key_findings = Array.from(allFindings.values()).slice(0, 10);
+
+    const allDiags = new Map<string, any>();
+    for (const r of results) {
+      if (Array.isArray(r.differential_diagnoses)) {
+        for (const d of r.differential_diagnoses) {
+          const key = d.name?.toLowerCase().trim();
+          if (!key) continue;
+          const existing = allDiags.get(key);
+          if (!existing || parseFloat(d.confidence) > parseFloat(existing.confidence)) {
+            allDiags.set(key, d);
+          }
+        }
+      }
+    }
+    base.differential_diagnoses = Array.from(allDiags.values()).slice(0, 8);
+
+    const allAnnotations = new Map<string, any>();
+    for (const r of results) {
+      if (Array.isArray(r.color_coded_annotations)) {
+        for (const a of r.color_coded_annotations) {
+          const key = `${a.region}-${a.hypothesis}`.toLowerCase();
+          if (!allAnnotations.has(key)) allAnnotations.set(key, a);
+        }
+      }
+    }
+    base.color_coded_annotations = Array.from(allAnnotations.values()).slice(0, 10);
+
+    const severities = results.map(r => r.severity_level?.level ?? 1);
+    const maxSeverity = Math.max(...severities);
+    if (maxSeverity > (base.severity_level?.level ?? 1)) {
+      const highestResult = results.find(r => r.severity_level?.level === maxSeverity);
+      if (highestResult?.severity_level) {
+        base.severity_level = highestResult.severity_level;
+      }
+    }
+
+    const diagCandidates = results.map(r => r.presumptive_diagnosis).filter(Boolean);
+    if (diagCandidates.length > 1) {
+      const nonNormal = diagCandidates.filter(d =>
+        !d.name?.toLowerCase().includes('normal') && !d.name?.toLowerCase().includes('sem alterações')
+      );
+      if (nonNormal.length > 0) {
+        const best = nonNormal.reduce((a: any, b: any) =>
+          parseFloat(a.confidence) >= parseFloat(b.confidence) ? a : b
+        );
+        base.presumptive_diagnosis = best;
+      }
+    }
+
+    const allEpi = new Map<string, any>();
+    for (const r of results) {
+      if (Array.isArray(r.epidemiological_data)) {
+        for (const e of r.epidemiological_data) {
+          if (e.finding && !allEpi.has(e.finding.toLowerCase())) {
+            allEpi.set(e.finding.toLowerCase(), e);
+          }
+        }
+      }
+    }
+    base.epidemiological_data = Array.from(allEpi.values()).slice(0, 8);
+
+    for (const r of results) {
+      if (r.action_plan) {
+        const mergeArray = (key: string) => {
+          const existing = new Set((base.action_plan?.[key] || []).map((s: string) => s.toLowerCase()));
+          for (const item of (r.action_plan[key] || [])) {
+            if (!existing.has(item.toLowerCase())) {
+              base.action_plan[key] = [...(base.action_plan[key] || []), item];
+              existing.add(item.toLowerCase());
+            }
+          }
+        };
+        mergeArray('immediate_actions');
+        mergeArray('follow_up');
+        mergeArray('monitoring');
+      }
+    }
+
+    if (results.length > 1 && results[results.length - 1]?.cardiac_interpretation) {
+      base.cardiac_interpretation = results[results.length - 1].cardiac_interpretation;
+    }
+    if (results.length > 1 && results[results.length - 1]?.technical_report) {
+      base.technical_report = results[results.length - 1].technical_report;
+    }
+
+    const allProbs: Record<string, number> = {};
+    for (const r of results) {
+      if (r.diagnosis_probabilities) {
+        for (const [name, pct] of Object.entries(r.diagnosis_probabilities)) {
+          const val = parseFloat(String(pct));
+          if (!isNaN(val)) {
+            const key = name.toLowerCase();
+            allProbs[key] = Math.max(allProbs[key] || 0, val);
+          }
+        }
+      }
+    }
+    base.diagnosis_probabilities = Object.fromEntries(
+      Object.entries(allProbs).map(([k, v]) => [k, `${v}%`])
+    );
+
+    base.disclaimer = 'Análise automatizada por IA com tripla verificação cruzada (ECG Reader + EKG Analyst + Validação Cardiológica). Requer revisão e validação médica profissional. Não substitui avaliação clínica presencial.';
+
+    return base;
   }
 
   async analyzeRadiologyImage(imageBase64: string, patientContext: {

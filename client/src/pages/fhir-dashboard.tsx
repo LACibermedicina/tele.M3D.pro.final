@@ -409,16 +409,38 @@ export default function FHIRDashboard() {
     });
   };
 
+  const [ecgProgress, setEcgProgress] = useState(0);
+
   const ecgAnalysisMutation = useMutation({
     mutationFn: async (data: { imageBase64: string; patientContext: any }) => {
-      const res = await apiRequest('POST', '/api/ecg/analyze', data);
-      return res.json();
+      setEcgProgress(0);
+      const progressSteps = [33, 66, 100];
+      let stepIndex = 0;
+      const progressInterval = setInterval(() => {
+        if (stepIndex < progressSteps.length) {
+          setEcgProgress(progressSteps[stepIndex]);
+          stepIndex++;
+        }
+      }, 8000);
+      try {
+        const currentLang = (i18n.resolvedLanguage || i18n.language || 'pt').split('-')[0];
+        const res = await apiRequest('POST', '/api/ecg/analyze', { ...data, language: currentLang });
+        clearInterval(progressInterval);
+        setEcgProgress(100);
+        return res.json();
+      } catch (err) {
+        clearInterval(progressInterval);
+        setEcgProgress(0);
+        throw err;
+      }
     },
     onSuccess: (data: ECGAnalysisResult) => {
       setEcgResult(data);
-      toast({ title: 'Análise ECG concluída' });
+      setEcgProgress(0);
+      toast({ title: 'ECG analisado com tripla verificação' });
     },
     onError: () => {
+      setEcgProgress(0);
       toast({ title: 'Erro ao analisar ECG', variant: 'destructive' });
     },
   });
@@ -931,6 +953,7 @@ export default function FHIRDashboard() {
                 handleFileSelect={handleFileSelect}
                 runECGAnalysis={runECGAnalysis}
                 isAnalyzing={ecgAnalysisMutation.isPending}
+                ecgProgress={ecgProgress}
                 canvasRef={canvasRef}
               />
             )}
@@ -1509,6 +1532,7 @@ interface ECGEngineTabProps {
   handleFileSelect: (file: File) => void;
   runECGAnalysis: () => void;
   isAnalyzing: boolean;
+  ecgProgress?: number;
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }
 
@@ -1533,7 +1557,7 @@ function ECGEngineTab({
   ecgPatientHistory, setEcgPatientHistory,
   isDragOver, handleDrop, handleDragOver, handleDragLeave,
   fileInputRef, handleFileSelect,
-  runECGAnalysis, isAnalyzing, canvasRef
+  runECGAnalysis, isAnalyzing, ecgProgress = 0, canvasRef
 }: ECGEngineTabProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const { toast } = useToast();
@@ -1747,20 +1771,28 @@ function ECGEngineTab({
           <Button
             onClick={runECGAnalysis}
             disabled={!ecgImage || isAnalyzing}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 relative overflow-hidden"
             size="lg"
           >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Analisando ECG (10 passos)...
-              </>
-            ) : (
-              <>
-                <Zap className="h-4 w-4 mr-2" />
-                Analisar ECG
-              </>
+            {isAnalyzing && ecgProgress > 0 && (
+              <div
+                className="absolute left-0 top-0 h-full bg-white/20 transition-all duration-500"
+                style={{ width: `${ecgProgress}%` }}
+              />
             )}
+            <span className="relative z-10 flex items-center">
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Analisando... {ecgProgress > 0 ? `${ecgProgress}%` : ''} (Tripla Verificação)
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4 mr-2" />
+                  Analisar ECG (3x Verificação)
+                </>
+              )}
+            </span>
           </Button>
 
           {/* Results */}

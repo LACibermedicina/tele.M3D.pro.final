@@ -20722,6 +20722,11 @@ ${combinedText.slice(0, 8000)}`;
   // ===== FHIR R4 Dashboard + ECG Analysis Engine Routes =====
 
   // ECG Analysis via Gemini AI Vision (with OpenAI fallback)
+  const LANG_MAP: Record<string, string> = {
+    pt: 'Portuguese (Brazil)', en: 'English', es: 'Spanish', fr: 'French',
+    it: 'Italian', de: 'German', zh: 'Chinese (Simplified)', gn: 'Guaraní',
+  };
+
   app.post('/api/ecg/analyze', requireAuthOrMcp, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
@@ -20729,16 +20734,22 @@ ${combinedText.slice(0, 8000)}`;
         return res.status(403).json({ message: 'Apenas médicos e administradores podem analisar ECGs' });
       }
 
-      const { imageBase64, patientContext } = req.body;
+      const { imageBase64, patientContext, language } = req.body;
       if (!imageBase64) {
         return res.status(400).json({ message: 'Imagem ECG (base64) é obrigatória' });
       }
 
+      const langName = LANG_MAP[language] || LANG_MAP['pt'];
+
       const { geminiService } = await import('./services/gemini');
-      const result = await geminiService.analyzeECGImage(imageBase64, patientContext || {});
+      let currentPass = 0;
+      const result = await geminiService.analyzeECGImage(imageBase64, patientContext || {}, (pass) => {
+        currentPass = pass;
+        console.log(`ECG Triple-Verification progress: ${pass}/3 (${Math.round(pass / 3 * 100)}%)`);
+      });
 
       let immersiveImage: string | null = null;
-      try {
+      const generateECGImmersiveImage = async (): Promise<string | null> => {
         const { generateImageBuffer } = await import('./replit_integrations/image/client');
         const findings = result.key_findings?.slice(0, 5)?.join('; ') || 'ECG analysis';
         const diagnosis = result.presumptive_diagnosis?.name || 'ECG';
@@ -20749,38 +20760,48 @@ ${combinedText.slice(0, 8000)}`;
 
         const imagePrompt = `Create an immersive PACS-style ECG summary visualization panel — a hyper-realistic medical image synthesis for cardiology educational interface. Dark hospital interface background (#1a1a2e).
 
-ALL TEXT MUST BE IN PORTUGUESE (BRAZIL). Use large, bold, high-contrast fonts (minimum 18pt equivalent). White text on dark backgrounds. Avoid small or condensed text.
+ALL TEXT MUST BE IN ${langName.toUpperCase()}. Use large, bold, high-contrast fonts (minimum 18pt equivalent). White text on dark backgrounds. Avoid small or condensed text. Every label, title, and description MUST be written in ${langName}.
 
 VISUAL LAYOUT — 4 BLOCKS:
 
-BLOCK 1 (TOP) — "RESUMO ECG":
-- Title: "Análise de ECG — ${diagnosis}" in white bold text
+BLOCK 1 (TOP) — ECG SUMMARY:
+- Title: "ECG Analysis — ${diagnosis}" in white bold text (translated to ${langName})
 - Severity badge: "${severity}" in top-right corner with appropriate color
 - Stylized ECG waveform trace across center with subtle grid pattern (ECG paper style)
 
-BLOCK 2 (MIDDLE) — "ANOTAÇÕES COLORIDAS":
+BLOCK 2 (MIDDLE) — COLOR-CODED ANNOTATIONS:
 - Color-coded annotation regions overlaid on the waveform:
   ${annotations}
-- Semantic colors: Vermelho (#EF4444) = isquemia/infarto, Azul (#3B82F6) = hipertrofia/condução, Verde (#22C55E) = normal, Amarelo (#EAB308) = risco moderado, Roxo (#8B5CF6) = arritmia
-- Each annotation with clear Portuguese label and connecting arrows
+- Semantic colors: Red (#EF4444) = ischemia/infarction, Blue (#3B82F6) = hypertrophy/conduction, Green (#22C55E) = normal, Yellow (#EAB308) = moderate risk, Purple (#8B5CF6) = arrhythmia
+- Each annotation with clear ${langName} label and connecting arrows
 
-BLOCK 3 (BOTTOM LEFT) — "ACHADOS PRINCIPAIS":
+BLOCK 3 (BOTTOM LEFT) — KEY FINDINGS:
 - Key findings in readable list: ${findings}
 - Each finding with colored indicator dot
 
-BLOCK 4 (BOTTOM RIGHT) — "DADOS CLÍNICOS":
+BLOCK 4 (BOTTOM RIGHT) — CLINICAL DATA:
 - Diagnosis: ${diagnosis}
 - Severity: ${severity}
 
-BOTTOM BAR: "Resumo ECG gerado por IA • Não substitui avaliação médica profissional" in white text on dark strip.
+BOTTOM BAR: "AI-generated ECG Summary • Does not replace professional medical evaluation" (in ${langName}) on dark strip.
 
-GRAPHICAL RULES: Professional medical infographic, clean typography, high contrast, real cardiology workstation appearance. All labels in Portuguese. No decorative elements. Prioritize legibility.`;
+GRAPHICAL RULES: Professional medical infographic, clean typography, high contrast, real cardiology workstation appearance. All labels in ${langName}. No decorative elements. Prioritize legibility. Only use OCR-legible text — no gibberish or incoherent characters.`;
 
         const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
-        immersiveImage = imageBuffer.toString('base64');
+        return imageBuffer.toString('base64');
+      };
+
+      try {
+        immersiveImage = await generateECGImmersiveImage();
         console.log('ECG immersive image generated successfully');
       } catch (imgError) {
-        console.error('ECG immersive image generation failed (non-blocking):', imgError instanceof Error ? imgError.message : imgError);
+        console.error('ECG immersive image generation failed, retrying once...', imgError instanceof Error ? imgError.message : imgError);
+        try {
+          immersiveImage = await generateECGImmersiveImage();
+          console.log('ECG immersive image generated on retry');
+        } catch (retryError) {
+          console.error('ECG immersive image retry also failed (non-blocking):', retryError instanceof Error ? retryError.message : retryError);
+        }
       }
 
       res.json({ ...result, immersive_image: immersiveImage });
@@ -20799,11 +20820,12 @@ GRAPHICAL RULES: Professional medical infographic, clean typography, high contra
         return res.status(403).json({ message: 'Apenas médicos e administradores podem gerar imagens' });
       }
 
-      const { analysisData } = req.body;
+      const { analysisData, language } = req.body;
       if (!analysisData) {
         return res.status(400).json({ message: 'Dados da análise são obrigatórios' });
       }
 
+      const langName = LANG_MAP[language] || LANG_MAP['pt'];
       const { generateImageBuffer } = await import('./replit_integrations/image/client');
 
       const diagnosis = analysisData.presumptive_diagnosis?.name || 'ECG Analysis';
@@ -20832,51 +20854,55 @@ GRAPHICAL RULES: Professional medical infographic, clean typography, high contra
 
       const imagePrompt = `Create a detailed didactic ECG analysis educational panel — a hyper-realistic medical teaching visualization. Dark clinical interface background (#0f172a).
 
+ALL TEXT MUST BE IN ${langName.toUpperCase()}. Every label, title, section heading, finding description, and clinical text MUST be written in ${langName}. Use only OCR-legible text — no gibberish or incoherent characters.
+
 STYLE: Advanced cardiology workstation UI, AHA/ESC teaching atlas hybrid, AI diagnostic overlay, clean medical vector illustration.
 
 VISUAL LAYOUT — STRUCTURED EDUCATIONAL PANEL:
 
-TOP BANNER: "ANÁLISE DIDÁTICA ECG — ${diagnosis}" in white/red text. Severity: ${severity} (${severityLevel}/5).
+TOP BANNER: "ECG Didactic Analysis — ${diagnosis}" (in ${langName}) in white/red text. Severity: ${severity} (${severityLevel}/5).
 
-SECTION 1 (TOP LEFT) — "TRAÇADO ECG ANOTADO":
-- Show a stylized 12-lead ECG trace representation
-- Color-code different waveform segments with semantic colors:
-  - P wave regions in blue (#3B82F6)
-  - QRS complex in green (#22C55E) if normal, red (#EF4444) if abnormal
-  - ST segment highlighted based on findings
-  - T wave regions appropriately colored
-- Annotate key findings: ${keyFindings}
-- ECG metrics overlay: ${metricsStr}
+SECTION 1 (TOP LEFT) — ANNOTATED ECG TRACE:
+- Stylized 12-lead ECG trace with color-coded waveform segments:
+  P wave=blue(#3B82F6), QRS=green(#22C55E) if normal/red(#EF4444) if abnormal, ST highlighted, T wave colored
+- Key findings: ${keyFindings}
+- Metrics overlay: ${metricsStr}
 
-SECTION 2 (TOP RIGHT) — "HIPÓTESES DIAGNÓSTICAS":
-- Color-coded diagnostic hypothesis bars with percentages
-- Primary: ${diagnosis} (${confidence}) — prominent red/orange bar
+SECTION 2 (TOP RIGHT) — DIAGNOSTIC HYPOTHESES:
+- Color-coded hypothesis bars with percentages
+- Primary: ${diagnosis} (${confidence}) — prominent bar
 - Differentials: ${differentials}
-- Each hypothesis has its own color bar with percentage label
-- Visual probability distribution chart
 
-SECTION 3 (MIDDLE) — "INTERPRETAÇÃO CARDÍACA":
+SECTION 3 (MIDDLE) — CARDIAC INTERPRETATION:
 - ${interpretation}
 - Clinical comment: ${clinicalComment}
-- Color-coded annotation regions: ${colorAnnotations}
+- Annotations: ${colorAnnotations}
 
-SECTION 4 (BOTTOM LEFT) — "CONDUTA E PLANO DE AÇÃO":
-- Severity badge: ${severity} (${severityLevel}/5) with appropriate color (green=1, yellow=2, orange=3, red=4-5)
-- Recommended conduct text: ${conduct}
+SECTION 4 (BOTTOM LEFT) — CONDUCT & ACTION PLAN:
+- Severity: ${severity} (${severityLevel}/5)
+- Conduct: ${conduct}
 - Immediate actions: ${immediateActions}
 
-SECTION 5 (BOTTOM RIGHT) — "LAUDO TÉCNICO":
-- Brief technical report summary: ${techReport}
-- Image quality and diagnostic assessment
+SECTION 5 (BOTTOM RIGHT) — TECHNICAL REPORT:
+- ${techReport}
 
-COLOR SEMANTICS: Red (#EF4444) = ischemia/high risk, Blue (#3B82F6) = hypertrophy/reference, Green (#22C55E) = normal, Yellow (#EAB308) = moderate risk, Purple (#8B5CF6) = arrhythmia.
+COLOR SEMANTICS: Red(#EF4444)=ischemia/high risk, Blue(#3B82F6)=hypertrophy, Green(#22C55E)=normal, Yellow(#EAB308)=moderate, Purple(#8B5CF6)=arrhythmia.
 
-GRAPHICAL RULES: Clean medical typography, thin clinical lines, high contrast readability, semantic color hierarchy, no decorative elements. All text in Portuguese.
+GRAPHICAL RULES: Clean medical typography, high contrast, semantic colors, no decorative elements. All text in ${langName}. Only OCR-legible characters.`;
 
-Generate ONE single integrated didactic ECG analysis panel that is hyper-informative, visually clean, clinically actionable, educationally robust, and fully case-specific.`;
+      const generateImage = async () => {
+        const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
+        return imageBuffer.toString('base64');
+      };
 
-      const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');
-      const detailImage = imageBuffer.toString('base64');
+      let detailImage: string;
+      try {
+        detailImage = await generateImage();
+      } catch (firstErr) {
+        console.error('ECG detail image first attempt failed, retrying...', firstErr instanceof Error ? firstErr.message : firstErr);
+        detailImage = await generateImage();
+      }
+
       console.log('ECG detail didactic image generated successfully');
       res.json({ detail_image: detailImage });
     } catch (error) {

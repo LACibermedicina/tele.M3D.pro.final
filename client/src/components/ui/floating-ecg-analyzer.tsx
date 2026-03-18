@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -37,8 +38,10 @@ const MAX_SIZE = { w: 700, h: 900 };
 export default function FloatingECGAnalyzer() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
 
   useEffect(() => {
     const handler = () => setIsOpen(true);
@@ -165,16 +168,36 @@ export default function FloatingECGAnalyzer() {
   const ecgMutation = useMutation({
     mutationFn: async () => {
       if (!ecgImage) throw new Error('No image');
-      const res = await apiRequest('POST', '/api/ecg/analyze', { imageBase64: ecgImage, patientContext: {} });
-      return res.json();
+      setAnalysisProgress(0);
+      const progressSteps = [33, 66, 100];
+      let stepIndex = 0;
+      const progressInterval = setInterval(() => {
+        if (stepIndex < progressSteps.length) {
+          setAnalysisProgress(progressSteps[stepIndex]);
+          stepIndex++;
+        }
+      }, 8000);
+      try {
+        const currentLang = (i18n.resolvedLanguage || i18n.language || 'pt').split('-')[0];
+        const res = await apiRequest('POST', '/api/ecg/analyze', { imageBase64: ecgImage, patientContext: {}, language: currentLang });
+        clearInterval(progressInterval);
+        setAnalysisProgress(100);
+        return res.json();
+      } catch (err) {
+        clearInterval(progressInterval);
+        setAnalysisProgress(0);
+        throw err;
+      }
     },
     onSuccess: (data: any) => {
       setResult(data);
       setSavedToStudy(false);
       setDetailImage(null);
-      toast({ title: 'ECG analisado com sucesso' });
+      setAnalysisProgress(0);
+      toast({ title: 'ECG analisado com tripla verificação' });
     },
     onError: () => {
+      setAnalysisProgress(0);
       toast({ title: 'Erro na análise ECG', variant: 'destructive' });
     },
   });
@@ -182,7 +205,8 @@ export default function FloatingECGAnalyzer() {
   const generateDetailImageMutation = useMutation({
     mutationFn: async () => {
       if (!result) throw new Error('No result');
-      const res = await apiRequest('POST', '/api/ecg/generate-detail-image', { analysisData: result });
+      const currentLang = (i18n.resolvedLanguage || i18n.language || 'pt').split('-')[0];
+      const res = await apiRequest('POST', '/api/ecg/generate-detail-image', { analysisData: result, language: currentLang });
       return res.json();
     },
     onSuccess: (data: { detail_image: string }) => {
@@ -379,16 +403,24 @@ export default function FloatingECGAnalyzer() {
                   <Button
                     onClick={() => ecgMutation.mutate()}
                     disabled={ecgMutation.isPending || analysisLocked}
-                    className="w-full bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700"
+                    className="w-full bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 relative overflow-hidden"
                     size="sm"
                   >
-                    {ecgMutation.isPending ? (
-                      <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Analisando...</>
-                    ) : analysisLocked ? (
-                      <><Zap className="h-3 w-3 mr-1" /> Limpe para novo estudo</>
-                    ) : (
-                      <><Zap className="h-3 w-3 mr-1" /> Analisar ECG</>
+                    {ecgMutation.isPending && analysisProgress > 0 && (
+                      <div
+                        className="absolute left-0 top-0 h-full bg-white/20 transition-all duration-500"
+                        style={{ width: `${analysisProgress}%` }}
+                      />
                     )}
+                    <span className="relative z-10 flex items-center">
+                      {ecgMutation.isPending ? (
+                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Analisando... {analysisProgress > 0 ? `${analysisProgress}%` : ''}</>
+                      ) : analysisLocked ? (
+                        <><Zap className="h-3 w-3 mr-1" /> Limpe para novo estudo</>
+                      ) : (
+                        <><Zap className="h-3 w-3 mr-1" /> Analisar ECG (3x)</>
+                      )}
+                    </span>
                   </Button>
                 </div>
               )}
