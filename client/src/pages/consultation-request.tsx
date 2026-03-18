@@ -878,9 +878,9 @@ export default function ConsultationRequest() {
                                   <span className="text-xs text-green-600">Disponível</span>
                                 </div>
                               )}
-                              {doctor.consultationPrice > 0 && (
+                              {(doctor as any).consultationPrice > 0 && (
                                 <span className="text-xs font-medium text-amber-600 bg-amber-50 dark:bg-amber-950 px-2 py-0.5 rounded-full">
-                                  {doctor.consultationPrice} TMC
+                                  {(doctor as any).consultationPrice} TMC
                                 </span>
                               )}
                             </div>

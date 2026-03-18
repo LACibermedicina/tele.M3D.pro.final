@@ -66,7 +66,6 @@ export default function ImmediateConsultation() {
   const { data: onlineDoctors, isLoading } = useQuery<Doctor[]>({
     queryKey: ['/api/doctors/online'],
     refetchInterval: 10000,
-    enabled: canAccess,
   });
 
   const requestMutation = useMutation({
@@ -168,7 +167,7 @@ export default function ImmediateConsultation() {
   const inConsultationDoctors = sortedDoctors?.filter(d => d.inConsultation) || [];
   const availableDoctors = sortedDoctors?.filter(d => !d.inConsultation) || [];
 
-  const isAttendingCurrentUser = (doctor: OnlineDoctor) => {
+  const isAttendingCurrentUser = (doctor: Doctor) => {
     if (!user?.id || !doctor.activeUserIds) return false;
     return doctor.activeUserIds.includes(user.id);
   };
@@ -180,25 +179,77 @@ export default function ImmediateConsultation() {
   };
 
   if (!canAccess) {
+    const visitorDoctorCount = onlineDoctors?.length || 0;
     return (
       <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
-        <div className="p-6 sm:p-8 lg:p-12 max-w-lg mx-auto text-center space-y-6">
-          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-            <ShieldOff className="h-10 w-10 text-primary" />
+        <div className="p-6 sm:p-8 lg:p-12 max-w-2xl mx-auto space-y-6">
+          <div className="text-center space-y-4">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <Video className="h-10 w-10 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold">Sala de Espera</h1>
+            <p className="text-muted-foreground">
+              Veja os médicos disponíveis agora. Faça login ou cadastre-se para solicitar atendimento.
+            </p>
           </div>
-          <h1 className="text-2xl font-bold">Acesso Restrito</h1>
-          <p className="text-muted-foreground">
-            A Sala de Espera é acessível apenas para pacientes cadastrados ou visitantes com link de acesso temporário fornecido pelo médico ou administrador.
-          </p>
-          <div className="flex flex-col gap-3">
+
+          <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20">
+            <CardContent className="p-4 flex items-center gap-3 justify-center">
+              <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                <Activity className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-700 dark:text-green-400">{visitorDoctorCount}</p>
+                <p className="text-xs text-muted-foreground">Médicos Online Agora</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          ) : visitorDoctorCount > 0 ? (
+            <div className="space-y-3">
+              {onlineDoctors?.map((doctor) => (
+                <Card key={doctor.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <Avatar className="h-12 w-12">
+                      {doctor.profilePicture && <AvatarImage src={doctor.profilePicture} />}
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {doctor.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="font-semibold">{doctor.name}</p>
+                      <p className="text-sm text-muted-foreground">{doctor.specialization || 'Clínico Geral'}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-xs text-green-600">Online</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <Stethoscope className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                <p className="text-sm text-muted-foreground">Nenhum médico online no momento</p>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="flex flex-col gap-3 pt-2">
             <Button onClick={() => setLocation('/login')} size="lg" className="w-full">
-              Fazer Login
+              Fazer Login para Solicitar Atendimento
             </Button>
             <Button onClick={() => setLocation('/register/patient')} variant="outline" size="lg" className="w-full">
               Criar Conta de Paciente
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground text-center">
             Já recebeu um link de acesso? Cole-o diretamente no navegador.
           </p>
         </div>

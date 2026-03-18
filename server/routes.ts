@@ -7229,17 +7229,15 @@ Responda em português brasileiro, de forma estruturada e concisa, com linguagem
         return res.status(404).json({ message: 'Paciente não encontrado' });
       }
 
-      const patientRecords = await storage.getMedicalRecordsByPatientId(patientId);
+      const patientRecords = await storage.getMedicalRecordsByPatient(patientId);
       const patientHistory = patientRecords.slice(0, 5).map((r: any) => r.diagnosis || r.notes || '').join('; ');
 
       const prompt = `Você é um assistente médico especialista em farmacologia clínica, seguindo protocolos OMS, MS/Brasil e bulas ANVISA.
 
 PACIENTE:
 - Nome: ${patient.name}
-- Idade: ${patient.age || 'Não informada'}
-- Peso: ${patient.weight || 'Não informado'}kg
-- Alergias: ${patient.allergies || 'Nenhuma registrada'}
-- Condições: ${patient.conditions || 'Nenhuma registrada'}
+- Alergias: ${(patient as any).allergies || 'Nenhuma registrada'}
+- Condições: ${(patient as any).conditions || 'Nenhuma registrada'}
 - Histórico recente: ${patientHistory || 'Sem histórico'}
 ${diagnosis ? `\nDIAGNÓSTICO ATUAL: ${diagnosis}` : ''}
 ${symptoms ? `SINTOMAS DESCRITOS: ${symptoms}` : ''}
@@ -7314,7 +7312,7 @@ Responda APENAS com o JSON, sem texto adicional.`;
         return res.status(404).json({ message: 'Paciente não encontrado' });
       }
 
-      const patientRecords = await storage.getMedicalRecordsByPatientId(patientId);
+      const patientRecords = await storage.getMedicalRecordsByPatient(patientId);
       const patientHistory = patientRecords.slice(0, 10).map((r: any) => {
         const parts = [];
         if (r.diagnosis) parts.push(`Diagnóstico: ${r.diagnosis}`);
@@ -7343,10 +7341,8 @@ Responda APENAS com o JSON, sem texto adicional.`;
 
 PACIENTE:
 - Nome: ${patient.name}
-- Idade: ${patient.age || 'Não informada'}
-- Peso: ${patient.weight || 'Não informado'}kg
-- Alergias: ${patient.allergies || 'Nenhuma registrada'}
-- Condições crônicas: ${patient.conditions || 'Nenhuma registrada'}
+- Alergias: ${(patient as any).allergies || 'Nenhuma registrada'}
+- Condições crônicas: ${(patient as any).conditions || 'Nenhuma registrada'}
 ${patientHistory ? `\nHISTÓRICO CLÍNICO:\n${patientHistory}` : ''}
 ${prescriptionHistory ? `\nPRESCRIÇÕES ANTERIORES: ${prescriptionHistory}` : ''}
 
