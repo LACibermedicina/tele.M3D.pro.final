@@ -16550,6 +16550,45 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
+  app.get('/api/system-settings/public/postload', async (_req: Request, res: Response) => {
+    try {
+      const keys = [
+        'postload_autoscroll_enabled',
+        'postload_autoscroll_distance',
+        'postload_autoscroll_delay_ms',
+        'postload_autoscroll_return_delay_ms',
+        'postload_custom_scripts_enabled',
+        'postload_custom_scripts',
+      ];
+      const defaults: Record<string, string> = {
+        postload_autoscroll_enabled: 'true',
+        postload_autoscroll_distance: '5',
+        postload_autoscroll_delay_ms: '300',
+        postload_autoscroll_return_delay_ms: '150',
+        postload_custom_scripts_enabled: 'false',
+        postload_custom_scripts: '[]',
+      };
+      const results: Record<string, string> = {};
+      for (const key of keys) {
+        const setting = await db.select()
+          .from(systemSettings)
+          .where(eq(systemSettings.settingKey, key))
+          .limit(1);
+        results[key] = setting.length > 0 ? setting[0].settingValue : defaults[key];
+      }
+      res.json(results);
+    } catch {
+      res.json({
+        postload_autoscroll_enabled: 'true',
+        postload_autoscroll_distance: '5',
+        postload_autoscroll_delay_ms: '300',
+        postload_autoscroll_return_delay_ms: '150',
+        postload_custom_scripts_enabled: 'false',
+        postload_custom_scripts: '[]',
+      });
+    }
+  });
+
   app.get('/api/system-settings/public/consultation-timeouts', async (_req: Request, res: Response) => {
     try {
       const keys = [
@@ -16611,7 +16650,13 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
 
       const { key } = req.params;
       
-      // Check if setting exists and is editable
+      if (key.startsWith('postload_')) {
+        const isPermanent = req.user.username === 'root' || (req.user as any).isProtected === true;
+        if (!isPermanent) {
+          return res.status(403).json({ message: 'Apenas administradores permanentes podem modificar configurações de pós-carregamento' });
+        }
+      }
+
       const existing = await db.select()
         .from(systemSettings)
         .where(eq(systemSettings.settingKey, key))
@@ -16694,6 +16739,13 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
       }
 
       const { key } = req.params;
+
+      if (key.startsWith('postload_')) {
+        const isPermanent = req.user.username === 'root' || (req.user as any).isProtected === true;
+        if (!isPermanent) {
+          return res.status(403).json({ message: 'Apenas administradores permanentes podem excluir configurações de pós-carregamento' });
+        }
+      }
       
       // Check if setting exists and is editable
       const existing = await db.select()
@@ -22373,6 +22425,54 @@ async function initializeDefaultSystemSettings() {
       settingType: 'number',
       description: 'Duração da contagem regressiva do aviso de desconexão da consulta (em segundos)',
       category: 'consultations',
+      isEditable: true,
+    },
+    {
+      settingKey: 'postload_autoscroll_enabled',
+      settingValue: 'true',
+      settingType: 'boolean',
+      description: 'Ativar rolagem automática da página após carregamento (scroll down e retorno ao topo)',
+      category: 'postload',
+      isEditable: true,
+    },
+    {
+      settingKey: 'postload_autoscroll_distance',
+      settingValue: '5',
+      settingType: 'number',
+      description: 'Distância em pixels da rolagem automática após carregamento da página',
+      category: 'postload',
+      isEditable: true,
+    },
+    {
+      settingKey: 'postload_autoscroll_delay_ms',
+      settingValue: '300',
+      settingType: 'number',
+      description: 'Tempo de espera (ms) antes de executar a rolagem automática após carregamento',
+      category: 'postload',
+      isEditable: true,
+    },
+    {
+      settingKey: 'postload_autoscroll_return_delay_ms',
+      settingValue: '150',
+      settingType: 'number',
+      description: 'Tempo de espera (ms) antes de retornar ao topo após a rolagem automática',
+      category: 'postload',
+      isEditable: true,
+    },
+    {
+      settingKey: 'postload_custom_scripts_enabled',
+      settingValue: 'false',
+      settingType: 'boolean',
+      description: 'Ativar execução de scripts personalizados após carregamento da página',
+      category: 'postload',
+      isEditable: true,
+    },
+    {
+      settingKey: 'postload_custom_scripts',
+      settingValue: '[]',
+      settingType: 'json',
+      description: 'Lista de scripts personalizados para executar após carregamento (JSON array com objetos {name, code, enabled, order})',
+      category: 'postload',
       isEditable: true,
     },
   ];

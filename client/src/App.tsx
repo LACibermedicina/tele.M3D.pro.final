@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import InactivityMonitor from "@/components/inactivity-monitor";
+import PostLoadEffects from "@/components/post-load-effects";
 import { onForceDisconnect } from "@/hooks/use-websocket";
 import { useToast } from "@/hooks/use-toast";
 import { disconnectAllMediaServices } from "@/components/inactivity-monitor";
@@ -616,6 +617,7 @@ function App() {
                   <Toaster />
                   <InactivityMonitor />
                   <ForceDisconnectGuard />
+                  <PostLoadEffects />
                   <Router />
                 </TooltipProvider>
               </VoiceAssistantProvider>

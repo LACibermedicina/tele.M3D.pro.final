@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, ShieldCheck, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings, CreditCard, Pill, ArrowUpDown, ArrowUp, ArrowDown, Unplug, Stethoscope, ServerCrash } from 'lucide-react';
+import { Shield, ShieldCheck, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings, CreditCard, Pill, ArrowUpDown, ArrowUp, ArrowDown, Unplug, Stethoscope, ServerCrash, ScrollText, Code, GripVertical, ToggleLeft, Play, Pause, ChevronDown, ChevronUp } from 'lucide-react';
+import { useIsPermanentAdmin } from '@/hooks/use-permanent-admin';
 import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { formatErrorForToast } from '@/lib/error-handler';
@@ -105,6 +106,7 @@ interface ErrorLog {
 
 export default function AdminPage() {
   const { toast } = useToast();
+  const isPermanentAdmin = useIsPermanentAdmin();
   const [showCreateCollaborator, setShowCreateCollaborator] = useState(false);
   const [showCreateApiKey, setShowCreateApiKey] = useState(false);
   const [selectedCollaborator, setSelectedCollaborator] = useState<string>('');
@@ -489,6 +491,14 @@ export default function AdminPage() {
               <span>Configurações</span>
             </div>
           </TabsTrigger>
+          {isPermanentAdmin && (
+            <TabsTrigger value="postload-settings" data-testid="tab-postload-settings">
+              <div className="flex items-center space-x-2">
+                <ScrollText className="h-4 w-4" />
+                <span>Pós-Carregamento</span>
+              </div>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Users Tab */}
@@ -1964,6 +1974,9 @@ export default function AdminPage() {
 
         {/* System Settings Tab */}
         <SystemSettingsTab />
+
+        {/* Post-Load Settings Tab (permanent admins only) */}
+        {isPermanentAdmin && <PostLoadSettingsTab />}
       </Tabs>
       </div>
     </PageWrapper>
@@ -2291,6 +2304,7 @@ const categoryLabels: Record<string, string> = {
   financial: "Financeiro",
   general: "Geral",
   pharmacy: "Farmácia",
+  postload: "Pós-Carregamento",
 };
 
 function LayoutThemeTab() {
@@ -2619,6 +2633,317 @@ function SystemSettingsTab() {
                 </div>
               ))}
             </div>
+          )}
+        </CardContent>
+      </Card>
+    </TabsContent>
+  );
+}
+
+interface PostLoadScript {
+  name: string;
+  code: string;
+  enabled: boolean;
+  order: number;
+}
+
+function PostLoadSettingsTab() {
+  const { toast } = useToast();
+  const [scripts, setScripts] = useState<PostLoadScript[]>([]);
+  const [showAddScript, setShowAddScript] = useState(false);
+  const [newScriptName, setNewScriptName] = useState('');
+  const [newScriptCode, setNewScriptCode] = useState('');
+  const [editingScript, setEditingScript] = useState<number | null>(null);
+  const [editScriptName, setEditScriptName] = useState('');
+  const [editScriptCode, setEditScriptCode] = useState('');
+
+  const { data: settings, isLoading } = useQuery<Record<string, string>>({
+    queryKey: ['/api/system-settings/public/postload'],
+  });
+
+  useEffect(() => {
+    if (settings?.postload_custom_scripts) {
+      try {
+        const parsed = JSON.parse(settings.postload_custom_scripts);
+        if (Array.isArray(parsed)) setScripts(parsed);
+      } catch {}
+    }
+  }, [settings]);
+
+  const updateSetting = useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      const res = await apiRequest('PUT', `/api/system-settings/${key}`, { settingValue: value });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Configuração atualizada com sucesso" });
+      queryClient.invalidateQueries({ queryKey: ['/api/system-settings/public/postload'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/system-settings'] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro ao atualizar", description: formatErrorForToast(error), variant: "destructive" });
+    },
+  });
+
+  const autoscrollEnabled = settings?.postload_autoscroll_enabled === 'true';
+  const autoscrollDistance = settings?.postload_autoscroll_distance || '5';
+  const autoscrollDelay = settings?.postload_autoscroll_delay_ms || '300';
+  const autoscrollReturnDelay = settings?.postload_autoscroll_return_delay_ms || '150';
+  const customScriptsEnabled = settings?.postload_custom_scripts_enabled === 'true';
+
+  const saveScripts = (updated: PostLoadScript[]) => {
+    setScripts(updated);
+    updateSetting.mutate({ key: 'postload_custom_scripts', value: JSON.stringify(updated) });
+  };
+
+  const addScript = () => {
+    if (!newScriptName.trim() || !newScriptCode.trim()) return;
+    const updated = [...scripts, { name: newScriptName.trim(), code: newScriptCode.trim(), enabled: true, order: scripts.length }];
+    saveScripts(updated);
+    setNewScriptName('');
+    setNewScriptCode('');
+    setShowAddScript(false);
+  };
+
+  const removeScript = (idx: number) => {
+    const updated = scripts.filter((_, i) => i !== idx).map((s, i) => ({ ...s, order: i }));
+    saveScripts(updated);
+  };
+
+  const toggleScript = (idx: number) => {
+    const updated = scripts.map((s, i) => i === idx ? { ...s, enabled: !s.enabled } : s);
+    saveScripts(updated);
+  };
+
+  const moveScript = (idx: number, dir: -1 | 1) => {
+    const target = idx + dir;
+    if (target < 0 || target >= scripts.length) return;
+    const updated = [...scripts];
+    [updated[idx], updated[target]] = [updated[target], updated[idx]];
+    saveScripts(updated.map((s, i) => ({ ...s, order: i })));
+  };
+
+  const startEditScript = (idx: number) => {
+    setEditingScript(idx);
+    setEditScriptName(scripts[idx].name);
+    setEditScriptCode(scripts[idx].code);
+  };
+
+  const saveEditScript = () => {
+    if (editingScript === null) return;
+    const updated = scripts.map((s, i) => i === editingScript ? { ...s, name: editScriptName.trim(), code: editScriptCode.trim() } : s);
+    saveScripts(updated);
+    setEditingScript(null);
+  };
+
+  return (
+    <TabsContent value="postload-settings" className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <ScrollText className="h-5 w-5" />
+            <span>Configurações Pós-Carregamento</span>
+          </CardTitle>
+          <CardDescription>
+            Configure comportamentos executados automaticamente após o carregamento de cada página.
+            Apenas administradores permanentes podem modificar estas configurações.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Carregando configurações...</div>
+          ) : (
+            <>
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <ScrollText className="h-4 w-4" />
+                  Rolagem Automática
+                </h3>
+                <div className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Ativar rolagem automática</p>
+                      <p className="text-xs text-muted-foreground">
+                        Rolar a página para baixo e retornar ao topo após carregamento
+                      </p>
+                    </div>
+                    <Switch
+                      checked={autoscrollEnabled}
+                      onCheckedChange={(checked) =>
+                        updateSetting.mutate({ key: 'postload_autoscroll_enabled', value: String(checked) })
+                      }
+                    />
+                  </div>
+
+                  {autoscrollEnabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Distância (pixels)</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="500"
+                          value={autoscrollDistance}
+                          onChange={(e) =>
+                            updateSetting.mutate({ key: 'postload_autoscroll_distance', value: e.target.value })
+                          }
+                          className="w-full"
+                        />
+                        <p className="text-[10px] text-muted-foreground">Pixels para rolar para baixo</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Atraso inicial (ms)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="5000"
+                          value={autoscrollDelay}
+                          onChange={(e) =>
+                            updateSetting.mutate({ key: 'postload_autoscroll_delay_ms', value: e.target.value })
+                          }
+                          className="w-full"
+                        />
+                        <p className="text-[10px] text-muted-foreground">Espera antes de rolar (ms)</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Atraso de retorno (ms)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="5000"
+                          value={autoscrollReturnDelay}
+                          onChange={(e) =>
+                            updateSetting.mutate({ key: 'postload_autoscroll_return_delay_ms', value: e.target.value })
+                          }
+                          className="w-full"
+                        />
+                        <p className="text-[10px] text-muted-foreground">Espera antes de voltar ao topo (ms)</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <Code className="h-4 w-4" />
+                  Scripts Personalizados
+                </h3>
+                <div className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Ativar scripts personalizados</p>
+                      <p className="text-xs text-muted-foreground">
+                        Executar código JavaScript customizado após o carregamento da página
+                      </p>
+                    </div>
+                    <Switch
+                      checked={customScriptsEnabled}
+                      onCheckedChange={(checked) =>
+                        updateSetting.mutate({ key: 'postload_custom_scripts_enabled', value: String(checked) })
+                      }
+                    />
+                  </div>
+
+                  {customScriptsEnabled && (
+                    <div className="space-y-3 pt-2 border-t">
+                      {scripts.length === 0 && !showAddScript && (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Nenhum script configurado. Adicione um novo script abaixo.
+                        </p>
+                      )}
+
+                      {scripts.map((script, idx) => (
+                        <div key={idx} className="border rounded-md p-3 space-y-2">
+                          {editingScript === idx ? (
+                            <div className="space-y-2">
+                              <Input
+                                value={editScriptName}
+                                onChange={(e) => setEditScriptName(e.target.value)}
+                                placeholder="Nome do script"
+                              />
+                              <Textarea
+                                value={editScriptCode}
+                                onChange={(e) => setEditScriptCode(e.target.value)}
+                                placeholder="Código JavaScript..."
+                                className="font-mono text-xs min-h-[80px]"
+                              />
+                              <div className="flex gap-2">
+                                <Button size="sm" onClick={saveEditScript}>Salvar</Button>
+                                <Button size="sm" variant="outline" onClick={() => setEditingScript(null)}>Cancelar</Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm font-medium">{script.name}</span>
+                                  <Badge variant={script.enabled ? 'default' : 'secondary'} className="text-[10px]">
+                                    {script.enabled ? 'Ativo' : 'Inativo'}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-[10px]">#{idx + 1}</Badge>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => moveScript(idx, -1)} disabled={idx === 0}>
+                                    <ChevronUp className="h-3 w-3" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => moveScript(idx, 1)} disabled={idx === scripts.length - 1}>
+                                    <ChevronDown className="h-3 w-3" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => toggleScript(idx)}>
+                                    {script.enabled ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => startEditScript(idx)}>
+                                    <Edit3 className="h-3 w-3" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => removeScript(idx)}>
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <pre className="text-[11px] font-mono bg-muted p-2 rounded overflow-x-auto max-h-20">
+                                {script.code}
+                              </pre>
+                            </>
+                          )}
+                        </div>
+                      ))}
+
+                      {showAddScript ? (
+                        <div className="border rounded-md p-3 space-y-2 border-dashed border-primary/50">
+                          <Input
+                            value={newScriptName}
+                            onChange={(e) => setNewScriptName(e.target.value)}
+                            placeholder="Nome do script (ex: Analytics, Header Fix...)"
+                          />
+                          <Textarea
+                            value={newScriptCode}
+                            onChange={(e) => setNewScriptCode(e.target.value)}
+                            placeholder="Código JavaScript a executar após carregamento..."
+                            className="font-mono text-xs min-h-[80px]"
+                          />
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={addScript} disabled={!newScriptName.trim() || !newScriptCode.trim()}>
+                              <Plus className="h-3 w-3 mr-1" />
+                              Adicionar
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setShowAddScript(false)}>
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={() => setShowAddScript(true)} className="w-full">
+                          <Plus className="h-3 w-3 mr-1" />
+                          Adicionar Novo Script
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
