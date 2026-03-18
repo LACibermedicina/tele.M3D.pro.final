@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { useVoiceAssistant } from "@/contexts/VoiceAssistantContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/use-admin";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff, BrainCircuit } from "lucide-react";
 
 export function VoiceAssistantPrompt() {
   const { user } = useAuth();
+  const isAdmin = useIsAdmin();
   const { showPrompt, setShowPrompt, setVoiceMode, dismissPrompt, hasDecided } = useVoiceAssistant();
 
   useEffect(() => {
@@ -26,11 +28,11 @@ export function VoiceAssistantPrompt() {
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
               <BrainCircuit className="w-6 h-6 text-white" />
             </div>
-            Assistente Virtual IAM3D
+            {isAdmin ? 'Assistente Virtual IAM3D' : 'Assistente Virtual'}
           </DialogTitle>
           <DialogDescription className="text-white/70 text-base pt-2">
             Deseja utilizar o assistente virtual por comando de voz? 
-            Isso ativará uma experiência interativa conversacional com o IAM3D.
+            {isAdmin ? ' Isso ativará uma experiência interativa conversacional com o IAM3D.' : ' Isso ativará uma experiência interativa conversacional por voz.'}
           </DialogDescription>
         </DialogHeader>
 

@@ -368,13 +368,13 @@ export function DesktopVisitorDashboard() {
         </DraggableDashboardPanel>
 
         {/* AI Chatbot Section */}
-        <DraggableDashboardPanel id="visitor-chatbot" label="Assistente IA" icon="message-circle" dashboardKey="desktop-visitor">
+        <DraggableDashboardPanel id="visitor-chatbot" label="Assistente" icon="message-circle" dashboardKey="desktop-visitor">
         <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-md hover:scale-[1.01] transition-all duration-300 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-indigo-50/50"></div>
           <CardHeader className="pb-4 relative z-10">
             <h2 className="text-xl font-semibold flex items-center text-purple-800">
               <Bot className="w-6 h-6 mr-2" />
-              Assistente Virtual IA
+              Assistente Virtual
             </h2>
           </CardHeader>
           <CardContent className="space-y-4 relative z-10">

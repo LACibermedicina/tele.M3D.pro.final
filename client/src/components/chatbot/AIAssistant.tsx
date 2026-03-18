@@ -9,6 +9,7 @@ import { Bot, Calendar, Send, Loader2, User, Check, HeartPulse, ClipboardList, U
 import { FormattedText } from "@/components/ui/formatted-text";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useIsAdmin } from "@/hooks/use-admin";
 import { Link } from "wouter";
 
 const langToSpeechLocale: Record<string, string> = {
@@ -39,6 +40,7 @@ const MAX_VISITOR_QUESTIONS = 10;
 export function AIAssistant({ open, onOpenChange, initialContext, mode = 'general' }: AIAssistantProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isAdmin = useIsAdmin();
   const { t, i18n } = useTranslation();
   const currentLang = (i18n.resolvedLanguage || i18n.language || 'pt').split('-')[0];
   const speechLocale = langToSpeechLocale[currentLang] || 'pt-BR';
@@ -353,7 +355,7 @@ export function AIAssistant({ open, onOpenChange, initialContext, mode = 'genera
   const getDialogTitle = () => {
     if (mode === 'symptoms') return t('assistant.title_symptoms');
     if (mode === 'questions') return t('assistant.title_questions');
-    return t('assistant.title_default');
+    return isAdmin ? t('assistant.title_default') : t('assistant.title_neutral', 'Assistente Virtual');
   };
 
   const getHeaderGradient = () => {

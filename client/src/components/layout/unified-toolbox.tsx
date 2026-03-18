@@ -38,7 +38,7 @@ function getNavGroups(userRole: string | undefined, t: (k: string) => string): N
       label: "Principal",
       items: [
         { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "doctor", "patient"] },
-        { path: "/assistant", label: "Assistente IA", icon: BrainCircuit, roles: ["admin", "doctor", "patient"] },
+        { path: "/assistant", label: userRole === 'admin' ? "Assistente IA" : "Assistente", icon: BrainCircuit, roles: ["admin", "doctor", "patient"] },
         { path: "/fhir-dashboard", label: "Análise de Estudos", icon: HeartPulse, roles: ["admin", "doctor"] },
       ],
     },

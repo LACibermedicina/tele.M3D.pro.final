@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/use-admin";
 import { LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, Menu, Settings, User, Lock, Shield, Headphones, Ambulance, Plus, AlertTriangle, Pill, Clock3, Coffee } from "lucide-react";
 import telemedLogo from "@/assets/logo-fundo.png";
 
@@ -22,6 +23,7 @@ function SidebarContent() {
   const [location] = useLocation();
   const { t } = useTranslation();
   const { user } = useAuth();
+  const isAdmin = useIsAdmin();
 
   const isPatient = user?.role === 'patient';
   const isDoctor = user?.role === 'doctor';
@@ -92,9 +94,9 @@ function SidebarContent() {
     },
     {
       path: "/ai-assistant",
-      label: t("navigation.ai_assistant"),
+      label: isAdmin ? t("navigation.ai_assistant") : t("navigation.assistant_neutral", "Assistente Clínico"),
       icon: BrainCircuit,
-      description: t("medical.ai_assistant_desc"),
+      description: isAdmin ? t("medical.ai_assistant_desc") : t("medical.assistant_desc_neutral", "Assistente Clínico"),
       roles: ['doctor', 'admin', 'researcher'],
     },
     {
