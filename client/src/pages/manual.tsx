@@ -49,7 +49,7 @@ const visitorSections: Section[] = [
     content: [
       {
         title: "O que é o Assistente de Voz?",
-        text: `O Assistente de Voz é um assistente inteligente com interface visual de esfera animada em tela cheia. Ele utiliza a Web Speech API para reconhecimento e síntese de voz.
+        text: `O Assistente de Voz é um assistente inteligente com interface visual de esfera animada em tela cheia. Ele utiliza reconhecimento e síntese de voz nativa do navegador.
 
 Como visitante, você pode:
 - **Ativar o assistente** clicando no ícone de microfone ou dizendo "Olá Assistente"
@@ -1355,16 +1355,18 @@ function mergeSectionTexts(original: Section[], translated: any[]): Section[] {
   }));
 }
 
-const adminLabelMap: Record<string, string> = {
-  "assistente de voz": "IAM3D",
-  "Assistente de Voz": "IAM3D",
-  "suporte médico": "IA médica",
-  "suporte clínico": "IA",
-  "análise automatizada": "análise IA",
-  "assistente inteligente": "IA inteligente",
-  "Assistente Médico": "Assistente Médico IA",
-  "assistente virtual": "assistente IA",
-};
+const adminLabelMap: [string, string][] = [
+  ["reconhecimento e síntese de voz nativa do navegador", "Web Speech API para reconhecimento e síntese de voz"],
+  ["O Assistente de Voz é um assistente inteligente", "O IAM3D é um assistente IA inteligente"],
+  ["assistente de voz", "IAM3D"],
+  ["Assistente de Voz", "IAM3D"],
+  ["suporte médico", "IA médica"],
+  ["suporte clínico", "IA"],
+  ["análise automatizada", "análise IA"],
+  ["assistente inteligente", "IA inteligente"],
+  ["Assistente Médico", "Assistente Médico IA"],
+  ["assistente virtual", "assistente IA"],
+];
 
 function restoreAdminLabels(sections: Section[]): Section[] {
   return sections.map(section => ({
@@ -1372,7 +1374,7 @@ function restoreAdminLabels(sections: Section[]): Section[] {
     content: section.content.map(item => {
       let text = item.text;
       let title = item.title;
-      for (const [neutral, original] of Object.entries(adminLabelMap)) {
+      for (const [neutral, original] of adminLabelMap) {
         text = text.replaceAll(neutral, original);
         title = title.replaceAll(neutral, original);
       }

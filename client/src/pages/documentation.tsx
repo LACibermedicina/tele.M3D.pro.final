@@ -407,7 +407,7 @@ export default function Documentation() {
         {
           title: "Assistente por Voz",
           description: isAdmin ? "IA de voz full-screen com esfera animada para interação natural" : "Assistente de voz full-screen com esfera animada para interação natural",
-          features: ["Web Speech API", "Overlay full-screen", "Esfera animada 3D", "Fechamento por voz"]
+          features: [isAdmin ? "Web Speech API" : "Reconhecimento de voz", "Overlay full-screen", "Esfera animada 3D", "Fechamento por voz"]
         },
         {
           title: "Funcionalidades por Perfil",
@@ -492,7 +492,7 @@ export default function Documentation() {
   const technicalSpecs = [
     {
       title: "Arquitetura Frontend",
-      items: ["React 18 com TypeScript", "Tailwind CSS + shadcn/ui", "Wouter para roteamento", "TanStack Query v5", isAdmin ? "Web Speech API (IAM3D)" : "Web Speech API", "i18next (8 idiomas)"]
+      items: ["React 18 com TypeScript", "Tailwind CSS + shadcn/ui", "Wouter para roteamento", "TanStack Query v5", isAdmin ? "Web Speech API (IAM3D)" : "Reconhecimento de voz", "i18next (8 idiomas)"]
     },
     {
       title: "Arquitetura Backend",
