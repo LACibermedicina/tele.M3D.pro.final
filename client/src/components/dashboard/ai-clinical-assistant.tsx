@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Brain, Lightbulb, BookOpen, Mic, ClipboardList, Pill } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/use-admin";
 
 interface DiagnosticHypothesis {
   condition?: string;
@@ -38,8 +38,7 @@ export default function AIClinicalAssistant() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [diagnosticResults, setDiagnosticResults] = useState<DiagnosticAnalysisResponse | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = useIsAdmin();
 
   // Get recent transcriptions from consultations
   const { data: recentTranscriptions, isLoading: transcriptionsLoading, error: transcriptionsError } = useQuery<ConsultationTranscription[]>({
@@ -57,7 +56,7 @@ export default function AIClinicalAssistant() {
     onSuccess: (data) => {
       setDiagnosticResults(data);
       toast({
-        title: "Análise IA Concluída",
+        title: "Análise Concluída",
         description: "Hipóteses diagnósticas geradas com base nos sintomas.",
       });
       setIsDialogOpen(false);
@@ -183,7 +182,7 @@ export default function AIClinicalAssistant() {
                   </Label>
                   <Textarea
                     id="symptoms-input"
-                    placeholder="Descreva os sintomas do paciente para análise da IA..."
+                    placeholder="Descreva os sintomas do paciente para análise..."
                     value={symptoms}
                     onChange={(e) => setSymptoms(e.target.value)}
                     rows={4}
@@ -218,7 +217,7 @@ export default function AIClinicalAssistant() {
                     disabled={!symptoms.trim() || analyzeSymptomsMutation.isPending}
                     data-testid="button-confirm-analysis"
                   >
-                    {analyzeSymptomsMutation.isPending ? "Analisando..." : "Analisar com IA"}
+                    {analyzeSymptomsMutation.isPending ? "Analisando..." : "Analisar Sintomas"}
                   </Button>
                 </div>
               </div>

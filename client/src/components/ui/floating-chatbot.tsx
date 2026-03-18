@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDraggable } from '@/hooks/use-draggable';
 import { MessageCircle, X, Send, Brain, Calendar, Stethoscope, Minimize2, Maximize2, ClipboardList, Users, Activity, FileText, HeartPulse, BarChart3, Mic, MicOff, Volume2, VolumeX, AudioLines, GripVertical, Minus } from 'lucide-react';
 import { useMinimizedPanels } from '@/contexts/MinimizedPanelsContext';
+import { useIsAdmin } from '@/hooks/use-admin';
 
 interface SuggestedAppointment {
   dateIso: string;
@@ -67,6 +68,7 @@ export default function FloatingChatbot() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const isAdmin = useIsAdmin();
   const { minimize, isMinimized: isDockMinimized } = useMinimizedPanels();
   
   const [isOpen, setIsOpen] = useState(false);
@@ -532,7 +534,7 @@ export default function FloatingChatbot() {
                 <Brain className="w-4 h-4" />
               </div>
               <CardTitle className="text-sm font-medium">
-                Assistente Virtual IA - Tele{"<"}M3D{">"}
+                {isAdmin ? 'Assistente Virtual IA' : 'Assistente Virtual'} - Tele{"<"}M3D{">"}
               </CardTitle>
             </div>
             <div className="flex items-center space-x-1" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
@@ -623,9 +625,11 @@ export default function FloatingChatbot() {
                               {message.metadata.diagnosticHypotheses.slice(0, 3).map((hypothesis, index) => (
                                 <div key={index} className="flex items-center justify-between text-xs">
                                   <span>{hypothesis.condition}</span>
-                                  <Badge variant="outline" className="ml-2">
-                                    {hypothesis.probability}%
-                                  </Badge>
+                                  {isAdmin && (
+                                    <Badge variant="outline" className="ml-2">
+                                      {hypothesis.probability}%
+                                    </Badge>
+                                  )}
                                 </div>
                               ))}
                             </div>

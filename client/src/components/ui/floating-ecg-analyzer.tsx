@@ -22,11 +22,7 @@ import {
   ImageIcon, Trash2, ExternalLink, Download, GripVertical, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useMinimizedPanels } from '@/contexts/MinimizedPanelsContext';
-
-function useIsAdmin() {
-  const { user } = useAuth();
-  return user?.role === 'admin';
-}
+import { useIsAdmin } from '@/hooks/use-admin';
 
 const SEVERITY_COLORS: Record<number, string> = {
   1: 'bg-green-500',

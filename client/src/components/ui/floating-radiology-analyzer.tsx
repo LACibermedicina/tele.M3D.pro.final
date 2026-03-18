@@ -22,11 +22,7 @@ import {
 } from 'lucide-react';
 import { useMinimizedPanels } from '@/contexts/MinimizedPanelsContext';
 import { useTranslation } from 'react-i18next';
-
-function useIsAdmin() {
-  const { user } = useAuth();
-  return user?.role === 'admin';
-}
+import { useIsAdmin } from '@/hooks/use-admin';
 
 const SEVERITY_COLORS: Record<number, string> = {
   1: 'bg-green-500',
