@@ -13869,7 +13869,8 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         timestamp: new Date().toISOString(),
       });
 
-      authenticatedClients.forEach((clients) => {
+      authenticatedClients.forEach((clients, clientUserId) => {
+        if (clientUserId === user.id) return;
         clients.forEach((ws) => {
           if (ws.readyState === WebSocket.OPEN) {
             try {
@@ -13956,7 +13957,8 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         roomsTerminated++;
       });
 
-      authenticatedClients.forEach((clients) => {
+      authenticatedClients.forEach((clients, clientUserId) => {
+        if (clientUserId === user.id) return;
         clients.forEach((ws) => {
           if (ws.readyState === WebSocket.OPEN) {
             try {
