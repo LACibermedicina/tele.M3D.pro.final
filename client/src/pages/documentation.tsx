@@ -56,7 +56,8 @@ import {
   Pill,
   ClipboardList,
   Zap,
-  Globe
+  Globe,
+  LayoutDashboard
 } from "lucide-react";
 
 const docLabels = {
@@ -459,6 +460,28 @@ export default function Documentation() {
           title: "Carteira Externa",
           description: "Integração com MetaMask e WalletConnect para operações externas e saques",
           features: ["Vincular MetaMask", "WalletConnect", "Solicitação de saque", "Auditoria completa"]
+        }
+      ]
+    },
+    {
+      category: "Dashboard Interativo",
+      icon: LayoutDashboard,
+      color: "teal",
+      items: [
+        {
+          title: "Painéis Arrastáveis",
+          description: "Drag & drop para reorganizar painéis do dashboard com persistência de posição",
+          features: ["Arrastar e soltar painéis", "Posição salva entre sessões", "Reset para layout padrão", "Compatível com todos os dashboards"]
+        },
+        {
+          title: "Dock de Minimização",
+          description: "Painéis e widgets minimizados ficam acessíveis no dock lateral",
+          features: ["Minimizar painéis e widgets", "Restaurar com um clique", "Dock posicionável (esquerda/direita)", "Auto-ocultar quando vazio"]
+        },
+        {
+          title: "Toolbox Unificado",
+          description: "Barra de ferramentas flutuante com navegação contextual por papel do usuário",
+          features: ["Atalhos filtrados por papel", "Acoplamento magnético às bordas", "Modo compacto (ícones)", "Categorias organizadas"]
         }
       ]
     }

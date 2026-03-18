@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
+import { RotateCcw } from "lucide-react";
 import { 
   Activity, 
   FileText, 
@@ -43,6 +46,7 @@ interface ClinicalDashboard {
 export default function ClinicalDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { restoreAll } = useMinimizedPanels();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [assetType, setAssetType] = useState("");
   const [patientIdForUpload, setPatientIdForUpload] = useState("");
@@ -173,63 +177,76 @@ export default function ClinicalDashboard() {
           </Card>
         ) : (
           <div className="space-y-6">
-            {/* Summary Cards */}
+            <div className="flex justify-end mb-2">
+              <Button variant="ghost" size="sm" onClick={() => { const keys = Object.keys(localStorage).filter(k => k.startsWith("draggable_dashboard_clinical_")); keys.forEach(k => localStorage.removeItem(k)); restoreAll(); window.location.reload(); }} className="text-xs text-muted-foreground">
+                <RotateCcw className="h-3 w-3 mr-1" /> Reset Layout
+              </Button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Activity className="w-4 h-4" />
-                    Registros Médicos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold" data-testid="text-total-records">
-                    {dashboard.summary.totalRecords}
-                  </div>
-                </CardContent>
-              </Card>
+              <DraggableDashboardPanel id="clinical-records" label="Registros Médicos" icon="activity" dashboardKey="clinical">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Activity className="w-4 h-4" />
+                      Registros Médicos
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold" data-testid="text-total-records">
+                      {dashboard.summary.totalRecords}
+                    </div>
+                  </CardContent>
+                </Card>
+              </DraggableDashboardPanel>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4" />
-                    Exames
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold" data-testid="text-total-exams">
-                    {dashboard.summary.totalExams}
-                  </div>
-                </CardContent>
-              </Card>
+              <DraggableDashboardPanel id="clinical-exams" label="Exames" icon="barchart" dashboardKey="clinical">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4" />
+                      Exames
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold" data-testid="text-total-exams">
+                      {dashboard.summary.totalExams}
+                    </div>
+                  </CardContent>
+                </Card>
+              </DraggableDashboardPanel>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    Assets Clínicos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold" data-testid="text-total-assets">
-                    {dashboard.summary.totalAssets}
-                  </div>
-                </CardContent>
-              </Card>
+              <DraggableDashboardPanel id="clinical-assets" label="Assets Clínicos" icon="filetext" dashboardKey="clinical">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Assets Clínicos
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold" data-testid="text-total-assets">
+                      {dashboard.summary.totalAssets}
+                    </div>
+                  </CardContent>
+                </Card>
+              </DraggableDashboardPanel>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Consultas Pendentes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold" data-testid="text-pending-consultations">
-                    {dashboard.summary.pendingConsultations}
-                  </div>
-                </CardContent>
-              </Card>
+              <DraggableDashboardPanel id="clinical-pending" label="Consultas Pendentes" icon="calendar" dashboardKey="clinical">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Consultas Pendentes
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold" data-testid="text-pending-consultations">
+                      {dashboard.summary.pendingConsultations}
+                    </div>
+                  </CardContent>
+                </Card>
+              </DraggableDashboardPanel>
             </div>
 
             <Tabs defaultValue="timeline" className="space-y-4">

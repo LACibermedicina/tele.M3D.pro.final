@@ -1,144 +1,138 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Users, FileText, BarChart3 } from "lucide-react";
+import { Calendar, Users, FileText, BarChart3, RotateCcw } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import TodaySchedule from "@/components/dashboard/today-schedule";
 import { type DashboardStats } from "@shared/schema";
+import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 
 export function DesktopAdminDashboard() {
   const { user } = useAuth();
+  const { restoreAll } = useMinimizedPanels();
 
   const { data: stats } = useQuery<DashboardStats>({
     queryKey: user?.id ? ['/api/dashboard/stats', user.id] : [],
     enabled: !!user?.id,
   });
 
+  const resetLayout = () => {
+    const keys = Object.keys(localStorage).filter(k => k.startsWith("draggable_dashboard_desktop-admin_"));
+    keys.forEach(k => localStorage.removeItem(k));
+    restoreAll();
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={resetLayout} className="text-xs text-muted-foreground">
+            <RotateCcw className="h-3 w-3 mr-1" /> Reset Layout
+          </Button>
+        </div>
         
-        {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card data-testid="card-today-appointments">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Consultas Hoje</p>
-                    <p className="text-2xl font-bold" data-testid="text-today-appointments">
-                      {stats.todayConsultations || 0}
-                    </p>
+            <DraggableDashboardPanel id="da-consultations" label="Consultas Hoje" icon="calendar" dashboardKey="desktop-admin">
+              <Card data-testid="card-today-appointments">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Consultas Hoje</p>
+                      <p className="text-2xl font-bold" data-testid="text-today-appointments">
+                        {stats.todayConsultations || 0}
+                      </p>
+                    </div>
+                    <Calendar className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <Calendar className="w-8 h-8 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </DraggableDashboardPanel>
 
-            <Card data-testid="card-total-patients">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total de Pacientes</p>
-                    <p className="text-2xl font-bold" data-testid="text-total-patients">
-                      {stats.totalPatients || 0}
-                    </p>
+            <DraggableDashboardPanel id="da-patients" label="Total Pacientes" icon="users" dashboardKey="desktop-admin">
+              <Card data-testid="card-total-patients">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total de Pacientes</p>
+                      <p className="text-2xl font-bold" data-testid="text-total-patients">
+                        {stats.totalPatients || 0}
+                      </p>
+                    </div>
+                    <Users className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <Users className="w-8 h-8 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </DraggableDashboardPanel>
 
-            <Card data-testid="card-records">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Prontuários</p>
-                    <p className="text-2xl font-bold" data-testid="text-records">
-                      {stats.secureRecords || 0}
-                    </p>
+            <DraggableDashboardPanel id="da-records" label="Prontuários" icon="filetext" dashboardKey="desktop-admin">
+              <Card data-testid="card-records">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Prontuários</p>
+                      <p className="text-2xl font-bold" data-testid="text-records">
+                        {stats.secureRecords || 0}
+                      </p>
+                    </div>
+                    <FileText className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <FileText className="w-8 h-8 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </DraggableDashboardPanel>
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Acesso Rápido</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <Link href="/schedule">
-              <Button
-                className="w-full h-24 flex flex-col items-center justify-center gap-2 bg-medical-primary hover:bg-medical-primary/90"
-                data-testid="button-schedule"
-              >
-                <Calendar className="w-6 h-6" />
-                <span className="font-medium">Agenda</span>
-              </Button>
-            </Link>
-
-            <Link href="/patients">
-              <Button
-                className="w-full h-24 flex flex-col items-center justify-center gap-2"
-                variant="outline"
-                data-testid="button-patients"
-              >
-                <Users className="w-6 h-6" />
-                <span className="font-medium">Pacientes</span>
-              </Button>
-            </Link>
-
-            <Link href="/records">
-              <Button
-                className="w-full h-24 flex flex-col items-center justify-center gap-2"
-                variant="outline"
-                data-testid="button-records"
-              >
-                <FileText className="w-6 h-6" />
-                <span className="font-medium">Prontuários</span>
-              </Button>
-            </Link>
-
-            <Link href="/admin">
-              <Button
-                className="w-full h-24 flex flex-col items-center justify-center gap-2"
-                variant="outline"
-                data-testid="button-admin"
-              >
-                <i className="fas fa-cog text-2xl"></i>
-                <span className="font-medium">Administração</span>
-              </Button>
-            </Link>
-
-            <Link href="/analytics">
-              <Button
-                className="w-full h-24 flex flex-col items-center justify-center gap-2"
-                variant="outline"
-                data-testid="button-analytics"
-              >
-                <BarChart3 className="w-6 h-6" />
-                <span className="font-medium">Análises</span>
-              </Button>
-            </Link>
-
-            <Link href="/whatsapp">
-              <Button
-                className="w-full h-24 flex flex-col items-center justify-center gap-2"
-                variant="outline"
-                data-testid="button-whatsapp"
-              >
-                <i className="fab fa-whatsapp text-2xl"></i>
-                <span className="font-medium">WhatsApp</span>
-              </Button>
-            </Link>
+        <DraggableDashboardPanel id="da-quick-actions" label="Acesso Rápido" icon="zap" dashboardKey="desktop-admin">
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Acesso Rápido</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <Link href="/schedule">
+                <Button className="w-full h-24 flex flex-col items-center justify-center gap-2 bg-medical-primary hover:bg-medical-primary/90" data-testid="button-schedule">
+                  <Calendar className="w-6 h-6" />
+                  <span className="font-medium">Agenda</span>
+                </Button>
+              </Link>
+              <Link href="/patients">
+                <Button className="w-full h-24 flex flex-col items-center justify-center gap-2" variant="outline" data-testid="button-patients">
+                  <Users className="w-6 h-6" />
+                  <span className="font-medium">Pacientes</span>
+                </Button>
+              </Link>
+              <Link href="/records">
+                <Button className="w-full h-24 flex flex-col items-center justify-center gap-2" variant="outline" data-testid="button-records">
+                  <FileText className="w-6 h-6" />
+                  <span className="font-medium">Prontuários</span>
+                </Button>
+              </Link>
+              <Link href="/admin">
+                <Button className="w-full h-24 flex flex-col items-center justify-center gap-2" variant="outline" data-testid="button-admin">
+                  <i className="fas fa-cog text-2xl"></i>
+                  <span className="font-medium">Administração</span>
+                </Button>
+              </Link>
+              <Link href="/analytics">
+                <Button className="w-full h-24 flex flex-col items-center justify-center gap-2" variant="outline" data-testid="button-analytics">
+                  <BarChart3 className="w-6 h-6" />
+                  <span className="font-medium">Análises</span>
+                </Button>
+              </Link>
+              <Link href="/whatsapp">
+                <Button className="w-full h-24 flex flex-col items-center justify-center gap-2" variant="outline" data-testid="button-whatsapp">
+                  <i className="fab fa-whatsapp text-2xl"></i>
+                  <span className="font-medium">WhatsApp</span>
+                </Button>
+              </Link>
+            </div>
           </div>
-        </div>
+        </DraggableDashboardPanel>
 
-        {/* Today's Schedule */}
-        <TodaySchedule />
+        <DraggableDashboardPanel id="da-schedule" label="Agenda" icon="calendar" dashboardKey="desktop-admin">
+          <TodaySchedule />
+        </DraggableDashboardPanel>
       </div>
     </div>
   );

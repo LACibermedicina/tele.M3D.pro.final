@@ -21,7 +21,8 @@ import {
   TrendingUp,
   Database,
   Wifi,
-  Check
+  Check,
+  LayoutDashboard
 } from "lucide-react";
 
 export default function Features() {
@@ -97,6 +98,18 @@ export default function Features() {
         t("features.records.detail_2"),
         t("features.records.detail_3"),
         t("features.records.detail_4")
+      ]
+    },
+    {
+      icon: LayoutDashboard,
+      title: "Dashboard Interativo",
+      description: "Painéis personalizáveis com drag & drop, minimização e toolbox unificado para máxima produtividade",
+      technical: "React DnD + Context API + localStorage",
+      details: [
+        "Painéis arrastáveis com posicionamento livre",
+        "Minimização para dock lateral com restauração",
+        "Toolbox unificado com navegação contextual por papel",
+        "Widgets (Chatbot IA, Notas de Estudo) minimizáveis ao dock"
       ]
     }
   ];

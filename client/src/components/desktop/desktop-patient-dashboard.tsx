@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, FileText, Stethoscope, ClipboardList, Video, CalendarCheck, Pill, Zap, Loader2, CheckCircle, Ambulance, Coins } from "lucide-react";
+import { Calendar, FileText, Stethoscope, ClipboardList, Video, CalendarCheck, Pill, Zap, Loader2, CheckCircle, Ambulance, Coins, RotateCcw } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -10,6 +10,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import TodaySchedule from "@/components/dashboard/today-schedule";
 import { type DashboardStats } from "@shared/schema";
+import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 
 interface Prescription {
   id: string;
@@ -34,6 +36,7 @@ interface PricingInfo {
 export function DesktopPatientDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { restoreAll } = useMinimizedPanels();
   const [, setLocation] = useLocation();
   const [isSearchingDoctor, setIsSearchingDoctor] = useState(false);
 
@@ -124,7 +127,13 @@ export function DesktopPatientDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={() => { const keys = Object.keys(localStorage).filter(k => k.startsWith("draggable_dashboard_desktop-patient_")); keys.forEach(k => localStorage.removeItem(k)); restoreAll(); window.location.reload(); }} className="text-xs text-muted-foreground">
+            <RotateCcw className="h-3 w-3 mr-1" /> Reset Layout
+          </Button>
+        </div>
 
+        <DraggableDashboardPanel id="dp-consultation-actions" label="Ações de Consulta" icon="zap" dashboardKey="desktop-patient">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
             onClick={handleImmediateConsultation}
@@ -205,45 +214,51 @@ export function DesktopPatientDashboard() {
             </button>
           </Link>
         </div>
+        </DraggableDashboardPanel>
 
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card data-testid="card-my-appointments">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Minhas Consultas</p>
-                    <p className="text-2xl font-bold" data-testid="text-my-appointments">
-                      {stats.todayConsultations || 0}
-                    </p>
+            <DraggableDashboardPanel id="dp-appointments" label="Minhas Consultas" icon="calendar" dashboardKey="desktop-patient">
+              <Card data-testid="card-my-appointments">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Minhas Consultas</p>
+                      <p className="text-2xl font-bold" data-testid="text-my-appointments">
+                        {stats.todayConsultations || 0}
+                      </p>
+                    </div>
+                    <Calendar className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <Calendar className="w-8 h-8 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </DraggableDashboardPanel>
 
-            <Card data-testid="card-my-records">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {hasRecords ? 'Meus Registros' : 'Minhas Solicitações'}
-                    </p>
-                    <p className="text-2xl font-bold" data-testid="text-my-records">
-                      {hasRecords ? (stats.secureRecords || 0) : (stats.todayConsultations || 0)}
-                    </p>
+            <DraggableDashboardPanel id="dp-records" label="Meus Registros" icon="filetext" dashboardKey="desktop-patient">
+              <Card data-testid="card-my-records">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {hasRecords ? 'Meus Registros' : 'Minhas Solicitações'}
+                      </p>
+                      <p className="text-2xl font-bold" data-testid="text-my-records">
+                        {hasRecords ? (stats.secureRecords || 0) : (stats.todayConsultations || 0)}
+                      </p>
+                    </div>
+                    {hasRecords ? (
+                      <FileText className="w-8 h-8 text-muted-foreground" />
+                    ) : (
+                      <ClipboardList className="w-8 h-8 text-muted-foreground" />
+                    )}
                   </div>
-                  {hasRecords ? (
-                    <FileText className="w-8 h-8 text-muted-foreground" />
-                  ) : (
-                    <ClipboardList className="w-8 h-8 text-muted-foreground" />
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </DraggableDashboardPanel>
           </div>
         )}
 
+        <DraggableDashboardPanel id="dp-quick-actions" label="Acesso Rápido" icon="zap" dashboardKey="desktop-patient">
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Acesso Rápido</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -321,8 +336,11 @@ export function DesktopPatientDashboard() {
             )}
           </div>
         </div>
+        </DraggableDashboardPanel>
 
-        <TodaySchedule />
+        <DraggableDashboardPanel id="dp-schedule" label="Agenda" icon="calendar" dashboardKey="desktop-patient">
+          <TodaySchedule />
+        </DraggableDashboardPanel>
       </div>
     </div>
   );

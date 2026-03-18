@@ -19,6 +19,8 @@ import {
 import { useAuth } from "@/contexts/AuthContext"
 import { Link } from "wouter"
 import { useQuery } from "@tanstack/react-query"
+import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 
 interface ConsultationsData {
   upcoming: any[];
@@ -38,6 +40,7 @@ interface MobilePatientDashboardProps {
 }
 
 export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardProps) {
+  const { restoreAll } = useMinimizedPanels();
   const { user } = useAuth();
 
   const { data: consultations } = useQuery<ConsultationsData>({
@@ -87,6 +90,7 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
           </div>
         </div>
 
+        <DraggableDashboardPanel id="patient-actions" title="Ações" icon="zap" dashboardKey="mobile-patient">
         <div className="grid grid-cols-2 gap-3">
           <Link href="/consultation-request">
             <Card className="border-0 shadow-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white cursor-pointer hover:shadow-xl transition-shadow h-full" data-testid="button-consult-now">
@@ -118,7 +122,9 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
             </Card>
           </Link>
         </div>
+        </DraggableDashboardPanel>
 
+        <DraggableDashboardPanel id="patient-nav" title="Navegação" icon="layout" dashboardKey="mobile-patient">
         <div className="space-y-1">
           <Link href="/consultation-request">
             <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors" data-testid="button-consultation-request">
@@ -188,6 +194,7 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
             <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
         </div>
+        </DraggableDashboardPanel>
 
         {upcomingList.length > 0 && (
           <Card className="shadow-md">

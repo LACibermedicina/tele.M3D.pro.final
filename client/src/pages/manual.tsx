@@ -928,6 +928,50 @@ Disponível durante a criação de prescrições e no fluxo pós-consulta.`
 Complete as consultas pendentes para manter o registro clínico atualizado e completo.`
       }
     ]
+  },
+  {
+    id: "d-interactive-dashboard",
+    title: "Dashboard Interativo",
+    icon: <Layers className="h-5 w-5" />,
+    content: [
+      {
+        title: "Painéis Arrastáveis",
+        text: `Todos os painéis do dashboard podem ser reorganizados livremente:
+
+- **Arrastar e Soltar**: Clique na barra de título (ícone de grip) e arraste para reposicionar
+- **Controles de Janela**: Cada painel possui botões de minimizar e fechar
+- **Persistência**: Posições salvas automaticamente entre sessões
+- **Reset Layout**: Botão para restaurar o layout padrão original
+- **Mobile**: Em dispositivos móveis, painéis usam layout em coluna (sem drag)`
+      },
+      {
+        title: "Dock de Painéis Minimizados",
+        text: `Painéis minimizados ficam acessíveis no dock lateral:
+
+- **Minimizar**: Clique no ícone de traço (—) para enviar ao dock
+- **Restaurar**: Clique no ícone do painel no dock para restaurá-lo
+- **Posição**: O dock pode ser movido entre lado esquerdo e direito da tela
+- **Auto-ocultar**: O dock desaparece automaticamente quando não há painéis minimizados`
+      },
+      {
+        title: "Toolbox Unificado",
+        text: `A barra de ferramentas flutuante agrupa todos os atalhos de navegação:
+
+- **Navegação Contextual**: Atalhos filtrados pelo seu papel (médico, admin, paciente)
+- **Categorias**: Principal, Clínico, Consultas, Ferramentas, Administração
+- **Acoplamento Magnético**: O toolbox se acopla automaticamente às bordas da tela
+- **Modo Compacto**: Recolha para exibir apenas ícones
+- **Minimizar**: Use o botão (—) para enviar ao dock lateral`
+      },
+      {
+        title: "Widgets Flutuantes",
+        text: `Chatbot IA e Notas de Estudo possuem controle de minimização:
+
+- **Chatbot IA**: Minimize com o botão (—) → restaure pelo dock lateral
+- **Notas de Estudo**: Minimize com o botão (—) → restaure pelo dock lateral
+- **Ícones no Dock**: Cada widget tem seu próprio ícone identificável no dock`
+      }
+    ]
   }
 ];
 

@@ -19,6 +19,8 @@ import {
   FileText, Eye, ChevronDown, ChevronUp, Loader2, Package, Building2,
   Calendar, User, ClipboardCheck, ShieldAlert, Info, BarChart3
 } from "lucide-react";
+import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 
 interface PrescriptionItem {
   id: string;
@@ -45,6 +47,7 @@ interface PharmacyPrescription {
 }
 
 export default function PharmacyDashboard() {
+  const { restoreAll } = useMinimizedPanels();
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -226,6 +229,7 @@ export default function PharmacyDashboard() {
           </Link>
         </div>
 
+        <DraggableDashboardPanel id="pharmacy-stats" title="Estatísticas" icon="activity" dashboardKey="pharmacy">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="p-4 flex items-center space-x-3">
@@ -272,6 +276,7 @@ export default function PharmacyDashboard() {
             </CardContent>
           </Card>
         </div>
+        </DraggableDashboardPanel>
 
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-1">

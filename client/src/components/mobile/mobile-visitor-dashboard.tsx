@@ -3,12 +3,15 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { UserPlus, Stethoscope, LogIn, Phone, MessageCircle, Brain, Shield, Clock } from "lucide-react"
 import { Link } from "wouter"
+import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 
 interface MobileVisitorDashboardProps {
   onOpenIAM3D?: () => void;
 }
 
 export function MobileVisitorDashboard({ onOpenIAM3D }: MobileVisitorDashboardProps) {
+  const { restoreAll } = useMinimizedPanels();
   const supportPhone = '+5511960708817';
 
   const handleWhatsAppContact = () => {
@@ -19,6 +22,7 @@ export function MobileVisitorDashboard({ onOpenIAM3D }: MobileVisitorDashboardPr
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 px-4 py-6 space-y-6">
 
+      <DraggableDashboardPanel id="visitor-welcome" title="Bem-vindo" icon="home" dashboardKey="mobile-visitor">
       <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
         <CardContent className="p-6 text-center">
           <h1 className="text-2xl font-bold">Tele&lt;M3D&gt; Pro</h1>
@@ -28,7 +32,9 @@ export function MobileVisitorDashboard({ onOpenIAM3D }: MobileVisitorDashboardPr
           </div>
         </CardContent>
       </Card>
+      </DraggableDashboardPanel>
 
+      <DraggableDashboardPanel id="visitor-actions" title="Comece Agora" icon="zap" dashboardKey="mobile-visitor">
       <Card className="shadow-lg border-blue-200 dark:border-gray-700 dark:bg-gray-800">
         <CardHeader className="pb-3">
           <h2 className="text-lg font-semibold text-blue-800 dark:text-blue-300">Comece Agora</h2>
@@ -64,7 +70,9 @@ export function MobileVisitorDashboard({ onOpenIAM3D }: MobileVisitorDashboardPr
           </Link>
         </CardContent>
       </Card>
+      </DraggableDashboardPanel>
 
+      <DraggableDashboardPanel id="visitor-services" title="Serviços" icon="stethoscope" dashboardKey="mobile-visitor">
       <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
         <CardHeader className="pb-3">
           <h2 className="text-lg font-semibold dark:text-gray-100">Serviços Disponíveis</h2>
@@ -92,6 +100,7 @@ export function MobileVisitorDashboard({ onOpenIAM3D }: MobileVisitorDashboardPr
           </Card>
         </CardContent>
       </Card>
+      </DraggableDashboardPanel>
 
       {localStorage.getItem('voice_assistant_preference') === 'enabled' && (
         <Card className="shadow-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30 border-purple-200 dark:border-purple-700">

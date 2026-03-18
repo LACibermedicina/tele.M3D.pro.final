@@ -11,7 +11,8 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDraggable } from '@/hooks/use-draggable';
-import { MessageCircle, X, Send, Brain, Calendar, Stethoscope, Minimize2, Maximize2, ClipboardList, Users, Activity, FileText, HeartPulse, BarChart3, Mic, MicOff, Volume2, VolumeX, AudioLines, GripVertical } from 'lucide-react';
+import { MessageCircle, X, Send, Brain, Calendar, Stethoscope, Minimize2, Maximize2, ClipboardList, Users, Activity, FileText, HeartPulse, BarChart3, Mic, MicOff, Volume2, VolumeX, AudioLines, GripVertical, Minus } from 'lucide-react';
+import { useMinimizedPanels } from '@/contexts/MinimizedPanelsContext';
 
 interface SuggestedAppointment {
   dateIso: string;
@@ -66,6 +67,7 @@ export default function FloatingChatbot() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { minimize, isMinimized: isDockMinimized } = useMinimizedPanels();
   
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -82,6 +84,12 @@ export default function FloatingChatbot() {
     window.addEventListener('open-chatbot-widget', handler);
     return () => window.removeEventListener('open-chatbot-widget', handler);
   }, []);
+
+  useEffect(() => {
+    if (!isDockMinimized('floating-chatbot') && !isOpen) {
+      setIsOpen(true);
+    }
+  }, [isDockMinimized, isOpen]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [activeInterviewId, setActiveInterviewId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
@@ -546,6 +554,19 @@ export default function FloatingChatbot() {
                 data-testid="button-minimize-chatbot"
               >
                 {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  minimize({ id: 'floating-chatbot', label: 'Chatbot IA', icon: 'message-circle' });
+                  setIsOpen(false);
+                  if (synthRef.current) synthRef.current.cancel();
+                }}
+                className="text-white hover:bg-white/20 w-8 h-8 p-0"
+                title="Minimizar para dock"
+              >
+                <Minus className="w-4 h-4" />
               </Button>
               <Button
                 variant="ghost"

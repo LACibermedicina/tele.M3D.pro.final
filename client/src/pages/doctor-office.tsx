@@ -14,8 +14,11 @@ import { Stethoscope, UserPlus, Copy, Link as LinkIcon, Users, Video, VideoOff, 
 import AgoraRTC, { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack } from "agora-rtc-sdk-ng";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
+import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 
 export default function DoctorOffice() {
+  const { restoreAll } = useMinimizedPanels();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -293,6 +296,7 @@ export default function DoctorOffice() {
         {isOfficeOpen ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Video Area */}
+            <DraggableDashboardPanel id="office-video" title="Sala de Consulta" icon="video" dashboardKey="doctor-office">
             <div className="lg:col-span-2">
               <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20">
                 <CardHeader>
@@ -329,8 +333,10 @@ export default function DoctorOffice() {
                 </CardContent>
               </Card>
             </div>
+            </DraggableDashboardPanel>
 
             {/* Invites Panel */}
+            <DraggableDashboardPanel id="office-invites" title="Participantes" icon="users" dashboardKey="doctor-office">
             <div className="lg:col-span-1 space-y-4">
               <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20">
                 <CardHeader>
@@ -398,6 +404,7 @@ export default function DoctorOffice() {
                 </CardContent>
               </Card>
             </div>
+            </DraggableDashboardPanel>
           </div>
         ) : (
           <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20">

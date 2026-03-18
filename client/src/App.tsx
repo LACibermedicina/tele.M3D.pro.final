@@ -8,6 +8,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import InactivityMonitor from "@/components/inactivity-monitor";
 import PostLoadEffects from "@/components/post-load-effects";
+import { MinimizedPanelsProvider } from "@/contexts/MinimizedPanelsContext";
+import MinimizedPanelDock from "@/components/layout/minimized-panel-dock";
+import UnifiedToolbox from "@/components/layout/unified-toolbox";
 import { onForceDisconnect } from "@/hooks/use-websocket";
 import { useToast } from "@/hooks/use-toast";
 import { disconnectAllMediaServices } from "@/components/inactivity-monitor";
@@ -613,13 +616,17 @@ function App() {
           <NavigationProvider>
             <LayoutSettingsProvider>
               <VoiceAssistantProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <InactivityMonitor />
-                  <ForceDisconnectGuard />
-                  <PostLoadEffects />
-                  <Router />
-                </TooltipProvider>
+                <MinimizedPanelsProvider>
+                  <TooltipProvider>
+                    <Toaster />
+                    <InactivityMonitor />
+                    <ForceDisconnectGuard />
+                    <PostLoadEffects />
+                    <MinimizedPanelDock />
+                    <UnifiedToolbox />
+                    <Router />
+                  </TooltipProvider>
+                </MinimizedPanelsProvider>
               </VoiceAssistantProvider>
             </LayoutSettingsProvider>
           </NavigationProvider>

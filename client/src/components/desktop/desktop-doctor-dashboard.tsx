@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Calendar, Users, FileText, Link2, Copy, CheckCircle, Loader2 } from "lucide-react";
+import { Calendar, Users, FileText, Link2, Copy, CheckCircle, Loader2, RotateCcw } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -11,10 +11,13 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import TodaySchedule from "@/components/dashboard/today-schedule";
 import { type DashboardStats } from "@shared/schema";
+import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 
 export function DesktopDoctorDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { restoreAll } = useMinimizedPanels();
   const [tempAccessOpen, setTempAccessOpen] = useState(false);
   const [generatedAccess, setGeneratedAccess] = useState<any>(null);
   const [copied, setCopied] = useState(false);
@@ -52,61 +55,71 @@ export function DesktopDoctorDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={() => { const keys = Object.keys(localStorage).filter(k => k.startsWith("draggable_dashboard_desktop-doctor_")); keys.forEach(k => localStorage.removeItem(k)); restoreAll(); window.location.reload(); }} className="text-xs text-muted-foreground">
+            <RotateCcw className="h-3 w-3 mr-1" /> Reset Layout
+          </Button>
+        </div>
         
-        {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link href="/schedule">
-              <Card data-testid="card-today-appointments" className="cursor-pointer transition-shadow hover:shadow-lg">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Consultas Hoje</p>
-                      <p className="text-2xl font-bold" data-testid="text-today-appointments">
-                        {stats.todayConsultations || 0}
-                      </p>
+            <DraggableDashboardPanel id="dd-consultations" label="Consultas Hoje" icon="calendar" dashboardKey="desktop-doctor">
+              <Link href="/schedule">
+                <Card data-testid="card-today-appointments" className="cursor-pointer transition-shadow hover:shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Consultas Hoje</p>
+                        <p className="text-2xl font-bold" data-testid="text-today-appointments">
+                          {stats.todayConsultations || 0}
+                        </p>
+                      </div>
+                      <Calendar className="w-8 h-8 text-muted-foreground" />
                     </div>
-                    <Calendar className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                  </CardContent>
+                </Card>
+              </Link>
+            </DraggableDashboardPanel>
 
-            <Link href="/patients">
-              <Card data-testid="card-my-patients" className="cursor-pointer transition-shadow hover:shadow-lg">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Meus Pacientes</p>
-                      <p className="text-2xl font-bold" data-testid="text-my-patients">
-                        {stats.totalPatients || 0}
-                      </p>
+            <DraggableDashboardPanel id="dd-patients" label="Meus Pacientes" icon="users" dashboardKey="desktop-doctor">
+              <Link href="/patients">
+                <Card data-testid="card-my-patients" className="cursor-pointer transition-shadow hover:shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Meus Pacientes</p>
+                        <p className="text-2xl font-bold" data-testid="text-my-patients">
+                          {stats.totalPatients || 0}
+                        </p>
+                      </div>
+                      <Users className="w-8 h-8 text-muted-foreground" />
                     </div>
-                    <Users className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                  </CardContent>
+                </Card>
+              </Link>
+            </DraggableDashboardPanel>
 
-            <Link href="/records">
-              <Card data-testid="card-records" className="cursor-pointer transition-shadow hover:shadow-lg">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Prontuários</p>
-                      <p className="text-2xl font-bold" data-testid="text-records">
-                        {stats.secureRecords || 0}
-                      </p>
+            <DraggableDashboardPanel id="dd-records" label="Prontuários" icon="filetext" dashboardKey="desktop-doctor">
+              <Link href="/records">
+                <Card data-testid="card-records" className="cursor-pointer transition-shadow hover:shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Prontuários</p>
+                        <p className="text-2xl font-bold" data-testid="text-records">
+                          {stats.secureRecords || 0}
+                        </p>
+                      </div>
+                      <FileText className="w-8 h-8 text-muted-foreground" />
                     </div>
-                    <FileText className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                  </CardContent>
+                </Card>
+              </Link>
+            </DraggableDashboardPanel>
           </div>
         )}
 
-        {/* Quick Actions */}
+        <DraggableDashboardPanel id="dd-quick-actions" label="Acesso Rápido" icon="zap" dashboardKey="desktop-doctor">
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Acesso Rápido</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -175,9 +188,11 @@ export function DesktopDoctorDashboard() {
             </Button>
           </div>
         </div>
+        </DraggableDashboardPanel>
 
-        {/* Today's Schedule */}
-        <TodaySchedule />
+        <DraggableDashboardPanel id="dd-schedule" label="Agenda" icon="calendar" dashboardKey="desktop-doctor">
+          <TodaySchedule />
+        </DraggableDashboardPanel>
       </div>
 
       <Dialog open={tempAccessOpen} onOpenChange={setTempAccessOpen}>

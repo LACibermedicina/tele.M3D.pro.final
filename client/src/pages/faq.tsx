@@ -10,7 +10,7 @@ import {
   Video, Calendar, MessageCircle, FileText, Bot, CreditCard,
   Shield, Settings,
   Wallet, Gem, Download, Mic, Clock, BarChart3, Stethoscope, ClipboardCheck,
-  Pill, Star, ClipboardList, Ban, Globe
+  Pill, Star, ClipboardList, Ban, Globe, LayoutDashboard
 } from "lucide-react";
 
 interface FaqItem {
@@ -464,6 +464,21 @@ const faqData: FaqItem[] = [
     category: "Triagem",
     question: "A triagem substitui uma consulta médica?",
     answer: "Não. A triagem por IA é uma ferramenta auxiliar de pré-atendimento que ajuda a organizar a ordem de prioridade. Ela não substitui a avaliação de um profissional de saúde. Em casos de emergência, o sistema orienta o paciente a ligar para o SAMU (192) ou ir ao pronto-socorro mais próximo."
+  },
+  {
+    category: "Dashboard Interativo",
+    question: "Como funciona o dashboard interativo?",
+    answer: "Os painéis do dashboard podem ser arrastados para qualquer posição na tela. Cada painel tem controles de janela (arrastar, minimizar, fechar). Painéis minimizados vão para o dock lateral e podem ser restaurados com um clique. Use o botão 'Reset Layout' para voltar à disposição original."
+  },
+  {
+    category: "Dashboard Interativo",
+    question: "O que é o Toolbox unificado?",
+    answer: "O Toolbox é uma barra de ferramentas flutuante que agrupa todos os atalhos de navegação do sistema, organizados por categoria (Principal, Clínico, Consultas, etc.). Ele pode ser arrastado para qualquer posição e se acopla automaticamente às bordas da tela quando solto próximo a elas."
+  },
+  {
+    category: "Dashboard Interativo",
+    question: "Posso minimizar widgets como o Chatbot e Notas de Estudo?",
+    answer: "Sim. Todos os widgets flutuantes (Chatbot IA, Notas de Estudo) possuem um botão de minimizar (ícone de traço) que os envia para o dock lateral. Clique no ícone no dock para restaurar o widget. O dock pode ser movido entre o lado esquerdo e direito da tela."
   }
 ];
 
@@ -497,6 +512,7 @@ const categoryIcons: Record<string, any> = {
   "Bloqueio de Pacientes": <Ban className="h-4 w-4" />,
   "Multilíngue": <Globe className="h-4 w-4" />,
   "Triagem": <Stethoscope className="h-4 w-4" />,
+  "Dashboard Interativo": <LayoutDashboard className="h-4 w-4" />,
 };
 
 const faqLabels = {

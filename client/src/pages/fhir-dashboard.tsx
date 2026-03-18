@@ -27,6 +27,8 @@ import {
   CheckCircle, XCircle, Palette, Siren, TrendingUp, Star, BookOpen
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 
 const ECG_COLORS: Record<string, string> = {
   flutter: '#EF4444',
@@ -290,6 +292,7 @@ function SavedStudiesSidebar() {
 }
 
 export default function FHIRDashboard() {
+  const { restoreAll } = useMinimizedPanels();
   const { user } = useAuth();
   const { toast } = useToast();
   const { i18n } = useTranslation();

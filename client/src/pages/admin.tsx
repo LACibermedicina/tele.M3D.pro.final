@@ -19,6 +19,8 @@ import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { formatErrorForToast } from '@/lib/error-handler';
 import PageWrapper from '@/components/layout/page-wrapper';
+import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 
 interface Collaborator {
   id: string;
@@ -105,6 +107,7 @@ interface ErrorLog {
 }
 
 export default function AdminPage() {
+  const { restoreAll } = useMinimizedPanels();
   const { toast } = useToast();
   const isPermanentAdmin = useIsPermanentAdmin();
   const [showCreateCollaborator, setShowCreateCollaborator] = useState(false);

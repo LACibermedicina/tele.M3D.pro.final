@@ -12,8 +12,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDraggable } from '@/hooks/use-draggable';
 import {
   BookOpen, X, Plus, Trash2, Save, Minimize2, Maximize2,
-  StickyNote, Search, Pin, PinOff, GripVertical
+  StickyNote, Search, Pin, PinOff, GripVertical, Minus
 } from 'lucide-react';
+import { useMinimizedPanels } from '@/contexts/MinimizedPanelsContext';
 
 interface StudyNote {
   id: string;
@@ -29,6 +30,7 @@ interface StudyNote {
 export default function FloatingStudyNotes() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { minimize, isMinimized: isDockMinimized } = useMinimizedPanels();
   const [isOpen, setIsOpen] = useState(false);
 
   const { position: notesPos, onDragStart: onNotesDragStart } = useDraggable({
@@ -43,6 +45,12 @@ export default function FloatingStudyNotes() {
     window.addEventListener('open-study-notes-widget', handler);
     return () => window.removeEventListener('open-study-notes-widget', handler);
   }, []);
+
+  useEffect(() => {
+    if (!isDockMinimized('floating-study-notes') && !isOpen) {
+      setIsOpen(true);
+    }
+  }, [isDockMinimized, isOpen]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedNote, setSelectedNote] = useState<StudyNote | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -168,6 +176,12 @@ export default function FloatingStudyNotes() {
             </Button>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsExpanded(!isExpanded)}>
               {isExpanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+              minimize({ id: 'floating-study-notes', label: 'Notas de Estudo', icon: 'book-open' });
+              setIsOpen(false);
+            }} title="Minimizar para dock">
+              <Minus className="h-3 w-3" />
             </Button>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsOpen(false)}>
               <X className="h-3 w-3" />

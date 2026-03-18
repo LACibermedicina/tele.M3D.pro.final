@@ -7,6 +7,8 @@ import { Stethoscope, Calendar, FileText, Shield, Users, Clock, DollarSign, Star
 import { useQuery } from "@tanstack/react-query"
 import { useAuth } from "@/contexts/AuthContext"
 import { type DashboardStats } from "@shared/schema"
+import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 
 interface Patient {
   id: string;
@@ -35,6 +37,7 @@ interface TMCStats {
 }
 
 export function MobileDoctorDashboard() {
+  const { restoreAll } = useMinimizedPanels();
   const { user } = useAuth();
   
   // Fetch real dashboard stats
@@ -59,6 +62,7 @@ export function MobileDoctorDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-medical-primary/5 to-medical-secondary/5 px-4 py-6 space-y-6">
       
       {/* Doctor Profile Header */}
+      <DraggableDashboardPanel id="doctor-profile" title="Perfil" icon="user" dashboardKey="mobile-doctor">
       <Card className="border-0 shadow-lg bg-gradient-to-r from-medical-primary to-medical-secondary text-white">
         <CardContent className="p-6">
           <div className="flex items-start space-x-4">
@@ -103,8 +107,10 @@ export function MobileDoctorDashboard() {
           </div>
         </CardContent>
       </Card>
+      </DraggableDashboardPanel>
 
       {/* Quick Actions */}
+      <DraggableDashboardPanel id="doctor-actions" title="Ações Rápidas" icon="zap" dashboardKey="mobile-doctor">
       <div className="grid grid-cols-2 gap-4">
         <Button 
           size="lg" 
@@ -145,8 +151,10 @@ export function MobileDoctorDashboard() {
           <span className="text-sm font-medium">Assinar</span>
         </Button>
       </div>
+      </DraggableDashboardPanel>
 
       {/* Next Patients */}
+      <DraggableDashboardPanel id="doctor-patients" title="Próximos Pacientes" icon="users" dashboardKey="mobile-doctor">
       <Card className="shadow-lg">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -194,8 +202,10 @@ export function MobileDoctorDashboard() {
           )}
         </CardContent>
       </Card>
+      </DraggableDashboardPanel>
 
       {/* TMC Earnings */}
+      <DraggableDashboardPanel id="doctor-earnings" title="Ganhos TM3D" icon="wallet" dashboardKey="mobile-doctor">
       <Card className="shadow-lg bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
         <CardHeader className="pb-3">
           <h2 className="text-lg font-semibold flex items-center text-green-800">
@@ -225,8 +235,10 @@ export function MobileDoctorDashboard() {
           </div>
         </CardContent>
       </Card>
+      </DraggableDashboardPanel>
 
       {/* Security Status */}
+      <DraggableDashboardPanel id="doctor-security" title="Segurança" icon="shield" dashboardKey="mobile-doctor">
       <Card className="shadow-lg bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader className="pb-3">
           <h2 className="text-lg font-semibold flex items-center text-blue-800">
@@ -259,6 +271,7 @@ export function MobileDoctorDashboard() {
           </div>
         </CardContent>
       </Card>
+      </DraggableDashboardPanel>
     </div>
   );
 }

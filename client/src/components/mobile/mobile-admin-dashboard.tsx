@@ -22,6 +22,8 @@ import {
   MapPin
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 
 interface SystemStat {
   label: string;
@@ -42,6 +44,7 @@ interface AlertItem {
 }
 
 export function MobileAdminDashboard() {
+  const { restoreAll } = useMinimizedPanels();
   const { user } = useAuth();
   
   // Mock data - replace with real API calls
@@ -112,6 +115,7 @@ export function MobileAdminDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 px-4 py-6 space-y-6">
       
       {/* Admin Header */}
+      <DraggableDashboardPanel id="admin-header" title="Painel Admin" icon="shield" dashboardKey="mobile-admin">
       <Card className="border-0 shadow-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
         <CardContent className="p-6">
           <div className="text-center">
@@ -130,8 +134,10 @@ export function MobileAdminDashboard() {
           </div>
         </CardContent>
       </Card>
+      </DraggableDashboardPanel>
 
       {/* Key Performance Indicators */}
+      <DraggableDashboardPanel id="admin-kpis" title="KPIs" icon="activity" dashboardKey="mobile-admin">
       <div className="grid grid-cols-1 gap-4">
         {systemStats.map((stat, index) => (
           <Card key={index} className="shadow-lg">
@@ -160,8 +166,10 @@ export function MobileAdminDashboard() {
           </Card>
         ))}
       </div>
+      </DraggableDashboardPanel>
 
       {/* Network Statistics Grid */}
+      <DraggableDashboardPanel id="admin-network" title="Rede de Parceiros" icon="users" dashboardKey="mobile-admin">
       <Card className="shadow-lg">
         <CardHeader className="pb-3">
           <h2 className="text-lg font-semibold flex items-center">
@@ -190,6 +198,7 @@ export function MobileAdminDashboard() {
           </div>
         </CardContent>
       </Card>
+      </DraggableDashboardPanel>
 
       {/* AI & Analytics */}
       <Card className="shadow-lg bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">

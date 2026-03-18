@@ -2,8 +2,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { BarChart3, Database, FileText, Shield, Download, Users, TrendingUp, Activity, Search, Filter, Calendar, Clock, Eye, ChartLine } from "lucide-react"
+import { BarChart3, Database, FileText, Shield, Download, Users, TrendingUp, Activity, Search, Filter, Calendar, Clock, Eye, ChartLine, RotateCcw } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel"
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext"
 
 interface ResearchMetric {
   id: string;
@@ -36,6 +38,7 @@ interface ResearchProject {
 
 export function DesktopResearcherDashboard() {
   const { user } = useAuth();
+  const { restoreAll } = useMinimizedPanels();
   
   // Comprehensive research metrics
   const researchMetrics: ResearchMetric[] = [
@@ -185,8 +188,13 @@ export function DesktopResearcherDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 p-8">
       <div className="max-w-7xl mx-auto space-y-8">
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={() => { const keys = Object.keys(localStorage).filter(k => k.startsWith("draggable_dashboard_desktop-researcher_")); keys.forEach(k => localStorage.removeItem(k)); restoreAll(); window.location.reload(); }} className="text-xs text-muted-foreground">
+            <RotateCcw className="h-3 w-3 mr-1" /> Reset Layout
+          </Button>
+        </div>
         
-        {/* Researcher Header */}
+        <DraggableDashboardPanel id="dr-header" label="Pesquisador" icon="flask" dashboardKey="desktop-researcher">
         <Card className="border-0 shadow-xl bg-gradient-to-r from-purple-600 to-indigo-700 text-white">
           <CardContent className="p-8">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
@@ -225,8 +233,9 @@ export function DesktopResearcherDashboard() {
             </div>
           </CardContent>
         </Card>
+        </DraggableDashboardPanel>
 
-        {/* Research Metrics Grid */}
+        <DraggableDashboardPanel id="dr-metrics" label="Métricas de Pesquisa" icon="barchart" dashboardKey="desktop-researcher">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {researchMetrics.map((metric) => (
             <Card key={metric.id} className="shadow-lg hover:shadow-xl transition-shadow">
@@ -251,8 +260,9 @@ export function DesktopResearcherDashboard() {
             </Card>
           ))}
         </div>
+        </DraggableDashboardPanel>
 
-        {/* Main Content Grid */}
+        <DraggableDashboardPanel id="dr-content" label="Dados e Projetos" icon="database" dashboardKey="desktop-researcher">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Left Column - Datasets */}
@@ -454,6 +464,7 @@ export function DesktopResearcherDashboard() {
 
           </div>
         </div>
+        </DraggableDashboardPanel>
 
       </div>
     </div>
