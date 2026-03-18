@@ -2,16 +2,21 @@ import { useCallback, useRef, useState, useEffect } from 'react';
 import { useLayoutSettings, NavDockMode } from '@/contexts/LayoutSettingsContext';
 import { GripVertical } from 'lucide-react';
 
-const EDGE_THRESHOLD = 60;
+const EDGE_THRESHOLD = 80;
 
-function detectDockEdge(x: number, y: number, w: number, h: number): NavDockMode {
+function detectDockFromCursor(cursorX: number, cursorY: number): NavDockMode {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  if (y <= EDGE_THRESHOLD) return 'top';
-  if (y + h >= vh - EDGE_THRESHOLD) return 'bottom';
-  if (x <= EDGE_THRESHOLD) return 'left';
-  if (x + w >= vw - EDGE_THRESHOLD) return 'right';
-  return 'floating';
+  const distTop = cursorY;
+  const distBottom = vh - cursorY;
+  const distLeft = cursorX;
+  const distRight = vw - cursorX;
+  const minDist = Math.min(distTop, distBottom, distLeft, distRight);
+  if (minDist > EDGE_THRESHOLD) return 'floating';
+  if (minDist === distTop) return 'top';
+  if (minDist === distBottom) return 'bottom';
+  if (minDist === distLeft) return 'left';
+  return 'right';
 }
 
 export default function DockableNavBar({ children }: { children: React.ReactNode }) {
@@ -51,6 +56,7 @@ export default function DockableNavBar({ children }: { children: React.ReactNode
     const elH = rect ? rect.height : 60;
 
     const startRef = { startX: clientX, startY: clientY, origX, origY, elW, elH };
+    const cursorRef = { x: clientX, y: clientY };
     setIsDragging(true);
     tempPosRef.current = { x: origX, y: origY };
     setRenderPos({ x: origX, y: origY });
@@ -58,19 +64,21 @@ export default function DockableNavBar({ children }: { children: React.ReactNode
     const onMove = (ev: MouseEvent | TouchEvent) => {
       const cx = 'touches' in ev ? (ev as TouchEvent).touches[0].clientX : (ev as MouseEvent).clientX;
       const cy = 'touches' in ev ? (ev as TouchEvent).touches[0].clientY : (ev as MouseEvent).clientY;
+      cursorRef.x = cx;
+      cursorRef.y = cy;
       const dx = cx - startRef.startX;
       const dy = cy - startRef.startY;
       const newX = Math.max(0, Math.min(window.innerWidth - 100, startRef.origX + dx));
       const newY = Math.max(0, Math.min(window.innerHeight - 40, startRef.origY + dy));
       tempPosRef.current = { x: newX, y: newY };
       setRenderPos({ x: newX, y: newY });
-      setPreviewDock(detectDockEdge(newX, newY, startRef.elW, startRef.elH));
+      setPreviewDock(detectDockFromCursor(cx, cy));
     };
 
     const onEnd = () => {
       const finalPos = tempPosRef.current;
       if (finalPos) {
-        const newDock = detectDockEdge(finalPos.x, finalPos.y, startRef.elW, startRef.elH);
+        const newDock = detectDockFromCursor(cursorRef.x, cursorRef.y);
         setNavDockMode(newDock);
         if (newDock === 'floating') {
           setNavFloatingPosition(finalPos);
