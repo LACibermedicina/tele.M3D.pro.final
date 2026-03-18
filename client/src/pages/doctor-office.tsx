@@ -407,6 +407,7 @@ export default function DoctorOffice() {
             </DraggableDashboardPanel>
           </div>
         ) : (
+          <DraggableDashboardPanel id="office-closed" label="Status do Consultório" icon="stethoscope" dashboardKey="doctor-office">
           <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20">
             <CardContent className="py-12">
               <div className="text-center space-y-4">
@@ -429,6 +430,7 @@ export default function DoctorOffice() {
               </div>
             </CardContent>
           </Card>
+          </DraggableDashboardPanel>
         )}
       </div>
 

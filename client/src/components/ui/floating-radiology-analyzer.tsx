@@ -50,9 +50,16 @@ export default function FloatingRadiologyAnalyzer() {
     return () => window.removeEventListener('open-radiology-widget', handler);
   }, []);
 
+  const [wasDockedMinimized, setWasDockedMinimized] = useState(false);
+
   useEffect(() => {
-    if (!isDockMinimized('floating-radiology')) setIsOpen(true);
-  }, [isDockMinimized]);
+    if (isDockMinimized('floating-radiology')) {
+      setWasDockedMinimized(true);
+    } else if (wasDockedMinimized && !isOpen) {
+      setIsOpen(true);
+      setWasDockedMinimized(false);
+    }
+  }, [isDockMinimized, isOpen, wasDockedMinimized]);
   const [radImage, setRadImage] = useState<string | null>(null);
   const [radPreview, setRadPreview] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);

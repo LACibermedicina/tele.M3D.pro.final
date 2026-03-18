@@ -51,9 +51,16 @@ export default function FloatingECGAnalyzer() {
     return () => window.removeEventListener('open-ecg-widget', handler);
   }, []);
 
+  const [wasDockedMinimized, setWasDockedMinimized] = useState(false);
+
   useEffect(() => {
-    if (!isDockMinimized('floating-ecg')) setIsOpen(true);
-  }, [isDockMinimized]);
+    if (isDockMinimized('floating-ecg')) {
+      setWasDockedMinimized(true);
+    } else if (wasDockedMinimized && !isOpen) {
+      setIsOpen(true);
+      setWasDockedMinimized(false);
+    }
+  }, [isDockMinimized, isOpen, wasDockedMinimized]);
   const [ecgImage, setEcgImage] = useState<string | null>(null);
   const [ecgPreview, setEcgPreview] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);

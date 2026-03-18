@@ -249,6 +249,7 @@ export default function ClinicalDashboard() {
               </DraggableDashboardPanel>
             </div>
 
+            <DraggableDashboardPanel id="clinical-tabs" label="Evolução e Exames" icon="trending-up" dashboardKey="clinical">
             <Tabs defaultValue="timeline" className="space-y-4">
               <TabsList>
                 <TabsTrigger value="timeline" data-testid="tab-timeline">
@@ -409,6 +410,7 @@ export default function ClinicalDashboard() {
                 </Card>
               </TabsContent>
             </Tabs>
+            </DraggableDashboardPanel>
           </div>
         )}
     </div>

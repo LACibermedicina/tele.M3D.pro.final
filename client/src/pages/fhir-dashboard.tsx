@@ -693,6 +693,7 @@ export default function FHIRDashboard() {
           {/* Center Content */}
           <div className="lg:col-span-7">
             {activeTab === 'patients' && (
+              <DraggableDashboardPanel id="fhir-patients" label="Pacientes FHIR" icon="users" dashboardKey="fhir">
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
@@ -912,9 +913,11 @@ export default function FHIRDashboard() {
                   </div>
                 </DialogContent>
               </Dialog>
+              </DraggableDashboardPanel>
             )}
 
             {activeTab === 'observations' && (
+              <DraggableDashboardPanel id="fhir-observations" label="Observações FHIR" icon="file-text" dashboardKey="fhir">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -926,10 +929,13 @@ export default function FHIRDashboard() {
                   <ObservationsTab />
                 </CardContent>
               </Card>
+              </DraggableDashboardPanel>
             )}
 
             {activeTab === 'history' && (
+              <DraggableDashboardPanel id="fhir-history" label="Histórico Clínico" icon="clock" dashboardKey="fhir">
               <ClinicalHistoryTab />
+              </DraggableDashboardPanel>
             )}
 
             {(activeTab === 'ecg' || activeTab === 'radiology' || activeTab === 'export') && selectedPatientId && (
@@ -942,6 +948,7 @@ export default function FHIRDashboard() {
             )}
 
             {activeTab === 'ecg' && (
+              <DraggableDashboardPanel id="fhir-ecg" label="Análise ECG" icon="heart" dashboardKey="fhir">
               <ECGEngineTab
                 ecgImage={ecgImage}
                 ecgImagePreview={ecgImagePreview}
@@ -963,9 +970,11 @@ export default function FHIRDashboard() {
                 ecgProgress={ecgProgress}
                 canvasRef={canvasRef}
               />
+              </DraggableDashboardPanel>
             )}
 
             {activeTab === 'radiology' && (
+              <DraggableDashboardPanel id="fhir-radiology" label="Análise Radiológica" icon="scan" dashboardKey="fhir">
               <RadiologyEngineTab
                 radImage={radImage}
                 radImagePreview={radImagePreview}
@@ -988,9 +997,11 @@ export default function FHIRDashboard() {
                 runRadAnalysis={runRadAnalysis}
                 isAnalyzing={radAnalysisMutation.isPending}
               />
+              </DraggableDashboardPanel>
             )}
 
             {activeTab === 'export' && (
+              <DraggableDashboardPanel id="fhir-export" label="Exportar FHIR" icon="download" dashboardKey="fhir">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -1026,6 +1037,7 @@ export default function FHIRDashboard() {
                   </Button>
                 </CardContent>
               </Card>
+              </DraggableDashboardPanel>
             )}
           </div>
 

@@ -85,11 +85,16 @@ export default function FloatingChatbot() {
     return () => window.removeEventListener('open-chatbot-widget', handler);
   }, []);
 
+  const [wasDockedMinimized, setWasDockedMinimized] = useState(false);
+
   useEffect(() => {
-    if (!isDockMinimized('floating-chatbot') && !isOpen) {
+    if (isDockMinimized('floating-chatbot')) {
+      setWasDockedMinimized(true);
+    } else if (wasDockedMinimized && !isOpen) {
       setIsOpen(true);
+      setWasDockedMinimized(false);
     }
-  }, [isDockMinimized, isOpen]);
+  }, [isDockMinimized, isOpen, wasDockedMinimized]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [activeInterviewId, setActiveInterviewId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);

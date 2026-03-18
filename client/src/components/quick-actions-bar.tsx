@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 import { 
   Command,
   Calendar, 
@@ -17,7 +18,9 @@ import {
   Grid3x3,
   LayoutGrid,
   Clock,
-  Power
+  Power,
+  Minus,
+  X
 } from "lucide-react";
 
 interface QuickActionsBarProps {
@@ -35,6 +38,18 @@ interface QuickAction {
 
 export default function QuickActionsBar({ userRole }: QuickActionsBarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const { minimize, isMinimized: isDockMinimized } = useMinimizedPanels();
+  const [wasDockedMinimized, setWasDockedMinimized] = useState(false);
+
+  useEffect(() => {
+    if (isDockMinimized('quick-actions')) {
+      setWasDockedMinimized(true);
+    } else if (wasDockedMinimized && !isVisible) {
+      setIsVisible(true);
+      setWasDockedMinimized(false);
+    }
+  }, [isDockMinimized, isVisible, wasDockedMinimized]);
 
   // Quick actions based on user role
   const getQuickActions = (): QuickAction[] => {
@@ -212,9 +227,46 @@ export default function QuickActionsBar({ userRole }: QuickActionsBarProps) {
 
   const quickActions = getQuickActions();
 
+  if (!isVisible || isDockMinimized('quick-actions')) return null;
+
   return (
     <div className="relative w-10" data-testid="quick-actions-bar">
       <div className="flex flex-col-reverse items-center w-10">
+        {/* Minimize/Close controls */}
+        {isExpanded && (
+          <div className="flex gap-0.5 mb-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 rounded-full bg-background/80 border shadow-sm"
+                  onClick={() => {
+                    minimize({ id: 'quick-actions', label: 'Ações Rápidas', icon: 'zap' });
+                    setIsVisible(false);
+                    setIsExpanded(false);
+                  }}
+                >
+                  <Minus className="h-2.5 w-2.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Minimizar para dock</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 rounded-full bg-background/80 border shadow-sm hover:bg-destructive/20 hover:text-destructive"
+                  onClick={() => { setIsVisible(false); setIsExpanded(false); }}
+                >
+                  <X className="h-2.5 w-2.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Fechar</p></TooltipContent>
+            </Tooltip>
+          </div>
+        )}
         {/* Quick Actions - aparece acima do botão */}
         <div className={`transition-all duration-300 mb-2 ${
           isExpanded ? 'opacity-100 max-h-96' : 'opacity-0 max-h-0 overflow-hidden'

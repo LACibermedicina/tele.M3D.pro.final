@@ -46,11 +46,16 @@ export default function FloatingStudyNotes() {
     return () => window.removeEventListener('open-study-notes-widget', handler);
   }, []);
 
+  const [wasDockedMinimized, setWasDockedMinimized] = useState(false);
+
   useEffect(() => {
-    if (!isDockMinimized('floating-study-notes') && !isOpen) {
+    if (isDockMinimized('floating-study-notes')) {
+      setWasDockedMinimized(true);
+    } else if (wasDockedMinimized && !isOpen) {
       setIsOpen(true);
+      setWasDockedMinimized(false);
     }
-  }, [isDockMinimized, isOpen]);
+  }, [isDockMinimized, isOpen, wasDockedMinimized]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedNote, setSelectedNote] = useState<StudyNote | null>(null);
   const [editTitle, setEditTitle] = useState('');
