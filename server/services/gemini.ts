@@ -800,38 +800,45 @@ Formato: texto corrido, máximo 300 palavras.
     ].filter(Boolean).join(' | ');
 
     const ecgJsonSchema = `{
-  "ecg_metrics": { "heart_rate": "string com valor e classificação", "rhythm": "string", "qrs_width": "string com valor em ms", "atrial_activity": "string", "signal_quality": "string" },
-  "lead_by_lead_analysis": { "DI": "achados", "DII": "achados", "DIII": "achados", "aVR": "achados", "aVL": "achados", "aVF": "achados", "V1": "achados", "V2": "achados", "V3": "achados", "V4": "achados", "V5": "achados", "V6": "achados" },
-  "waveform_segmentation": { "p_wave": "string", "pr_interval": "string", "qrs_complex": "string", "st_segment": "string", "t_wave": "string", "qt_interval": "string", "u_wave": "string" },
-  "rhythm_strip_interpretation": "string",
-  "cardiac_interpretation": "string detalhado",
-  "key_findings": ["array de achados com % descritivo"],
+  "ecg_metrics": { "heart_rate": "ex: 78 bpm - Normocárdico", "rhythm": "ex: Ritmo sinusal regular", "qrs_width": "ex: 88ms - Normal", "atrial_activity": "ex: Ondas P presentes e regulares", "signal_quality": "ex: Boa qualidade técnica" },
+  "lead_by_lead_analysis": { "DI": "achados clínicos da derivação", "DII": "achados", "DIII": "achados", "aVR": "achados", "aVL": "achados", "aVF": "achados", "V1": "achados", "V2": "achados", "V3": "achados", "V4": "achados", "V5": "achados", "V6": "achados" },
+  "waveform_segmentation": { "p_wave": "ex: Normal, duração 0,08s, amplitude 1,5mm", "pr_interval": "ex: 0,16s - Normal", "qrs_complex": "ex: 0,08s - Morfologia preservada", "st_segment": "ex: Isoelétrico em todas derivações", "t_wave": "ex: Positiva e simétrica", "qt_interval": "ex: 380ms, QTc 410ms - Normal", "u_wave": "ex: Ausente" },
+  "rhythm_strip_interpretation": "interpretação detalhada do ritmo cardíaco observado",
+  "cardiac_interpretation": "interpretação cardíaca completa e detalhada",
+  "key_findings": ["ex: Ritmo sinusal regular a 78 bpm", "ex: Eixo cardíaco normal a +60°"],
   "systematic_analysis": {
-    "ritmo": { "finding": "string", "normal_range": "string", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
-    "frequencia_cardiaca": { "finding": "string", "normal_range": "60-100 bpm", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
-    "eixo_qrs": { "finding": "string", "normal_range": "-30° a +90°", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
-    "onda_p": { "finding": "string", "normal_range": "string", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
-    "intervalo_pr": { "finding": "string", "normal_range": "0,12-0,20s", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
-    "complexo_qrs": { "finding": "string", "normal_range": "<0,12s", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
-    "segmento_st": { "finding": "string", "normal_range": "Isoelétrico", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
-    "onda_t": { "finding": "string", "normal_range": "Concordante com QRS", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" },
-    "intervalo_qt": { "finding": "string", "normal_range": "<440ms (H) / <460ms (M)", "is_normal": boolean, "clinical_significance": "string", "percentage_descriptor": "string" }
+    "ritmo": { "finding": "ex: Ritmo sinusal regular", "normal_range": "Sinusal", "is_normal": true, "clinical_significance": "descrição clínica", "percentage_descriptor": "ex: Normal em 85% da população" },
+    "frequencia_cardiaca": { "finding": "ex: 78 bpm", "normal_range": "60-100 bpm", "is_normal": true, "clinical_significance": "descrição clínica", "percentage_descriptor": "ex: Faixa normal" },
+    "eixo_qrs": { "finding": "ex: +60° - Normal", "normal_range": "-30° a +90°", "is_normal": true, "clinical_significance": "descrição clínica", "percentage_descriptor": "ex: Dentro da normalidade" },
+    "onda_p": { "finding": "ex: Presentes, morfologia normal", "normal_range": "<0,12s / <2,5mm", "is_normal": true, "clinical_significance": "descrição clínica", "percentage_descriptor": "ex: Normal" },
+    "intervalo_pr": { "finding": "ex: 0,16s", "normal_range": "0,12-0,20s", "is_normal": true, "clinical_significance": "descrição clínica", "percentage_descriptor": "ex: Condução AV normal" },
+    "complexo_qrs": { "finding": "ex: 0,08s - Estreito", "normal_range": "<0,12s", "is_normal": true, "clinical_significance": "descrição clínica", "percentage_descriptor": "ex: Condução IV preservada" },
+    "segmento_st": { "finding": "ex: Isoelétrico", "normal_range": "Isoelétrico", "is_normal": true, "clinical_significance": "descrição clínica", "percentage_descriptor": "ex: Sem alterações isquêmicas" },
+    "onda_t": { "finding": "ex: Positiva e simétrica", "normal_range": "Concordante com QRS", "is_normal": true, "clinical_significance": "descrição clínica", "percentage_descriptor": "ex: Repolarização normal" },
+    "intervalo_qt": { "finding": "ex: QTc 410ms", "normal_range": "<440ms (H) / <460ms (M)", "is_normal": true, "clinical_significance": "descrição clínica", "percentage_descriptor": "ex: Sem risco arritmogênico" }
   },
-  "epidemiological_data": [{ "finding": "string", "prevalence": "string", "source": "AHA/ESC/SBC" }],
-  "color_coded_annotations": [{ "region": "string", "color_hex": "#hex", "color_name": "string", "hypothesis": "string", "probability": "XX%", "description": "string" }],
-  "presumptive_diagnosis": { "name": "string", "confidence": "XX%", "color": "#hex", "reasoning": "string" },
-  "differential_diagnoses": [{ "name": "string", "confidence": "XX%", "color": "#hex", "reasoning": "string", "key_indicators": ["string"] }],
-  "action_plan": { "immediate_actions": ["string"], "follow_up": ["string"], "monitoring": ["string"] },
-  "clinical_comment": "string",
-  "recommended_conduct": "string",
-  "severity_level": { "level": 1-5, "label": "string", "description": "string" },
-  "technical_report": "string laudo formal completo",
-  "diagnosis_probabilities": { "nome": "XX%" },
-  "visual_annotation_instructions": { "achado": "cor" },
-  "technical_summary": "string",
-  "simple_summary": "string",
-  "disclaimer": "string"
-}`;
+  "epidemiological_data": [{ "finding": "achado epidemiológico", "prevalence": "ex: 5-10% da população adulta", "source": "AHA/ESC/SBC" }],
+  "color_coded_annotations": [{ "region": "ex: Derivações V1-V3", "color_hex": "#3B82F6", "color_name": "ex: Azul", "hypothesis": "ex: Padrão de bloqueio de ramo", "probability": "75%", "description": "descrição detalhada do achado" }],
+  "presumptive_diagnosis": { "name": "NOME REAL DO DIAGNÓSTICO ex: Ritmo Sinusal Normal / Fibrilação Atrial / Infarto Agudo do Miocárdio", "confidence": "85%", "color": "#22C55E", "reasoning": "fundamentação clínica detalhada" },
+  "differential_diagnoses": [{ "name": "NOME REAL DO DIAGNÓSTICO DIFERENCIAL ex: Taquicardia Supraventricular", "confidence": "15%", "color": "#EAB308", "reasoning": "fundamentação", "key_indicators": ["indicador clínico específico"] }],
+  "action_plan": { "immediate_actions": ["ação clínica específica"], "follow_up": ["seguimento recomendado"], "monitoring": ["monitoramento necessário"] },
+  "clinical_comment": "comentário clínico integrado",
+  "recommended_conduct": "conduta recomendada detalhada",
+  "severity_level": { "level": "1-5 (número inteiro)", "label": "DEVE SER: Baixo / Moderado / Alto / Muito Alto / Crítico", "description": "descrição da gravidade" },
+  "technical_report": "laudo formal completo detalhado",
+  "diagnosis_probabilities": { "Nome do Diagnóstico Real": "85%" },
+  "visual_annotation_instructions": { "achado clínico": "cor semântica" },
+  "technical_summary": "resumo técnico para profissionais",
+  "simple_summary": "resumo em linguagem acessível para o paciente",
+  "disclaimer": "aviso legal sobre limitações da análise automatizada"
+}
+
+REGRAS CRÍTICAS PARA O JSON:
+- "presumptive_diagnosis.name" DEVE conter o NOME REAL do diagnóstico identificado (ex: "Ritmo Sinusal Normal", "Fibrilação Atrial", "Bloqueio de Ramo Direito"). NUNCA retorne "string" ou placeholders.
+- "severity_level.label" DEVE ser uma das opções: "Baixo", "Moderado", "Alto", "Muito Alto", "Crítico". NUNCA retorne "string".
+- "severity_level.level" DEVE ser um número inteiro de 1 a 5.
+- "confidence" DEVE ser uma porcentagem real (ex: "85%", "92%"). NUNCA retorne "XX%".
+- Todos os campos de nome/label DEVEM conter valores clínicos reais, NUNCA placeholders genéricos.`;
 
     const pass1Prompt = `Você é o ECG Reader — sistema de interpretação eletrocardiográfica de nível hospitalar replicando a metodologia clínica do "ECG Reader" GPT. Analise a imagem ECG com contexto [${patientInfo}].
 
@@ -926,35 +933,61 @@ CORES: Vermelho(#EF4444)=alto risco, Azul(#3B82F6)=hipertrofia/condução, Verde
 IMPORTANTE: Responda em PORTUGUÊS MÉDICO. Retorne APENAS JSON válido: ${ecgJsonSchema}
 severity_level.level: 1=Baixo, 2=Moderado, 3=Alto, 4=Muito Alto, 5=Crítico. Forneça ≥5 diferenciais com %. Referencie AHA/ESC/SBC.`;
 
+    const SEVERITY_LABELS: Record<number, string> = {
+      1: 'Baixo', 2: 'Moderado', 3: 'Alto', 4: 'Muito Alto', 5: 'Crítico',
+    };
+
+    const isPlaceholder = (val: any): boolean => {
+      if (typeof val !== 'string') return false;
+      const v = val.trim().toLowerCase();
+      return v === 'string' || v === 'xx%' || v === '#hex' || v === 'ex:' || v === '' || /^string\b/.test(v);
+    };
+
+    const sanitizeStr = (val: any, fallback: string): string => {
+      if (!val || isPlaceholder(val)) return fallback;
+      return String(val).replace(/^ex:\s*/i, '');
+    };
+
+    const sanitizeConfidence = (val: any): string => {
+      if (!val || isPlaceholder(val)) return '0%';
+      const s = String(val);
+      if (/\d+%/.test(s)) return s;
+      const num = parseFloat(s);
+      if (!isNaN(num)) return `${Math.round(num)}%`;
+      return '0%';
+    };
+
     const normalizeECGResult = (raw: any) => {
       const normalizeSysItem = (item: any) => ({
-        finding: item?.finding ?? 'Não avaliado',
+        finding: sanitizeStr(item?.finding, 'Não avaliado'),
         normal_range: item?.normal_range ?? '',
         is_normal: item?.is_normal ?? true,
-        clinical_significance: item?.clinical_significance ?? '',
-        percentage_descriptor: item?.percentage_descriptor ?? '',
+        clinical_significance: sanitizeStr(item?.clinical_significance, ''),
+        percentage_descriptor: sanitizeStr(item?.percentage_descriptor, ''),
       });
       return {
         ecg_metrics: {
-          heart_rate: raw?.ecg_metrics?.heart_rate ?? 'Não determinado',
-          rhythm: raw?.ecg_metrics?.rhythm ?? 'Não determinado',
-          qrs_width: raw?.ecg_metrics?.qrs_width ?? 'Não determinado',
-          atrial_activity: raw?.ecg_metrics?.atrial_activity ?? 'Não determinado',
-          signal_quality: raw?.ecg_metrics?.signal_quality ?? 'Não determinado',
+          heart_rate: sanitizeStr(raw?.ecg_metrics?.heart_rate, 'Não determinado'),
+          rhythm: sanitizeStr(raw?.ecg_metrics?.rhythm, 'Não determinado'),
+          qrs_width: sanitizeStr(raw?.ecg_metrics?.qrs_width, 'Não determinado'),
+          atrial_activity: sanitizeStr(raw?.ecg_metrics?.atrial_activity, 'Não determinado'),
+          signal_quality: sanitizeStr(raw?.ecg_metrics?.signal_quality, 'Não determinado'),
         },
         lead_by_lead_analysis: raw?.lead_by_lead_analysis ?? {},
         waveform_segmentation: {
-          p_wave: raw?.waveform_segmentation?.p_wave ?? 'Não avaliado',
-          pr_interval: raw?.waveform_segmentation?.pr_interval ?? 'Não avaliado',
-          qrs_complex: raw?.waveform_segmentation?.qrs_complex ?? 'Não avaliado',
-          st_segment: raw?.waveform_segmentation?.st_segment ?? 'Não avaliado',
-          t_wave: raw?.waveform_segmentation?.t_wave ?? 'Não avaliado',
-          qt_interval: raw?.waveform_segmentation?.qt_interval ?? 'Não avaliado',
-          u_wave: raw?.waveform_segmentation?.u_wave ?? 'Não avaliado',
+          p_wave: sanitizeStr(raw?.waveform_segmentation?.p_wave, 'Não avaliado'),
+          pr_interval: sanitizeStr(raw?.waveform_segmentation?.pr_interval, 'Não avaliado'),
+          qrs_complex: sanitizeStr(raw?.waveform_segmentation?.qrs_complex, 'Não avaliado'),
+          st_segment: sanitizeStr(raw?.waveform_segmentation?.st_segment, 'Não avaliado'),
+          t_wave: sanitizeStr(raw?.waveform_segmentation?.t_wave, 'Não avaliado'),
+          qt_interval: sanitizeStr(raw?.waveform_segmentation?.qt_interval, 'Não avaliado'),
+          u_wave: sanitizeStr(raw?.waveform_segmentation?.u_wave, 'Não avaliado'),
         },
-        rhythm_strip_interpretation: raw?.rhythm_strip_interpretation ?? 'Interpretação da faixa de ritmo não disponível.',
-        cardiac_interpretation: raw?.cardiac_interpretation ?? 'Interpretação cardíaca não disponível.',
-        key_findings: Array.isArray(raw?.key_findings) ? raw.key_findings : [],
+        rhythm_strip_interpretation: sanitizeStr(raw?.rhythm_strip_interpretation, 'Interpretação da faixa de ritmo não disponível.'),
+        cardiac_interpretation: sanitizeStr(raw?.cardiac_interpretation, 'Interpretação cardíaca não disponível.'),
+        key_findings: Array.isArray(raw?.key_findings)
+          ? raw.key_findings.filter((f: any) => f && !isPlaceholder(f)).map((f: any) => String(f).replace(/^ex:\s*/i, ''))
+          : [],
         systematic_analysis: {
           ritmo: normalizeSysItem(raw?.systematic_analysis?.ritmo),
           frequencia_cardiaca: normalizeSysItem(raw?.systematic_analysis?.frequencia_cardiaca),
@@ -967,55 +1000,76 @@ severity_level.level: 1=Baixo, 2=Moderado, 3=Alto, 4=Muito Alto, 5=Crítico. For
           intervalo_qt: normalizeSysItem(raw?.systematic_analysis?.intervalo_qt),
         },
         epidemiological_data: Array.isArray(raw?.epidemiological_data)
-          ? raw.epidemiological_data.map((e: any) => ({
-              finding: e?.finding ?? '',
-              prevalence: e?.prevalence ?? '',
-              source: e?.source ?? '',
-            }))
+          ? raw.epidemiological_data
+              .filter((e: any) => e?.finding && !isPlaceholder(e.finding))
+              .map((e: any) => ({
+                finding: sanitizeStr(e?.finding, ''),
+                prevalence: sanitizeStr(e?.prevalence, ''),
+                source: e?.source ?? '',
+              }))
           : [],
         color_coded_annotations: Array.isArray(raw?.color_coded_annotations)
-          ? raw.color_coded_annotations.map((a: any) => ({
-              region: a?.region ?? '',
-              color_hex: a?.color_hex ?? '#6B7280',
-              color_name: a?.color_name ?? '',
-              hypothesis: a?.hypothesis ?? '',
-              probability: a?.probability ?? '0%',
-              description: a?.description ?? '',
-            }))
+          ? raw.color_coded_annotations
+              .filter((a: any) => a?.region && !isPlaceholder(a.region))
+              .map((a: any) => ({
+                region: sanitizeStr(a?.region, ''),
+                color_hex: isPlaceholder(a?.color_hex) ? '#6B7280' : (a?.color_hex ?? '#6B7280'),
+                color_name: sanitizeStr(a?.color_name, ''),
+                hypothesis: sanitizeStr(a?.hypothesis, ''),
+                probability: sanitizeConfidence(a?.probability),
+                description: sanitizeStr(a?.description, ''),
+              }))
           : [],
         presumptive_diagnosis: {
-          name: raw?.presumptive_diagnosis?.name ?? 'Não determinado',
-          confidence: raw?.presumptive_diagnosis?.confidence ?? '0%',
-          color: raw?.presumptive_diagnosis?.color ?? '#3B82F6',
-          reasoning: raw?.presumptive_diagnosis?.reasoning ?? '',
+          name: sanitizeStr(raw?.presumptive_diagnosis?.name, 'Não determinado'),
+          confidence: sanitizeConfidence(raw?.presumptive_diagnosis?.confidence),
+          color: isPlaceholder(raw?.presumptive_diagnosis?.color) ? '#3B82F6' : (raw?.presumptive_diagnosis?.color ?? '#3B82F6'),
+          reasoning: sanitizeStr(raw?.presumptive_diagnosis?.reasoning, ''),
         },
         differential_diagnoses: Array.isArray(raw?.differential_diagnoses)
-          ? raw.differential_diagnoses.map((d: any) => ({
-              name: d?.name ?? 'Diagnóstico alternativo',
-              confidence: d?.confidence ?? '0%',
-              color: d?.color ?? '#6B7280',
-              reasoning: d?.reasoning ?? '',
-              key_indicators: Array.isArray(d?.key_indicators) ? d.key_indicators : [],
-            }))
+          ? raw.differential_diagnoses
+              .filter((d: any) => d?.name && !isPlaceholder(d.name))
+              .map((d: any) => ({
+                name: sanitizeStr(d?.name, 'Diagnóstico alternativo'),
+                confidence: sanitizeConfidence(d?.confidence),
+                color: isPlaceholder(d?.color) ? '#6B7280' : (d?.color ?? '#6B7280'),
+                reasoning: sanitizeStr(d?.reasoning, ''),
+                key_indicators: Array.isArray(d?.key_indicators)
+                  ? d.key_indicators.filter((k: any) => !isPlaceholder(k))
+                  : [],
+              }))
           : [],
         action_plan: {
-          immediate_actions: Array.isArray(raw?.action_plan?.immediate_actions) ? raw.action_plan.immediate_actions : [],
-          follow_up: Array.isArray(raw?.action_plan?.follow_up) ? raw.action_plan.follow_up : [],
-          monitoring: Array.isArray(raw?.action_plan?.monitoring) ? raw.action_plan.monitoring : [],
+          immediate_actions: Array.isArray(raw?.action_plan?.immediate_actions)
+            ? raw.action_plan.immediate_actions.filter((a: any) => !isPlaceholder(a))
+            : [],
+          follow_up: Array.isArray(raw?.action_plan?.follow_up)
+            ? raw.action_plan.follow_up.filter((a: any) => !isPlaceholder(a))
+            : [],
+          monitoring: Array.isArray(raw?.action_plan?.monitoring)
+            ? raw.action_plan.monitoring.filter((a: any) => !isPlaceholder(a))
+            : [],
         },
-        clinical_comment: raw?.clinical_comment ?? '',
-        recommended_conduct: raw?.recommended_conduct ?? 'Conduta recomendada não disponível.',
-        severity_level: {
-          level: raw?.severity_level?.level ?? 1,
-          label: raw?.severity_level?.label ?? 'Não classificado',
-          description: raw?.severity_level?.description ?? '',
-        },
-        technical_report: raw?.technical_report ?? 'Laudo técnico não disponível.',
+        clinical_comment: sanitizeStr(raw?.clinical_comment, ''),
+        recommended_conduct: sanitizeStr(raw?.recommended_conduct, 'Conduta recomendada não disponível.'),
+        severity_level: (() => {
+          const rawLevel = raw?.severity_level?.level;
+          const level = typeof rawLevel === 'number' ? Math.min(5, Math.max(1, Math.round(rawLevel))) :
+            typeof rawLevel === 'string' ? (parseInt(rawLevel, 10) || 1) : 1;
+          const rawLabel = raw?.severity_level?.label;
+          const label = (rawLabel && !isPlaceholder(rawLabel)) ? rawLabel : SEVERITY_LABELS[level] || 'Não classificado';
+          return {
+            level,
+            label,
+            description: sanitizeStr(raw?.severity_level?.description, ''),
+          };
+        })(),
+        technical_report: sanitizeStr(raw?.technical_report, 'Laudo técnico não disponível.'),
         diagnosis_probabilities: raw?.diagnosis_probabilities ?? {},
         visual_annotation_instructions: raw?.visual_annotation_instructions ?? {},
-        technical_summary: raw?.technical_summary ?? 'Análise técnica não disponível.',
-        simple_summary: raw?.simple_summary ?? 'Resumo simplificado não disponível.',
-        disclaimer: raw?.disclaimer ?? 'Análise automatizada por IA. Requer revisão e validação médica profissional. Não substitui avaliação clínica presencial.',
+        technical_summary: sanitizeStr(raw?.technical_summary, 'Análise técnica não disponível.'),
+        simple_summary: sanitizeStr(raw?.simple_summary, 'Resumo simplificado não disponível.'),
+        disclaimer: sanitizeStr(raw?.disclaimer, 'Análise automatizada por IA. Requer revisão e validação médica profissional. Não substitui avaliação clínica presencial.'),
       };
     };
 
