@@ -294,6 +294,7 @@ function SavedStudiesSidebar() {
 export default function FHIRDashboard() {
   const { restoreAll } = useMinimizedPanels();
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const { toast } = useToast();
   const { i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState('patients');

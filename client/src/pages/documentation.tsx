@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
+import { useIsAdmin } from "@/hooks/use-admin";
 import PageWrapper from "@/components/layout/page-wrapper";
 import { TranslationLoading } from "@/components/ui/translation-loading";
 import { useMultiContentTranslation } from "@/hooks/use-content-translation";
@@ -100,6 +101,7 @@ const docLabels = {
 
 export default function Documentation() {
   const { t } = useTranslation();
+  const isAdmin = useIsAdmin();
 
   const randomImages = useMemo(() => {
     const dashboardImages = [dashboardImg1, dashboardImg2, dashboardImg3, dashboardImg4, dashboardImg5];
@@ -183,8 +185,8 @@ export default function Documentation() {
         },
         {
           title: "Solicitação de Consultas",
-          description: "Dois caminhos: por especialidade ou triagem automatizada (Protocolo de Manchester)",
-          features: ["Consulta por especialidade", "Triagem automatizada (Manchester 5 níveis)", "QR Code e código curto de acesso", "Links temporários para visitantes"]
+          description: isAdmin ? "Dois caminhos: por especialidade ou triagem IA (Protocolo de Manchester)" : "Dois caminhos: por especialidade ou triagem automatizada (Protocolo de Manchester)",
+          features: ["Consulta por especialidade", isAdmin ? "Triagem IA (Manchester 5 níveis)" : "Triagem automatizada (Manchester 5 níveis)", "QR Code e código curto de acesso", "Links temporários para visitantes"]
         },
         {
           title: "Atendimento 24/7",
@@ -204,28 +206,28 @@ export default function Documentation() {
       ]
     },
     {
-      category: "Suporte Clínico",
+      category: isAdmin ? "Inteligência Artificial" : "Suporte Clínico",
       icon: Bot,
       color: "purple",
       items: [
         {
-          title: "Assistente Médico",
-          description: "Motor de suporte médico (OMS/MS-Brasil/DSM-5) com fallback automático",
+          title: isAdmin ? "Assistente Médico IA" : "Assistente Médico",
+          description: isAdmin ? "Motor de IA Médica (OMS/MS-Brasil/DSM-5) com fallback automático" : "Motor de suporte médico (OMS/MS-Brasil/DSM-5) com fallback automático",
           features: ["Suporte diagnóstico", "Interações medicamentosas", "Protocolos clínicos (OMS/MS-Brasil)", "Pesquisa de evidências"]
         },
         {
           title: "Classificação Diagnóstica Pós-Consulta",
-          description: "Auto-gera prescrições, exames, encaminhamentos e classificação CID-10/11 e DSM-5/TR",
+          description: isAdmin ? "IA auto-gera prescrições, exames, encaminhamentos e classificação CID-10/11 e DSM-5/TR" : "Auto-gera prescrições, exames, encaminhamentos e classificação CID-10/11 e DSM-5/TR",
           features: ["Auto-geração pós-consulta", "CID-10/11 e DSM-5/TR", "Níveis de confiança", "Análise de interações medicamentosas"]
         },
         {
-          title: "Chatbot e Triagem",
+          title: isAdmin ? "Chatbot e Triagem IA" : "Chatbot e Triagem",
           description: "Assistente virtual com triagem Manchester e direcionamento inteligente",
           features: ["Disponível sem login", "Triagem Manchester 5 níveis", "Respostas instantâneas", "Direcionamento adequado"]
         },
         {
-          title: "Geração de Lista de Medicamentos",
-          description: "Planos de tratamento completos gerados a partir de diagnóstico, sintomas e histórico",
+          title: isAdmin ? "Geração de Lista de Medicamentos por IA" : "Geração de Lista de Medicamentos",
+          description: isAdmin ? "Planos de tratamento completos gerados por IA a partir de diagnóstico, sintomas e histórico" : "Planos de tratamento completos gerados a partir de diagnóstico, sintomas e histórico",
           features: ["Geração automática de tratamento", "Baseado em diagnóstico/sintomas", "Considera histórico do paciente", "Interações medicamentosas verificadas"]
         }
       ]
@@ -247,7 +249,7 @@ export default function Documentation() {
         },
         {
           title: "Prescrições e Fluxo Pós-Consulta",
-          description: "Emissão de receitas com assinatura digital, análise de interações e workflow pós-consulta automatizado",
+          description: isAdmin ? "Emissão de receitas com assinatura digital, análise de interações e workflow pós-consulta com IA" : "Emissão de receitas com assinatura digital, análise de interações e workflow pós-consulta automatizado",
           features: ["Assinatura digital FIPS", "PDF com QR Code verificação", "Análise de interações medicamentosas", "Fluxo pós-consulta automatizado", "Busca em bases externas (RxNorm, OpenFDA, ANVISA/RENAME)"]
         },
         {
@@ -273,7 +275,7 @@ export default function Documentation() {
       color: "orange",
       items: [
         {
-          title: "WhatsApp",
+          title: isAdmin ? "WhatsApp IA" : "WhatsApp",
           description: "Integração com WhatsApp para comunicação automatizada com status online de pacientes",
           features: ["Lembretes automáticos", "Confirmação de consultas", "Status online pacientes", "Suporte técnico"]
         },
@@ -351,7 +353,7 @@ export default function Documentation() {
         {
           title: "Dashboard Administrativo",
           description: "Painel completo com tema escuro para gestão da plataforma",
-          features: ["Métricas em tempo real", "Gestão de usuários", "Configurações globais (inatividade, PayPal, serviços)", "Tema escuro"]
+          features: ["Métricas em tempo real", "Gestão de usuários", isAdmin ? "Configurações globais (inatividade, PayPal, IA)" : "Configurações globais (inatividade, PayPal, serviços)", "Tema escuro"]
         },
         {
           title: "Relatórios e Analytics",
@@ -398,13 +400,13 @@ export default function Documentation() {
       ]
     },
     {
-      category: "Assistente de Voz",
+      category: isAdmin ? "Assistente de Voz IAM3D" : "Assistente de Voz",
       icon: AudioLines,
       color: "purple",
       items: [
         {
           title: "Assistente por Voz",
-          description: "Assistente de voz full-screen com esfera animada para interação natural",
+          description: isAdmin ? "IA de voz full-screen com esfera animada para interação natural" : "Assistente de voz full-screen com esfera animada para interação natural",
           features: ["Web Speech API", "Overlay full-screen", "Esfera animada 3D", "Fechamento por voz"]
         },
         {
@@ -430,9 +432,9 @@ export default function Documentation() {
           features: ["Português (BR)", "Espanhol (ES)", "Inglês (EN)", "Francês, Alemão, Italiano", "Chinês, Guarani", "Seletor no header"]
         },
         {
-          title: "Voz Multilíngue",
-          description: "Respostas, STT e TTS respeitam o idioma selecionado pelo usuário",
-          features: ["Chatbot responde no idioma", "Voz localizada", "STT reconhece por locale", "TTS sintetiza por idioma"]
+          title: isAdmin ? "IA e Voz Multilíngue" : "Voz Multilíngue",
+          description: isAdmin ? "Respostas da IA, STT e TTS respeitam o idioma selecionado pelo usuário" : "Respostas, STT e TTS respeitam o idioma selecionado pelo usuário",
+          features: ["Chatbot responde no idioma", isAdmin ? "IAM3D voz localizada" : "Voz localizada", "STT reconhece por locale", "TTS sintetiza por idioma"]
         },
         {
           title: "Internacionalização (i18n)",
@@ -490,7 +492,7 @@ export default function Documentation() {
   const technicalSpecs = [
     {
       title: "Arquitetura Frontend",
-      items: ["React 18 com TypeScript", "Tailwind CSS + shadcn/ui", "Wouter para roteamento", "TanStack Query v5", "Web Speech API", "i18next (8 idiomas)"]
+      items: ["React 18 com TypeScript", "Tailwind CSS + shadcn/ui", "Wouter para roteamento", "TanStack Query v5", isAdmin ? "Web Speech API (IAM3D)" : "Web Speech API", "i18next (8 idiomas)"]
     },
     {
       title: "Arquitetura Backend",
@@ -498,7 +500,7 @@ export default function Documentation() {
     },
     {
       title: "Integrações",
-      items: ["Motor de Suporte Médico", "Fallback automático", "Agora.io Video SDK", "PayPal Checkout", "Stripe Checkout", "PagBank (PIX/Boleto)", "HL7 FHIR R4 Export"]
+      items: [isAdmin ? "Motor de IA Médica" : "Motor de Suporte Médico", isAdmin ? "Fallback IA automático" : "Fallback automático", "Agora.io Video SDK", "PayPal Checkout", "Stripe Checkout", "PagBank (PIX/Boleto)", "HL7 FHIR R4 Export"]
     },
     {
       title: "Segurança",
@@ -511,8 +513,8 @@ export default function Documentation() {
       role: "Pacientes",
       icon: Users,
       guides: [
-        "Como solicitar consulta (por especialidade ou triagem automatizada)",
-        "Como usar o assistente de voz (consulta urgente)",
+        isAdmin ? "Como solicitar consulta (por especialidade ou triagem IA)" : "Como solicitar consulta (por especialidade ou triagem automatizada)",
+        isAdmin ? "Como usar o assistente de voz IAM3D (consulta urgente)" : "Como usar o assistente de voz (consulta urgente)",
         "Como comprar créditos TM3D (PayPal, Stripe, PagBank PIX/Boleto)",
         "Como participar de videochamada",
         "Como acessar prescrições e prontuário",
@@ -527,9 +529,9 @@ export default function Documentation() {
       icon: Activity,
       guides: [
         "Como gerenciar agenda (3 abas, limpar agenda)",
-        "Como usar o fluxo pós-consulta (auto-geração de prescrições)",
+        isAdmin ? "Como usar o fluxo pós-consulta (IA auto-gera prescrições)" : "Como usar o fluxo pós-consulta (auto-geração de prescrições)",
         "Como revisar classificação diagnóstica (CID-10/DSM-5)",
-        "Como realizar consultas online e convidar especialistas",
+        isAdmin ? "Como realizar consultas online com IA e convidar especialistas" : "Como realizar consultas online e convidar especialistas",
         "Como usar notas médicas (estilo macOS Notes)",
         "Como agendar inter-consultas entre médicos",
         "Como exportar dados de pacientes (FHIR R4)",
@@ -537,7 +539,7 @@ export default function Documentation() {
         "Como usar o PMD v1.0 (criar/editar/exportar)",
         "Como visualizar o Prontuário Unificado",
         "Como bloquear/desbloquear pacientes",
-        "Como gerar lista de medicamentos automaticamente",
+        isAdmin ? "Como gerar lista de medicamentos por IA" : "Como gerar lista de medicamentos automaticamente",
         "Como verificar prescrições na farmácia"
       ]
     },

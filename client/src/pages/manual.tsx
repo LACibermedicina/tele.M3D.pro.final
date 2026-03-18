@@ -7,6 +7,7 @@ import PageWrapper from "@/components/layout/page-wrapper";
 import { TranslationLoading } from "@/components/ui/translation-loading";
 import { useMultiContentTranslation } from "@/hooks/use-content-translation";
 import { useMemo } from "react";
+import { useIsAdmin } from "@/hooks/use-admin";
 import {
   BookOpen, Video, Calendar, MessageCircle, FileText, Users, Shield,
   Bot, CreditCard, Activity, Settings, MonitorSmartphone, Stethoscope,
@@ -1354,12 +1355,44 @@ function mergeSectionTexts(original: Section[], translated: any[]): Section[] {
   }));
 }
 
+const adminLabelMap: Record<string, string> = {
+  "assistente de voz": "IAM3D",
+  "Assistente de Voz": "IAM3D",
+  "suporte médico": "IA médica",
+  "suporte clínico": "IA",
+  "análise automatizada": "análise IA",
+  "assistente inteligente": "IA inteligente",
+  "Assistente Médico": "Assistente Médico IA",
+  "assistente virtual": "assistente IA",
+};
+
+function restoreAdminLabels(sections: Section[]): Section[] {
+  return sections.map(section => ({
+    ...section,
+    content: section.content.map(item => {
+      let text = item.text;
+      let title = item.title;
+      for (const [neutral, original] of Object.entries(adminLabelMap)) {
+        text = text.replaceAll(neutral, original);
+        title = title.replaceAll(neutral, original);
+      }
+      return { ...item, text, title };
+    })
+  }));
+}
+
 export default function Manual() {
-  const txVisitors = useMemo(() => extractSectionTexts(visitorSections), []);
-  const txPatients = useMemo(() => extractSectionTexts(patientSections), []);
-  const txDoctors = useMemo(() => extractSectionTexts(doctorSections), []);
-  const txAdmins = useMemo(() => extractSectionTexts(adminSections), []);
-  const txPharmacists = useMemo(() => extractSectionTexts(pharmacistSections), []);
+  const isAdmin = useIsAdmin();
+  const resolvedVisitors = isAdmin ? restoreAdminLabels(visitorSections) : visitorSections;
+  const resolvedPatients = isAdmin ? restoreAdminLabels(patientSections) : patientSections;
+  const resolvedDoctors = isAdmin ? restoreAdminLabels(doctorSections) : doctorSections;
+  const resolvedAdmins = isAdmin ? restoreAdminLabels(adminSections) : adminSections;
+  const resolvedPharmacists = isAdmin ? restoreAdminLabels(pharmacistSections) : pharmacistSections;
+  const txVisitors = useMemo(() => extractSectionTexts(resolvedVisitors), [resolvedVisitors]);
+  const txPatients = useMemo(() => extractSectionTexts(resolvedPatients), [resolvedPatients]);
+  const txDoctors = useMemo(() => extractSectionTexts(resolvedDoctors), [resolvedDoctors]);
+  const txAdmins = useMemo(() => extractSectionTexts(resolvedAdmins), [resolvedAdmins]);
+  const txPharmacists = useMemo(() => extractSectionTexts(resolvedPharmacists), [resolvedPharmacists]);
 
   const { data: txSections, isLoading } = useMultiContentTranslation({
     labels: manualLabels,
@@ -1372,11 +1405,11 @@ export default function Manual() {
 
   const lb = (txSections.labels || manualLabels) as typeof manualLabels;
 
-  const mergedVisitors = mergeSectionTexts(visitorSections, txSections.visitors || txVisitors);
-  const mergedPatients = mergeSectionTexts(patientSections, txSections.patients || txPatients);
-  const mergedDoctors = mergeSectionTexts(doctorSections, txSections.doctors || txDoctors);
-  const mergedAdmins = mergeSectionTexts(adminSections, txSections.admins || txAdmins);
-  const mergedPharmacists = mergeSectionTexts(pharmacistSections, txSections.pharmacists || txPharmacists);
+  const mergedVisitors = mergeSectionTexts(resolvedVisitors, txSections.visitors || txVisitors);
+  const mergedPatients = mergeSectionTexts(resolvedPatients, txSections.patients || txPatients);
+  const mergedDoctors = mergeSectionTexts(resolvedDoctors, txSections.doctors || txDoctors);
+  const mergedAdmins = mergeSectionTexts(resolvedAdmins, txSections.admins || txAdmins);
+  const mergedPharmacists = mergeSectionTexts(resolvedPharmacists, txSections.pharmacists || txPharmacists);
 
   return (
     <PageWrapper variant="origami">

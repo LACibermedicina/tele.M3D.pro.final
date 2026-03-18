@@ -7,11 +7,13 @@ import { Loader2, CreditCard, Check, Coins, ArrowUpCircle, ArrowDownCircle, Hist
 import { useToast } from '@/hooks/use-toast';
 import PayPalButton from '@/components/PayPalButton';
 import { useState } from 'react';
+import { useIsAdmin } from '@/hooks/use-admin';
 import PageWrapper from '@/components/layout/page-wrapper';
 import origamiHeroImage from '@assets/image_1759773239051.png';
 
 export default function CreditsPage() {
   const { toast } = useToast();
+  const isAdmin = useIsAdmin();
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
   const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
 
@@ -240,7 +242,7 @@ export default function CreditsPage() {
               <span className="font-semibold">15 TM3D</span>
             </div>
             <div className="flex justify-between">
-              <span>Consulta ao Assistente Virtual</span>
+              <span>{isAdmin ? 'Consulta ao Assistente IA' : 'Consulta ao Assistente Virtual'}</span>
               <span className="font-semibold">5 TM3D</span>
             </div>
             <div className="flex justify-between">

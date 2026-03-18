@@ -355,7 +355,7 @@ export default function WalletPage() {
     { name: "Consulta por Vídeo", cost: 50, icon: Zap },
     { name: "Consulta WhatsApp", cost: 10, icon: Send },
     { name: "Análise de Exames", cost: 15, icon: Shield },
-    { name: "Assistente Virtual", cost: 5, icon: Star },
+    { name: isAdmin ? "Assistente IA" : "Assistente Virtual", cost: 5, icon: Star },
     { name: "Assinatura Digital", cost: 20, icon: Check },
   ];
 
