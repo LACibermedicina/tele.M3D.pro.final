@@ -531,7 +531,12 @@ export default function Header() {
   });
   const pendingPostCount = pendingPostItems?.length || 0;
 
-  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [isMobileView, setIsMobileView] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const check = () => setIsMobileView(window.innerWidth < 768);
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   if (!isMobileView && (navDockMode === 'left' || navDockMode === 'right')) {
     const tooltipSide = navDockMode === 'left' ? 'right' as const : 'left' as const;
