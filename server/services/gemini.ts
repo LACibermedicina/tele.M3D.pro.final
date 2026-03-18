@@ -1420,7 +1420,8 @@ Seja extremamente detalhado, didático e baseado em evidências. Use padrão CBR
   }
 
   generateRadiologyPACSImagePrompt(analysisData: any, language?: string): string {
-    const langName = GeminiService.LANGUAGE_MAP[language || 'pt'] || 'Portuguese (Brazil)';
+    const baseLang = (language || 'pt').split('-')[0].toLowerCase();
+    const langName = GeminiService.LANGUAGE_MAP[baseLang] || 'Portuguese (Brazil)';
     const findings = analysisData.radiology_findings || {};
     const diagnosis = analysisData.probabilistic_diagnosis?.presumptive?.name || 'Radiological Study';
     const severity = analysisData.severity_level?.label || 'Moderate';
