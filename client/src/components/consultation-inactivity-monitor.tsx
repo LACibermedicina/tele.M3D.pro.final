@@ -7,6 +7,7 @@ import { disconnectAllMediaServices } from "@/components/inactivity-monitor";
 
 const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click"];
 const VIDEO_CHECK_INTERVAL_MS = 3000;
+const REMOTE_AUDIO_CHECK_INTERVAL_MS = 2000;
 
 interface ConsultationInactivityMonitorProps {
   consultationId: string;
@@ -25,16 +26,19 @@ export default function ConsultationInactivityMonitor({
   const [countdownTotal, setCountdownTotal] = useState(30);
   const [isEnding, setIsEnding] = useState(false);
   const [triggerReason, setTriggerReason] = useState<"inactivity" | "silence">("inactivity");
+  const [configLoaded, setConfigLoaded] = useState(false);
 
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownEndRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const remoteAudioCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevFrameDataRef = useRef<string | null>(null);
   const showWarningRef = useRef(false);
   const endCalledRef = useRef(false);
   const onTimeoutRef = useRef(onTimeout);
+  const localStreamRef = useRef<MediaStream | null>(null);
   onTimeoutRef.current = onTimeout;
 
   const configRef = useRef({
@@ -60,7 +64,10 @@ export default function ConsultationInactivityMonitor({
           }
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        setConfigLoaded(true);
+      });
   }, []);
 
   const clearAllTimers = useCallback(() => {
@@ -69,6 +76,14 @@ export default function ConsultationInactivityMonitor({
     if (countdownTimerRef.current) { clearInterval(countdownTimerRef.current); countdownTimerRef.current = null; }
     if (countdownEndRef.current) { clearTimeout(countdownEndRef.current); countdownEndRef.current = null; }
     if (videoCheckRef.current) { clearInterval(videoCheckRef.current); videoCheckRef.current = null; }
+    if (remoteAudioCheckRef.current) { clearInterval(remoteAudioCheckRef.current); remoteAudioCheckRef.current = null; }
+  }, []);
+
+  const stopLocalStream = useCallback(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
+    }
   }, []);
 
   const endConsultation = useCallback(async (reason: string) => {
@@ -76,6 +91,7 @@ export default function ConsultationInactivityMonitor({
     endCalledRef.current = true;
     setIsEnding(true);
 
+    stopLocalStream();
     disconnectAllMediaServices();
 
     try {
@@ -103,7 +119,7 @@ export default function ConsultationInactivityMonitor({
     });
 
     onTimeoutRef.current();
-  }, [consultationId, toast]);
+  }, [consultationId, toast, stopLocalStream]);
 
   const startCountdown = useCallback((reason: "inactivity" | "silence") => {
     if (showWarningRef.current) return;
@@ -143,22 +159,6 @@ export default function ConsultationInactivityMonitor({
     }, configRef.current.silenceMs);
   }, [startCountdown]);
 
-  const handleStayConnected = useCallback(() => {
-    clearAllTimers();
-    showWarningRef.current = false;
-    setShowWarning(false);
-    setCountdown(configRef.current.countdownSec);
-    endCalledRef.current = false;
-    resetInactivityTimer();
-    resetSilenceTimer();
-    startVideoActivityMonitor();
-  }, [clearAllTimers, resetInactivityTimer, resetSilenceTimer]);
-
-  const handleEndNow = useCallback(() => {
-    clearAllTimers();
-    endConsultation(triggerReason);
-  }, [clearAllTimers, endConsultation, triggerReason]);
-
   const checkVideoActivity = useCallback(() => {
     const videoElements = document.querySelectorAll("video");
     for (const videoEl of videoElements) {
@@ -183,13 +183,51 @@ export default function ConsultationInactivityMonitor({
     }
   }, [resetSilenceTimer]);
 
-  const startVideoActivityMonitor = useCallback(() => {
+  const checkRemoteAudio = useCallback(() => {
+    const audioElements = document.querySelectorAll("audio");
+    const videoElements = document.querySelectorAll("video");
+    const allMedia = [...Array.from(audioElements), ...Array.from(videoElements)] as HTMLMediaElement[];
+    for (const el of allMedia) {
+      if (!el.paused && !el.muted && el.srcObject) {
+        const stream = el.srcObject as MediaStream;
+        const audioTracks = stream.getAudioTracks();
+        for (const track of audioTracks) {
+          if (track.enabled && track.readyState === "live") {
+            if (!showWarningRef.current) {
+              resetSilenceTimer();
+            }
+            return;
+          }
+        }
+      }
+    }
+  }, [resetSilenceTimer]);
+
+  const startMediaActivityMonitors = useCallback(() => {
     if (videoCheckRef.current) { clearInterval(videoCheckRef.current); videoCheckRef.current = null; }
     videoCheckRef.current = setInterval(checkVideoActivity, VIDEO_CHECK_INTERVAL_MS);
-  }, [checkVideoActivity]);
+    if (remoteAudioCheckRef.current) { clearInterval(remoteAudioCheckRef.current); remoteAudioCheckRef.current = null; }
+    remoteAudioCheckRef.current = setInterval(checkRemoteAudio, REMOTE_AUDIO_CHECK_INTERVAL_MS);
+  }, [checkVideoActivity, checkRemoteAudio]);
+
+  const handleStayConnected = useCallback(() => {
+    clearAllTimers();
+    showWarningRef.current = false;
+    setShowWarning(false);
+    setCountdown(configRef.current.countdownSec);
+    endCalledRef.current = false;
+    resetInactivityTimer();
+    resetSilenceTimer();
+    startMediaActivityMonitors();
+  }, [clearAllTimers, resetInactivityTimer, resetSilenceTimer, startMediaActivityMonitors]);
+
+  const handleEndNow = useCallback(() => {
+    clearAllTimers();
+    endConsultation(triggerReason);
+  }, [clearAllTimers, endConsultation, triggerReason]);
 
   useEffect(() => {
-    if (!isJoined || !consultationId) {
+    if (!isJoined || !consultationId || !configLoaded) {
       clearAllTimers();
       return;
     }
@@ -211,11 +249,12 @@ export default function ConsultationInactivityMonitor({
     let analyser: AnalyserNode | null = null;
     let animFrameId: number | null = null;
 
-    const setupAudioMonitor = async () => {
+    const setupLocalAudioMonitor = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
         if (!stream) return;
 
+        localStreamRef.current = stream;
         audioCtx = new AudioContext();
         const source = audioCtx.createMediaStreamSource(stream);
         analyser = audioCtx.createAnalyser();
@@ -237,8 +276,8 @@ export default function ConsultationInactivityMonitor({
       }
     };
 
-    setupAudioMonitor();
-    startVideoActivityMonitor();
+    setupLocalAudioMonitor();
+    startMediaActivityMonitors();
 
     return () => {
       ACTIVITY_EVENTS.forEach((event) => {
@@ -249,8 +288,9 @@ export default function ConsultationInactivityMonitor({
       if (audioCtx) {
         try { audioCtx.close(); } catch {}
       }
+      stopLocalStream();
     };
-  }, [isJoined, consultationId, clearAllTimers, resetInactivityTimer, resetSilenceTimer, startVideoActivityMonitor]);
+  }, [isJoined, consultationId, configLoaded, clearAllTimers, resetInactivityTimer, resetSilenceTimer, startMediaActivityMonitors, stopLocalStream]);
 
   if (!showWarning || !isJoined) return null;
 
