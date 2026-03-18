@@ -1,8 +1,7 @@
 import { type ReactNode, useState, useEffect, useCallback } from "react";
 import { useDraggable } from "@/hooks/use-draggable";
 import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
-import { GripVertical, Minus, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import PanelWindowControls from "@/components/dashboard/panel-window-controls";
 
 interface DraggableDashboardPanelProps {
   id: string;
@@ -73,16 +72,14 @@ export default function DraggableDashboardPanel({
   if (isMobile) {
     return (
       <div className={`relative ${className}`} data-panel-id={id}>
-        <div className="absolute top-1 right-1 z-10 flex items-center gap-0.5 bg-background/70 backdrop-blur-sm rounded px-0.5"
-          onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleMinimize}>
-            <Minus className="h-3.5 w-3.5" />
-          </Button>
-          {showClose && (
-            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-destructive/20 hover:text-destructive" onClick={handleClose}>
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          )}
+        <div className="absolute top-1 right-1 z-10 bg-background/70 backdrop-blur-sm rounded px-0.5">
+          <PanelWindowControls
+            onMinimize={handleMinimize}
+            onClose={showClose ? handleClose : undefined}
+            showGrip={false}
+            size="md"
+            alwaysVisible
+          />
         </div>
         {children}
       </div>
@@ -106,28 +103,12 @@ export default function DraggableDashboardPanel({
         maxWidth: "90vw",
       } : undefined}
     >
-      <div
-        className="absolute top-1 left-1 z-10 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm rounded px-1 py-0.5"
-      >
-        <div
-          className="cursor-grab active:cursor-grabbing p-0.5 text-muted-foreground hover:text-foreground"
-          onMouseDown={onDragStart}
-          onTouchStart={onDragStart}
-        >
-          <GripVertical className="h-3.5 w-3.5" />
-        </div>
-        <div onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
-          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={handleMinimize}>
-            <Minus className="h-2.5 w-2.5" />
-          </Button>
-        </div>
-        {showClose && (
-          <div onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-5 w-5 hover:bg-destructive/20 hover:text-destructive" onClick={handleClose}>
-              <X className="h-2.5 w-2.5" />
-            </Button>
-          </div>
-        )}
+      <div className="absolute top-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm rounded px-1 py-0.5">
+        <PanelWindowControls
+          onDragStart={onDragStart}
+          onMinimize={handleMinimize}
+          onClose={showClose ? handleClose : undefined}
+        />
       </div>
       {children}
     </div>

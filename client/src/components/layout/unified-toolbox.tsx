@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, createContext, useContext } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useDraggable } from "@/hooks/use-draggable";
 import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import PanelWindowControls from "@/components/dashboard/panel-window-controls";
 import {
   GripVertical, Minus, X, Wrench, ChevronUp, ChevronDown,
   LayoutDashboard, Users, CalendarClock, MessageCircle, FileText,
@@ -122,20 +123,6 @@ function getNavGroups(userRole: string | undefined, t: (k: string) => string): N
   })).filter(g => g.items.length > 0);
 }
 
-const ICON_MAP: Record<string, LucideIcon> = {
-  "/dashboard": LayoutDashboard, "/assistant": BrainCircuit, "/fhir-dashboard": HeartPulse,
-  "/patients": Users, "/schedule": CalendarClock, "/records": FileText,
-  "/prescriptions": ClipboardList, "/inter-consultation": Stethoscope,
-  "/doctor-notes": StickyNote, "/doctor-referrals": UserPlus,
-  "/consultation-request": Stethoscope, "/immediate-consultation": Video,
-  "/my-consultations": CalendarClock, "/incomplete-consultations": AlertCircle,
-  "/post-consultation-review": ClipboardList, "/diagnostic-review": Microscope,
-  "/whatsapp": MessageCircle, "/medical-references": BookOpenCheck, "/coffee-room": Coffee,
-  "/wallet": Wallet, "/nft-management": Gem, "/broker": TrendingUp,
-  "/epidemiological-reports": Activity, "/reports": FileBarChart, "/analytics": BarChart3,
-  "/pharmacy": Pill, "/admin": Shield, "/admin/payments": CreditCard,
-};
-
 const DETACHED_STORAGE_KEY = "unified_toolbox_detached";
 
 function loadDetached(): string[] {
@@ -194,33 +181,14 @@ function DetachedNavPanel({ path, label, icon: Icon, onReattach }: {
       data-draggable-root
     >
       <div className="flex items-center gap-1 px-1.5 py-1 border-b bg-muted/30 rounded-t-lg">
-        <div
-          className="cursor-grab active:cursor-grabbing p-0.5 text-muted-foreground hover:text-foreground"
-          onMouseDown={onDragStart}
-          onTouchStart={onDragStart}
-        >
-          <GripVertical className="h-3 w-3" />
-        </div>
         <Icon className="h-3 w-3 text-muted-foreground" />
         <span className="text-[10px] font-medium text-muted-foreground flex-1 truncate max-w-[100px]">{label}</span>
-        <div className="flex items-center gap-0.5" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-4 w-4" onClick={handleMinimize}>
-                <Minus className="h-2 w-2" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>Minimizar</p></TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-4 w-4 hover:bg-destructive/20 hover:text-destructive" onClick={handleClose}>
-                <X className="h-2 w-2" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>Retornar ao Toolbox</p></TooltipContent>
-          </Tooltip>
-        </div>
+        <PanelWindowControls
+          onDragStart={onDragStart}
+          onMinimize={handleMinimize}
+          onClose={handleClose}
+          alwaysVisible
+        />
       </div>
       <div className="p-1">
         <Link href={path}>
