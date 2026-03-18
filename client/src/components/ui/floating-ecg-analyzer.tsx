@@ -169,17 +169,19 @@ export default function FloatingECGAnalyzer() {
     mutationFn: async () => {
       if (!ecgImage) throw new Error('No image');
       setAnalysisProgress(0);
-      const progressSteps = [33, 66, 100];
-      let stepIndex = 0;
-      const progressInterval = setInterval(() => {
-        if (stepIndex < progressSteps.length) {
-          setAnalysisProgress(progressSteps[stepIndex]);
-          stepIndex++;
-        }
-      }, 8000);
+      const jobId = `ecg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const progressInterval = setInterval(async () => {
+        try {
+          const pRes = await fetch(`/api/ecg/analyze/progress/${jobId}`);
+          if (pRes.ok) {
+            const { percent } = await pRes.json();
+            if (percent > 0) setAnalysisProgress(percent);
+          }
+        } catch {}
+      }, 2000);
       try {
         const currentLang = (i18n.resolvedLanguage || i18n.language || 'pt').split('-')[0];
-        const res = await apiRequest('POST', '/api/ecg/analyze', { imageBase64: ecgImage, patientContext: {}, language: currentLang });
+        const res = await apiRequest('POST', '/api/ecg/analyze', { imageBase64: ecgImage, patientContext: {}, language: currentLang, jobId });
         clearInterval(progressInterval);
         setAnalysisProgress(100);
         return res.json();

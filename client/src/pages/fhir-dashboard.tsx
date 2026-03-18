@@ -414,17 +414,19 @@ export default function FHIRDashboard() {
   const ecgAnalysisMutation = useMutation({
     mutationFn: async (data: { imageBase64: string; patientContext: any }) => {
       setEcgProgress(0);
-      const progressSteps = [33, 66, 100];
-      let stepIndex = 0;
-      const progressInterval = setInterval(() => {
-        if (stepIndex < progressSteps.length) {
-          setEcgProgress(progressSteps[stepIndex]);
-          stepIndex++;
-        }
-      }, 8000);
+      const jobId = `ecg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const progressInterval = setInterval(async () => {
+        try {
+          const pRes = await fetch(`/api/ecg/analyze/progress/${jobId}`);
+          if (pRes.ok) {
+            const { percent } = await pRes.json();
+            if (percent > 0) setEcgProgress(percent);
+          }
+        } catch {}
+      }, 2000);
       try {
         const currentLang = (i18n.resolvedLanguage || i18n.language || 'pt').split('-')[0];
-        const res = await apiRequest('POST', '/api/ecg/analyze', { ...data, language: currentLang });
+        const res = await apiRequest('POST', '/api/ecg/analyze', { ...data, language: currentLang, jobId });
         clearInterval(progressInterval);
         setEcgProgress(100);
         return res.json();

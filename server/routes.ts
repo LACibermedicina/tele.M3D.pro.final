@@ -20727,6 +20727,14 @@ ${combinedText.slice(0, 8000)}`;
     it: 'Italian', de: 'German', zh: 'Chinese (Simplified)', gn: 'Guaraní',
   };
 
+  const ecgAnalysisProgress = new Map<string, { pass: number; total: number }>();
+
+  app.get('/api/ecg/analyze/progress/:jobId', requireAuth, (req: any, res: any) => {
+    const progress = ecgAnalysisProgress.get(req.params.jobId);
+    if (!progress) return res.json({ pass: 0, total: 3, percent: 0 });
+    res.json({ ...progress, percent: Math.round((progress.pass / progress.total) * 100) });
+  });
+
   app.post('/api/ecg/analyze', requireAuthOrMcp, async (req: any, res: any) => {
     try {
       if (!req.user) return res.status(401).json({ message: 'Autenticação necessária' });
@@ -20734,19 +20742,25 @@ ${combinedText.slice(0, 8000)}`;
         return res.status(403).json({ message: 'Apenas médicos e administradores podem analisar ECGs' });
       }
 
-      const { imageBase64, patientContext, language } = req.body;
+      const { imageBase64, patientContext, language, jobId } = req.body;
       if (!imageBase64) {
         return res.status(400).json({ message: 'Imagem ECG (base64) é obrigatória' });
       }
 
       const langName = LANG_MAP[language] || LANG_MAP['pt'];
+      const trackingId = jobId || `ecg-${Date.now()}`;
 
       const { geminiService } = await import('./services/gemini');
-      let currentPass = 0;
-      const result = await geminiService.analyzeECGImage(imageBase64, patientContext || {}, (pass) => {
-        currentPass = pass;
-        console.log(`ECG Triple-Verification progress: ${pass}/3 (${Math.round(pass / 3 * 100)}%)`);
-      });
+      ecgAnalysisProgress.set(trackingId, { pass: 0, total: 3 });
+      let result: any;
+      try {
+        result = await geminiService.analyzeECGImage(imageBase64, patientContext || {}, (pass) => {
+          ecgAnalysisProgress.set(trackingId, { pass, total: 3 });
+          console.log(`ECG Triple-Verification progress: ${pass}/3 (${Math.round(pass / 3 * 100)}%)`);
+        });
+      } finally {
+        ecgAnalysisProgress.delete(trackingId);
+      }
 
       let immersiveImage: string | null = null;
       const generateECGImmersiveImage = async (): Promise<string | null> => {
