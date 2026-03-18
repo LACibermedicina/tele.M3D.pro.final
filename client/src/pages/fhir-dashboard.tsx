@@ -635,6 +635,7 @@ export default function FHIRDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Sidebar */}
           <div className="lg:col-span-2">
+            <DraggableDashboardPanel id="fhir-sidebar" label="Navegação FHIR" icon="layout" dashboardKey="fhir">
             <Card>
               <CardContent className="p-3">
                 <nav className="space-y-1">
@@ -686,6 +687,7 @@ export default function FHIRDashboard() {
                 )}
               </CardContent>
             </Card>
+            </DraggableDashboardPanel>
           </div>
 
           {/* Center Content */}

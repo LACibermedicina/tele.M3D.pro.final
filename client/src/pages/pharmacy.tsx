@@ -229,7 +229,7 @@ export default function PharmacyDashboard() {
           </Link>
         </div>
 
-        <DraggableDashboardPanel id="pharmacy-stats" title="Estatísticas" icon="activity" dashboardKey="pharmacy">
+        <DraggableDashboardPanel id="pharmacy-stats" label="Estatísticas" icon="activity" dashboardKey="pharmacy">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="p-4 flex items-center space-x-3">

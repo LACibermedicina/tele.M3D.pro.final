@@ -103,7 +103,7 @@ export function MobileResearcherDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 px-4 py-6 space-y-6">
       
       {/* Researcher Profile Header */}
-      <DraggableDashboardPanel id="researcher-profile" title="Perfil" icon="user" dashboardKey="mobile-researcher">
+      <DraggableDashboardPanel id="researcher-profile" label="Perfil" icon="user" dashboardKey="mobile-researcher">
       <Card className="border-0 shadow-lg bg-gradient-to-r from-purple-600 to-indigo-700 text-white">
         <CardContent className="p-6">
           <div className="text-center">
@@ -119,7 +119,7 @@ export function MobileResearcherDashboard() {
       </DraggableDashboardPanel>
 
       {/* Research Metrics */}
-      <DraggableDashboardPanel id="researcher-metrics" title="Métricas" icon="activity" dashboardKey="mobile-researcher">
+      <DraggableDashboardPanel id="researcher-metrics" label="Métricas" icon="activity" dashboardKey="mobile-researcher">
       <Card className="shadow-lg">
         <CardHeader className="pb-3">
           <h2 className="text-lg font-semibold flex items-center">

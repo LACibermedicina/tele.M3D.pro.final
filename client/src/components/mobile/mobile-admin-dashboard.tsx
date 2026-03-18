@@ -115,7 +115,7 @@ export function MobileAdminDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 px-4 py-6 space-y-6">
       
       {/* Admin Header */}
-      <DraggableDashboardPanel id="admin-header" title="Painel Admin" icon="shield" dashboardKey="mobile-admin">
+      <DraggableDashboardPanel id="admin-header" label="Painel Admin" icon="shield" dashboardKey="mobile-admin">
       <Card className="border-0 shadow-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
         <CardContent className="p-6">
           <div className="text-center">
@@ -137,7 +137,7 @@ export function MobileAdminDashboard() {
       </DraggableDashboardPanel>
 
       {/* Key Performance Indicators */}
-      <DraggableDashboardPanel id="admin-kpis" title="KPIs" icon="activity" dashboardKey="mobile-admin">
+      <DraggableDashboardPanel id="admin-kpis" label="KPIs" icon="activity" dashboardKey="mobile-admin">
       <div className="grid grid-cols-1 gap-4">
         {systemStats.map((stat, index) => (
           <Card key={index} className="shadow-lg">
@@ -169,7 +169,7 @@ export function MobileAdminDashboard() {
       </DraggableDashboardPanel>
 
       {/* Network Statistics Grid */}
-      <DraggableDashboardPanel id="admin-network" title="Rede de Parceiros" icon="users" dashboardKey="mobile-admin">
+      <DraggableDashboardPanel id="admin-network" label="Rede de Parceiros" icon="users" dashboardKey="mobile-admin">
       <Card className="shadow-lg">
         <CardHeader className="pb-3">
           <h2 className="text-lg font-semibold flex items-center">

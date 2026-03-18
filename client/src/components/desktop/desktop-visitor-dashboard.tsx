@@ -108,6 +108,7 @@ export function DesktopVisitorDashboard() {
         <div className="flex justify-end"><Button variant="ghost" size="sm" onClick={() => { const keys = Object.keys(localStorage).filter(k => k.startsWith("draggable_dashboard_desktop-visitor_")); keys.forEach(k => localStorage.removeItem(k)); restoreAll(); window.location.reload(); }} className="text-xs text-white/70 hover:text-white"><RotateCcw className="h-3 w-3 mr-1" /> Reset Layout</Button></div>
         
         {/* Hero Section */}
+        <DraggableDashboardPanel id="visitor-hero" label="Boas-Vindas" icon="home" dashboardKey="desktop-visitor">
         <Card className="border-0 shadow-2xl bg-white/10 backdrop-blur-xl text-white overflow-hidden">
           <div 
             className="absolute inset-0 opacity-20 bg-cover bg-center"
@@ -188,7 +189,10 @@ export function DesktopVisitorDashboard() {
           </CardContent>
         </Card>
 
+        </DraggableDashboardPanel>
+
         {/* Registration Options */}
+        <DraggableDashboardPanel id="visitor-register" label="Registro" icon="user" dashboardKey="desktop-visitor">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-md hover:shadow-3xl hover:scale-[1.02] transition-all duration-300">
             <CardHeader className="pb-4">
@@ -257,7 +261,10 @@ export function DesktopVisitorDashboard() {
           </Card>
         </div>
 
+        </DraggableDashboardPanel>
+
         {/* Platform Features */}
+        <DraggableDashboardPanel id="visitor-features" label="Recursos" icon="layout" dashboardKey="desktop-visitor">
         <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-md">
           <CardHeader className="pb-4">
             <h2 className="text-2xl font-semibold flex items-center">
@@ -280,7 +287,10 @@ export function DesktopVisitorDashboard() {
           </CardContent>
         </Card>
 
+        </DraggableDashboardPanel>
+
         {/* Contact and Support */}
+        <DraggableDashboardPanel id="visitor-support" label="Suporte" icon="message-circle" dashboardKey="desktop-visitor">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-md hover:scale-[1.02] transition-all duration-300">
             <div 
@@ -355,7 +365,10 @@ export function DesktopVisitorDashboard() {
           </Card>
         </div>
 
+        </DraggableDashboardPanel>
+
         {/* AI Chatbot Section */}
+        <DraggableDashboardPanel id="visitor-chatbot" label="Assistente IA" icon="message-circle" dashboardKey="desktop-visitor">
         <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-md hover:scale-[1.01] transition-all duration-300 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-indigo-50/50"></div>
           <CardHeader className="pb-4 relative z-10">
@@ -388,6 +401,7 @@ export function DesktopVisitorDashboard() {
             </div>
           </CardContent>
         </Card>
+        </DraggableDashboardPanel>
 
       </div>
 

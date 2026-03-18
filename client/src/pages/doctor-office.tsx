@@ -296,7 +296,7 @@ export default function DoctorOffice() {
         {isOfficeOpen ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Video Area */}
-            <DraggableDashboardPanel id="office-video" title="Sala de Consulta" icon="video" dashboardKey="doctor-office">
+            <DraggableDashboardPanel id="office-video" label="Sala de Consulta" icon="video" dashboardKey="doctor-office">
             <div className="lg:col-span-2">
               <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20">
                 <CardHeader>
@@ -336,7 +336,7 @@ export default function DoctorOffice() {
             </DraggableDashboardPanel>
 
             {/* Invites Panel */}
-            <DraggableDashboardPanel id="office-invites" title="Participantes" icon="users" dashboardKey="doctor-office">
+            <DraggableDashboardPanel id="office-invites" label="Participantes" icon="users" dashboardKey="doctor-office">
             <div className="lg:col-span-1 space-y-4">
               <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20">
                 <CardHeader>

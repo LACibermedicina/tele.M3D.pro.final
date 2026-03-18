@@ -394,6 +394,7 @@ export default function AdminPage() {
         </div>
 
       {/* Analytics Cards */}
+      <DraggableDashboardPanel id="admin-analytics" label="Métricas do Sistema" icon="activity" dashboardKey="admin">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -453,6 +454,7 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
+      </DraggableDashboardPanel>
 
       <Tabs defaultValue="collaborators" className="space-y-4">
         <TabsList>
