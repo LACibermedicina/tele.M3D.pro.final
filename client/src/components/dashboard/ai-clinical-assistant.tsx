@@ -155,10 +155,10 @@ export default function AIClinicalAssistant() {
               </div>
             ))}
             
-            {diagnosticResults?.analysis && (
+            {isAdmin && diagnosticResults?.analysis && (
               <div className="mt-3 p-3 bg-muted/30 rounded-lg">
                 <p className="text-sm text-muted-foreground">
-                  <strong>{isAdmin ? 'Análise IA:' : 'Análise Assistida:'}</strong> {diagnosticResults.analysis}
+                  <strong>Análise IA:</strong> {diagnosticResults.analysis}
                 </p>
               </div>
             )}

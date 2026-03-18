@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { X, Keyboard, Send, Phone, Calendar, UserPlus, AlertTriangle, Mic, MicOff, PhoneOff, Clock, Stethoscope, User, Shield, Activity, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/use-admin";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ interface IAM3DVoiceAssistantProps {
 
 export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProps) {
   const { user } = useAuth();
+  const isAdmin = useIsAdmin();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
@@ -485,7 +487,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-white/80 text-sm font-medium">IAM3D</span>
+            <span className="text-white/80 text-sm font-medium">{isAdmin ? 'IAM3D' : 'Assistente'}</span>
           </div>
           <span className="text-white/40 text-xs">|</span>
           <span className="text-white/50 text-xs font-mono">{formatDuration(callDuration)}</span>
@@ -706,7 +708,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
           </button>
         </div>
 
-        <p className="text-white/20 text-[10px] text-center mt-2 md:mt-4 hidden md:block">Tele{"<"}M3D{">"} Pro • IAM3D Assistente Médico Virtual</p>
+        <p className="text-white/20 text-[10px] text-center mt-2 md:mt-4 hidden md:block">Tele{"<"}M3D{">"} Pro • {isAdmin ? 'IAM3D ' : ''}Assistente Médico Virtual</p>
       </div>
     </div>
   );
