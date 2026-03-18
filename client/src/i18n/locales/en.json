@@ -319,7 +319,9 @@
     "iam3d_error_generic": "Sorry, there was a problem. Please try again.",
     "iam3d_toggle_keyboard": "Type a message",
     "iam3d_hide_keyboard": "Hide keyboard",
-    "iam3d_input_placeholder": "Type your message..."
+    "iam3d_input_placeholder": "Type your message...",
+    "greeting_neutral": "Hello! I'm your virtual medical assistant. I can help with symptom triage, appointment scheduling, urgent calls with on-duty doctors and more. Tap the microphone to start.",
+    "state_speaking_neutral": "Responding..."
   },
   "features": {
     "page_title": "Technical Platform Features",

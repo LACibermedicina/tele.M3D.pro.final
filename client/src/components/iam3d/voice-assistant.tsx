@@ -64,7 +64,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
 
   useEffect(() => {
     if (isOpen) {
-      setResponse(t('assistant.iam3d_greeting'));
+      setResponse(isAdmin ? t('assistant.iam3d_greeting') : t('assistant.greeting_neutral', 'Olá! Sou seu assistente médico virtual. Posso ajudar com triagem de sintomas, agendamento de consultas, chamadas urgentes com médicos de plantão e muito mais. Toque no microfone para começar.'));
       timerRef.current = setInterval(() => {
         setCallDuration(prev => prev + 1);
       }, 1000);
@@ -444,7 +444,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
     if (synthRef.current) synthRef.current.cancel();
     setState("idle");
     setTranscript("");
-    setResponse(t('assistant.iam3d_greeting'));
+    setResponse(isAdmin ? t('assistant.iam3d_greeting') : t('assistant.greeting_neutral', 'Olá! Sou seu assistente médico virtual.'));
     setActionButtons([]);
     onClose();
   };
@@ -468,7 +468,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
   const stateLabel: Record<AssistantState, string> = {
     idle: t('assistant.iam3d_state_idle'),
     listening: t('assistant.iam3d_state_listening'),
-    speaking: t('assistant.iam3d_state_speaking'),
+    speaking: isAdmin ? t('assistant.iam3d_state_speaking') : t('assistant.state_speaking_neutral', 'Respondendo...'),
     processing: t('assistant.iam3d_state_processing'),
     calling: t('assistant.iam3d_state_calling'),
   };

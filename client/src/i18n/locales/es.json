@@ -329,7 +329,9 @@
     "iam3d_error_generic": "Lo siento, hubo un problema. Inténtelo de nuevo.",
     "iam3d_toggle_keyboard": "Escribir mensaje",
     "iam3d_hide_keyboard": "Ocultar teclado",
-    "iam3d_input_placeholder": "Escribe tu mensaje..."
+    "iam3d_input_placeholder": "Escribe tu mensaje...",
+    "greeting_neutral": "¡Hola! Soy tu asistente médico virtual. Puedo ayudarte con triaje de síntomas, programación de consultas, llamadas urgentes con médicos de guardia y más. Toca el micrófono para empezar.",
+    "state_speaking_neutral": "Respondiendo..."
   },
   "features": {
     "page_title": "Características Técnicas de la Plataforma",

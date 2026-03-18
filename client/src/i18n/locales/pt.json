@@ -319,7 +319,9 @@
     "iam3d_error_generic": "Desculpe, houve um problema. Tente novamente.",
     "iam3d_toggle_keyboard": "Digitar mensagem",
     "iam3d_hide_keyboard": "Ocultar teclado",
-    "iam3d_input_placeholder": "Digite sua mensagem..."
+    "iam3d_input_placeholder": "Digite sua mensagem...",
+    "greeting_neutral": "Olá! Sou seu assistente médico virtual. Posso ajudar com triagem de sintomas, agendamento de consultas, chamadas urgentes com médicos de plantão e muito mais. Toque no microfone para começar.",
+    "state_speaking_neutral": "Respondendo..."
   },
   "features": {
     "page_title": "Recursos Técnicos da Plataforma",

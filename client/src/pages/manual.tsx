@@ -1168,7 +1168,7 @@ Os farmacêuticos possuem um dashboard dedicado com funcionalidades específicas
 
 Variáveis de ambiente necessárias:
 - DATABASE_URL (obrigatório): Conexão PostgreSQL
-- GEMINI_API_KEY (obrigatório): API de serviço médico
+- GEMINI_API_KEY (obrigatório): API de suporte médico
 - AGORA_APP_ID / AGORA_APP_CERTIFICATE (opcional): Vídeo via Agora.io
 - SESSION_SECRET (opcional): Criptografia de sessão
 - PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET (opcional): Pagamentos PayPal
@@ -1176,7 +1176,7 @@ Variáveis de ambiente necessárias:
 - PAGBANK_TOKEN / PAGBANK_EMAIL (opcional): Pagamentos PagBank (PIX/Boleto)
 - PHARMACY_ENABLED (opcional): Habilitar módulo de Farmácia
 - PMD_AUDIT_ENABLED (opcional): Habilitar audit logs do PMD
-- AI_INTEGRATIONS_OPENAI_API_KEY (opcional): Fallback de IA
+- AI_INTEGRATIONS_OPENAI_API_KEY (opcional): Serviço de fallback
 
 O sistema utiliza 61 tabelas no PostgreSQL e migra automaticamente na inicialização.`
       }
@@ -1358,6 +1358,8 @@ function mergeSectionTexts(original: Section[], translated: any[]): Section[] {
 const adminLabelMap: [string, string][] = [
   ["reconhecimento e síntese de voz nativa do navegador", "Web Speech API para reconhecimento e síntese de voz"],
   ["O Assistente de Voz é um assistente inteligente", "O IAM3D é um assistente IA inteligente"],
+  ["Serviço de fallback", "Fallback de IA"],
+  ["API de suporte médico", "API Google Gemini para IA médica"],
   ["assistente de voz", "IAM3D"],
   ["Assistente de Voz", "IAM3D"],
   ["suporte médico", "IA médica"],
