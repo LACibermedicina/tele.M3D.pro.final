@@ -42,26 +42,26 @@ export class WhatsAppService {
   private accessToken: string;
   private phoneNumberId: string;
   private webhookVerifyToken: string;
-  private adminSenderNumber: string;
+  private adminPhoneNumberId: string;
 
   constructor() {
     this.accessToken = process.env.WHATSAPP_ACCESS_TOKEN || '';
     this.phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
     this.webhookVerifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || '';
-    this.adminSenderNumber = '';
+    this.adminPhoneNumberId = '';
   }
 
-  setAdminSenderNumber(number: string) {
-    this.adminSenderNumber = number;
+  setAdminSenderNumber(phoneNumberId: string) {
+    this.adminPhoneNumberId = phoneNumberId;
   }
 
   getAdminSenderNumber(): string {
-    return this.adminSenderNumber;
+    return this.adminPhoneNumberId;
   }
 
   async sendMessage(to: string, message: string): Promise<boolean> {
     try {
-      const phoneId = this.adminSenderNumber || this.phoneNumberId;
+      const phoneId = this.adminPhoneNumberId || this.phoneNumberId;
       const url = `https://graph.facebook.com/v18.0/${phoneId}/messages`;
       
       const response = await fetch(url, {

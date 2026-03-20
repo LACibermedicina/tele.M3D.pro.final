@@ -11184,6 +11184,20 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
 
       const updated = atomicResult[0];
       const request = updated;
+      const acceptedAt = new Date();
+
+      let consultationId: string | null = null;
+      try {
+        const consultation = await storage.createVideoConsultation({
+          patientId: request.patientId,
+          doctorId,
+          status: 'waiting',
+          scheduledAt: acceptedAt,
+        });
+        consultationId = consultation.id;
+      } catch (e) {
+        console.error('Failed to auto-create consultation on accept:', e);
+      }
 
       const recommendedDoctorIds: string[] = (request as any).recommendedDoctors || [];
       const otherDoctorIds = recommendedDoctorIds.filter(id => id !== doctorId);
@@ -11193,11 +11207,12 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
           type: 'urgency_accepted',
           data: {
             title: 'Solicitação Atendida',
-            message: `Atendido por: Dr(a). ${doctorName}`,
+            message: `Atendido por: Dr(a). ${doctorName} às ${acceptedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
             priority: 'medium',
             requestId: req.params.id,
             acceptedByName: doctorName,
             acceptedById: doctorId,
+            acceptedAt: acceptedAt.toISOString(),
             actionUrl: null
           }
         });
@@ -11207,15 +11222,15 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         try {
           await db.insert(pendingNotifications).values({
             userId: otherDocId,
-            type: 'urgent_alert' as any,
+            type: 'system' as any,
             title: 'Solicitação Atendida',
-            message: `Atendido por: Dr(a). ${doctorName}`,
+            message: `Atendido por: Dr(a). ${doctorName} às ${acceptedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
             priority: 'medium',
             actionUrl: null,
             senderId: doctorId,
             delivered: false,
             read: false,
-            metadata: { requestId: req.params.id, acceptedById: doctorId, acceptedByName: doctorName, notificationType: 'urgency_accepted' }
+            metadata: { requestId: req.params.id, acceptedById: doctorId, acceptedByName: doctorName, acceptedAt: acceptedAt.toISOString(), wsType: 'urgency_accepted' }
           });
         } catch (e) {
           console.error('Failed to store urgency acceptance notification:', e);
@@ -11244,9 +11259,10 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
               try {
                 const doc = await storage.getUser(notifyDocId);
                 if (doc?.whatsappNumber) {
+                  const acceptTime = acceptedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                   await whatsAppService.sendMessage(
                     doc.whatsappNumber,
-                    `✅ Solicitação Atendida\n\n📋 Paciente: #${patientCode}\n⚡ Urgência: ${urgencyLabel}\n👨‍⚕️ Atendido por: Dr(a). ${doctorName}\n\nEsta solicitação já foi aceita.\n\n🏥 Tele<M3D> Pro`
+                    `✅ Solicitação Atendida\n\n📋 Paciente: #${patientCode}\n⚡ Urgência: ${urgencyLabel}\n👨‍⚕️ Atendido por: Dr(a). ${doctorName}\n🕐 Horário: ${acceptTime}\n\nEsta solicitação já foi aceita.\n\n🏥 Tele<M3D> Pro`
                   );
                 }
               } catch {}
@@ -11265,7 +11281,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         console.error('WhatsApp accept notification error (non-blocking):', waErr);
       }
 
-      res.json({ success: true, consultationRequest: updated });
+      res.json({ success: true, consultationRequest: updated, consultationId });
     } catch (error) {
       console.error('Accept consultation request error:', error);
       res.status(500).json({ message: 'Failed to accept consultation request' });
@@ -23112,7 +23128,7 @@ async function initializeDefaultSystemSettings() {
       settingKey: 'whatsapp_sender_number',
       settingValue: '',
       settingType: 'string',
-      description: 'Número do remetente WhatsApp do sistema (formato internacional, ex: +5511999999999)',
+      description: 'ID do número WhatsApp Business (Phone Number ID da Meta API, ex: 123456789012345). Encontrado em developers.facebook.com > WhatsApp > API Setup.',
       category: 'notifications',
       isEditable: true,
     },

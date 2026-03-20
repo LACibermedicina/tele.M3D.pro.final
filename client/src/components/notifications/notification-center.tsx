@@ -323,7 +323,7 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
                     const result = await apiRequest('PATCH', `/api/consultation-requests/${notification.data.requestId}/accept`, {});
                     const data = await result.json().catch(() => ({}));
                     markAsRead(notification.id);
-                    const consultationId = data?.consultationRequest?.consultationId;
+                    const consultationId = data?.consultationId;
                     if (consultationId) {
                       setLocation(`/video-consultation/${consultationId}`);
                     } else {

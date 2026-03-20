@@ -21,17 +21,20 @@ export function useNotifications() {
   const { toast } = useToast();
   const pendingFetched = useRef(false);
 
-  const mapDbNotification = (n: any, markRead: boolean): Notification => ({
-    id: `stored-${n.id}`,
-    type: n.type as Notification['type'],
-    title: n.title,
-    message: n.message,
-    priority: n.priority as Notification['priority'],
-    timestamp: new Date(n.createdAt),
-    read: markRead,
-    actionUrl: n.actionUrl,
-    data: { ...n.metadata, senderId: n.senderId, dbId: n.id }
-  });
+  const mapDbNotification = (n: any, markRead: boolean): Notification => {
+    const resolvedType = n.metadata?.wsType || n.type;
+    return {
+      id: `stored-${n.id}`,
+      type: resolvedType as Notification['type'],
+      title: n.title,
+      message: n.message,
+      priority: n.priority as Notification['priority'],
+      timestamp: new Date(n.createdAt),
+      read: markRead,
+      actionUrl: n.actionUrl,
+      data: { ...n.metadata, senderId: n.senderId, dbId: n.id }
+    };
+  };
 
   useEffect(() => {
     if (isConnected && !pendingFetched.current) {
