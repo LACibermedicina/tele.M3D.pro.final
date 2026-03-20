@@ -8941,6 +8941,38 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         consultationId: consultation[0].id
       });
 
+      // Store persistent notification for doctor (in case they're offline)
+      try {
+        await db.insert(pendingNotifications).values({
+          userId: doctorId,
+          type: 'patient_joined_office',
+          title: 'Paciente na Sala de Espera',
+          message: `${patient[0].name} entrou no seu consultório virtual e aguarda atendimento.`,
+          priority: 'high',
+          actionUrl: `/video-consultation/${consultation[0].id}`,
+          senderId: req.user.id,
+          metadata: {
+            patientId,
+            patientName: patient[0].name,
+            consultationId: consultation[0].id,
+          },
+        });
+      } catch (notifErr) {
+        console.error('Failed to store waiting room notification:', notifErr);
+      }
+
+      // Send WhatsApp notification to doctor if configured
+      try {
+        if (whatsAppService.isConfigured() && doctor[0].phone) {
+          await whatsAppService.sendMessage(
+            doctor[0].phone,
+            `🔔 Paciente na Sala de Espera\n\n👤 Paciente: ${patient[0].name}\n📋 Consulta ID: ${consultation[0].id.slice(0, 8)}...\n\nO paciente está aguardando no seu consultório virtual. Acesse a plataforma para iniciar o atendimento.\n\n🏥 Tele<M3D> Pro`
+          );
+        }
+      } catch (whatsappErr) {
+        console.error('Failed to send WhatsApp waiting room notification:', whatsappErr);
+      }
+
       // Also notify the patient's user account with the video link
       broadcastToUser(req.user.id, {
         type: 'consultation_ready',

@@ -5,7 +5,7 @@ import { queryClient, apiRequest } from '@/lib/queryClient';
 
 export interface Notification {
   id: string;
-  type: 'appointment' | 'whatsapp' | 'exam_result' | 'emergency' | 'system' | 'consultation_invite' | 'doctor_message' | 'consultation_ready' | 'urgent_alert' | 'consultation_message';
+  type: 'appointment' | 'whatsapp' | 'exam_result' | 'emergency' | 'system' | 'consultation_invite' | 'doctor_message' | 'consultation_ready' | 'urgent_alert' | 'consultation_message' | 'patient_joined_office' | 'credit_transfer' | 'credit_transfer_response' | 'credit_transfer_cancelled' | 'incomplete_consultation';
   title: string;
   message: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
@@ -351,8 +351,22 @@ export function useNotifications() {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  const ACTIVE_THRESHOLD_MS = 20 * 60 * 1000;
+
+  const activeNotifications = notifications.filter(n => {
+    const age = Date.now() - new Date(n.timestamp).getTime();
+    return !n.read && age < ACTIVE_THRESHOLD_MS;
+  });
+
+  const historyNotifications = notifications.filter(n => {
+    const age = Date.now() - new Date(n.timestamp).getTime();
+    return n.read || age >= ACTIVE_THRESHOLD_MS;
+  });
+
   return {
     notifications,
+    activeNotifications,
+    historyNotifications,
     unreadCount,
     isConnected,
     markAsRead,
