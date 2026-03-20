@@ -625,7 +625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const doctor = await storage.getUser(userId);
           const doctorName = doctor?.name || 'Médico(a)';
 
-          broadcastToUser(patient.userId, {
+          const deliveredToPatient = broadcastToUser(patient.userId, {
             type: 'room_presence',
             data: {
               title: 'Médico(a) entrou na sala',
@@ -637,6 +637,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
               actionUrl: `/video-consultation/${targetConsultationId}`
             }
           });
+
+          if (!deliveredToPatient) {
+            try {
+              await db.insert(pendingNotifications).values({
+                userId: patient.userId,
+                type: 'consultation_ready',
+                title: 'Médico(a) na Sala de Consulta',
+                message: `Dr(a). ${doctorName} está pronto(a) para o atendimento.`,
+                priority: 'high',
+                actionUrl: `/video-consultation/${targetConsultationId}`,
+                senderId: userId,
+                delivered: false,
+                read: false,
+                metadata: { consultationId: targetConsultationId, doctorName }
+              });
+            } catch (e) {
+              console.error('Failed to store doctor room presence notification:', e);
+            }
+          }
         }
       } catch (err) {
         console.error('Room presence notification error:', err);
@@ -10960,13 +10979,21 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
               triageData.aiTriageLevel === 'very_urgent' ? '🟠' : 
               triageData.aiTriageLevel === 'urgent' ? '🟡' : '🟢';
 
-            for (const docId of targetDoctorIds) {
+            const allDoctors = await storage.getUsersByRole('doctor');
+            const notifyDoctorIds = new Set(targetDoctorIds);
+            allDoctors.forEach((d: any) => {
+              if (d.isActive !== false && d.whatsappNumber) {
+                notifyDoctorIds.add(d.id);
+              }
+            });
+
+            for (const docId of notifyDoctorIds) {
               try {
                 const doctor = await storage.getUser(docId);
                 if (doctor?.whatsappNumber) {
                   await whatsAppService.sendMessage(
                     doctor.whatsappNumber,
-                    `${urgencyEmoji} Nova Solicitação de Consulta\n\n📋 Paciente: #${patientCode}\n⚡ Urgência: ${urgencyLabel}\n🏥 Especialidade: ${doctor.specialty || 'Geral'}\n📝 Sintomas: ${symptoms.slice(0, 200)}\n\nAcesse a plataforma para aceitar esta solicitação.\n\n🏥 Tele<M3D> Pro`
+                    `${urgencyEmoji} Nova Solicitação de Consulta\n\n📋 Paciente: #${patientCode}\n⚡ Urgência: ${urgencyLabel}\n🏥 Especialidade: ${doctor.specialty || 'Geral'}\n📝 Sintomas: ${symptoms.slice(0, 200)}\n\n▶️ Aceitar: Acesse a plataforma → Painel Médico → Aceitar solicitação\n💬 Responder via chat: /doctor-chat\n❌ Recusar: Acesse a plataforma → Recusar\n\n🏥 Tele<M3D> Pro`
                   );
                 }
               } catch {}
@@ -11173,12 +11200,20 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
               (request as any).urgencyLevel === 'very_urgent' ? 'MUITO URGENTE' :
               (request as any).urgencyLevel === 'urgent' ? 'URGENTE' : 'Normal';
 
-            for (const otherDocId of otherDoctorIds) {
+            const allDoctors = await storage.getUsersByRole('doctor');
+            const notifyDocIds = new Set(otherDoctorIds);
+            allDoctors.forEach((d: any) => {
+              if (d.id !== doctorId && d.isActive !== false && d.whatsappNumber) {
+                notifyDocIds.add(d.id);
+              }
+            });
+
+            for (const notifyDocId of notifyDocIds) {
               try {
-                const otherDoc = await storage.getUser(otherDocId);
-                if (otherDoc?.whatsappNumber) {
+                const doc = await storage.getUser(notifyDocId);
+                if (doc?.whatsappNumber) {
                   await whatsAppService.sendMessage(
-                    otherDoc.whatsappNumber,
+                    doc.whatsappNumber,
                     `✅ Solicitação Atendida\n\n📋 Paciente: #${patientCode}\n⚡ Urgência: ${urgencyLabel}\n👨‍⚕️ Atendido por: Dr(a). ${doctorName}\n\nEsta solicitação já foi aceita.\n\n🏥 Tele<M3D> Pro`
                   );
                 }

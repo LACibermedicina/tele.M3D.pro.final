@@ -420,15 +420,19 @@ export function useNotifications() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const ACTIVE_THRESHOLD_MS = 20 * 60 * 1000;
+  const URGENCY_ACCEPTED_THRESHOLD_MS = 5 * 60 * 1000;
+
+  const getActiveThreshold = (type: string) =>
+    type === 'urgency_accepted' ? URGENCY_ACCEPTED_THRESHOLD_MS : ACTIVE_THRESHOLD_MS;
 
   const activeNotifications = notifications.filter(n => {
     const age = Date.now() - new Date(n.timestamp).getTime();
-    return !n.read && age < ACTIVE_THRESHOLD_MS;
+    return !n.read && age < getActiveThreshold(n.type);
   });
 
   const historyNotifications = notifications.filter(n => {
     const age = Date.now() - new Date(n.timestamp).getTime();
-    return n.read || age >= ACTIVE_THRESHOLD_MS;
+    return n.read || age >= getActiveThreshold(n.type);
   });
 
   return {

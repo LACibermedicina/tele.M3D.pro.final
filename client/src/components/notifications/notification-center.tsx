@@ -42,6 +42,13 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
           });
           toast({ title: "Resposta enviada", description: `Sua resposta foi enviada para ${notification.data?.patientName || 'o paciente'}.` });
         }
+      } else if (notification.type === 'urgency_accepted' && notification.data?.acceptedById) {
+        await apiRequest('POST', '/api/notifications/patient-reply', {
+          doctorId: notification.data.acceptedById,
+          message: replyText.trim(),
+          notificationId: notification.id,
+        });
+        toast({ title: "Mensagem enviada", description: `Sua mensagem foi enviada para Dr(a). ${notification.data.acceptedByName || 'o médico'}.` });
       } else {
         const doctorId = notification.data?.doctorId || notification.data?.senderId || notification.senderId;
         if (!doctorId) return;
@@ -344,6 +351,21 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
               <Button
                 size="sm"
                 variant="ghost"
+                className="h-6 px-2 text-xs text-green-600 hover:text-green-800"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (notification.data?.patientCode) {
+                    window.open(`https://wa.me/?text=${encodeURIComponent(`Sobre paciente #${notification.data.patientCode}`)}`, '_blank');
+                  }
+                  markAsRead(notification.id);
+                }}
+              >
+                <Send className="h-3 w-3 mr-1" />
+                WhatsApp
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
                 className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -355,10 +377,25 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
             </>
           )}
           {notification.type === 'urgency_accepted' && notification.data?.acceptedByName && (
-            <span className="text-xs text-green-600 font-medium flex items-center gap-1">
-              <Check className="h-3 w-3" />
-              {notification.data.acceptedByName}
-            </span>
+            <>
+              <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                <Check className="h-3 w-3" />
+                {notification.data.acceptedByName}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setReplyingTo(replyingTo === notification.id ? null : notification.id);
+                  setReplyText("");
+                }}
+              >
+                <MessageCircle className="h-3 w-3 mr-1" />
+                Mensagem
+              </Button>
+            </>
           )}
           {(notification.type === 'consultation_invite' || notification.type === 'doctor_message' || notification.type === 'consultation_message') && (notification.data?.allowReply !== false) && (
             <Button
