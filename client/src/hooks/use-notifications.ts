@@ -21,33 +21,47 @@ export function useNotifications() {
   const { toast } = useToast();
   const pendingFetched = useRef(false);
 
-  // Fetch pending stored notifications on initial connection
+  const mapDbNotification = (n: any, markRead: boolean): Notification => ({
+    id: `stored-${n.id}`,
+    type: n.type as Notification['type'],
+    title: n.title,
+    message: n.message,
+    priority: n.priority as Notification['priority'],
+    timestamp: new Date(n.createdAt),
+    read: markRead,
+    actionUrl: n.actionUrl,
+    data: { ...n.metadata, senderId: n.senderId, dbId: n.id }
+  });
+
   useEffect(() => {
     if (isConnected && !pendingFetched.current) {
       pendingFetched.current = true;
-      fetch('/api/notifications/pending', { credentials: 'include' })
-        .then(res => res.ok ? res.json() : [])
-        .then((pending: any[]) => {
-          if (pending && pending.length > 0) {
-            const storedNotifications: Notification[] = pending.map((n: any) => ({
-              id: `stored-${n.id}`,
-              type: n.type as Notification['type'],
-              title: n.title,
-              message: n.message,
-              priority: n.priority as Notification['priority'],
-              timestamp: new Date(n.createdAt),
-              read: false,
-              actionUrl: n.actionUrl,
-              data: { ...n.metadata, senderId: n.senderId, dbId: n.id }
-            }));
-            setNotifications(prev => [...storedNotifications, ...prev]);
 
-            // Mark as read in DB
-            const ids = pending.map((n: any) => n.id);
-            apiRequest('POST', '/api/notifications/mark-read', { notificationIds: ids }).catch(() => {});
-          }
-        })
-        .catch(() => {});
+      const fetchPending = fetch('/api/notifications/pending', { credentials: 'include' })
+        .then(res => res.ok ? res.json() : [])
+        .catch(() => []);
+
+      const fetchHistory = fetch('/api/notifications/history', { credentials: 'include' })
+        .then(res => res.ok ? res.json() : [])
+        .catch(() => []);
+
+      Promise.all([fetchPending, fetchHistory]).then(([pending, history]: [any[], any[]]) => {
+        const mapped: Notification[] = [];
+
+        if (pending && pending.length > 0) {
+          mapped.push(...pending.map((n: any) => mapDbNotification(n, false)));
+          const ids = pending.map((n: any) => n.id);
+          apiRequest('POST', '/api/notifications/mark-read', { notificationIds: ids }).catch(() => {});
+        }
+
+        if (history && history.length > 0) {
+          mapped.push(...history.map((n: any) => mapDbNotification(n, true)));
+        }
+
+        if (mapped.length > 0) {
+          setNotifications(prev => [...mapped, ...prev]);
+        }
+      });
     }
   }, [isConnected]);
 
@@ -215,13 +229,13 @@ export function useNotifications() {
       case 'patient_joined_office':
         return {
           id: `patient-join-${Date.now()}`,
-          type: 'appointment',
+          type: 'patient_joined_office',
           title: 'Paciente na Sala de Espera',
-          message: `${message.patient?.name || 'Um paciente'} entrou no seu consultório virtual`,
+          message: `${message.patient?.name || 'Um paciente'} entrou no seu consultório virtual e aguarda atendimento.`,
           priority: 'critical',
           timestamp,
           read: false,
-          actionUrl: `/consultation/video/${message.consultationId}`,
+          actionUrl: `/video-consultation/${message.consultationId}`,
           data: message
         };
 

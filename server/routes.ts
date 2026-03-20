@@ -9064,7 +9064,10 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         try {
           await db.update(pendingNotifications)
             .set({ read: true })
-            .where(eq(pendingNotifications.id, notificationId));
+            .where(and(
+              eq(pendingNotifications.id, notificationId),
+              eq(pendingNotifications.userId, user.id)
+            ));
         } catch {}
       }
 
@@ -9228,6 +9231,24 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
     } catch (error) {
       console.error('Mark notifications read error:', error);
       res.status(500).json({ message: 'Failed to mark notifications as read' });
+    }
+  });
+
+  app.get('/api/notifications/history', requireAuth, async (req: any, res) => {
+    try {
+      const history = await db.select()
+        .from(pendingNotifications)
+        .where(and(
+          eq(pendingNotifications.userId, req.user.id),
+          eq(pendingNotifications.read, true)
+        ))
+        .orderBy(desc(pendingNotifications.createdAt))
+        .limit(100);
+
+      res.json(history);
+    } catch (error) {
+      console.error('Get notification history error:', error);
+      res.json([]);
     }
   });
 
