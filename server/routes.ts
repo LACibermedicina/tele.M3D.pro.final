@@ -14,7 +14,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers, profileMergeAuditLogs } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers, profileMergeAuditLogs, prescriptionShares, labOrders, hospitalReferrals, clinicalAssets } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
@@ -9468,7 +9468,8 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         }
       }
 
-      // Use transaction to create both user and patient record (if patient)
+      // Use transaction to create user, patient record, and merge temp data atomically
+      let mergeResult: { counts: Record<string, number> } | null = null;
       const newUser = await db.transaction(async (tx) => {
         // If merging a temporary patient, clear its document fields to free the unique index
         if (temporaryPatientToMerge) {
@@ -9477,7 +9478,6 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
             .where(eq(patients.id, temporaryPatientToMerge.id));
         }
 
-        // Create user
         const [user] = await tx.insert(users).values({
           username,
           password: hashedPassword,
@@ -9494,9 +9494,8 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
           superiorDoctorId: validReferrerId,
         }).returning();
         
-        // If patient, also create patient record
         if (role === 'patient') {
-          await tx.insert(patients).values({
+          const [newPatient] = await tx.insert(patients).values({
             userId: user.id,
             name,
             email,
@@ -9508,7 +9507,53 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
             document: docNumber?.trim() || null,
             documentCountry: documentCountry?.trim() || null,
             healthStatus: 'a_determinar',
-          });
+          }).returning();
+
+          if (temporaryPatientToMerge && newPatient) {
+            const mergeCounts: Record<string, number> = {};
+
+            const mrR = await tx.update(medicalRecords).set({ patientId: newPatient.id }).where(eq(medicalRecords.patientId, temporaryPatientToMerge.id)).returning({ id: medicalRecords.id });
+            mergeCounts.medicalRecords = mrR.length;
+            const apR = await tx.update(appointments).set({ patientId: newPatient.id }).where(eq(appointments.patientId, temporaryPatientToMerge.id)).returning({ id: appointments.id });
+            mergeCounts.appointments = apR.length;
+            const vcR = await tx.update(videoConsultations).set({ patientId: newPatient.id }).where(eq(videoConsultations.patientId, temporaryPatientToMerge.id)).returning({ id: videoConsultations.id });
+            mergeCounts.videoConsultations = vcR.length;
+            const erR = await tx.update(examResults).set({ patientId: newPatient.id }).where(eq(examResults.patientId, temporaryPatientToMerge.id)).returning({ id: examResults.id });
+            mergeCounts.examResults = erR.length;
+            const psR = await tx.update(prescriptionShares).set({ patientId: newPatient.id }).where(eq(prescriptionShares.patientId, temporaryPatientToMerge.id)).returning({ id: prescriptionShares.id });
+            mergeCounts.prescriptionShares = psR.length;
+            const rxR = await tx.update(prescriptions).set({ patientId: newPatient.id }).where(eq(prescriptions.patientId, temporaryPatientToMerge.id)).returning({ id: prescriptions.id });
+            mergeCounts.prescriptions = rxR.length;
+            const loR = await tx.update(labOrders).set({ patientId: newPatient.id }).where(eq(labOrders.patientId, temporaryPatientToMerge.id)).returning({ id: labOrders.id });
+            mergeCounts.labOrders = loR.length;
+            const hrR = await tx.update(hospitalReferrals).set({ patientId: newPatient.id }).where(eq(hospitalReferrals.patientId, temporaryPatientToMerge.id)).returning({ id: hospitalReferrals.id });
+            mergeCounts.hospitalReferrals = hrR.length;
+            const caR = await tx.update(clinicalAssets).set({ patientId: newPatient.id }).where(eq(clinicalAssets.patientId, temporaryPatientToMerge.id)).returning({ id: clinicalAssets.id });
+            mergeCounts.clinicalAssets = caR.length;
+            const crR = await tx.update(consultationRequests).set({ patientId: newPatient.id }).where(eq(consultationRequests.patientId, temporaryPatientToMerge.id)).returning({ id: consultationRequests.id });
+            mergeCounts.consultationRequests = crR.length;
+            const wmR = await tx.update(whatsappMessages).set({ patientId: newPatient.id }).where(eq(whatsappMessages.patientId, temporaryPatientToMerge.id)).returning({ id: whatsappMessages.id });
+            mergeCounts.whatsappMessages = wmR.length;
+            const catR = await tx.update(consultationAccessTokens).set({ patientId: newPatient.id }).where(eq(consultationAccessTokens.patientId, temporaryPatientToMerge.id)).returning({ id: consultationAccessTokens.id });
+            mergeCounts.consultationAccessTokens = catR.length;
+
+            await tx.update(patients)
+              .set({ isTemporary: true, mergedIntoPatientId: newPatient.id, updatedAt: new Date() })
+              .where(eq(patients.id, temporaryPatientToMerge.id));
+
+            await tx.insert(profileMergeAuditLogs).values({
+              temporaryPatientId: temporaryPatientToMerge.id,
+              permanentPatientId: newPatient.id,
+              permanentUserId: user.id,
+              mergedBy: 'system_registration',
+              mergedRecords: mergeCounts,
+              beforeState: { temporaryPatient: temporaryPatientToMerge },
+              afterState: { permanentPatient: newPatient },
+            });
+
+            mergeResult = { counts: mergeCounts };
+            console.log(`✅ Merged temporary patient ${temporaryPatientToMerge.id} into permanent ${newPatient.id}:`, mergeCounts);
+          }
         }
         
         return user;
@@ -9521,25 +9566,6 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
           console.log(`✅ Added promotional credits to new user: ${username}`);
         } catch (error) {
           console.error('Failed to add promotional credits:', error);
-        }
-      }
-
-      // Merge temporary patient data if applicable
-      let mergeResult = null;
-      if (temporaryPatientToMerge && role === 'patient') {
-        try {
-          const permanentPatient = await storage.getPatientByUserId(newUser.id);
-          if (permanentPatient) {
-            mergeResult = await storage.mergeTemporaryPatientData(
-              temporaryPatientToMerge.id,
-              permanentPatient.id,
-              newUser.id,
-              'system_registration'
-            );
-            console.log(`✅ Merged temporary patient ${temporaryPatientToMerge.id} into permanent ${permanentPatient.id}:`, mergeResult.counts);
-          }
-        } catch (mergeError) {
-          console.error('Failed to merge temporary patient data:', mergeError);
         }
       }
       

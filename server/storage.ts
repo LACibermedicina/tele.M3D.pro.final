@@ -2358,7 +2358,7 @@ export class DatabaseStorage implements IStorage {
         .set({ patientId: permanentPatientId })
         .where(eq(prescriptions.patientId, temporaryPatientId))
         .returning({ id: prescriptions.id });
-      counts.prescriptions = (rxResult as any[]).length;
+      counts.prescriptions = rxResult.length;
 
       const crResult = await tx.update(consultationRequests)
         .set({ patientId: permanentPatientId })
