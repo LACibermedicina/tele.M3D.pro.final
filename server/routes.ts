@@ -14648,6 +14648,15 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       if (!transferId) return res.status(400).json({ message: 'ID da transferência obrigatório' });
       const transfer = await storage.cancelCreditTransfer(transferId, user.id);
 
+      await db.insert(pendingNotifications).values({
+        userId: transfer.toUserId,
+        type: 'credit_transfer_cancelled',
+        title: 'Transferência Cancelada',
+        message: `${user.name || user.username} cancelou a transferência de ${transfer.amount} TM3D`,
+        actionUrl: '/wallet',
+        metadata: { transferId: transfer.id, amount: transfer.amount },
+      });
+
       broadcastToUser(transfer.toUserId, {
         type: 'credit_transfer_cancelled',
         data: {
