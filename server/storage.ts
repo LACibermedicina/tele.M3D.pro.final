@@ -2087,10 +2087,10 @@ export class DatabaseStorage implements IStorage {
 
       const [escrowTx] = await tx.insert(tmcTransactions).values({
         userId: fromUserId,
-        type: 'transfer',
+        type: 'transfer_hold',
         amount: -amount,
         reason: `Escrow: transferência pendente - ${reason || 'Sem motivo'}`,
-        functionUsed: 'transfer_escrow',
+        functionUsed: 'transfer_hold',
         relatedUserId: toUserId,
         balanceBefore,
         balanceAfter,
@@ -2122,14 +2122,14 @@ export class DatabaseStorage implements IStorage {
       if (transfer.toUserId !== userId) throw new Error('Apenas o destinatário pode responder');
       if (transfer.expiresAt && new Date() > new Date(transfer.expiresAt)) {
         await tx.update(creditTransfers).set({ status: 'expired', respondedAt: new Date() })
-          .where(eq(creditTransfers.id, transferId));
+          .where(and(eq(creditTransfers.id, transferId), eq(creditTransfers.status, 'pending')));
         const [sender] = await tx.select({ tmcCredits: users.tmcCredits })
           .from(users).where(eq(users.id, transfer.fromUserId)).for('update');
         const refundBefore = sender?.tmcCredits || 0;
         await tx.update(users).set({ tmcCredits: refundBefore + transfer.amount })
           .where(eq(users.id, transfer.fromUserId));
         await tx.insert(tmcTransactions).values({
-          userId: transfer.fromUserId, type: 'credit', amount: transfer.amount,
+          userId: transfer.fromUserId, type: 'transfer_refund', amount: transfer.amount,
           reason: 'Reembolso: transferência expirada', functionUsed: 'transfer_refund',
           relatedUserId: transfer.toUserId, balanceBefore: refundBefore,
           balanceAfter: refundBefore + transfer.amount,
@@ -2161,7 +2161,7 @@ export class DatabaseStorage implements IStorage {
         await tx.update(users).set({ tmcCredits: refundBefore + transfer.amount })
           .where(eq(users.id, transfer.fromUserId));
         await tx.insert(tmcTransactions).values({
-          userId: transfer.fromUserId, type: 'credit', amount: transfer.amount,
+          userId: transfer.fromUserId, type: 'transfer_refund', amount: transfer.amount,
           reason: 'Reembolso: transferência recusada', functionUsed: 'transfer_refund',
           relatedUserId: transfer.toUserId, balanceBefore: refundBefore,
           balanceAfter: refundBefore + transfer.amount,
@@ -2189,7 +2189,7 @@ export class DatabaseStorage implements IStorage {
       await tx.update(users).set({ tmcCredits: refundBefore + transfer.amount })
         .where(eq(users.id, transfer.fromUserId));
       await tx.insert(tmcTransactions).values({
-        userId: transfer.fromUserId, type: 'credit', amount: transfer.amount,
+        userId: transfer.fromUserId, type: 'transfer_refund', amount: transfer.amount,
         reason: 'Reembolso: transferência cancelada', functionUsed: 'transfer_refund',
         balanceBefore: refundBefore, balanceAfter: refundBefore + transfer.amount,
       });
@@ -2215,15 +2215,18 @@ export class DatabaseStorage implements IStorage {
       if (t.expiresAt && new Date(t.expiresAt) < now) {
         try {
           await db.transaction(async (tx) => {
-            await tx.update(creditTransfers).set({ status: 'expired', respondedAt: now })
-              .where(eq(creditTransfers.id, t.id));
+            const [updated] = await tx.update(creditTransfers)
+              .set({ status: 'expired', respondedAt: now })
+              .where(and(eq(creditTransfers.id, t.id), eq(creditTransfers.status, 'pending')))
+              .returning();
+            if (!updated) return;
             const [sender] = await tx.select({ tmcCredits: users.tmcCredits })
               .from(users).where(eq(users.id, t.fromUserId)).for('update');
             const refundBefore = sender?.tmcCredits || 0;
             await tx.update(users).set({ tmcCredits: refundBefore + t.amount })
               .where(eq(users.id, t.fromUserId));
             await tx.insert(tmcTransactions).values({
-              userId: t.fromUserId, type: 'credit', amount: t.amount,
+              userId: t.fromUserId, type: 'transfer_refund', amount: t.amount,
               reason: 'Reembolso: transferência expirada', functionUsed: 'transfer_refund',
               relatedUserId: t.toUserId, balanceBefore: refundBefore,
               balanceAfter: refundBefore + t.amount,

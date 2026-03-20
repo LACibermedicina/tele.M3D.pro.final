@@ -14599,12 +14599,17 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       const transfer = await storage.respondToCreditTransfer(transferId, user.id, action);
 
       try {
-        await db.update(pendingNotifications)
-          .set({ read: true })
+        const transferNotifs = await db.select().from(pendingNotifications)
           .where(and(
             eq(pendingNotifications.userId, user.id),
             eq(pendingNotifications.type, 'credit_transfer'),
           ));
+        for (const n of transferNotifs) {
+          const meta = n.metadata as any;
+          if (meta?.transferId === transferId) {
+            await db.update(pendingNotifications).set({ read: true }).where(eq(pendingNotifications.id, n.id));
+          }
+        }
       } catch {}
 
       const statusMsg = action === 'accept' ? 'aceitou' : 'recusou';

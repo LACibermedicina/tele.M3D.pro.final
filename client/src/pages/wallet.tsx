@@ -365,11 +365,27 @@ export default function WalletPage() {
     setUserSearchResults([]);
   };
 
-  const handleTransfer = () => {
-    if (!transferUserId || !transferAmount || parseInt(transferAmount) <= 0) {
-      toast({ title: "Dados inválidos", description: "Preencha todos os campos corretamente.", variant: "destructive" });
+  const [transferConfirmOpen, setTransferConfirmOpen] = useState(false);
+
+  const validateTransfer = () => {
+    if (!selectedRecipient || !transferUserId) {
+      toast({ title: "Destinatário não selecionado", description: "Busque e selecione um destinatário.", variant: "destructive" });
       return;
     }
+    const amount = parseInt(transferAmount);
+    if (!transferAmount || amount <= 0) {
+      toast({ title: "Valor inválido", description: "Informe uma quantidade positiva de créditos.", variant: "destructive" });
+      return;
+    }
+    if (balance && amount > balance.balance) {
+      toast({ title: "Saldo insuficiente", description: `Você possui apenas ${balance.balance} TM3D.`, variant: "destructive" });
+      return;
+    }
+    setTransferConfirmOpen(true);
+  };
+
+  const handleTransfer = () => {
+    setTransferConfirmOpen(false);
     transferMutation.mutate({ toUserId: transferUserId, amount: parseInt(transferAmount), reason: transferReason || "Transferência entre usuários" });
   };
 
@@ -1005,7 +1021,7 @@ export default function WalletPage() {
                   />
                 </div>
                 <Button
-                  onClick={handleTransfer}
+                  onClick={validateTransfer}
                   disabled={transferMutation.isPending || !transferUserId || !transferAmount}
                   className="w-full"
                 >
@@ -1018,6 +1034,41 @@ export default function WalletPage() {
                 </Button>
               </CardContent>
             </Card>
+
+            <Dialog open={transferConfirmOpen} onOpenChange={setTransferConfirmOpen}>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Confirmar Transferência</DialogTitle>
+                  <DialogDescription>Revise os dados antes de confirmar.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 py-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Destinatário:</span>
+                    <span className="font-medium">{selectedRecipient?.name || selectedRecipient?.username}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Valor:</span>
+                    <span className="font-bold text-primary">{transferAmount} TM3D</span>
+                  </div>
+                  {transferReason && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Motivo:</span>
+                      <span>{transferReason}</span>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Os créditos ficarão em custódia até o destinatário aceitar (72h).
+                  </p>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setTransferConfirmOpen(false)}>Cancelar</Button>
+                  <Button onClick={handleTransfer} disabled={transferMutation.isPending}>
+                    {transferMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+                    Confirmar Envio
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             <div className="space-y-4">
               <Card className="bg-blue-50/50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
