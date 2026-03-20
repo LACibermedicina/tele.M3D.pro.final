@@ -8392,29 +8392,26 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
       let effectiveUserId = patient?.userId || tokenRecord.patientId;
 
       if (patient && patient.document && patient.documentCountry) {
-        const registeredUser = await storage.getUserByDocument(patient.document, patient.documentCountry);
-        if (registeredUser && registeredUser.role === 'patient') {
-          const registeredPatient = await storage.getPatientByUserId(registeredUser.id);
-          if (registeredPatient && registeredPatient.id !== patient.id) {
-            if (patient.isTemporary || !patient.userId) {
-              try {
+        try {
+          const registeredUser = await storage.getUserByDocument(patient.document, patient.documentCountry);
+          if (registeredUser && registeredUser.role === 'patient') {
+            const registeredPatient = await storage.getPatientByUserId(registeredUser.id);
+            if (registeredPatient && registeredPatient.id !== patient.id) {
+              if (patient.isTemporary || !patient.userId) {
                 await storage.mergeTemporaryPatientData(
                   patient.id,
                   registeredPatient.id,
                   registeredUser.id,
                   'system_access_link'
                 );
-                effectivePatientId = registeredPatient.id;
-                effectiveUserId = registeredUser.id;
                 console.log(`✅ Auto-merged temp patient ${patient.id} into registered patient ${registeredPatient.id} via access link`);
-              } catch (mergeErr) {
-                console.error('Auto-merge on access link failed (non-fatal):', mergeErr);
               }
-            } else {
               effectivePatientId = registeredPatient.id;
               effectiveUserId = registeredUser.id;
             }
           }
+        } catch (mergeErr) {
+          console.error('Profile recognition/merge on access link failed:', mergeErr);
         }
       }
 
@@ -9473,10 +9470,10 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
 
       // Use transaction to create both user and patient record (if patient)
       const newUser = await db.transaction(async (tx) => {
-        // If merging a temporary patient, pre-mark it as merged to free the unique index
+        // If merging a temporary patient, clear its document fields to free the unique index
         if (temporaryPatientToMerge) {
           await tx.update(patients)
-            .set({ mergedIntoPatientId: temporaryPatientToMerge.id, updatedAt: new Date() })
+            .set({ document: null, documentCountry: null, updatedAt: new Date() })
             .where(eq(patients.id, temporaryPatientToMerge.id));
         }
 
