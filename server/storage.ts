@@ -1,5 +1,5 @@
 import { 
-  users, patients, appointments, medicalRecords, whatsappMessages, 
+  users, patients, appointments, medicalRecords, whatsappMessages, prescriptions,
   examResults, collaborators, doctorSchedule, digitalSignatures, videoConsultations,
   prescriptionShares, labOrders, hospitalReferrals, collaboratorIntegrations, collaboratorApiKeys,
   tmcTransactions, tmcConfig, supportConfig, systemSettings, chatbotReferences, patientNotes,
@@ -2287,12 +2287,13 @@ export class DatabaseStorage implements IStorage {
     }
 
     return await db.transaction(async (tx) => {
-      const counts = {
+      const counts: Record<string, number> = {
         medicalRecords: 0,
         appointments: 0,
         videoConsultations: 0,
         examResults: 0,
         prescriptionShares: 0,
+        prescriptions: 0,
         labOrders: 0,
         hospitalReferrals: 0,
         clinicalAssets: 0,
@@ -2352,6 +2353,24 @@ export class DatabaseStorage implements IStorage {
         .where(eq(clinicalAssets.patientId, temporaryPatientId))
         .returning({ id: clinicalAssets.id });
       counts.clinicalAssets = caResult.length;
+
+      const rxResult = await tx.update(prescriptions)
+        .set({ patientId: permanentPatientId })
+        .where(eq(prescriptions.patientId, temporaryPatientId))
+        .returning({ id: prescriptions.id });
+      counts.prescriptions = (rxResult as any[]).length;
+
+      const crResult = await tx.update(consultationRequests)
+        .set({ patientId: permanentPatientId })
+        .where(eq(consultationRequests.patientId, temporaryPatientId))
+        .returning({ id: consultationRequests.id });
+      counts.consultationRequests = crResult.length;
+
+      const wmResult = await tx.update(whatsappMessages)
+        .set({ patientId: permanentPatientId })
+        .where(eq(whatsappMessages.patientId, temporaryPatientId))
+        .returning({ id: whatsappMessages.id });
+      counts.whatsappMessages = wmResult.length;
 
       const catResult = await tx.update(consultationAccessTokens)
         .set({ patientId: permanentPatientId })

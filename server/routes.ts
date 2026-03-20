@@ -9473,6 +9473,13 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
 
       // Use transaction to create both user and patient record (if patient)
       const newUser = await db.transaction(async (tx) => {
+        // If merging a temporary patient, pre-mark it as merged to free the unique index
+        if (temporaryPatientToMerge) {
+          await tx.update(patients)
+            .set({ mergedIntoPatientId: temporaryPatientToMerge.id, updatedAt: new Date() })
+            .where(eq(patients.id, temporaryPatientToMerge.id));
+        }
+
         // Create user
         const [user] = await tx.insert(users).values({
           username,
