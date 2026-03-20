@@ -61,7 +61,8 @@ export class WhatsAppService {
 
   async sendMessage(to: string, message: string): Promise<boolean> {
     try {
-      const url = `https://graph.facebook.com/v18.0/${this.phoneNumberId}/messages`;
+      const phoneId = this.adminSenderNumber || this.phoneNumberId;
+      const url = `https://graph.facebook.com/v18.0/${phoneId}/messages`;
       
       const response = await fetch(url, {
         method: 'POST',

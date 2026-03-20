@@ -320,9 +320,15 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
                 onClick={async (e) => {
                   e.stopPropagation();
                   try {
-                    await apiRequest('PATCH', `/api/consultation-requests/${notification.data.requestId}/accept`, {});
+                    const result = await apiRequest('PATCH', `/api/consultation-requests/${notification.data.requestId}/accept`, {});
+                    const data = await result.json().catch(() => ({}));
                     markAsRead(notification.id);
-                    setLocation('/doctor-chat');
+                    const consultationId = data?.consultationRequest?.consultationId;
+                    if (consultationId) {
+                      setLocation(`/video-consultation/${consultationId}`);
+                    } else {
+                      setLocation('/doctor-chat');
+                    }
                     setIsOpen(false);
                     toast({ title: 'Solicitação aceita!' });
                   } catch (err: any) {

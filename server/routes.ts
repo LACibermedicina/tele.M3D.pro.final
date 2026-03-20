@@ -9136,13 +9136,45 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
   app.post('/api/notifications/patient-reply', requireAuth, async (req: any, res) => {
     try {
       const user = req.user as User;
-      if (user.role !== 'patient') {
-        return res.status(403).json({ message: 'Apenas pacientes podem responder' });
+      if (user.role !== 'patient' && user.role !== 'doctor' && user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
       }
 
       const { doctorId, message, notificationId } = req.body;
       if (!doctorId || !message) {
         return res.status(400).json({ message: 'doctorId e message são obrigatórios' });
+      }
+
+      if (user.role === 'doctor' || user.role === 'admin') {
+        broadcastToUser(doctorId, {
+          type: 'doctor_message',
+          data: {
+            title: 'Mensagem de Colega',
+            message: message.trim(),
+            priority: 'medium',
+            senderId: user.id,
+            senderName: user.name || 'Médico(a)',
+            doctorId: user.id,
+            doctorName: user.name || 'Médico(a)',
+          }
+        });
+
+        try {
+          await db.insert(pendingNotifications).values({
+            userId: doctorId,
+            type: 'doctor_message' as any,
+            title: `Mensagem de Dr(a). ${user.name || 'Colega'}`,
+            message: message.trim().substring(0, 300),
+            priority: 'medium',
+            actionUrl: null,
+            senderId: user.id,
+            delivered: false,
+            read: false,
+            metadata: { senderName: user.name, senderRole: 'doctor' }
+          });
+        } catch {}
+
+        return res.json({ success: true });
       }
 
       const patient = await db.select().from(patients).where(eq(patients.userId, user.id)).limit(1);
@@ -10895,7 +10927,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
       const allUsers = await storage.getAllUsers();
       const doctors = allUsers.filter((u: any) => u.role === 'doctor');
       const availableDoctors = doctors
-        .slice(0, 3)
+        .filter((d: any) => d.isActive !== false)
         .map((d: any) => ({
           id: d.id,
           name: d.name,
@@ -11175,7 +11207,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         try {
           await db.insert(pendingNotifications).values({
             userId: otherDocId,
-            type: 'appointment',
+            type: 'urgent_alert' as any,
             title: 'Solicitação Atendida',
             message: `Atendido por: Dr(a). ${doctorName}`,
             priority: 'medium',
@@ -11183,7 +11215,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
             senderId: doctorId,
             delivered: false,
             read: false,
-            metadata: { requestId: req.params.id, acceptedById: doctorId, acceptedByName: doctorName }
+            metadata: { requestId: req.params.id, acceptedById: doctorId, acceptedByName: doctorName, notificationType: 'urgency_accepted' }
           });
         } catch (e) {
           console.error('Failed to store urgency acceptance notification:', e);
