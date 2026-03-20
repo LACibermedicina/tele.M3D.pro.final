@@ -48,6 +48,7 @@ The application is built with an Express.js backend and a React frontend, utiliz
 - **Post-Load Effects System:** Configurable behaviors that execute automatically after each page load, including auto-scroll and custom JavaScript execution.
 - **MCP Server (TELE-M3D-ECG-MCP):** Model Context Protocol server exposing ECG analysis and study management to ChatGPT and MCP-compatible AI clients via SSE.
 - **Profile Unification & Duplicate Prevention:** Document+country unique constraint on users/patients, automatic merge of temporary patient data into permanent accounts during registration or access-link validation, admin manual merge endpoint, and `profileMergeAuditLogs` audit trail.
+- **Consultation Notification System:** Room presence detection (patient/doctor join broadcasts with persistent DB fallback + WhatsApp), urgency request panel for doctors with Accept/Chat/Discard buttons and first-accept-wins logic, post-acceptance broadcast to other doctors with "Atendido por" message, WhatsApp notifications using patient code (not name) for privacy, and admin-configurable WhatsApp sender number via system settings.
 
 ## External Dependencies
 - **Database:** PostgreSQL (Neon)

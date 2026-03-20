@@ -90,6 +90,12 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
         return <AlertTriangle className={`h-4 w-4 ${iconClass} text-orange-500`} />;
       case 'doctor_message':
         return <Stethoscope className={`h-4 w-4 ${iconClass}`} />;
+      case 'room_presence':
+        return <Video className={`h-4 w-4 ${iconClass}`} />;
+      case 'urgency_request':
+        return <AlertTriangle className={`h-4 w-4 text-red-500`} />;
+      case 'urgency_accepted':
+        return <Check className={`h-4 w-4 text-green-500`} />;
       default:
         return <Bell className={`h-4 w-4 ${iconClass}`} />;
     }
@@ -283,6 +289,76 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
               <MessageCircle className="h-3 w-3 mr-1" />
               Atender
             </Button>
+          )}
+          {notification.type === 'room_presence' && notification.actionUrl && (
+            <Button
+              size="sm"
+              className="h-6 px-2 text-xs bg-green-600 hover:bg-green-700 text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                markAsRead(notification.id);
+                setLocation(notification.actionUrl!);
+                setIsOpen(false);
+              }}
+            >
+              <Video className="h-3 w-3 mr-1" />
+              Entrar
+            </Button>
+          )}
+          {notification.type === 'urgency_request' && notification.data?.requestId && (
+            <>
+              <Button
+                size="sm"
+                className="h-6 px-2 text-xs bg-green-600 hover:bg-green-700 text-white"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await apiRequest('PATCH', `/api/consultation-requests/${notification.data.requestId}/accept`, {});
+                    markAsRead(notification.id);
+                    setLocation('/doctor-chat');
+                    setIsOpen(false);
+                    toast({ title: 'Solicitação aceita!' });
+                  } catch (err: any) {
+                    toast({ title: 'Erro', description: err.message || 'Solicitação já aceita por outro médico.', variant: 'destructive' });
+                    markAsRead(notification.id);
+                  }
+                }}
+              >
+                <Video className="h-3 w-3 mr-1" />
+                Aceitar
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  markAsRead(notification.id);
+                  setLocation('/doctor-chat');
+                  setIsOpen(false);
+                }}
+              >
+                <MessageCircle className="h-3 w-3 mr-1" />
+                Chat
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  clearNotification(notification.id);
+                }}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </>
+          )}
+          {notification.type === 'urgency_accepted' && notification.data?.acceptedByName && (
+            <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+              <Check className="h-3 w-3" />
+              {notification.data.acceptedByName}
+            </span>
           )}
           {(notification.type === 'consultation_invite' || notification.type === 'doctor_message' || notification.type === 'consultation_message') && (notification.data?.allowReply !== false) && (
             <Button

@@ -133,6 +133,14 @@ async function seed() {
         isEditable: true,
       },
       {
+        settingKey: 'whatsapp_sender_number',
+        settingValue: '',
+        settingType: 'string',
+        description: 'Número do remetente WhatsApp do sistema (formato internacional, ex: +5511999999999)',
+        category: 'notifications',
+        isEditable: true,
+      },
+      {
         settingKey: 'system_maintenance_mode',
         settingValue: 'false',
         settingType: 'boolean',

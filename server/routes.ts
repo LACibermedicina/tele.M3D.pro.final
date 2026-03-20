@@ -523,14 +523,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return;
     }
     
-    // Ensure room exists
     if (!consultationRooms.has(targetConsultationId)) {
       consultationRooms.set(targetConsultationId, { doctor: [], patient: [] });
     }
     
     const room = consultationRooms.get(targetConsultationId)!;
     
-    // Add user to appropriate room section
     if (userType === 'doctor' && !room.doctor.includes(ws)) {
       room.doctor.push(ws);
       console.log(`Doctor ${userId} joined consultation room ${targetConsultationId}`);
@@ -539,7 +537,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Patient ${userId} joined consultation room ${targetConsultationId}`);
     }
     
-    // Notify all participants in the room about the new joiner
+    const isNewJoin = (userType === 'doctor' && room.doctor.length === 1 && room.doctor[0] === ws) ||
+      (userType === 'patient' && room.patient.length === 1 && room.patient[0] === ws);
+
     const joinNotification = {
       type: 'user-joined',
       consultationId: targetConsultationId,
@@ -548,7 +548,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
       timestamp: new Date().toISOString()
     };
     
-    broadcastToRoom(targetConsultationId, joinNotification, ws); // Exclude sender
+    broadcastToRoom(targetConsultationId, joinNotification, ws);
+
+    if (!isNewJoin) return;
+
+    (async () => {
+      try {
+        const consultation = await db.select().from(videoConsultations)
+          .where(eq(videoConsultations.id, targetConsultationId))
+          .then(rows => rows[0]);
+        if (!consultation) return;
+
+        if (userType === 'patient') {
+          const doctorId = consultation.doctorId;
+          if (!doctorId) return;
+          const patient = consultation.patientId
+            ? await storage.getPatient(consultation.patientId)
+            : null;
+          const patientName = patient?.name || 'Paciente';
+          const patientCode = (consultation.patientId || '').slice(-6).toUpperCase();
+
+          const delivered = broadcastToUser(doctorId, {
+            type: 'room_presence',
+            data: {
+              title: 'Paciente entrou na sala',
+              message: `${patientName} entrou na sala de consulta e aguarda atendimento.`,
+              priority: 'critical',
+              consultationId: targetConsultationId,
+              patientName,
+              userType: 'patient',
+              actionUrl: `/video-consultation/${targetConsultationId}`
+            }
+          });
+
+          if (!delivered) {
+            try {
+              await db.insert(pendingNotifications).values({
+                userId: doctorId,
+                type: 'patient_joined_office',
+                title: 'Paciente na Sala de Consulta',
+                message: `${patientName} entrou na sala e aguarda atendimento.`,
+                priority: 'critical',
+                actionUrl: `/video-consultation/${targetConsultationId}`,
+                senderId: consultation.patientId || null,
+                delivered: false,
+                read: false,
+                metadata: { consultationId: targetConsultationId, patientName }
+              });
+            } catch (e) {
+              console.error('Failed to store room presence notification:', e);
+            }
+          }
+
+          try {
+            if (whatsAppService.isConfigured()) {
+              const whatsappEnabled = await storage.getSystemSetting('notification_whatsapp_enabled');
+              if (whatsappEnabled?.value === 'true') {
+                const doctor = await storage.getUser(doctorId);
+                if (doctor?.whatsappNumber) {
+                  await whatsAppService.sendMessage(
+                    doctor.whatsappNumber,
+                    `🔔 Paciente #${patientCode} entrou na sala de consulta e aguarda atendimento.\n\nAcesse a plataforma para iniciar o atendimento.\n\n🏥 Tele<M3D> Pro`
+                  );
+                }
+              }
+            }
+          } catch (waErr) {
+            console.error('WhatsApp room presence notification error:', waErr);
+          }
+
+        } else if (userType === 'doctor') {
+          const patientId = consultation.patientId;
+          if (!patientId) return;
+          const patient = await storage.getPatient(patientId);
+          if (!patient?.userId) return;
+          const doctor = await storage.getUser(userId);
+          const doctorName = doctor?.name || 'Médico(a)';
+
+          broadcastToUser(patient.userId, {
+            type: 'room_presence',
+            data: {
+              title: 'Médico(a) entrou na sala',
+              message: `Dr(a). ${doctorName} está pronto(a) para o atendimento.`,
+              priority: 'high',
+              consultationId: targetConsultationId,
+              doctorName,
+              userType: 'doctor',
+              actionUrl: `/video-consultation/${targetConsultationId}`
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Room presence notification error:', err);
+      }
+    })();
   };
   
   // Relay WebRTC signaling messages between doctor and patient
@@ -10813,64 +10906,75 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         whatsappNotificationSent: whatsappOptIn || false
       });
 
-      const selectedDocId = availableDoctors[0]?.id;
-      if (selectedDocId) {
-        const patientRecord = await storage.getPatient(patientId);
-        const patientName = patientRecord?.name || 'Paciente';
-        const urgencyLabel = triageData.aiTriageLevel === 'emergency' ? 'EMERGÊNCIA' : 
-          triageData.aiTriageLevel === 'very_urgent' ? 'MUITO URGENTE' : 
-          triageData.aiTriageLevel === 'urgent' ? 'URGENTE' : 'Normal';
+      const patientRecord = await storage.getPatient(patientId);
+      const patientName = patientRecord?.name || 'Paciente';
+      const patientCode = patientId.slice(-6).toUpperCase();
+      const urgencyLabel = triageData.aiTriageLevel === 'emergency' ? 'EMERGÊNCIA' : 
+        triageData.aiTriageLevel === 'very_urgent' ? 'MUITO URGENTE' : 
+        triageData.aiTriageLevel === 'urgent' ? 'URGENTE' : 'Normal';
+      const notifPriority = triageData.aiTriageLevel === 'emergency' ? 'critical' as const : 
+        triageData.aiTriageLevel === 'very_urgent' ? 'critical' as const : 
+        triageData.aiTriageLevel === 'urgent' ? 'high' as const : 'medium' as const;
 
-        broadcastToUser(selectedDocId, {
-          type: 'consultation_request',
+      const targetDoctorIds = availableDoctors.map((d: any) => d.id);
+
+      for (const docId of targetDoctorIds) {
+        broadcastToUser(docId, {
+          type: 'urgency_request',
           data: {
-            title: `Nova Solicitação de Consulta - ${urgencyLabel}`,
-            message: `${patientName}: ${symptoms.substring(0, 150)}`,
-            priority: triageData.aiTriageLevel === 'emergency' ? 'critical' : triageData.aiTriageLevel === 'very_urgent' ? 'critical' : triageData.aiTriageLevel === 'urgent' ? 'high' : 'medium',
+            title: `Nova Solicitação - ${urgencyLabel}`,
+            message: `Paciente #${patientCode}: ${symptoms.substring(0, 150)}`,
+            priority: notifPriority,
             requestId: consultationRequest.id,
             patientId,
+            patientCode,
             patientName,
+            urgencyLevel: triageData.aiTriageLevel || 'standard',
             actionUrl: '/doctor-chat'
           }
         });
 
         try {
           await db.insert(pendingNotifications).values({
-            userId: selectedDocId,
+            userId: docId,
             type: 'appointment',
             title: `Nova Solicitação - ${urgencyLabel}`,
-            message: `${patientName}: ${symptoms.substring(0, 200)}`,
-            priority: triageData.aiTriageLevel === 'emergency' ? 'critical' : triageData.aiTriageLevel === 'urgent' ? 'high' : 'medium',
+            message: `Paciente #${patientCode}: ${symptoms.substring(0, 200)}`,
+            priority: notifPriority,
             actionUrl: '/doctor-chat',
             senderId: patientId,
             delivered: false,
             read: false,
-            metadata: { requestId: consultationRequest.id, patientId }
+            metadata: { requestId: consultationRequest.id, patientId, patientCode, urgencyLevel: triageData.aiTriageLevel }
           });
         } catch (notifErr) {
           console.error('Failed to store consultation request notification:', notifErr);
         }
+      }
 
-        try {
-          if (whatsAppService.isConfigured()) {
-            const whatsappEnabled = await storage.getSystemSetting('notification_whatsapp_enabled');
-            if (whatsappEnabled?.value === 'true') {
-              const doctor = await storage.getUser(selectedDocId);
-              if (doctor?.whatsappNumber) {
-                const patientRecord2 = await storage.getPatient(patientId);
-                await whatsAppService.sendConsultationRequestNotification(
-                  doctor.whatsappNumber,
-                  patientRecord2?.name || 'Paciente',
-                  doctor.specialty || 'Geral',
-                  triageData.aiTriageLevel || 'standard',
-                  symptoms
-                );
-              }
+      try {
+        if (whatsAppService.isConfigured()) {
+          const whatsappEnabled = await storage.getSystemSetting('notification_whatsapp_enabled');
+          if (whatsappEnabled?.value === 'true') {
+            const urgencyEmoji = triageData.aiTriageLevel === 'emergency' ? '🔴' : 
+              triageData.aiTriageLevel === 'very_urgent' ? '🟠' : 
+              triageData.aiTriageLevel === 'urgent' ? '🟡' : '🟢';
+
+            for (const docId of targetDoctorIds) {
+              try {
+                const doctor = await storage.getUser(docId);
+                if (doctor?.whatsappNumber) {
+                  await whatsAppService.sendMessage(
+                    doctor.whatsappNumber,
+                    `${urgencyEmoji} Nova Solicitação de Consulta\n\n📋 Paciente: #${patientCode}\n⚡ Urgência: ${urgencyLabel}\n🏥 Especialidade: ${doctor.specialty || 'Geral'}\n📝 Sintomas: ${symptoms.slice(0, 200)}\n\nAcesse a plataforma para aceitar esta solicitação.\n\n🏥 Tele<M3D> Pro`
+                  );
+                }
+              } catch {}
             }
           }
-        } catch (waErr) {
-          console.error('WhatsApp consultation request notification error (non-blocking):', waErr);
         }
+      } catch (waErr) {
+        console.error('WhatsApp consultation request notification error (non-blocking):', waErr);
       }
 
       res.json({
@@ -10996,30 +11100,95 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
   // Accept consultation request
   app.patch('/api/consultation-requests/:id/accept', requireAuth, async (req, res) => {
     try {
-      const request = await storage.getConsultationRequest(req.params.id);
-      
-      if (!request) {
-        return res.status(404).json({ message: 'Consultation request not found' });
+      if (req.user!.role !== 'doctor' && req.user!.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas médicos podem aceitar solicitações.' });
       }
 
-      if (request.selectedDoctorId !== req.user!.id) {
-        return res.status(403).json({ message: 'Not authorized' });
+      const doctorId = req.user!.id;
+      const doctorName = req.user!.name || 'Médico(a)';
+
+      const atomicResult = await db.update(consultationRequests)
+        .set({ status: 'accepted', selectedDoctorId: doctorId })
+        .where(and(
+          eq(consultationRequests.id, req.params.id),
+          eq(consultationRequests.status, 'pending')
+        ))
+        .returning();
+
+      if (atomicResult.length === 0) {
+        const existing = await storage.getConsultationRequest(req.params.id);
+        if (!existing) {
+          return res.status(404).json({ message: 'Solicitação não encontrada.' });
+        }
+        return res.status(409).json({ message: 'Esta solicitação já foi aceita por outro médico.' });
       }
 
-      const updated = await storage.updateConsultationRequest(req.params.id, {
-        status: 'accepted'
+      const updated = atomicResult[0];
+      const request = updated;
+
+      const recommendedDoctorIds: string[] = (request as any).recommendedDoctors || [];
+      const otherDoctorIds = recommendedDoctorIds.filter(id => id !== doctorId);
+
+      otherDoctorIds.forEach(otherDocId => {
+        broadcastToUser(otherDocId, {
+          type: 'urgency_accepted',
+          data: {
+            title: 'Solicitação Atendida',
+            message: `Atendido por: Dr(a). ${doctorName}`,
+            priority: 'medium',
+            requestId: req.params.id,
+            acceptedByName: doctorName,
+            acceptedById: doctorId,
+            actionUrl: null
+          }
+        });
       });
 
+      for (const otherDocId of otherDoctorIds) {
+        try {
+          await db.insert(pendingNotifications).values({
+            userId: otherDocId,
+            type: 'appointment',
+            title: 'Solicitação Atendida',
+            message: `Atendido por: Dr(a). ${doctorName}`,
+            priority: 'medium',
+            actionUrl: null,
+            senderId: doctorId,
+            delivered: false,
+            read: false,
+            metadata: { requestId: req.params.id, acceptedById: doctorId, acceptedByName: doctorName }
+          });
+        } catch (e) {
+          console.error('Failed to store urgency acceptance notification:', e);
+        }
+      }
+
       try {
-        const patientOptedIn = request.whatsappNotificationSent === true;
-        if (patientOptedIn && whatsAppService.isConfigured()) {
+        if (whatsAppService.isConfigured()) {
           const whatsappEnabled = await storage.getSystemSetting('notification_whatsapp_enabled');
           if (whatsappEnabled?.value === 'true') {
             const patient = await storage.getPatient(request.patientId);
-            if (patient?.whatsappNumber) {
+            const patientCode = patient?.id?.slice(-6)?.toUpperCase() || 'N/A';
+            const urgencyLabel = (request as any).urgencyLevel === 'emergency' ? 'EMERGÊNCIA' :
+              (request as any).urgencyLevel === 'very_urgent' ? 'MUITO URGENTE' :
+              (request as any).urgencyLevel === 'urgent' ? 'URGENTE' : 'Normal';
+
+            for (const otherDocId of otherDoctorIds) {
+              try {
+                const otherDoc = await storage.getUser(otherDocId);
+                if (otherDoc?.whatsappNumber) {
+                  await whatsAppService.sendMessage(
+                    otherDoc.whatsappNumber,
+                    `✅ Solicitação Atendida\n\n📋 Paciente: #${patientCode}\n⚡ Urgência: ${urgencyLabel}\n👨‍⚕️ Atendido por: Dr(a). ${doctorName}\n\nEsta solicitação já foi aceita.\n\n🏥 Tele<M3D> Pro`
+                  );
+                }
+              } catch {}
+            }
+
+            if (request.whatsappNotificationSent && patient?.whatsappNumber) {
               await whatsAppService.sendConsultationJoinNotification(
                 patient.whatsappNumber,
-                req.user!.name || 'Médico',
+                doctorName,
                 req.params.id
               );
             }
@@ -17030,6 +17199,10 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         .where(eq(systemSettings.settingKey, key))
         .returning();
 
+      if (key === 'whatsapp_sender_number') {
+        whatsAppService.setAdminSenderNumber(validatedData.settingValue || '');
+      }
+
       res.json(updated[0]);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -22868,6 +23041,14 @@ async function initializeDefaultSystemSettings() {
       category: 'postload',
       isEditable: true,
     },
+    {
+      settingKey: 'whatsapp_sender_number',
+      settingValue: '',
+      settingType: 'string',
+      description: 'Número do remetente WhatsApp do sistema (formato internacional, ex: +5511999999999)',
+      category: 'notifications',
+      isEditable: true,
+    },
   ];
 
   try {
@@ -22878,6 +23059,12 @@ async function initializeDefaultSystemSettings() {
       }
     }
     console.log('✓ Default system settings initialized');
+
+    const senderSetting = await storage.getSystemSetting('whatsapp_sender_number');
+    if (senderSetting?.value) {
+      whatsAppService.setAdminSenderNumber(senderSetting.value);
+      console.log('✓ WhatsApp sender number loaded from settings');
+    }
   } catch (error) {
     console.error('Failed to initialize system settings:', error);
   }

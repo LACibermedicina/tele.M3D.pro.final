@@ -42,11 +42,21 @@ export class WhatsAppService {
   private accessToken: string;
   private phoneNumberId: string;
   private webhookVerifyToken: string;
+  private adminSenderNumber: string;
 
   constructor() {
     this.accessToken = process.env.WHATSAPP_ACCESS_TOKEN || '';
     this.phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
     this.webhookVerifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || '';
+    this.adminSenderNumber = '';
+  }
+
+  setAdminSenderNumber(number: string) {
+    this.adminSenderNumber = number;
+  }
+
+  getAdminSenderNumber(): string {
+    return this.adminSenderNumber;
   }
 
   async sendMessage(to: string, message: string): Promise<boolean> {

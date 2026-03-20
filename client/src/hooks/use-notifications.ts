@@ -5,7 +5,7 @@ import { queryClient, apiRequest } from '@/lib/queryClient';
 
 export interface Notification {
   id: string;
-  type: 'appointment' | 'whatsapp' | 'exam_result' | 'emergency' | 'system' | 'consultation_invite' | 'doctor_message' | 'consultation_ready' | 'urgent_alert' | 'consultation_message' | 'patient_joined_office' | 'credit_transfer' | 'credit_transfer_response' | 'credit_transfer_cancelled' | 'incomplete_consultation';
+  type: 'appointment' | 'whatsapp' | 'exam_result' | 'emergency' | 'system' | 'consultation_invite' | 'doctor_message' | 'consultation_ready' | 'urgent_alert' | 'consultation_message' | 'patient_joined_office' | 'credit_transfer' | 'credit_transfer_response' | 'credit_transfer_cancelled' | 'incomplete_consultation' | 'room_presence' | 'urgency_request' | 'urgency_accepted';
   title: string;
   message: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
@@ -72,9 +72,20 @@ export function useNotifications() {
 
     const notification = processWebSocketMessage(latestMessage);
     if (notification) {
-      setNotifications(prev => [notification, ...prev.slice(0, 49)]); // Keep latest 50
+      setNotifications(prev => {
+        let updated = [notification, ...prev.slice(0, 49)];
+
+        if (notification.type === 'urgency_accepted' && notification.data?.requestId) {
+          updated = updated.map(n =>
+            n.type === 'urgency_request' && n.data?.requestId === notification.data.requestId
+              ? { ...n, read: true }
+              : n
+          );
+        }
+
+        return updated;
+      });
       
-      // Show toast for high/critical priority notifications
       if (notification.priority === 'high' || notification.priority === 'critical') {
         toast({
           title: notification.title,
@@ -82,13 +93,11 @@ export function useNotifications() {
           variant: notification.priority === 'critical' ? 'destructive' : 'default',
         });
         
-        // Play notification sound for critical alerts
         if (notification.priority === 'critical') {
           playNotificationSound();
         }
       }
 
-      // Trigger cache invalidation for related data
       invalidateRelatedQueries(notification.type);
     }
   }, [wsMessages, toast]);
@@ -291,6 +300,45 @@ export function useNotifications() {
           data: message.data
         };
 
+      case 'room_presence':
+        return {
+          id: `room-presence-${Date.now()}`,
+          type: 'room_presence',
+          title: message.data?.title || 'Presença na Sala',
+          message: message.data?.message || 'Alguém entrou na sala de consulta.',
+          priority: message.data?.priority || 'high',
+          timestamp,
+          read: false,
+          actionUrl: message.data?.actionUrl,
+          data: message.data
+        };
+
+      case 'urgency_request':
+        return {
+          id: `urgency-req-${Date.now()}`,
+          type: 'urgency_request',
+          title: message.data?.title || 'Solicitação Urgente',
+          message: message.data?.message || 'Nova solicitação de consulta urgente',
+          priority: message.data?.priority || 'critical',
+          timestamp,
+          read: false,
+          actionUrl: message.data?.actionUrl || '/doctor-chat',
+          data: message.data
+        };
+
+      case 'urgency_accepted':
+        return {
+          id: `urgency-accepted-${Date.now()}`,
+          type: 'urgency_accepted',
+          title: message.data?.title || 'Solicitação Atendida',
+          message: message.data?.message || 'A solicitação foi aceita por outro médico.',
+          priority: 'medium',
+          timestamp,
+          read: false,
+          actionUrl: null,
+          data: message.data
+        };
+
       default:
         return null;
     }
@@ -309,7 +357,13 @@ export function useNotifications() {
         break;
       case 'consultation_invite':
       case 'consultation_ready':
+      case 'room_presence':
         queryClient.invalidateQueries({ queryKey: ['/api/my-consultations'] });
+        break;
+      case 'urgency_request':
+      case 'urgency_accepted':
+        queryClient.invalidateQueries({ queryKey: ['/api/consultation-requests'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/chat/doctor/threads'] });
         break;
       case 'exam_result':
         queryClient.invalidateQueries({ queryKey: ['/api/exam-results/recent'] });
