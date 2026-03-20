@@ -568,6 +568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const patientName = patient?.name || 'Paciente';
           const patientCode = (consultation.patientId || '').slice(-6).toUpperCase();
 
+          const doctorActionUrl = `/consultation/video/${consultation.patientId}`;
           const delivered = broadcastToUser(doctorId, {
             type: 'room_presence',
             data: {
@@ -577,7 +578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               consultationId: targetConsultationId,
               patientName,
               userType: 'patient',
-              actionUrl: `/video-consultation/${targetConsultationId}`
+              actionUrl: doctorActionUrl
             }
           });
 
@@ -589,7 +590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 title: 'Paciente na Sala de Consulta',
                 message: `${patientName} entrou na sala e aguarda atendimento.`,
                 priority: 'critical',
-                actionUrl: `/video-consultation/${targetConsultationId}`,
+                actionUrl: doctorActionUrl,
                 senderId: consultation.patientId || null,
                 delivered: false,
                 read: false,
