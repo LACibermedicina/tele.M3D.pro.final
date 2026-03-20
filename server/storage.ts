@@ -45,7 +45,7 @@ export type TmcConfig = typeof tmcConfig.$inferSelect;
 export type InsertTmcConfig = z.infer<typeof insertTmcConfigSchema>;
 
 import { db } from "./db";
-import { eq, and, or, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, or, desc, gte, lte, sql, isNotNull } from "drizzle-orm";
 import crypto from "crypto";
 
 export interface IStorage {
@@ -2378,6 +2378,27 @@ export class DatabaseStorage implements IStorage {
         .where(eq(consultationAccessTokens.patientId, temporaryPatientId))
         .returning({ id: consultationAccessTokens.id });
       counts.consultationAccessTokens = catResult.length;
+
+      const pnResult = await tx.update(patientNotes)
+        .set({ patientId: permanentPatientId })
+        .where(eq(patientNotes.patientId, temporaryPatientId))
+        .returning({ id: patientNotes.id });
+      counts.patientNotes = pnResult.length;
+
+      const dnResult = await tx.update(doctorNotes)
+        .set({ patientId: permanentPatientId })
+        .where(and(
+          eq(doctorNotes.patientId, temporaryPatientId),
+          isNotNull(doctorNotes.patientId)
+        ))
+        .returning({ id: doctorNotes.id });
+      counts.doctorNotes = dnResult.length;
+
+      const pctResult = await tx.update(patientChatThreads)
+        .set({ patientId: permanentPatientId })
+        .where(eq(patientChatThreads.patientId, temporaryPatientId))
+        .returning({ id: patientChatThreads.id });
+      counts.patientChatThreads = pctResult.length;
 
       await tx.update(patients)
         .set({ isTemporary: true, mergedIntoPatientId: permanentPatientId, updatedAt: new Date() })

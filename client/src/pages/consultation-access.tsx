@@ -77,7 +77,7 @@ export default function ConsultationAccess() {
 
   function handleEnterConsultation() {
     if (accessData?.consultationId) {
-      navigate(`/patient-join?consultation=${accessData.consultationId}`);
+      navigate(`/video-consultation/${accessData.consultationId}`);
     } else {
       navigate("/immediate-consultation");
     }
