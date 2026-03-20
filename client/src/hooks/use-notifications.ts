@@ -238,6 +238,45 @@ export function useNotifications() {
           data: message.data
         };
 
+      case 'credit_transfer':
+        return {
+          id: `transfer-${Date.now()}`,
+          type: 'credit_transfer',
+          title: message.data?.title || 'Transferência de Créditos',
+          message: message.data?.message || 'Você recebeu uma transferência de créditos',
+          priority: 'high',
+          timestamp,
+          read: false,
+          actionUrl: '/wallet',
+          data: message.data
+        };
+
+      case 'credit_transfer_response':
+        return {
+          id: `transfer-resp-${Date.now()}`,
+          type: 'credit_transfer_response',
+          title: message.data?.title || 'Resposta de Transferência',
+          message: message.data?.message || 'Sua transferência foi respondida',
+          priority: 'high',
+          timestamp,
+          read: false,
+          actionUrl: '/wallet',
+          data: message.data
+        };
+
+      case 'credit_transfer_cancelled':
+        return {
+          id: `transfer-cancel-${Date.now()}`,
+          type: 'credit_transfer_cancelled',
+          title: message.data?.title || 'Transferência Cancelada',
+          message: message.data?.message || 'Uma transferência foi cancelada',
+          priority: 'medium',
+          timestamp,
+          read: false,
+          actionUrl: '/wallet',
+          data: message.data
+        };
+
       default:
         return null;
     }
@@ -260,6 +299,14 @@ export function useNotifications() {
         break;
       case 'exam_result':
         queryClient.invalidateQueries({ queryKey: ['/api/exam-results/recent'] });
+        break;
+      case 'credit_transfer':
+      case 'credit_transfer_response':
+      case 'credit_transfer_cancelled':
+        queryClient.invalidateQueries({ queryKey: ['/api/tmc/balance'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/tmc/transfers/pending'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/tmc/transfers/history'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/tmc/transactions'] });
         break;
       default:
         queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });

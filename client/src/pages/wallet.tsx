@@ -94,6 +94,10 @@ export default function WalletPage() {
   const [transferUserId, setTransferUserId] = useState("");
   const [transferReason, setTransferReason] = useState("");
   const [transferOpen, setTransferOpen] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userSearchResults, setUserSearchResults] = useState<any[]>([]);
+  const [selectedRecipient, setSelectedRecipient] = useState<any>(null);
+  const [userSearchLoading, setUserSearchLoading] = useState(false);
 
   const [linkWalletOpen, setLinkWalletOpen] = useState(false);
   const [newWalletAddress, setNewWalletAddress] = useState("");
@@ -288,6 +292,8 @@ export default function WalletPage() {
       setTransferAmount("");
       setTransferUserId("");
       setTransferReason("");
+      setSelectedRecipient(null);
+      setUserSearchQuery("");
       toast({ title: "Solicitação enviada", description: data.message || "O destinatário precisa aceitar a transferência." });
     },
     onError: (error: any) => {
@@ -336,6 +342,28 @@ export default function WalletPage() {
   const { data: transferHistory = [] } = useQuery<any[]>({
     queryKey: ["/api/tmc/transfers/history"],
   });
+
+  const searchUsers = async (query: string) => {
+    setUserSearchQuery(query);
+    if (query.length < 2) {
+      setUserSearchResults([]);
+      return;
+    }
+    setUserSearchLoading(true);
+    try {
+      const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`, { credentials: 'include' });
+      const data = await res.json();
+      setUserSearchResults(data);
+    } catch { setUserSearchResults([]); }
+    setUserSearchLoading(false);
+  };
+
+  const selectRecipient = (u: any) => {
+    setSelectedRecipient(u);
+    setTransferUserId(u.id);
+    setUserSearchQuery(u.name || u.username);
+    setUserSearchResults([]);
+  };
 
   const handleTransfer = () => {
     if (!transferUserId || !transferAmount || parseInt(transferAmount) <= 0) {
@@ -849,43 +877,66 @@ export default function WalletPage() {
                   <Clock className="h-4 w-4 text-amber-600" />
                   Transferências Pendentes ({pendingTransfers.length})
                 </CardTitle>
-                <CardDescription>Transferências aguardando sua aprovação</CardDescription>
+                <CardDescription>Transferências aguardando ação</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {pendingTransfers.map((t: any) => (
-                  <div key={t.id} className="flex items-center justify-between p-3 rounded-lg border bg-background">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">
-                        <span className="text-green-600 dark:text-green-400">+{t.amount}</span> TM3D
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        De: {t.fromUserId.slice(0, 8)}...
-                        {t.reason && ` • ${t.reason}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Expira: {t.expiresAt ? new Date(t.expiresAt).toLocaleDateString('pt-BR') : '—'}
-                      </p>
+                {pendingTransfers.map((t: any) => {
+                  const isIncoming = t.toUserId === user?.id;
+                  return (
+                    <div key={t.id} className="flex items-center justify-between p-3 rounded-lg border bg-background">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={isIncoming ? "default" : "outline"} className="text-[10px]">
+                            {isIncoming ? "Recebida" : "Enviada"}
+                          </Badge>
+                          <p className="text-sm font-medium">
+                            <span className={isIncoming ? "text-green-600 dark:text-green-400" : "text-orange-600 dark:text-orange-400"}>
+                              {isIncoming ? '+' : '-'}{t.amount}
+                            </span> TM3D
+                          </p>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {isIncoming ? `De: ${t.fromUserId.slice(0, 8)}...` : `Para: ${t.toUserId.slice(0, 8)}...`}
+                          {t.reason && ` • ${t.reason}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Expira: {t.expiresAt ? new Date(t.expiresAt).toLocaleDateString('pt-BR') : '—'}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {isIncoming ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => transferRespondMutation.mutate({ transferId: t.id, action: 'accept' })}
+                              disabled={transferRespondMutation.isPending}
+                            >
+                              <Check className="h-3 w-3 mr-1" /> Aceitar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => transferRespondMutation.mutate({ transferId: t.id, action: 'reject' })}
+                              disabled={transferRespondMutation.isPending}
+                            >
+                              Recusar
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => transferCancelMutation.mutate(t.id)}
+                            disabled={transferCancelMutation.isPending}
+                          >
+                            Cancelar
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => transferRespondMutation.mutate({ transferId: t.id, action: 'accept' })}
-                        disabled={transferRespondMutation.isPending}
-                      >
-                        <Check className="h-3 w-3 mr-1" /> Aceitar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => transferRespondMutation.mutate({ transferId: t.id, action: 'reject' })}
-                        disabled={transferRespondMutation.isPending}
-                      >
-                        Recusar
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           )}
@@ -897,14 +948,41 @@ export default function WalletPage() {
                 <CardDescription>Envie uma solicitação de transferência para outro usuário</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="tr-user">ID do destinatário</Label>
+                <div className="relative">
+                  <Label htmlFor="tr-user">Destinatário</Label>
                   <Input
                     id="tr-user"
-                    value={transferUserId}
-                    onChange={(e) => setTransferUserId(e.target.value)}
-                    placeholder="Cole o ID do usuário"
+                    value={userSearchQuery}
+                    onChange={(e) => {
+                      searchUsers(e.target.value);
+                      if (selectedRecipient) {
+                        setSelectedRecipient(null);
+                        setTransferUserId("");
+                      }
+                    }}
+                    placeholder="Buscar por nome ou usuário..."
                   />
+                  {userSearchLoading && <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-9 text-muted-foreground" />}
+                  {userSearchResults.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {userSearchResults.map((u: any) => (
+                        <button
+                          key={u.id}
+                          className="w-full text-left px-3 py-2 hover:bg-muted text-sm flex items-center justify-between"
+                          onClick={() => selectRecipient(u)}
+                        >
+                          <span className="font-medium">{u.name || u.username}</span>
+                          <Badge variant="outline" className="text-[10px]">{u.role}</Badge>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {selectedRecipient && (
+                    <div className="mt-1 flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                      <Check className="h-3 w-3" />
+                      {selectedRecipient.name || selectedRecipient.username} ({selectedRecipient.role})
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="tr-amount">Quantidade de créditos</Label>
@@ -949,7 +1027,7 @@ export default function WalletPage() {
                     <div className="text-sm space-y-2">
                       <p className="font-medium text-blue-700 dark:text-blue-300">Como funciona</p>
                       <ul className="text-blue-600 dark:text-blue-400 space-y-1 text-xs">
-                        <li>1. Informe o ID do destinatário e o valor</li>
+                        <li>1. Busque o destinatário por nome e informe o valor</li>
                         <li>2. Seus créditos ficam em custódia (escrow)</li>
                         <li>3. O destinatário aceita ou recusa em até 72h</li>
                         <li>4. Se recusada ou expirada, os créditos são devolvidos</li>

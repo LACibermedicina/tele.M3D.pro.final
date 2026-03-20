@@ -289,6 +289,46 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
                           </Button>
                         </>
                       )}
+                      {notification.type === 'credit_transfer' && (notification.data?.transferId || notification.metadata?.transferId) && (
+                        <>
+                          <Button
+                            size="sm"
+                            className="h-6 px-2 text-xs bg-green-600 hover:bg-green-700 text-white"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const tId = notification.data?.transferId || notification.metadata?.transferId;
+                              try {
+                                await apiRequest('POST', '/api/tmc/transfer-respond', { transferId: tId, action: 'accept' });
+                                markAsRead(notification.id);
+                                toast({ title: 'Transferência aceita!' });
+                              } catch (err: any) {
+                                toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+                              }
+                            }}
+                          >
+                            <Check className="h-3 w-3 mr-1" />
+                            Aceitar
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-6 px-2 text-xs bg-red-600 hover:bg-red-700 text-white"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const tId = notification.data?.transferId || notification.metadata?.transferId;
+                              try {
+                                await apiRequest('POST', '/api/tmc/transfer-respond', { transferId: tId, action: 'reject' });
+                                markAsRead(notification.id);
+                                toast({ title: 'Transferência recusada' });
+                              } catch (err: any) {
+                                toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+                              }
+                            }}
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Recusar
+                          </Button>
+                        </>
+                      )}
                       {notification.type === 'appointment' && notification.data?.requestId && (
                         <Button
                           size="sm"

@@ -2204,7 +2204,10 @@ export class DatabaseStorage implements IStorage {
   async getPendingTransfersForUser(userId: string): Promise<CreditTransfer[]> {
     const now = new Date();
     const pending = await db.select().from(creditTransfers)
-      .where(and(eq(creditTransfers.toUserId, userId), eq(creditTransfers.status, 'pending')))
+      .where(and(
+        or(eq(creditTransfers.toUserId, userId), eq(creditTransfers.fromUserId, userId)),
+        eq(creditTransfers.status, 'pending')
+      ))
       .orderBy(desc(creditTransfers.createdAt));
 
     const active: CreditTransfer[] = [];

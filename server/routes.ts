@@ -14,13 +14,13 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
 import { z } from "zod";
 import { db } from "./db";
-import { eq, desc, sql, and, or, isNotNull, isNull, inArray, gte, lte, lt, ne } from "drizzle-orm";
+import { eq, desc, sql, and, or, isNotNull, isNull, inArray, gte, lte, lt, ne, ilike } from "drizzle-orm";
 import { generateAgoraToken, getAgoraAppId } from "./agora";
 
 // TMC Credit System Validation Schemas
@@ -14516,11 +14516,37 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     }
   });
 
+  // User search for transfer recipient selection
+  app.get('/api/users/search', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (user.role === 'visitor') return res.status(403).json({ message: 'Acesso negado' });
+      const q = (req.query.q as string || '').trim();
+      if (!q || q.length < 2) return res.json([]);
+      const allUsers = await db.select({
+        id: users.id, name: users.name, username: users.username, role: users.role
+      }).from(users)
+        .where(and(
+          ne(users.id, user.id),
+          or(
+            ilike(users.name, `%${q}%`),
+            ilike(users.username, `%${q}%`)
+          )
+        ))
+        .limit(10);
+      res.json(allUsers);
+    } catch (error) {
+      res.status(500).json({ message: 'Falha ao buscar usuários' });
+    }
+  });
+
   // Credit Transfer Request (escrow-based with approval)
   app.post('/api/tmc/transfer-request', requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+      if (user.role === 'visitor') {
+        return res.status(403).json({ message: 'Visitantes não podem realizar transferências' });
+      }
       const { toUserId, amount, reason } = req.body;
       if (!toUserId || !amount || amount <= 0) {
         return res.status(400).json({ message: 'Dados inválidos' });
@@ -14528,7 +14554,33 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       if (user.id === toUserId) {
         return res.status(400).json({ message: 'Não é possível transferir para si mesmo' });
       }
+      const recipient = await storage.getUser(toUserId);
+      if (!recipient) {
+        return res.status(404).json({ message: 'Destinatário não encontrado' });
+      }
       const transfer = await storage.createCreditTransferRequest(user.id, toUserId, amount, reason);
+
+      const [notification] = await db.insert(pendingNotifications).values({
+        userId: toUserId,
+        type: 'credit_transfer',
+        title: 'Transferência de Créditos Recebida',
+        message: `${user.name || user.username} enviou ${amount} TM3D para você${reason ? `: ${reason}` : ''}`,
+        actionUrl: '/wallet',
+        metadata: { transferId: transfer.id, fromUserId: user.id, fromUserName: user.name || user.username, amount },
+      }).returning();
+
+      broadcastToUser(toUserId, {
+        type: 'credit_transfer',
+        data: {
+          transferId: transfer.id,
+          notificationId: notification?.id,
+          title: 'Transferência de Créditos Recebida',
+          message: `${user.name || user.username} enviou ${amount} TM3D para você`,
+          amount,
+          fromUserName: user.name || user.username,
+        },
+      });
+
       const newBalance = await storage.getUserBalance(user.id);
       res.json({ transfer, newBalance, message: `Solicitação de transferência de ${amount} créditos enviada` });
     } catch (error) {
@@ -14540,12 +14592,42 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
   app.post('/api/tmc/transfer-respond', requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
       const { transferId, action } = req.body;
       if (!transferId || !['accept', 'reject'].includes(action)) {
         return res.status(400).json({ message: 'Dados inválidos' });
       }
       const transfer = await storage.respondToCreditTransfer(transferId, user.id, action);
+
+      try {
+        await db.update(pendingNotifications)
+          .set({ read: true })
+          .where(and(
+            eq(pendingNotifications.userId, user.id),
+            eq(pendingNotifications.type, 'credit_transfer'),
+          ));
+      } catch {}
+
+      const statusMsg = action === 'accept' ? 'aceitou' : 'recusou';
+      await db.insert(pendingNotifications).values({
+        userId: transfer.fromUserId,
+        type: 'credit_transfer_response',
+        title: action === 'accept' ? 'Transferência Aceita' : 'Transferência Recusada',
+        message: `${user.name || user.username} ${statusMsg} sua transferência de ${transfer.amount} TM3D`,
+        actionUrl: '/wallet',
+        metadata: { transferId: transfer.id, action, amount: transfer.amount },
+      });
+
+      broadcastToUser(transfer.fromUserId, {
+        type: 'credit_transfer_response',
+        data: {
+          transferId: transfer.id,
+          title: action === 'accept' ? 'Transferência Aceita' : 'Transferência Recusada',
+          message: `${user.name || user.username} ${statusMsg} sua transferência de ${transfer.amount} TM3D`,
+          action,
+          amount: transfer.amount,
+        },
+      });
+
       const newBalance = await storage.getUserBalance(user.id);
       res.json({ transfer, newBalance, message: action === 'accept' ? 'Transferência aceita' : 'Transferência recusada' });
     } catch (error) {
@@ -14557,10 +14639,20 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
   app.post('/api/tmc/transfer-cancel', requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
       const { transferId } = req.body;
       if (!transferId) return res.status(400).json({ message: 'ID da transferência obrigatório' });
       const transfer = await storage.cancelCreditTransfer(transferId, user.id);
+
+      broadcastToUser(transfer.toUserId, {
+        type: 'credit_transfer_cancelled',
+        data: {
+          transferId: transfer.id,
+          title: 'Transferência Cancelada',
+          message: `${user.name || user.username} cancelou a transferência de ${transfer.amount} TM3D`,
+          amount: transfer.amount,
+        },
+      });
+
       const newBalance = await storage.getUserBalance(user.id);
       res.json({ transfer, newBalance, message: 'Transferência cancelada' });
     } catch (error) {
@@ -14572,7 +14664,6 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
   app.get('/api/tmc/transfers/pending', requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
       const transfers = await storage.getPendingTransfersForUser(user.id);
       res.json(transfers);
     } catch (error) {
@@ -14583,7 +14674,6 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
   app.get('/api/tmc/transfers/history', requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
       const transfers = await storage.getSentTransfersByUser(user.id);
       res.json(transfers);
     } catch (error) {
