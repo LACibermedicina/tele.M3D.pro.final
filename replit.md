@@ -47,6 +47,7 @@ The application is built with an Express.js backend and a React frontend, utiliz
 - **AI Technical Detail Visibility Control:** Non-admin users see clinical results only, while admins see full AI technical details (confidence, probabilities, engine names).
 - **Post-Load Effects System:** Configurable behaviors that execute automatically after each page load, including auto-scroll and custom JavaScript execution.
 - **MCP Server (TELE-M3D-ECG-MCP):** Model Context Protocol server exposing ECG analysis and study management to ChatGPT and MCP-compatible AI clients via SSE.
+- **Profile Unification & Duplicate Prevention:** Document+country unique constraint on users/patients, automatic merge of temporary patient data into permanent accounts during registration or access-link validation, admin manual merge endpoint, and `profileMergeAuditLogs` audit trail.
 
 ## External Dependencies
 - **Database:** PostgreSQL (Neon)

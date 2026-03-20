@@ -5,6 +5,7 @@ import {
   tmcTransactions, tmcConfig, supportConfig, systemSettings, chatbotReferences, patientNotes,
   consultationNotes, consultationRecordings, errorLogs, layoutSettings,
   consultationRequests, consultationSessions, clinicalAssets, patientChatThreads, doctorNotes,
+  profileMergeAuditLogs, consultationAccessTokens,
   type User, type InsertUser, type Patient, type InsertPatient,
   type Appointment, type InsertAppointment, type MedicalRecord, type InsertMedicalRecord,
   type WhatsappMessage, type InsertWhatsappMessage, type ExamResult, type InsertExamResult,
@@ -24,7 +25,7 @@ import {
   type DoctorNote, type InsertDoctorNote,
   postConsultationItems, type PostConsultationItem, type InsertPostConsultationItem,
   diagnosticInferences, type DiagnosticInference, type InsertDiagnosticInference,
-  consultationAccessTokens, type ConsultationAccessToken, type InsertConsultationAccessToken,
+  type ConsultationAccessToken, type InsertConsultationAccessToken,
   creditTransfers, type CreditTransfer, type InsertCreditTransfer
 } from "@shared/schema";
 
@@ -265,6 +266,11 @@ export interface IStorage {
   getPendingTransfersForUser(userId: string): Promise<CreditTransfer[]>;
   getSentTransfersByUser(userId: string): Promise<CreditTransfer[]>;
   getCreditTransfer(id: string): Promise<CreditTransfer | undefined>;
+
+  // Profile Unification
+  getUserByDocument(document: string, documentCountry: string): Promise<User | undefined>;
+  getPatientByDocument(document: string, documentCountry: string): Promise<Patient | undefined>;
+  mergeTemporaryPatientData(temporaryPatientId: string, permanentPatientId: string, permanentUserId: string, mergedBy: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2250,6 +2256,127 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db.select().from(creditTransfers)
       .where(eq(creditTransfers.id, id));
     return result || undefined;
+  }
+
+  async getUserByDocument(document: string, documentCountry: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users)
+      .where(and(
+        eq(users.document, document),
+        eq(users.documentCountry, documentCountry)
+      ));
+    return user || undefined;
+  }
+
+  async getPatientByDocument(document: string, documentCountry: string): Promise<Patient | undefined> {
+    const [patient] = await db.select().from(patients)
+      .where(and(
+        eq(patients.document, document),
+        eq(patients.documentCountry, documentCountry)
+      ));
+    return patient || undefined;
+  }
+
+  async mergeTemporaryPatientData(
+    temporaryPatientId: string,
+    permanentPatientId: string,
+    permanentUserId: string,
+    mergedBy: string
+  ): Promise<any> {
+    if (temporaryPatientId === permanentPatientId) {
+      throw new Error('IDs do paciente temporário e permanente não podem ser iguais');
+    }
+
+    return await db.transaction(async (tx) => {
+      const counts = {
+        medicalRecords: 0,
+        appointments: 0,
+        videoConsultations: 0,
+        examResults: 0,
+        prescriptionShares: 0,
+        labOrders: 0,
+        hospitalReferrals: 0,
+        clinicalAssets: 0,
+        consultationRequests: 0,
+        whatsappMessages: 0,
+        consultationAccessTokens: 0,
+      };
+
+      const [tempPatient] = await tx.select().from(patients).where(eq(patients.id, temporaryPatientId));
+      if (!tempPatient) throw new Error('Paciente temporário não encontrado');
+      if (tempPatient.mergedIntoPatientId) throw new Error('Este paciente temporário já foi unificado anteriormente');
+
+      const mrResult = await tx.update(medicalRecords)
+        .set({ patientId: permanentPatientId })
+        .where(eq(medicalRecords.patientId, temporaryPatientId))
+        .returning({ id: medicalRecords.id });
+      counts.medicalRecords = mrResult.length;
+
+      const apptResult = await tx.update(appointments)
+        .set({ patientId: permanentPatientId })
+        .where(eq(appointments.patientId, temporaryPatientId))
+        .returning({ id: appointments.id });
+      counts.appointments = apptResult.length;
+
+      const vcResult = await tx.update(videoConsultations)
+        .set({ patientId: permanentPatientId })
+        .where(eq(videoConsultations.patientId, temporaryPatientId))
+        .returning({ id: videoConsultations.id });
+      counts.videoConsultations = vcResult.length;
+
+      const erResult = await tx.update(examResults)
+        .set({ patientId: permanentPatientId })
+        .where(eq(examResults.patientId, temporaryPatientId))
+        .returning({ id: examResults.id });
+      counts.examResults = erResult.length;
+
+      const psResult = await tx.update(prescriptionShares)
+        .set({ patientId: permanentPatientId })
+        .where(eq(prescriptionShares.patientId, temporaryPatientId))
+        .returning({ id: prescriptionShares.id });
+      counts.prescriptionShares = psResult.length;
+
+      const loResult = await tx.update(labOrders)
+        .set({ patientId: permanentPatientId })
+        .where(eq(labOrders.patientId, temporaryPatientId))
+        .returning({ id: labOrders.id });
+      counts.labOrders = loResult.length;
+
+      const hrResult = await tx.update(hospitalReferrals)
+        .set({ patientId: permanentPatientId })
+        .where(eq(hospitalReferrals.patientId, temporaryPatientId))
+        .returning({ id: hospitalReferrals.id });
+      counts.hospitalReferrals = hrResult.length;
+
+      const caResult = await tx.update(clinicalAssets)
+        .set({ patientId: permanentPatientId })
+        .where(eq(clinicalAssets.patientId, temporaryPatientId))
+        .returning({ id: clinicalAssets.id });
+      counts.clinicalAssets = caResult.length;
+
+      const catResult = await tx.update(consultationAccessTokens)
+        .set({ patientId: permanentPatientId })
+        .where(eq(consultationAccessTokens.patientId, temporaryPatientId))
+        .returning({ id: consultationAccessTokens.id });
+      counts.consultationAccessTokens = catResult.length;
+
+      await tx.update(patients)
+        .set({ isTemporary: true, mergedIntoPatientId: permanentPatientId, updatedAt: new Date() })
+        .where(eq(patients.id, temporaryPatientId));
+
+      const [permanentPatient] = await tx.select().from(patients).where(eq(patients.id, permanentPatientId));
+
+      await tx.insert(profileMergeAuditLogs).values({
+        temporaryPatientId,
+        permanentPatientId,
+        permanentUserId,
+        mergedBy,
+        mergedRecords: counts,
+        beforeState: { temporaryPatient: tempPatient },
+        afterState: { permanentPatient },
+      });
+
+      return { counts, temporaryPatientId, permanentPatientId };
+    });
   }
 }
 

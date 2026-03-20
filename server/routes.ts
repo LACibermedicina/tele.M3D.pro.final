@@ -14,7 +14,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers, profileMergeAuditLogs } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
@@ -8388,6 +8388,36 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
       const patient = await storage.getPatient(tokenRecord.patientId);
       const metadata = tokenRecord.metadata as any || {};
 
+      let effectivePatientId = tokenRecord.patientId;
+      let effectiveUserId = patient?.userId || tokenRecord.patientId;
+
+      if (patient && patient.document && patient.documentCountry) {
+        const registeredUser = await storage.getUserByDocument(patient.document, patient.documentCountry);
+        if (registeredUser && registeredUser.role === 'patient') {
+          const registeredPatient = await storage.getPatientByUserId(registeredUser.id);
+          if (registeredPatient && registeredPatient.id !== patient.id) {
+            if (patient.isTemporary || !patient.userId) {
+              try {
+                await storage.mergeTemporaryPatientData(
+                  patient.id,
+                  registeredPatient.id,
+                  registeredUser.id,
+                  'system_access_link'
+                );
+                effectivePatientId = registeredPatient.id;
+                effectiveUserId = registeredUser.id;
+                console.log(`✅ Auto-merged temp patient ${patient.id} into registered patient ${registeredPatient.id} via access link`);
+              } catch (mergeErr) {
+                console.error('Auto-merge on access link failed (non-fatal):', mergeErr);
+              }
+            } else {
+              effectivePatientId = registeredPatient.id;
+              effectiveUserId = registeredUser.id;
+            }
+          }
+        }
+      }
+
       const jwtSecret = process.env.SESSION_SECRET;
       if (!jwtSecret) {
         return res.status(500).json({ message: 'Server configuration error' });
@@ -8395,8 +8425,8 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
 
       const authToken = jwt.sign(
         {
-          userId: patient?.userId || tokenRecord.patientId,
-          patientId: tokenRecord.patientId,
+          userId: effectiveUserId,
+          patientId: effectivePatientId,
           consultationId: tokenRecord.consultationId,
           tokenId: tokenRecord.id,
           type: 'consultation_access',
@@ -8443,7 +8473,7 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
       res.json({
         valid: true,
         authToken,
-        patientId: tokenRecord.patientId,
+        patientId: effectivePatientId,
         patientName: tokenRecord.patientName || patient?.name || 'Paciente',
         consultationId: tokenRecord.consultationId,
         appointmentId: tokenRecord.appointmentId,
@@ -8474,6 +8504,48 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
       res.json(updated || { message: 'Token não encontrado' });
     } catch (error) {
       res.status(500).json({ message: 'Erro ao revogar token' });
+    }
+  });
+
+  // ===== PROFILE MERGE / UNIFICATION ROUTES =====
+
+  app.get('/api/profile-merge/audit-logs', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a administradores' });
+      }
+      const logs = await db.select().from(profileMergeAuditLogs)
+        .orderBy(desc(profileMergeAuditLogs.createdAt))
+        .limit(100);
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ message: 'Erro ao buscar logs de unificação de perfil' });
+    }
+  });
+
+  app.post('/api/profile-merge/manual', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a administradores' });
+      }
+      const { temporaryPatientId, permanentPatientId } = req.body;
+      if (!temporaryPatientId || !permanentPatientId) {
+        return res.status(400).json({ message: 'IDs do paciente temporário e permanente são obrigatórios' });
+      }
+      const permanentPatient = await storage.getPatient(permanentPatientId);
+      if (!permanentPatient || !permanentPatient.userId) {
+        return res.status(404).json({ message: 'Paciente permanente não encontrado ou sem conta de usuário vinculada' });
+      }
+      const result = await storage.mergeTemporaryPatientData(
+        temporaryPatientId,
+        permanentPatientId,
+        permanentPatient.userId,
+        'admin_manual'
+      );
+      res.json({ message: 'Dados unificados com sucesso', ...result });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao unificar perfis';
+      res.status(400).json({ message });
     }
   });
 
@@ -9324,7 +9396,7 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
   // User Registration
   app.post('/api/auth/register', upload.single('avatar'), async (req, res) => {
     try {
-      const { username, password, role, name, email, phone, medicalLicense, specialization, dateOfBirth, gender, bloodType, allergies, referralCode } = req.body;
+      const { username, password, role, name, email, phone, medicalLicense, specialization, dateOfBirth, gender, bloodType, allergies, referralCode, document: docNumber, documentCountry } = req.body;
       const avatarFile = req.file;
       
       // Validate required fields
@@ -9362,6 +9434,23 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
       if (existingUser) {
         return res.status(409).json({ message: 'Este nome de usuário já está em uso. Por favor, escolha outro.' });
       }
+
+      // Check for duplicate document+country
+      let temporaryPatientToMerge: any = null;
+      if (docNumber && documentCountry) {
+        const existingByDoc = await storage.getUserByDocument(docNumber.trim(), documentCountry.trim());
+        if (existingByDoc && existingByDoc.role !== 'visitor') {
+          return res.status(409).json({ message: 'Já existe um usuário cadastrado com este documento e país. Faça login com sua conta existente.' });
+        }
+        if (role === 'patient') {
+          const existingPatient = await storage.getPatientByDocument(docNumber.trim(), documentCountry.trim());
+          if (existingPatient && existingPatient.isTemporary) {
+            temporaryPatientToMerge = existingPatient;
+          } else if (existingPatient && !existingPatient.isTemporary && !existingPatient.mergedIntoPatientId) {
+            return res.status(409).json({ message: 'Já existe um paciente cadastrado com este documento e país. Faça login com sua conta existente.' });
+          }
+        }
+      }
       
       // Hash password (in production, use bcrypt)
       const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
@@ -9392,6 +9481,8 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
           name,
           email,
           phone,
+          document: docNumber?.trim() || undefined,
+          documentCountry: documentCountry?.trim() || undefined,
           medicalLicense: role === 'doctor' ? medicalLicense : undefined,
           specialization: role === 'doctor' ? specialization : undefined,
           digitalCertificate: role === 'doctor' ? `cert-${Date.now()}` : undefined,
@@ -9410,6 +9501,8 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
             gender,
             bloodType: bloodType || null,
             allergies: allergies || null,
+            document: docNumber?.trim() || null,
+            documentCountry: documentCountry?.trim() || null,
             healthStatus: 'a_determinar',
           });
         }
@@ -9424,7 +9517,25 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
           console.log(`✅ Added promotional credits to new user: ${username}`);
         } catch (error) {
           console.error('Failed to add promotional credits:', error);
-          // Don't fail registration if credits fail
+        }
+      }
+
+      // Merge temporary patient data if applicable
+      let mergeResult = null;
+      if (temporaryPatientToMerge && role === 'patient') {
+        try {
+          const permanentPatient = await storage.getPatientByUserId(newUser.id);
+          if (permanentPatient) {
+            mergeResult = await storage.mergeTemporaryPatientData(
+              temporaryPatientToMerge.id,
+              permanentPatient.id,
+              newUser.id,
+              'system_registration'
+            );
+            console.log(`✅ Merged temporary patient ${temporaryPatientToMerge.id} into permanent ${permanentPatient.id}:`, mergeResult.counts);
+          }
+        } catch (mergeError) {
+          console.error('Failed to merge temporary patient data:', mergeError);
         }
       }
       
@@ -9471,10 +9582,13 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
       };
       const roleName = roleNames[role as keyof typeof roleNames] || 'Usuário';
       
+      const mergeMessage = mergeResult ? ` Seus dados médicos anteriores (${Object.values(mergeResult.counts).reduce((a: number, b: any) => a + b, 0)} registros) foram automaticamente vinculados ao seu perfil.` : '';
       res.status(201).json({ 
         user: userWithoutPassword, 
         token,
-        message: `Cadastro realizado com sucesso! Bem-vindo(a) ao Tele<M3D>, ${userWithoutPassword.name}. Seu perfil de ${roleName} foi criado e você já pode acessar todas as funcionalidades da plataforma.` 
+        merged: !!mergeResult,
+        mergeDetails: mergeResult?.counts || null,
+        message: `Cadastro realizado com sucesso! Bem-vindo(a) ao Tele<M3D>, ${userWithoutPassword.name}. Seu perfil de ${roleName} foi criado e você já pode acessar todas as funcionalidades da plataforma.${mergeMessage}` 
       });
     } catch (error) {
       const { errorLoggerService } = await import('./services/error-logger');
@@ -22391,6 +22505,41 @@ async function migrateFhirTables() {
     console.log('✓ Credit transfers table migrated successfully');
   } catch (error) {
     console.error('Failed to migrate credit transfers table:', error);
+  }
+
+  try {
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS document TEXT`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS document_country TEXT`);
+    await db.execute(sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS document TEXT`);
+    await db.execute(sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS document_country TEXT`);
+    await db.execute(sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS is_temporary BOOLEAN DEFAULT FALSE`);
+    await db.execute(sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS merged_into_patient_id UUID`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS profile_merge_audit_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        temporary_patient_id UUID NOT NULL,
+        permanent_patient_id UUID NOT NULL,
+        permanent_user_id UUID NOT NULL,
+        merged_by TEXT NOT NULL,
+        merged_records JSONB DEFAULT '{}',
+        before_state JSONB DEFAULT '{}',
+        after_state JSONB DEFAULT '{}',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_document_country
+      ON users (document, document_country)
+      WHERE document IS NOT NULL AND document_country IS NOT NULL
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_document_country
+      ON patients (document, document_country)
+      WHERE document IS NOT NULL AND document_country IS NOT NULL AND merged_into_patient_id IS NULL
+    `);
+    console.log('✓ Profile unification fields migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate profile unification fields:', error);
   }
 }
 

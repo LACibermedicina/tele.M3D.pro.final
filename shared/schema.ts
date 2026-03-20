@@ -16,6 +16,8 @@ export const users = pgTable("users", {
   email: text("email"),
   phone: text("phone"),
   whatsappNumber: text("whatsapp_number"),
+  document: text("document"),
+  documentCountry: text("document_country"),
   tmcCredits: integer("tmc_credits").default(0), // Digital credits balance
   digitalCertificate: text("digital_certificate"), // For FIPS compliance
   profilePicture: text("profile_picture"),
@@ -53,6 +55,10 @@ export const patients = pgTable("patients", {
   medicalHistory: jsonb("medical_history"),
   whatsappNumber: text("whatsapp_number"),
   photoUrl: text("photo_url"),
+  document: text("document"),
+  documentCountry: text("document_country"),
+  isTemporary: boolean("is_temporary").default(false),
+  mergedIntoPatientId: uuid("merged_into_patient_id"),
   healthStatus: text("health_status").default("a_determinar").notNull(), // excelente, bom, regular, critico, a_determinar
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -1143,6 +1149,8 @@ export const insertPatientSchema = createInsertSchema(patients).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  isTemporary: true,
+  mergedIntoPatientId: true,
 });
 
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({
@@ -2029,6 +2037,23 @@ export const creditTransfers = pgTable("credit_transfers", {
 export const insertCreditTransferSchema = createInsertSchema(creditTransfers).omit({ id: true, createdAt: true });
 export type InsertCreditTransfer = z.infer<typeof insertCreditTransferSchema>;
 export type CreditTransfer = typeof creditTransfers.$inferSelect;
+
+// Profile Merge Audit Logs — tracks merges of temporary patient data into permanent accounts
+export const profileMergeAuditLogs = pgTable("profile_merge_audit_logs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  temporaryPatientId: uuid("temporary_patient_id").notNull(),
+  permanentPatientId: uuid("permanent_patient_id").notNull(),
+  permanentUserId: uuid("permanent_user_id").references(() => users.id).notNull(),
+  mergedBy: text("merged_by").notNull(), // 'system_registration', 'system_access_link', 'admin_manual'
+  mergedRecords: jsonb("merged_records").notNull(), // { medicalRecords: N, appointments: N, ... }
+  beforeState: jsonb("before_state"), // snapshot of temp patient data
+  afterState: jsonb("after_state"), // snapshot of merged permanent data
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertProfileMergeAuditLogSchema = createInsertSchema(profileMergeAuditLogs).omit({ id: true, createdAt: true });
+export type InsertProfileMergeAuditLog = z.infer<typeof insertProfileMergeAuditLogSchema>;
+export type ProfileMergeAuditLog = typeof profileMergeAuditLogs.$inferSelect;
 
 // TMC system types
 export interface TmcBalance {

@@ -24,6 +24,8 @@ const registerSchema = z.object({
   phone: z.string().min(1, "Telefone é obrigatório"),
   dateOfBirth: z.string().min(1, "Data de nascimento é obrigatória"),
   gender: z.string().min(1, "Gênero é obrigatório"),
+  document: z.string().optional().or(z.literal("")),
+  documentCountry: z.string().optional().or(z.literal("")),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -44,6 +46,8 @@ export default function PatientRegister() {
       phone: "",
       dateOfBirth: "",
       gender: "",
+      document: "",
+      documentCountry: "BR",
     },
   });
 
@@ -58,6 +62,8 @@ export default function PatientRegister() {
         phone: data.phone,
         dateOfBirth: data.dateOfBirth,
         gender: data.gender,
+        document: data.document || undefined,
+        documentCountry: data.documentCountry || undefined,
         role: "patient" as const,
       });
       
@@ -205,6 +211,52 @@ export default function PatientRegister() {
                     )}
                   />
                   
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="document"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CPF / Documento de Identidade</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="000.000.000-00"
+                              data-testid="input-patient-document"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="documentCountry"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>País do Documento</FormLabel>
+                          <FormControl>
+                            <select
+                              {...field}
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-medical-primary focus:border-transparent"
+                              data-testid="select-patient-document-country"
+                            >
+                              <option value="BR">Brasil</option>
+                              <option value="PT">Portugal</option>
+                              <option value="US">Estados Unidos</option>
+                              <option value="AR">Argentina</option>
+                              <option value="CL">Chile</option>
+                              <option value="CO">Colômbia</option>
+                              <option value="MX">México</option>
+                              <option value="OTHER">Outro</option>
+                            </select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="phone"

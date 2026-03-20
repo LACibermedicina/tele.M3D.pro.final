@@ -35,6 +35,8 @@ interface RegisterData {
   name: string;
   email?: string;
   phone?: string;
+  document?: string;
+  documentCountry?: string;
   medicalLicense?: string;
   specialization?: string;
   dateOfBirth?: string;

@@ -21,6 +21,8 @@ const registerSchema = z.object({
   name: z.string().min(1, "Nome completo é obrigatório"),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   phone: z.string().optional(),
+  document: z.string().optional().or(z.literal("")),
+  documentCountry: z.string().optional().or(z.literal("")),
   crm: z.string().min(1, "CRM é obrigatório para médicos"),
   specialty: z.string().min(1, "Especialidade é obrigatória"),
 });
@@ -44,6 +46,8 @@ export default function DoctorRegister() {
       name: "",
       email: "",
       phone: "",
+      document: "",
+      documentCountry: "BR",
       crm: "",
       specialty: "",
     },
@@ -58,6 +62,8 @@ export default function DoctorRegister() {
         name: data.name,
         email: data.email,
         phone: data.phone,
+        document: data.document || undefined,
+        documentCountry: data.documentCountry || undefined,
         medicalLicense: data.crm,
         specialization: data.specialty,
         role: "doctor" as const,
@@ -304,6 +310,52 @@ export default function DoctorRegister() {
                                 placeholder="(11) 99999-9999"
                                 data-testid="input-doctor-phone"
                               />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="document"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>CPF / Documento de Identidade</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="000.000.000-00"
+                                data-testid="input-doctor-document"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="documentCountry"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>País do Documento</FormLabel>
+                            <FormControl>
+                              <select
+                                {...field}
+                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-medical-secondary focus:border-transparent"
+                                data-testid="select-doctor-document-country"
+                              >
+                                <option value="BR">Brasil</option>
+                                <option value="PT">Portugal</option>
+                                <option value="US">Estados Unidos</option>
+                                <option value="AR">Argentina</option>
+                                <option value="CL">Chile</option>
+                                <option value="CO">Colômbia</option>
+                                <option value="MX">México</option>
+                                <option value="OTHER">Outro</option>
+                              </select>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
