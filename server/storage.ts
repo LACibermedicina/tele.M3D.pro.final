@@ -270,7 +270,7 @@ export interface IStorage {
   // Profile Unification
   getUserByDocument(document: string, documentCountry: string): Promise<User | undefined>;
   getPatientByDocument(document: string, documentCountry: string): Promise<Patient | undefined>;
-  mergeTemporaryPatientData(temporaryPatientId: string, permanentPatientId: string, permanentUserId: string, mergedBy: string): Promise<any>;
+  mergeTemporaryPatientData(temporaryPatientId: string, permanentPatientId: string, permanentUserId: string, mergedBy: string, existingTx?: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2280,13 +2280,14 @@ export class DatabaseStorage implements IStorage {
     temporaryPatientId: string,
     permanentPatientId: string,
     permanentUserId: string,
-    mergedBy: string
+    mergedBy: string,
+    existingTx?: any
   ): Promise<any> {
     if (temporaryPatientId === permanentPatientId) {
       throw new Error('IDs do paciente temporário e permanente não podem ser iguais');
     }
 
-    return await db.transaction(async (tx) => {
+    const executeMerge = async (tx: any) => {
       const counts: Record<string, number> = {
         medicalRecords: 0,
         appointments: 0,
@@ -2395,7 +2396,12 @@ export class DatabaseStorage implements IStorage {
       });
 
       return { counts, temporaryPatientId, permanentPatientId };
-    });
+    };
+
+    if (existingTx) {
+      return executeMerge(existingTx);
+    }
+    return await db.transaction(executeMerge);
   }
 }
 

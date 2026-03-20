@@ -9510,49 +9510,14 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
           }).returning();
 
           if (temporaryPatientToMerge && newPatient) {
-            const mergeCounts: Record<string, number> = {};
-
-            const mrR = await tx.update(medicalRecords).set({ patientId: newPatient.id }).where(eq(medicalRecords.patientId, temporaryPatientToMerge.id)).returning({ id: medicalRecords.id });
-            mergeCounts.medicalRecords = mrR.length;
-            const apR = await tx.update(appointments).set({ patientId: newPatient.id }).where(eq(appointments.patientId, temporaryPatientToMerge.id)).returning({ id: appointments.id });
-            mergeCounts.appointments = apR.length;
-            const vcR = await tx.update(videoConsultations).set({ patientId: newPatient.id }).where(eq(videoConsultations.patientId, temporaryPatientToMerge.id)).returning({ id: videoConsultations.id });
-            mergeCounts.videoConsultations = vcR.length;
-            const erR = await tx.update(examResults).set({ patientId: newPatient.id }).where(eq(examResults.patientId, temporaryPatientToMerge.id)).returning({ id: examResults.id });
-            mergeCounts.examResults = erR.length;
-            const psR = await tx.update(prescriptionShares).set({ patientId: newPatient.id }).where(eq(prescriptionShares.patientId, temporaryPatientToMerge.id)).returning({ id: prescriptionShares.id });
-            mergeCounts.prescriptionShares = psR.length;
-            const rxR = await tx.update(prescriptions).set({ patientId: newPatient.id }).where(eq(prescriptions.patientId, temporaryPatientToMerge.id)).returning({ id: prescriptions.id });
-            mergeCounts.prescriptions = rxR.length;
-            const loR = await tx.update(labOrders).set({ patientId: newPatient.id }).where(eq(labOrders.patientId, temporaryPatientToMerge.id)).returning({ id: labOrders.id });
-            mergeCounts.labOrders = loR.length;
-            const hrR = await tx.update(hospitalReferrals).set({ patientId: newPatient.id }).where(eq(hospitalReferrals.patientId, temporaryPatientToMerge.id)).returning({ id: hospitalReferrals.id });
-            mergeCounts.hospitalReferrals = hrR.length;
-            const caR = await tx.update(clinicalAssets).set({ patientId: newPatient.id }).where(eq(clinicalAssets.patientId, temporaryPatientToMerge.id)).returning({ id: clinicalAssets.id });
-            mergeCounts.clinicalAssets = caR.length;
-            const crR = await tx.update(consultationRequests).set({ patientId: newPatient.id }).where(eq(consultationRequests.patientId, temporaryPatientToMerge.id)).returning({ id: consultationRequests.id });
-            mergeCounts.consultationRequests = crR.length;
-            const wmR = await tx.update(whatsappMessages).set({ patientId: newPatient.id }).where(eq(whatsappMessages.patientId, temporaryPatientToMerge.id)).returning({ id: whatsappMessages.id });
-            mergeCounts.whatsappMessages = wmR.length;
-            const catR = await tx.update(consultationAccessTokens).set({ patientId: newPatient.id }).where(eq(consultationAccessTokens.patientId, temporaryPatientToMerge.id)).returning({ id: consultationAccessTokens.id });
-            mergeCounts.consultationAccessTokens = catR.length;
-
-            await tx.update(patients)
-              .set({ isTemporary: true, mergedIntoPatientId: newPatient.id, updatedAt: new Date() })
-              .where(eq(patients.id, temporaryPatientToMerge.id));
-
-            await tx.insert(profileMergeAuditLogs).values({
-              temporaryPatientId: temporaryPatientToMerge.id,
-              permanentPatientId: newPatient.id,
-              permanentUserId: user.id,
-              mergedBy: 'system_registration',
-              mergedRecords: mergeCounts,
-              beforeState: { temporaryPatient: temporaryPatientToMerge },
-              afterState: { permanentPatient: newPatient },
-            });
-
-            mergeResult = { counts: mergeCounts };
-            console.log(`✅ Merged temporary patient ${temporaryPatientToMerge.id} into permanent ${newPatient.id}:`, mergeCounts);
+            mergeResult = await storage.mergeTemporaryPatientData(
+              temporaryPatientToMerge.id,
+              newPatient.id,
+              user.id,
+              'system_registration',
+              tx
+            );
+            console.log(`✅ Merged temporary patient ${temporaryPatientToMerge.id} into permanent ${newPatient.id}:`, mergeResult.counts);
           }
         }
         
