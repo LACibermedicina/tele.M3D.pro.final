@@ -1797,6 +1797,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: 'accepted'
           });
         }
+
+        try {
+          if (whatsAppService.isConfigured()) {
+            const whatsappEnabled = await storage.getSystemSetting('whatsapp_notifications_enabled');
+            if (whatsappEnabled?.value === 'true') {
+              const targetDocId = appointment.doctorId || actualDoctorId || DEFAULT_DOCTOR_ID;
+              const doc = await storage.getUser(targetDocId);
+              if (doc?.whatsappNumber) {
+                const patient = await storage.getPatient(appointment.patientId);
+                const pCode = appointment.patientId.slice(-6).toUpperCase();
+                const baseUrl = process.env.BASE_URL || `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+                await whatsAppService.sendMessage(
+                  doc.whatsappNumber,
+                  `📅 Nova Consulta Agendada\n\n📋 Paciente: #${pCode}\n📆 Data: ${new Date(appointment.scheduledAt).toLocaleDateString('pt-BR')}\n⏰ Hora: ${new Date(appointment.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n📝 Tipo: ${appointment.type || 'Consulta Geral'}\n\n▶️ Atender: ${baseUrl}/consultation/video/${appointment.patientId}\n📅 Agenda: ${baseUrl}/schedule\n\n🏥 Tele<M3D> Pro`
+                );
+              }
+            }
+          }
+        } catch (waErr) {
+          console.error('WhatsApp appointment notification error (non-blocking):', waErr);
+        }
       }
       
       broadcastToDoctor(appointment.doctorId || actualDoctorId || DEFAULT_DOCTOR_ID, { type: 'appointment_created', data: appointment });
@@ -10990,7 +11011,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         try {
           await db.insert(pendingNotifications).values({
             userId: docId,
-            type: 'appointment',
+            type: 'system',
             title: `Nova Solicitação - ${urgencyLabel}`,
             message: `Paciente #${patientCode}: ${symptoms.substring(0, 200)}`,
             priority: notifPriority,
@@ -10998,7 +11019,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
             senderId: patientId,
             delivered: false,
             read: false,
-            metadata: { requestId: consultationRequest.id, patientId, patientCode, urgencyLevel: triageData.aiTriageLevel }
+            metadata: { requestId: consultationRequest.id, patientId, patientCode, urgencyLevel: triageData.aiTriageLevel, wsType: 'urgency_request' }
           });
         } catch (notifErr) {
           console.error('Failed to store consultation request notification:', notifErr);
@@ -11028,7 +11049,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
                   const baseUrl = process.env.BASE_URL || `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
                   await whatsAppService.sendMessage(
                     doctor.whatsappNumber,
-                    `${urgencyEmoji} Nova Solicitação de Consulta\n\n📋 Paciente: #${patientCode}\n⚡ Urgência: ${urgencyLabel}\n🏥 Especialidade: ${doctor.specialty || 'Geral'}\n📝 Sintomas: ${symptoms.slice(0, 200)}\n\n▶️ Aceitar: ${baseUrl}/doctor-chat\n💬 Chat: ${baseUrl}/doctor-chat\n❌ Recusar: ${baseUrl}/doctor-chat\n\n🏥 Tele<M3D> Pro`
+                    `${urgencyEmoji} Nova Solicitação de Consulta\n\n📋 Paciente: #${patientCode}\n⚡ Urgência: ${urgencyLabel}\n🏥 Especialidade: ${doctor.specialty || 'Geral'}\n📝 Sintomas: ${symptoms.slice(0, 200)}\n\n▶️ Atender agora:\n${baseUrl}/consultation/video/${patientId}\n\n📅 Agendar:\n${baseUrl}/schedule\n\n❌ Recusar:\n${baseUrl}/doctor-chat\n\n🏥 Tele<M3D> Pro`
                   );
                 }
               } catch {}
