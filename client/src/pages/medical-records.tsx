@@ -230,7 +230,7 @@ export default function MedicalRecords() {
   const generateFriendlyMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await apiRequest('POST', `/api/medical-records/${id}/patient-friendly`, {});
-      return res.json();
+      return res.json() as Promise<{ success: boolean; patientFriendlyVersion: string }>;
     },
     onSuccess: () => {
       toast({ title: "Versão acessível criada", description: "A versão para o paciente foi gerada com sucesso." });
@@ -244,9 +244,9 @@ export default function MedicalRecords() {
   const toggleFriendlyMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await apiRequest('PATCH', `/api/medical-records/${id}/patient-friendly/toggle`, {});
-      return res.json();
+      return res.json() as Promise<{ success: boolean; patientFriendlyActive: boolean }>;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       toast({
         title: data.patientFriendlyActive ? "Visibilidade ativada" : "Visibilidade desativada",
         description: data.patientFriendlyActive ? "O paciente agora pode ver este prontuário." : "O prontuário foi ocultado do paciente.",

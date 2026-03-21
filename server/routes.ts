@@ -2412,8 +2412,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const records = await storage.getMedicalRecordsByPatient(patient.id);
       const filteredRecords = (records || [])
-        .filter((r: any) => r.patientFriendlyActive === true)
-        .map((r: any) => ({
+        .filter(r => r.patientFriendlyActive === true)
+        .map(r => ({
           id: r.id,
           patientId: r.patientId,
           doctorId: r.doctorId,
@@ -2423,13 +2423,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdAt: r.createdAt,
           updatedAt: r.updatedAt,
         }));
-      const doctorIds = [...new Set(filteredRecords.map((r: any) => r.doctorId))];
+      const doctorIds = [...new Set(filteredRecords.map(r => r.doctorId))];
       const doctorNames: Record<string, string> = {};
       for (const did of doctorIds) {
-        const doc = await storage.getUser(did as string);
-        if (doc) doctorNames[did as string] = doc.name;
+        const doc = await storage.getUser(did);
+        if (doc) doctorNames[did] = doc.name;
       }
-      const enriched = filteredRecords.map((r: any) => ({
+      const enriched = filteredRecords.map(r => ({
         ...r,
         doctorName: doctorNames[r.doctorId] || 'Médico',
       }));
@@ -2486,7 +2486,7 @@ ${clinicalText}`;
       await storage.updateMedicalRecord(recordId, {
         patientFriendlyVersion: friendlyVersion,
         patientFriendlyActive: true,
-      } as any);
+      });
 
       res.json({ success: true, patientFriendlyVersion: friendlyVersion });
     } catch (error) {
@@ -2512,9 +2512,13 @@ ${clinicalText}`;
         return res.status(403).json({ message: 'Acesso negado a este prontuário' });
       }
       const newActive = !record.patientFriendlyActive;
+      if (newActive && !record.patientFriendlyVersion) {
+        return res.status(400).json({ message: 'Não é possível ativar visibilidade sem uma versão acessível gerada. Gere a versão primeiro.' });
+      }
       await storage.updateMedicalRecord(recordId, {
+        patientFriendlyVersion: record.patientFriendlyVersion,
         patientFriendlyActive: newActive,
-      } as any);
+      });
       res.json({ success: true, patientFriendlyActive: newActive });
     } catch (error) {
       console.error('Toggle patient-friendly error:', error);
