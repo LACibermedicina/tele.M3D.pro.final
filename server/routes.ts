@@ -12853,8 +12853,10 @@ Retorne apenas o JSON válido.`;
             }
           }
 
+          const { clinicalPresentation, ...sanitizedRequest } = request as Record<string, unknown>;
           return {
-            ...request,
+            ...sanitizedRequest,
+            clinicalPresentation: undefined,
             session: session ? { id: session.id, clinicalNotes: session.clinicalNotes ? '[registrado]' : null } : null,
             doctor: doctor ? { id: doctor.id, name: doctor.name, specialty: doctor.specialty } : null
           };

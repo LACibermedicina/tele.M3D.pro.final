@@ -441,17 +441,7 @@ export default function MyConsultations() {
           </p>
         </div>
 
-        {consultation.clinicalPresentation && (
-          <div>
-            <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
-              <AlertCircle className="w-4 h-4" />
-              Apresentação Clínica (IA)
-            </h4>
-            <p className="text-sm text-muted-foreground" data-testid="text-clinical-presentation">
-              {consultation.clinicalPresentation}
-            </p>
-          </div>
-        )}
+        
 
         {consultation.doctor && (
           <div>
