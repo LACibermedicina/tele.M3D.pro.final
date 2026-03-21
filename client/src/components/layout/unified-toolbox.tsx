@@ -276,7 +276,7 @@ export default function UnifiedToolbox() {
 
   const handleMinimize = useCallback(() => {
     if (navDockMode !== 'bottom') {
-      minimize({ id: "unified-toolbox", label: "Toolbox", icon: "settings" });
+      minimize({ id: "unified-toolbox", label: "tele.m3d.pro", icon: "settings" });
     }
     setVisible(false);
     try { localStorage.setItem(STORAGE_KEY_VISIBLE, "false"); } catch {}
@@ -425,8 +425,8 @@ export default function UnifiedToolbox() {
             <GripVertical className="h-3.5 w-3.5" />
           </div>
           <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
-          {!collapsed && <span className="text-xs font-medium text-muted-foreground flex-1">Toolbox</span>}
-          {collapsed && <span className="text-[10px] text-muted-foreground">Menu</span>}
+          {!collapsed && <span className="text-xs font-medium text-muted-foreground flex-1">tele.m3d.pro</span>}
+          {collapsed && <span className="text-[10px] text-muted-foreground">tele.m3d.pro</span>}
           <div className="flex items-center gap-0.5" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setCollapsed(!collapsed)}>
               {collapsed ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronUp className="h-2.5 w-2.5" />}

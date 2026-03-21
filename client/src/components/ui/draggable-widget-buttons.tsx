@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDraggable } from '@/hooks/use-draggable';
-import { useLayoutSettings } from '@/contexts/LayoutSettingsContext';
 import { GripVertical, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import QuickActionsBar from '@/components/quick-actions-bar';
@@ -191,7 +190,6 @@ export function InlineTrayAnalysisButtons({ userRole }: { userRole: string }) {
 
 export default function DraggableWidgetButtons() {
   const { user } = useAuth();
-  const { navDockMode } = useLayoutSettings();
 
   const { position, onDragStart } = useDraggable({
     storageKey: 'widget-buttons-column',
@@ -200,10 +198,9 @@ export default function DraggableWidgetButtons() {
     elementSize: { w: 48, h: 240 },
   });
 
-  const isBottomNav = navDockMode === 'bottom';
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
-  if (isBottomNav && !isMobile) return null;
+  if (!isMobile) return null;
 
   return (
     <>

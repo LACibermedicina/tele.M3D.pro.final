@@ -672,6 +672,19 @@ export default function Header() {
             ))}
           </TooltipProvider>
           <div className="w-8 border-t border-white/20 my-1" />
+          <TooltipProvider>
+            <div className="w-full flex flex-col items-center gap-0.5">
+              <InlineTrayAnalysisButtons userRole={user.role} />
+            </div>
+            <div className="w-6 border-t border-white/10 my-0.5" />
+            <div className="w-full flex flex-col items-center gap-0.5">
+              <InlineQuickActions userRole={user.role} />
+            </div>
+            <div className="w-full flex flex-col items-center gap-0.5">
+              <InlineTrayIcons />
+            </div>
+          </TooltipProvider>
+          <div className="w-8 border-t border-white/20 my-1" />
           {user && (
             <TooltipProvider>
               <Tooltip>
@@ -850,6 +863,11 @@ export default function Header() {
           </TooltipProvider>
           {user && (
             <>
+              <div className="h-6 w-px bg-white/20 mx-1" />
+              <InlineTrayAnalysisButtons userRole={user.role} />
+              <div className="h-6 w-px bg-white/20 mx-0.5" />
+              <InlineQuickActions userRole={user.role} />
+              <InlineTrayIcons />
               <div className="h-6 w-px bg-white/20 mx-1" />
               <Link href="/profile">
                 <Avatar className="w-7 h-7 cursor-pointer">
@@ -1279,6 +1297,17 @@ export default function Header() {
               })}
             </nav>
           </TooltipProvider>
+
+          {user && (
+            <div className="hidden md:flex items-center gap-1 mx-2">
+              <TooltipProvider>
+                <InlineTrayAnalysisButtons userRole={user.role} />
+                <div className="h-6 w-px bg-slate-600/30 mx-0.5" />
+                <InlineQuickActions userRole={user.role} />
+                <InlineTrayIcons />
+              </TooltipProvider>
+            </div>
+          )}
 
           <div className="flex items-center space-x-1 md:space-x-3">
             {/* Quick Actions Menu - only for logged-in users */}
