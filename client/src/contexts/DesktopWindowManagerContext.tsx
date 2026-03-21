@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
 export type WindowState = "open" | "minimized" | "closed";
@@ -47,7 +47,13 @@ export function DesktopWindowManagerProvider({ children }: { children: ReactNode
   const [windows, setWindows] = useState<DesktopWindow[]>([]);
   const [activeWindowId, setActiveWindowId] = useState<string | null>(null);
   const zCounter = useRef(100);
-  const [isDesktopMode] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
+  const [isDesktopMode, setIsDesktopMode] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktopMode(window.innerWidth >= 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const openWindow = useCallback((win: Omit<DesktopWindow, "state" | "zIndex" | "position" | "size"> & Partial<Pick<DesktopWindow, "position" | "size">>) => {
     setWindows(prev => {
