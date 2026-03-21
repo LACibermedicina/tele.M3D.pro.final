@@ -17371,6 +17371,103 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
+  app.get('/api/admin/ai-config/:module', async (req: Request, res: Response) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      const { module } = req.params;
+      const { getECGConfig, getRadiologyConfig } = await import('./services/aiPromptConfig');
+
+      if (module === 'ecg') {
+        const config = await getECGConfig();
+        res.json(config);
+      } else if (module === 'radiology') {
+        const config = await getRadiologyConfig();
+        res.json(config);
+      } else {
+        res.status(400).json({ message: 'Módulo inválido. Use "ecg" ou "radiology".' });
+      }
+    } catch (error) {
+      console.error('Get AI config error:', error);
+      res.status(500).json({ message: 'Falha ao carregar configuração de IA' });
+    }
+  });
+
+  app.put('/api/admin/ai-config/:module', async (req: Request, res: Response) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      const { module } = req.params;
+      const { saveECGConfig, saveRadiologyConfig } = await import('./services/aiPromptConfig');
+
+      const body = req.body;
+      if (!body || typeof body !== 'object') {
+        return res.status(400).json({ message: 'Corpo da requisição inválido' });
+      }
+
+      if (module === 'ecg') {
+        if (body.analysisPrompts && typeof body.analysisPrompts !== 'object') {
+          return res.status(400).json({ message: 'analysisPrompts deve ser um objeto' });
+        }
+        if (body.severityScale && !Array.isArray(body.severityScale)) {
+          return res.status(400).json({ message: 'severityScale deve ser um array' });
+        }
+        if (body.colorSemantics && !Array.isArray(body.colorSemantics)) {
+          return res.status(400).json({ message: 'colorSemantics deve ser um array' });
+        }
+        if (body.modelParams && typeof body.modelParams !== 'object') {
+          return res.status(400).json({ message: 'modelParams deve ser um objeto' });
+        }
+        await saveECGConfig(body, req.user.id);
+        res.json({ message: 'Configuração ECG salva com sucesso' });
+      } else if (module === 'radiology') {
+        if (body.severityScale && !Array.isArray(body.severityScale)) {
+          return res.status(400).json({ message: 'severityScale deve ser um array' });
+        }
+        if (body.colorSemantics && !Array.isArray(body.colorSemantics)) {
+          return res.status(400).json({ message: 'colorSemantics deve ser um array' });
+        }
+        if (body.modelParams && typeof body.modelParams !== 'object') {
+          return res.status(400).json({ message: 'modelParams deve ser um objeto' });
+        }
+        await saveRadiologyConfig(body, req.user.id);
+        res.json({ message: 'Configuração Radiologia salva com sucesso' });
+      } else {
+        res.status(400).json({ message: 'Módulo inválido. Use "ecg" ou "radiology".' });
+      }
+    } catch (error) {
+      console.error('Save AI config error:', error);
+      res.status(500).json({ message: 'Falha ao salvar configuração de IA' });
+    }
+  });
+
+  app.post('/api/admin/ai-config/:module/reset', async (req: Request, res: Response) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      const { module } = req.params;
+      const { getDefaultECGConfig, getDefaultRadiologyConfig, saveECGConfig, saveRadiologyConfig } = await import('./services/aiPromptConfig');
+
+      if (module === 'ecg') {
+        const defaults = getDefaultECGConfig();
+        await saveECGConfig(defaults, req.user.id);
+        res.json(defaults);
+      } else if (module === 'radiology') {
+        const defaults = getDefaultRadiologyConfig();
+        await saveRadiologyConfig(defaults, req.user.id);
+        res.json(defaults);
+      } else {
+        res.status(400).json({ message: 'Módulo inválido. Use "ecg" ou "radiology".' });
+      }
+    } catch (error) {
+      console.error('Reset AI config error:', error);
+      res.status(500).json({ message: 'Falha ao resetar configuração de IA' });
+    }
+  });
+
   // Upload PDF Reference - admin and doctor access
   app.post('/api/chatbot-references/upload-pdf', requireAuth, async (req: any, res: any) => {
     // Check admin or doctor role BEFORE invoking Multer
@@ -21418,6 +21515,8 @@ ${combinedText.slice(0, 8000)}`;
       let immersiveImage: string | null = null;
       const generateECGImmersiveImage = async (): Promise<string | null> => {
         const { editImageFromBase64 } = await import('./replit_integrations/image/client');
+        const { getECGConfig } = await import('./services/aiPromptConfig');
+        const ecgConfig = await getECGConfig();
         const findings = result.key_findings?.slice(0, 5)?.join('; ') || 'ECG analysis';
         const diagnosis = result.presumptive_diagnosis?.name || 'ECG';
         const severity = result.severity_level?.label || 'Moderado';
@@ -21425,28 +21524,12 @@ ${combinedText.slice(0, 8000)}`;
           `Region "${a.region}": ${a.hypothesis} (${a.color_name} ${a.color_hex})`
         ).join('. ');
 
-        const overlayPrompt = `This is a real ECG tracing image. Overlay pedagogical diagnostic annotations directly on top of the original ECG waveform. DO NOT replace or redraw the ECG — keep the original tracing fully visible as the base.
-
-ALL ANNOTATIONS AND LABELS MUST BE IN ${langName.toUpperCase()}.
-
-OVERLAY INSTRUCTIONS:
-1. DIAGNOSTIC ANNOTATIONS — Draw color-coded semi-transparent highlight regions over the relevant parts of the ECG waveform:
-   ${annotations}
-   Use semantic colors: Red (#EF4444) = ischemia/infarction, Blue (#3B82F6) = hypertrophy/conduction, Green (#22C55E) = normal, Yellow (#EAB308) = moderate risk, Purple (#8B5CF6) = arrhythmia
-
-2. ARROWS AND LABELS — Add clear arrows pointing from each annotation label to the specific ECG segment it refers to. Labels must be in ${langName}, large, bold, high-contrast, and legible (white or bright colored text with dark outline/shadow for readability).
-
-3. HEADER BANNER — Add a semi-transparent dark banner at the top with:
-   - Title: "ECG Analysis — ${diagnosis}" (in ${langName})
-   - Severity badge: "${severity}" with appropriate color indicator
-
-4. KEY FINDINGS PANEL — Add a small semi-transparent dark panel in a corner listing:
-   ${findings}
-   Each finding with a colored indicator dot.
-
-5. FOOTER STRIP — Semi-transparent dark strip at the bottom: "AI-generated ECG Summary • Does not replace professional medical evaluation" (in ${langName}).
-
-RULES: Keep the original ECG tracing clearly visible underneath all overlays. Use semi-transparent backgrounds for panels so the ECG shows through. All text must be OCR-legible — no gibberish. Professional medical annotation style.`;
+        const overlayPrompt = ecgConfig.imageGenerationPrompt
+          .replace(/\{\{langName\}\}/g, langName)
+          .replace(/\{\{diagnosis\}\}/g, diagnosis)
+          .replace(/\{\{severity\}\}/g, severity)
+          .replace(/\{\{annotations\}\}/g, annotations)
+          .replace(/\{\{findings\}\}/g, findings);
 
         const imageBuffer = await editImageFromBase64(imageBase64, overlayPrompt, '1024x1024');
         return imageBuffer.toString('base64');
@@ -21488,6 +21571,8 @@ RULES: Keep the original ECG tracing clearly visible underneath all overlays. Us
 
       const langName = LANG_MAP[language] || LANG_MAP['pt'];
       const { generateImageBuffer } = await import('./replit_integrations/image/client');
+      const { getECGConfig } = await import('./services/aiPromptConfig');
+      const ecgConfig = await getECGConfig();
 
       const diagnosis = analysisData.presumptive_diagnosis?.name || 'ECG Analysis';
       const confidence = analysisData.presumptive_diagnosis?.confidence || 'N/A';
@@ -21513,43 +21598,21 @@ RULES: Keep the original ECG tracing clearly visible underneath all overlays. Us
       const actionPlan = analysisData.action_plan || {};
       const immediateActions = (actionPlan.immediate_actions || []).slice(0, 3).join('; ');
 
-      const imagePrompt = `Create a detailed didactic ECG analysis educational panel — a hyper-realistic medical teaching visualization. Dark clinical interface background (#0f172a).
-
-ALL TEXT MUST BE IN ${langName.toUpperCase()}. Every label, title, section heading, finding description, and clinical text MUST be written in ${langName}. Use only OCR-legible text — no gibberish or incoherent characters.
-
-STYLE: Advanced cardiology workstation UI, AHA/ESC teaching atlas hybrid, AI diagnostic overlay, clean medical vector illustration.
-
-VISUAL LAYOUT — STRUCTURED EDUCATIONAL PANEL:
-
-TOP BANNER: "ECG Didactic Analysis — ${diagnosis}" (in ${langName}) in white/red text. Severity: ${severity} (${severityLevel}/5).
-
-SECTION 1 (TOP LEFT) — ANNOTATED ECG TRACE:
-- Stylized 12-lead ECG trace with color-coded waveform segments:
-  P wave=blue(#3B82F6), QRS=green(#22C55E) if normal/red(#EF4444) if abnormal, ST highlighted, T wave colored
-- Key findings: ${keyFindings}
-- Metrics overlay: ${metricsStr}
-
-SECTION 2 (TOP RIGHT) — DIAGNOSTIC HYPOTHESES:
-- Color-coded hypothesis bars with percentages
-- Primary: ${diagnosis} (${confidence}) — prominent bar
-- Differentials: ${differentials}
-
-SECTION 3 (MIDDLE) — CARDIAC INTERPRETATION:
-- ${interpretation}
-- Clinical comment: ${clinicalComment}
-- Annotations: ${colorAnnotations}
-
-SECTION 4 (BOTTOM LEFT) — CONDUCT & ACTION PLAN:
-- Severity: ${severity} (${severityLevel}/5)
-- Conduct: ${conduct}
-- Immediate actions: ${immediateActions}
-
-SECTION 5 (BOTTOM RIGHT) — TECHNICAL REPORT:
-- ${techReport}
-
-COLOR SEMANTICS: Red(#EF4444)=ischemia/high risk, Blue(#3B82F6)=hypertrophy, Green(#22C55E)=normal, Yellow(#EAB308)=moderate, Purple(#8B5CF6)=arrhythmia.
-
-GRAPHICAL RULES: Clean medical typography, high contrast, semantic colors, no decorative elements. All text in ${langName}. Only OCR-legible characters.`;
+      const imagePrompt = ecgConfig.detailImageGenerationPrompt
+        .replace(/\{\{langName\}\}/g, langName)
+        .replace(/\{\{diagnosis\}\}/g, diagnosis)
+        .replace(/\{\{confidence\}\}/g, confidence)
+        .replace(/\{\{severity\}\}/g, severity)
+        .replace(/\{\{severityLevel\}\}/g, String(severityLevel))
+        .replace(/\{\{interpretation\}\}/g, interpretation)
+        .replace(/\{\{conduct\}\}/g, conduct)
+        .replace(/\{\{techReport\}\}/g, techReport)
+        .replace(/\{\{keyFindings\}\}/g, keyFindings)
+        .replace(/\{\{clinicalComment\}\}/g, clinicalComment)
+        .replace(/\{\{differentials\}\}/g, differentials)
+        .replace(/\{\{colorAnnotations\}\}/g, colorAnnotations)
+        .replace(/\{\{metricsStr\}\}/g, metricsStr)
+        .replace(/\{\{immediateActions\}\}/g, immediateActions);
 
       const generateImage = async () => {
         const imageBuffer = await generateImageBuffer(imagePrompt, '1024x1024');

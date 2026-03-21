@@ -21,6 +21,7 @@ import { formatErrorForToast } from '@/lib/error-handler';
 import PageWrapper from '@/components/layout/page-wrapper';
 import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
 import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
+import { ECGConfigTab, RadiologyConfigTab } from '@/components/admin/ai-prompt-config';
 
 interface Collaborator {
   id: string;
@@ -488,6 +489,18 @@ export default function AdminPage() {
             <div className="flex items-center space-x-2">
               <Database className="h-4 w-4" />
               <span>Limpeza de Dados</span>
+            </div>
+          </TabsTrigger>
+          <TabsTrigger value="ai-ecg-config" data-testid="tab-ai-ecg-config">
+            <div className="flex items-center space-x-2">
+              <Stethoscope className="h-4 w-4" />
+              <span>Config ECG</span>
+            </div>
+          </TabsTrigger>
+          <TabsTrigger value="ai-radiology-config" data-testid="tab-ai-radiology-config">
+            <div className="flex items-center space-x-2">
+              <FileText className="h-4 w-4" />
+              <span>Config Radiologia</span>
             </div>
           </TabsTrigger>
           <TabsTrigger value="system-settings" data-testid="tab-system-settings">
@@ -3666,7 +3679,15 @@ function DatabaseCleanupTab() {
     setTimeout(() => setIsClearing(false), 3000);
   };
 
-  return (
+  return (<>
+    <TabsContent value="ai-ecg-config" className="space-y-4">
+      <ECGConfigTab />
+    </TabsContent>
+
+    <TabsContent value="ai-radiology-config" className="space-y-4">
+      <RadiologyConfigTab />
+    </TabsContent>
+
     <TabsContent value="database-cleanup" className="space-y-4">
       <Card className="border-destructive">
         <CardHeader>
@@ -3765,5 +3786,5 @@ function DatabaseCleanupTab() {
         </CardContent>
       </Card>
     </TabsContent>
-  );
+  </>);
 }
