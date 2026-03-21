@@ -143,8 +143,18 @@ export default function DockableNavBar({ children }: { children: React.ReactNode
   }
 
   if (navDockMode === 'bottom') {
+    const handleBarDrag = (e: React.MouseEvent | React.TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('button, a, [role="button"], input, select, textarea')) return;
+      onDragStart(e);
+    };
     return (
-      <div ref={containerRef} className="fixed bottom-0 left-0 right-0 z-50 group/dock">
+      <div
+        ref={containerRef}
+        className="fixed bottom-0 left-0 right-0 z-50 group/dock cursor-grab active:cursor-grabbing"
+        onMouseDown={handleBarDrag}
+        onTouchStart={handleBarDrag}
+      >
         <div
           className="absolute top-1 left-1/2 -translate-x-1/2 z-[51] cursor-grab active:cursor-grabbing opacity-0 group-hover/dock:opacity-60 hover:!opacity-100 transition-opacity hidden md:flex"
           onMouseDown={onDragStart}

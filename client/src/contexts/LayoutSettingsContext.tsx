@@ -1,8 +1,24 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 export type MobileMenuStyle = "slide" | "sidebar" | "bottom";
 export type NavDockMode = "top" | "left" | "right" | "bottom" | "floating";
+
+export const LAYOUT_DEFAULTS = {
+  navDockMode: "bottom" as NavDockMode,
+  navFloatingPosition: { x: 100, y: 100 },
+  toolboxDockMode: "right",
+};
+
+const LAYOUT_STORAGE_KEYS = [
+  'nav_dock_mode',
+  'nav_floating_position',
+  'unified_toolbox_dock_mode',
+  'unified_toolbox_visible',
+  'unified_toolbox_detached',
+  'minimized_panels',
+  'minimized_dock_side',
+];
 
 interface LayoutSettings {
   mobileMenuStyle: MobileMenuStyle;
@@ -12,16 +28,18 @@ interface LayoutSettings {
   setNavDockMode: (mode: NavDockMode) => void;
   navFloatingPosition: { x: number; y: number };
   setNavFloatingPosition: (pos: { x: number; y: number }) => void;
+  resetAllLayout: () => void;
 }
 
 const LayoutSettingsContext = createContext<LayoutSettings>({
   mobileMenuStyle: "slide",
   sidebarCollapsed: false,
   setSidebarCollapsed: () => {},
-  navDockMode: "top",
+  navDockMode: "bottom",
   setNavDockMode: () => {},
   navFloatingPosition: { x: 100, y: 100 },
   setNavFloatingPosition: () => {},
+  resetAllLayout: () => {},
 });
 
 export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
@@ -34,7 +52,7 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
         return stored as NavDockMode;
       }
     } catch {}
-    return 'top';
+    return 'bottom';
   });
 
   const [navFloatingPosition, setNavFloatingPositionState] = useState<{ x: number; y: number }>(() => {
@@ -58,6 +76,21 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem('nav_floating_position', JSON.stringify(pos)); } catch {}
   };
 
+  const resetAllLayout = useCallback(() => {
+    LAYOUT_STORAGE_KEYS.forEach(key => {
+      try { localStorage.removeItem(key); } catch {}
+    });
+    const draggableKeys = Object.keys(localStorage).filter(k =>
+      k.startsWith("draggable_") || k.startsWith("dashboard_") || k.startsWith("detached_nav_") || k.startsWith("unified_toolbox")
+    );
+    draggableKeys.forEach(key => {
+      try { localStorage.removeItem(key); } catch {}
+    });
+    setNavDockModeState(LAYOUT_DEFAULTS.navDockMode);
+    setNavFloatingPositionState(LAYOUT_DEFAULTS.navFloatingPosition);
+    setSidebarCollapsed(false);
+  }, []);
+
   const { data: layoutData } = useQuery<any[]>({
     queryKey: ["/api/layout-settings/public"],
   });
@@ -79,6 +112,7 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
       setNavDockMode,
       navFloatingPosition,
       setNavFloatingPosition,
+      resetAllLayout,
     }}>
       {children}
     </LayoutSettingsContext.Provider>

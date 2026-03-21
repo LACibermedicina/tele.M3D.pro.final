@@ -8,10 +8,12 @@ import TodaySchedule from "@/components/dashboard/today-schedule";
 import { type DashboardStats } from "@shared/schema";
 import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
 import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
+import { useLayoutSettings } from "@/contexts/LayoutSettingsContext";
 
 export function DesktopAdminDashboard() {
   const { user } = useAuth();
   const { restoreAll } = useMinimizedPanels();
+  const { resetAllLayout } = useLayoutSettings();
 
   const { data: stats } = useQuery<DashboardStats>({
     queryKey: user?.id ? ['/api/dashboard/stats', user.id] : [],
@@ -19,8 +21,7 @@ export function DesktopAdminDashboard() {
   });
 
   const resetLayout = () => {
-    const keys = Object.keys(localStorage).filter(k => k.startsWith("draggable_dashboard_desktop-admin_"));
-    keys.forEach(k => localStorage.removeItem(k));
+    resetAllLayout();
     restoreAll();
     window.location.reload();
   };

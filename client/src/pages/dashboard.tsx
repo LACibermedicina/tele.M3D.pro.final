@@ -14,6 +14,7 @@ import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
 import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
 import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
+import { useLayoutSettings } from "@/contexts/LayoutSettingsContext";
 import { Button } from "@/components/ui/button";
 import { RotateCcw } from "lucide-react";
 
@@ -21,6 +22,7 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { restoreAll } = useMinimizedPanels();
+  const { resetAllLayout } = useLayoutSettings();
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: user?.id ? ['/api/dashboard/stats', user.id] : ['dashboard-stats-placeholder'],
     enabled: !!user?.id,
@@ -33,8 +35,7 @@ export default function Dashboard() {
   }
 
   const resetLayout = () => {
-    const keys = Object.keys(localStorage).filter(k => k.startsWith("draggable_dashboard_main_"));
-    keys.forEach(k => localStorage.removeItem(k));
+    resetAllLayout();
     restoreAll();
     window.location.reload();
   };

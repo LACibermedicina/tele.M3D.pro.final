@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import PanelWindowControls from "@/components/dashboard/panel-window-controls";
+import { useLayoutSettings } from "@/contexts/LayoutSettingsContext";
 import {
   GripVertical, Minus, X, Wrench, ChevronUp, ChevronDown,
   LayoutDashboard, Users, CalendarClock, MessageCircle, FileText,
   ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield,
   Stethoscope, StickyNote, Video, Pill, Activity, AlertCircle,
   Microscope, Wallet, FileBarChart, Gem, TrendingUp, Coffee,
-  HeartPulse, CreditCard, UserPlus, ExternalLink,
+  HeartPulse, CreditCard, UserPlus, ExternalLink, RotateCcw,
   type LucideIcon
 } from "lucide-react";
 
@@ -214,7 +215,8 @@ export default function UnifiedToolbox() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [location, navigate] = useLocation();
-  const { minimize, isMinimized } = useMinimizedPanels();
+  const { minimize, isMinimized, restoreAll } = useMinimizedPanels();
+  const { resetAllLayout } = useLayoutSettings();
   const [collapsed, setCollapsed] = useState(true);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
   const [detachedPaths, setDetachedPaths] = useState<string[]>(loadDetached);
@@ -228,7 +230,7 @@ export default function UnifiedToolbox() {
       const v = localStorage.getItem(STORAGE_KEY_DOCK);
       if (v === "top" || v === "bottom" || v === "left" || v === "right" || v === "floating") return v as DockMode;
     } catch {}
-    return "floating";
+    return "right";
   });
 
   useEffect(() => {
@@ -446,6 +448,25 @@ export default function UnifiedToolbox() {
                 </div>
               </div>
             ))}
+            {!isHorizontal && (
+              <>
+                <Separator className="my-1" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs w-full transition-colors text-muted-foreground hover:text-foreground hover:bg-muted"
+                      onClick={() => { resetAllLayout(); restoreAll(); window.location.reload(); }}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">Reset Interface</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side={isVertical ? (dockMode === "left" ? "right" : "left") : "bottom"}>
+                    <p>Restaurar posições padrão</p>
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            )}
           </div>
         )}
       </div>

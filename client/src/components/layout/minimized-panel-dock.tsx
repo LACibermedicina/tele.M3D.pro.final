@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
+import { useLayoutSettings } from "@/contexts/LayoutSettingsContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,8 @@ function getIcon(iconName: string): LucideIcon {
 }
 
 export default function MinimizedPanelDock() {
-  const { minimizedPanels, restore, restoreAll, dockSide, setDockSide } = useMinimizedPanels();
+  const { minimizedPanels, restore, restoreAll } = useMinimizedPanels();
+  const { navDockMode } = useLayoutSettings();
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -65,7 +67,7 @@ export default function MinimizedPanelDock() {
 
   if (minimizedPanels.length === 0) return null;
 
-  const isLeft = dockSide === "left";
+  const isBottomNav = navDockMode === 'bottom';
 
   if (isMobile) {
     return (
@@ -110,77 +112,90 @@ export default function MinimizedPanelDock() {
     );
   }
 
+  if (isBottomNav) {
+    return (
+      <div
+        className="fixed bottom-[58px] left-0 right-0 z-40 flex items-center justify-center gap-1 py-1 px-3 bg-slate-800/90 backdrop-blur-sm border-t border-slate-700/50"
+      >
+        <span className="text-[10px] text-slate-400 uppercase tracking-wider mr-2 shrink-0">Taskbar</span>
+        <div className="h-4 w-px bg-slate-600 mr-1" />
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {minimizedPanels.map(panel => {
+            const Icon = getIcon(panel.icon);
+            return (
+              <Tooltip key={panel.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-700/60 transition-colors text-slate-300 hover:text-white shrink-0"
+                    onClick={() => restore(panel.id)}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span className="text-[11px] truncate max-w-[80px]">{panel.label}</span>
+                    {panel.badge !== undefined && panel.badge > 0 && (
+                      <Badge variant="destructive" className="h-4 min-w-[16px] px-1 text-[9px] flex items-center justify-center">
+                        {panel.badge > 99 ? "99+" : panel.badge}
+                      </Badge>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top"><p>{panel.label}</p></TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+        {minimizedPanels.length > 1 && (
+          <>
+            <div className="h-4 w-px bg-slate-600 ml-1" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-slate-400 hover:text-white hover:bg-slate-700/60" onClick={restoreAll}>
+                  <RotateCcw className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><p>Restaurar todos</p></TooltipContent>
+            </Tooltip>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`fixed top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-1 py-2 px-1 bg-background/95 backdrop-blur-sm border shadow-lg rounded-lg transition-all duration-300 ${
-        isLeft ? "left-1 border-r rounded-l-lg" : "right-1 border-l rounded-r-lg"
-      }`}
-      style={{ maxHeight: "80vh", overflowY: "auto" }}
+      className="fixed bottom-1 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 py-1.5 px-3 bg-slate-800/95 backdrop-blur-md border border-slate-700 shadow-xl rounded-full"
     >
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 mb-1 text-muted-foreground hover:text-foreground"
-            onClick={() => setDockSide(isLeft ? "right" : "left")}
-          >
-            <Share2 className="h-3 w-3" style={{ transform: isLeft ? "scaleX(-1)" : "none" }} />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side={isLeft ? "right" : "left"}>
-          <p>Mover dock para {isLeft ? "direita" : "esquerda"}</p>
-        </TooltipContent>
-      </Tooltip>
-
-      <div className="w-6 border-t mb-1" />
-
       {minimizedPanels.map(panel => {
         const Icon = getIcon(panel.icon);
         return (
           <Tooltip key={panel.id}>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 relative hover:bg-primary/10 transition-all duration-200 hover:scale-110"
+              <button
+                className="flex items-center gap-1.5 px-2 py-1 rounded-full hover:bg-slate-700/60 transition-colors text-slate-300 hover:text-white shrink-0"
                 onClick={() => restore(panel.id)}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-3.5 w-3.5" />
+                <span className="text-[11px] truncate max-w-[80px]">{panel.label}</span>
                 {panel.badge !== undefined && panel.badge > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 text-[9px] flex items-center justify-center"
-                  >
+                  <Badge variant="destructive" className="h-4 min-w-[16px] px-1 text-[9px] flex items-center justify-center">
                     {panel.badge > 99 ? "99+" : panel.badge}
                   </Badge>
                 )}
-              </Button>
+              </button>
             </TooltipTrigger>
-            <TooltipContent side={isLeft ? "right" : "left"}>
-              <p>{panel.label}</p>
-            </TooltipContent>
+            <TooltipContent side="top"><p>{panel.label}</p></TooltipContent>
           </Tooltip>
         );
       })}
-
       {minimizedPanels.length > 1 && (
         <>
-          <div className="w-6 border-t mt-1" />
+          <div className="h-4 w-px bg-slate-600 mx-0.5" />
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 mt-1 text-muted-foreground hover:text-foreground"
-                onClick={restoreAll}
-              >
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-slate-400 hover:text-white hover:bg-slate-700/60 rounded-full" onClick={restoreAll}>
                 <RotateCcw className="h-3 w-3" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side={isLeft ? "right" : "left"}>
-              <p>Restaurar todos</p>
-            </TooltipContent>
+            <TooltipContent side="top"><p>Restaurar todos</p></TooltipContent>
           </Tooltip>
         </>
       )}

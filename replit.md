@@ -18,7 +18,7 @@ The application is built with an Express.js backend and a React frontend, utiliz
 - **Doctor Notes:** macOS Notes-style interface with folders, search, pinning, and color labels.
 - **Triage System:** 5-level Manchester Protocol (or WHO ETAT fallback) visual classification.
 - **Dashboards:** Rebuilt mobile patient dashboard, visitor dashboard with IAM3D, and desktop patient dashboard with "Consultar Agora" button.
-- **Interactive Dashboard System:** Draggable panels with minimization to a dock, and a `UnifiedToolbox` floating navigation bar that supports detachable items as standalone mini-panels.
+- **Interactive Dashboard System:** Draggable panels with minimization to a bottom taskbar dock. `UnifiedToolbox` defaults to right side with navigation links, detachable items, and a "Reset Interface" button. Main nav bar defaults to bottom (draggable from any non-button area). Minimized panels appear as a taskbar strip above the bottom nav. Centralized `resetAllLayout()` in `LayoutSettingsContext` clears all layout localStorage keys and restores defaults.
 
 **Technical Implementations:**
 - **AI Services:** Google Gemini API (with Replit OpenAI fallback) for chatbot, triage, video consultation support, medical records, and SOAP reports, adhering to medical guidelines (OMS, MS/Brasil, DSM-5/DSM-5-TR).
