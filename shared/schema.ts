@@ -100,6 +100,8 @@ export const medicalRecords = pgTable("medical_records", {
   pmdData: jsonb("pmd_data"),
   pmdAuditLogs: jsonb("pmd_audit_logs").default(sql`'[]'::jsonb`),
   pmdVersion: text("pmd_version").default("1.0"),
+  patientFriendlyVersion: text("patient_friendly_version"),
+  patientFriendlyActive: boolean("patient_friendly_active").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

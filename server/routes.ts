@@ -92,6 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migrateFhirTables();
   await migratePostConsultationEditColumns();
   await migrateSusProntuariosTable();
+  await migratePatientFriendlyColumns();
   await initStripeSync();
   
   // Initialize default doctor if not exists and get the actual ID
@@ -2410,10 +2411,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
       const records = await storage.getMedicalRecordsByPatient(patient.id);
-      res.json(records || []);
+      const filteredRecords = (records || [])
+        .filter((r: any) => r.patientFriendlyActive === true)
+        .map((r: any) => ({
+          id: r.id,
+          patientId: r.patientId,
+          doctorId: r.doctorId,
+          appointmentId: r.appointmentId,
+          patientFriendlyVersion: r.patientFriendlyVersion,
+          digitalSignature: r.digitalSignature,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+        }));
+      const doctorIds = [...new Set(filteredRecords.map((r: any) => r.doctorId))];
+      const doctorNames: Record<string, string> = {};
+      for (const did of doctorIds) {
+        const doc = await storage.getUser(did as string);
+        if (doc) doctorNames[did as string] = doc.name;
+      }
+      const enriched = filteredRecords.map((r: any) => ({
+        ...r,
+        doctorName: doctorNames[r.doctorId] || 'Médico',
+      }));
+      res.json(enriched);
     } catch (error) {
       console.error('Get my medical records error:', error);
       res.json([]);
+    }
+  });
+
+  app.post('/api/medical-records/:id/patient-friendly', async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+      const recordId = req.params.id;
+      const record = await storage.getMedicalRecord(recordId);
+      if (!record) {
+        return res.status(404).json({ message: 'Prontuário não encontrado' });
+      }
+      if (req.user.role === 'doctor' && record.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Você só pode gerar versões para seus próprios prontuários' });
+      }
+
+      const parts: string[] = [];
+      if (record.symptoms) parts.push(`Sintomas: ${record.symptoms}`);
+      if (record.diagnosis) parts.push(`Diagnóstico: ${record.diagnosis}`);
+      if (record.treatment) parts.push(`Tratamento: ${record.treatment}`);
+      if (record.prescription) parts.push(`Prescrição: ${record.prescription}`);
+      if (record.observations) parts.push(`Observações: ${record.observations}`);
+
+      const clinicalText = parts.join('\n');
+      if (!clinicalText.trim()) {
+        return res.status(400).json({ message: 'Prontuário sem dados clínicos para gerar versão acessível' });
+      }
+
+      const prompt = `Você é um médico que traduz prontuários clínicos para uma linguagem acessível ao paciente.
+Reescreva o conteúdo abaixo de forma clara, simples e empática, sem usar jargão médico.
+Mantenha todas as informações relevantes, mas explique termos técnicos.
+Organize por seções claras. Use português brasileiro.
+NÃO inclua informações que não estejam no texto original.
+
+Prontuário clínico:
+${clinicalText}`;
+
+      const friendlyVersion = await geminiService.generateText(
+        prompt,
+        'Você é um médico comunicador que transforma informação clínica em linguagem acessível ao paciente. Seja claro, empático e preciso.'
+      );
+
+      await storage.updateMedicalRecord(recordId, {
+        patientFriendlyVersion: friendlyVersion,
+        patientFriendlyActive: true,
+      } as any);
+
+      res.json({ success: true, patientFriendlyVersion: friendlyVersion });
+    } catch (error) {
+      console.error('Generate patient-friendly version error:', error);
+      res.status(500).json({ message: 'Erro ao gerar versão acessível' });
+    }
+  });
+
+  app.patch('/api/medical-records/:id/patient-friendly/toggle', async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+      const recordId = req.params.id;
+      const record = await storage.getMedicalRecord(recordId);
+      if (!record) {
+        return res.status(404).json({ message: 'Prontuário não encontrado' });
+      }
+      if (req.user.role === 'doctor' && record.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Acesso negado a este prontuário' });
+      }
+      const newActive = !record.patientFriendlyActive;
+      await storage.updateMedicalRecord(recordId, {
+        patientFriendlyActive: newActive,
+      } as any);
+      res.json({ success: true, patientFriendlyActive: newActive });
+    } catch (error) {
+      console.error('Toggle patient-friendly error:', error);
+      res.status(500).json({ message: 'Erro ao alternar visibilidade' });
     }
   });
 
@@ -2450,26 +2555,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (user.role === 'doctor') {
-        // Check if doctor is the primary doctor for this patient
         const isPrimaryDoctor = patient.primaryDoctorId === user.id;
         
-        // Check if doctor has any appointments with this patient
         const doctorAppointments = await storage.getAppointmentsByDoctor(user.id);
         const hasAppointment = doctorAppointments.some(
           apt => apt.patientId === patientId
         );
 
-        // Check if doctor is in same team hierarchy (superior or through superior's patients)
+        const doctorRecords = await storage.getMedicalRecordsByDoctor(user.id);
+        const hasOwnRecord = doctorRecords.some(r => r.patientId === patientId);
+
         let isInTeamHierarchy = false;
         if (user.superiorDoctorId) {
-          // Check if patient belongs to superior doctor
           const superiorAppointments = await storage.getAppointmentsByDoctor(user.superiorDoctorId);
           isInTeamHierarchy = patient.primaryDoctorId === user.superiorDoctorId || 
             superiorAppointments.some(apt => apt.patientId === patientId);
         }
 
-        // Allow access if doctor is primary, has appointment, or is in team hierarchy
-        if (isPrimaryDoctor || hasAppointment || isInTeamHierarchy) {
+        if (isPrimaryDoctor || hasAppointment || hasOwnRecord || isInTeamHierarchy) {
           const records = await storage.getMedicalRecordsByPatient(patientId);
           return res.json(records);
         }
@@ -2513,7 +2616,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const isPrimaryDoctor = patient.primaryDoctorId === user.id;
         const doctorAppointments = await storage.getAppointmentsByDoctor(user.id);
         const hasAppointment = doctorAppointments.some(apt => apt.patientId === patientId);
-        if (!isPrimaryDoctor && !hasAppointment) {
+        const doctorRecords = await storage.getMedicalRecordsByDoctor(user.id);
+        const hasOwnRecord = doctorRecords.some(r => r.patientId === patientId);
+        if (!isPrimaryDoctor && !hasAppointment && !hasOwnRecord) {
           return res.status(403).json({ message: 'Acesso negado' });
         }
       } else if (user.role !== 'admin') {
@@ -12746,7 +12851,7 @@ Retorne apenas o JSON válido.`;
 
           return {
             ...request,
-            session,
+            session: session ? { id: session.id, clinicalNotes: session.clinicalNotes ? '[registrado]' : null } : null,
             doctor: doctor ? { id: doctor.id, name: doctor.name, specialty: doctor.specialty } : null
           };
         })
@@ -12767,7 +12872,6 @@ Retorne apenas o JSON válido.`;
         startedAt: videoConsultations.startedAt,
         endedAt: videoConsultations.endedAt,
         duration: videoConsultations.duration,
-        meetingNotes: videoConsultations.meetingNotes,
         createdAt: videoConsultations.createdAt,
       })
         .from(videoConsultations)
@@ -23983,6 +24087,22 @@ async function migratePostConsultationEditColumns() {
     console.log('✓ Post-consultation edit columns migrated successfully');
   } catch (error) {
     console.error('Failed to migrate post-consultation edit columns:', error);
+  }
+}
+
+async function migratePatientFriendlyColumns() {
+  try {
+    await db.execute(sql`
+      ALTER TABLE medical_records
+      ADD COLUMN IF NOT EXISTS patient_friendly_version text
+    `);
+    await db.execute(sql`
+      ALTER TABLE medical_records
+      ADD COLUMN IF NOT EXISTS patient_friendly_active boolean DEFAULT false
+    `);
+    console.log('✓ Patient-friendly columns migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate patient-friendly columns:', error);
   }
 }
 

@@ -12,6 +12,7 @@ import { TriageBadge } from "@/components/triage/triage-badge";
 import PatientExportDialog from "@/components/patient-export-dialog";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
+import { FormattedText } from "@/components/ui/formatted-text";
 import {
   FileText,
   Calendar,
@@ -26,6 +27,7 @@ import {
   Activity,
   Shield,
   Pill,
+  Heart,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -212,6 +214,10 @@ export default function PatientRecords() {
                       </p>
                     </div>
                     <div className="flex gap-2">
+                      <Badge variant="outline" className="text-blue-600">
+                        <Heart className="w-3 h-3 mr-1" />
+                        Versão Acessível
+                      </Badge>
                       {record.digitalSignature && (
                         <Badge variant="outline" className="text-green-600">
                           <Shield className="w-3 h-3 mr-1" />
@@ -222,32 +228,14 @@ export default function PatientRecords() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {record.symptoms && (
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground mb-1">Sintomas</h4>
-                      <p className="text-sm">{record.symptoms}</p>
+                  {record.patientFriendlyVersion ? (
+                    <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <FormattedText content={record.patientFriendlyVersion} />
                     </div>
-                  )}
-                  {record.diagnosis && (
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground mb-1">Diagnóstico</h4>
-                      <p className="text-sm">{record.diagnosis}</p>
-                    </div>
-                  )}
-                  {record.treatment && (
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground mb-1">Tratamento</h4>
-                      <p className="text-sm">{record.treatment}</p>
-                    </div>
-                  )}
-                  {record.prescription && (
-                    <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                      <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                        <Pill className="w-3 h-3 inline mr-1" />
-                        Prescrição
-                      </h4>
-                      <p className="text-sm">{record.prescription}</p>
-                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Seu médico ainda está preparando a versão acessível deste prontuário.
+                    </p>
                   )}
                 </CardContent>
               </Card>

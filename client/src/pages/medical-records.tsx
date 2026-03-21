@@ -227,6 +227,37 @@ export default function MedicalRecords() {
     },
   });
 
+  const generateFriendlyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('POST', `/api/medical-records/${id}/patient-friendly`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Versão acessível criada", description: "A versão para o paciente foi gerada com sucesso." });
+      queryClient.invalidateQueries({ queryKey: ['/api/medical-records'] });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível gerar a versão acessível.", variant: "destructive" });
+    },
+  });
+
+  const toggleFriendlyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('PATCH', `/api/medical-records/${id}/patient-friendly/toggle`, {});
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: data.patientFriendlyActive ? "Visibilidade ativada" : "Visibilidade desativada",
+        description: data.patientFriendlyActive ? "O paciente agora pode ver este prontuário." : "O prontuário foi ocultado do paciente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/medical-records'] });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível alterar a visibilidade.", variant: "destructive" });
+    },
+  });
+
   const selectedPatient = (patients as any[] || []).find((p: any) => p.id === selectedPatientId);
   const filteredPatients = (patients as any[] || []).filter((patient: any) =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -1145,6 +1176,12 @@ export default function MedicalRecords() {
                                     Cripto
                                   </Badge>
                                 )}
+                                {record.patientFriendlyActive && (
+                                  <Badge variant="outline" className="text-emerald-600 text-xs">
+                                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                                    Visível ao Paciente
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                           </CardHeader>
@@ -1198,6 +1235,43 @@ export default function MedicalRecords() {
                                   </div>
                                 </div>
                               )}
+
+                              <div className="border-t pt-3 mt-3">
+                                <div className="flex items-center justify-between flex-wrap gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">Acesso do Paciente:</span>
+                                    {record.patientFriendlyVersion ? (
+                                      <Badge variant={record.patientFriendlyActive ? "default" : "secondary"} className="text-xs">
+                                        {record.patientFriendlyActive ? "Ativo" : "Inativo"}
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-xs text-muted-foreground">Não gerada</Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-xs"
+                                      onClick={() => generateFriendlyMutation.mutate(record.id)}
+                                      disabled={generateFriendlyMutation.isPending}
+                                    >
+                                      {generateFriendlyMutation.isPending ? 'Gerando...' : record.patientFriendlyVersion ? 'Regerar Versão Acessível' : 'Criar Versão Acessível'}
+                                    </Button>
+                                    {record.patientFriendlyVersion && (
+                                      <Button
+                                        size="sm"
+                                        variant={record.patientFriendlyActive ? "destructive" : "default"}
+                                        className="text-xs"
+                                        onClick={() => toggleFriendlyMutation.mutate(record.id)}
+                                        disabled={toggleFriendlyMutation.isPending}
+                                      >
+                                        {record.patientFriendlyActive ? 'Desativar' : 'Ativar'} Visibilidade
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </CardContent>
                         </Card>

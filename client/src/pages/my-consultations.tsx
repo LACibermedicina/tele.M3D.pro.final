@@ -467,13 +467,13 @@ export default function MyConsultations() {
         )}
 
         {consultation.session?.clinicalNotes && (
-          <div>
+          <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
             <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
-              <FileText className="w-4 h-4" />
-              Notas do Médico
+              <CheckCircle className="w-4 h-4 text-green-600" />
+              Consulta Registrada
             </h4>
             <p className="text-sm text-muted-foreground" data-testid="text-clinical-notes">
-              {consultation.session.clinicalNotes}
+              Seu médico registrou observações clínicas sobre esta consulta. Para detalhes acessíveis, acesse seu prontuário na área "Meu Prontuário".
             </p>
           </div>
         )}
