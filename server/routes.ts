@@ -11191,7 +11191,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
       const doctorName = req.user!.name || 'Médico(a)';
 
       const atomicResult = await db.update(consultationRequests)
-        .set({ status: 'accepted', selectedDoctorId: doctorId })
+        .set({ status: 'accepted', selectedDoctorId: doctorId, acceptedAt: new Date() })
         .where(and(
           eq(consultationRequests.id, req.params.id),
           eq(consultationRequests.status, 'pending')
