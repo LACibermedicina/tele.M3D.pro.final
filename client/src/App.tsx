@@ -88,11 +88,11 @@ import { LayoutSettingsProvider, useLayoutSettings } from "@/contexts/LayoutSett
 import { VoiceAssistantPrompt } from "@/components/voice-assistant-prompt";
 import { VoiceAssistantOverlay } from "@/components/voice-assistant-overlay";
 import DesktopBackground from "@/components/layout/desktop-background";
+import { DesktopWindowManagerProvider } from "@/contexts/DesktopWindowManagerContext";
+import DesktopWindowLayer from "@/components/layout/desktop-window-layer";
 
-// Responsive Dashboard Components
 import { ResponsiveDashboard } from "@/components/responsive-dashboard";
 
-// Global shortcuts hooks
 import { useGlobalShortcuts, useCommandEvents, useApplicationShortcuts } from "@/hooks/use-shortcuts";
 
 function ForceDisconnectGuard() {
@@ -141,20 +141,22 @@ function Router() {
     : '';
   const bottomPadding = mobileMenuStyle === 'bottom' && user ? 'md:pb-0 pb-16' : '';
 
+  const isDesktopWindowed = typeof window !== "undefined" && window.innerWidth >= 768 && !!user && !isInVideoConsultation;
+
   return (
     <>
     <DesktopBackground />
+    <DesktopWindowLayer />
     <div className={`min-h-screen transition-all duration-300 ${sidebarMargin} ${bottomPadding} relative z-[1] md:bg-transparent bg-background desktop-env-root`}>
       {user && <UrgentAlertOverlay />}
       
-      {/* Command Palette */}
       <CommandPalette 
         isOpen={isCommandPaletteOpen} 
         onClose={() => setIsCommandPaletteOpen(false)}
         userRole={user?.role}
       />
 
-      <div data-page-content={!isInVideoConsultation ? "" : undefined}>
+      <div data-page-content={!isInVideoConsultation ? "" : undefined} className={isDesktopWindowed ? "hidden" : ""}>
       <Switch>
         {/* Public routes */}
         <Route path="/login">
@@ -539,8 +541,7 @@ function Router() {
       </Switch>
       </div>
       
-      {/* Enhanced Footer with Quick Access */}
-      <footer className="bg-card border-t border-border mt-12 desktop-glass-footer">
+      <footer className={`bg-card border-t border-border mt-12 desktop-glass-footer ${isDesktopWindowed ? "hidden" : ""}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6 text-sm text-muted-foreground">
@@ -623,15 +624,17 @@ function App() {
             <LayoutSettingsProvider>
               <VoiceAssistantProvider>
                 <MinimizedPanelsProvider>
-                  <TooltipProvider>
-                    <Toaster />
-                    <InactivityMonitor />
-                    <ForceDisconnectGuard />
-                    <PostLoadEffects />
-                    <MinimizedPanelDock />
-                    <UnifiedToolbox />
-                    <Router />
-                  </TooltipProvider>
+                  <DesktopWindowManagerProvider>
+                    <TooltipProvider>
+                      <Toaster />
+                      <InactivityMonitor />
+                      <ForceDisconnectGuard />
+                      <PostLoadEffects />
+                      <MinimizedPanelDock />
+                      <UnifiedToolbox />
+                      <Router />
+                    </TooltipProvider>
+                  </DesktopWindowManagerProvider>
                 </MinimizedPanelsProvider>
               </VoiceAssistantProvider>
             </LayoutSettingsProvider>

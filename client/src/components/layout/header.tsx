@@ -25,6 +25,8 @@ import DockableNavBar from "@/components/layout/dockable-nav-bar";
 import { InlineTrayIcons } from "@/components/layout/minimized-panel-dock";
 import { InlineTrayAnalysisButtons } from "@/components/ui/draggable-widget-buttons";
 import { InlineQuickActions } from "@/components/quick-actions-bar";
+import { useDesktopWindowManager } from "@/contexts/DesktopWindowManagerContext";
+import { Home } from "lucide-react";
 
 export default function Header() {
   const [location, navigate] = useLocation();
@@ -751,6 +753,10 @@ export default function Header() {
                       <TooltipContent side="top"><p>Abrir/Fechar Toolbox</p></TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+
+                  <div className="h-8 w-px bg-slate-600/50 shrink-0" />
+
+                  <DesktopTaskbarWindows />
 
                   <div className="h-8 w-px bg-slate-600/50 shrink-0" />
 
