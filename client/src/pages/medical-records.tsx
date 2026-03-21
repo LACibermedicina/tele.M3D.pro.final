@@ -1248,28 +1248,30 @@ export default function MedicalRecords() {
                                       <Badge variant="outline" className="text-xs text-muted-foreground">Não gerada</Badge>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="text-xs"
-                                      onClick={() => generateFriendlyMutation.mutate(record.id)}
-                                      disabled={generateFriendlyMutation.isPending}
-                                    >
-                                      {generateFriendlyMutation.isPending ? 'Gerando...' : record.patientFriendlyVersion ? 'Regerar Versão Acessível' : 'Criar Versão Acessível'}
-                                    </Button>
-                                    {record.patientFriendlyVersion && (
+                                  {(isAdmin || record.doctorId === user?.id) && (
+                                    <div className="flex items-center gap-2">
                                       <Button
                                         size="sm"
-                                        variant={record.patientFriendlyActive ? "destructive" : "default"}
+                                        variant="outline"
                                         className="text-xs"
-                                        onClick={() => toggleFriendlyMutation.mutate(record.id)}
-                                        disabled={toggleFriendlyMutation.isPending}
+                                        onClick={() => generateFriendlyMutation.mutate(record.id)}
+                                        disabled={generateFriendlyMutation.isPending}
                                       >
-                                        {record.patientFriendlyActive ? 'Desativar' : 'Ativar'} Visibilidade
+                                        {generateFriendlyMutation.isPending ? 'Gerando...' : record.patientFriendlyVersion ? 'Regerar Versão Acessível' : 'Criar Versão Acessível'}
                                       </Button>
-                                    )}
-                                  </div>
+                                      {record.patientFriendlyVersion && (
+                                        <Button
+                                          size="sm"
+                                          variant={record.patientFriendlyActive ? "destructive" : "default"}
+                                          className="text-xs"
+                                          onClick={() => toggleFriendlyMutation.mutate(record.id)}
+                                          disabled={toggleFriendlyMutation.isPending}
+                                        >
+                                          {record.patientFriendlyActive ? 'Desativar' : 'Ativar'} Visibilidade
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
