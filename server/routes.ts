@@ -603,7 +603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           try {
             if (whatsAppService.isConfigured()) {
-              const whatsappEnabled = await storage.getSystemSetting('notification_whatsapp_enabled');
+              const whatsappEnabled = await storage.getSystemSetting('whatsapp_notifications_enabled');
               if (whatsappEnabled?.value === 'true') {
                 const doctor = await storage.getUser(doctorId);
                 if (doctor?.whatsappNumber) {
@@ -626,6 +626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const doctor = await storage.getUser(userId);
           const doctorName = doctor?.name || 'Médico(a)';
 
+          const patientActionUrl = `/patient/video/${targetConsultationId}`;
           const deliveredToPatient = broadcastToUser(patient.userId, {
             type: 'room_presence',
             data: {
@@ -635,7 +636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               consultationId: targetConsultationId,
               doctorName,
               userType: 'doctor',
-              actionUrl: `/video-consultation/${targetConsultationId}`
+              actionUrl: patientActionUrl
             }
           });
 
@@ -647,7 +648,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 title: 'Médico(a) na Sala de Consulta',
                 message: `Dr(a). ${doctorName} está pronto(a) para o atendimento.`,
                 priority: 'high',
-                actionUrl: `/video-consultation/${targetConsultationId}`,
+                actionUrl: patientActionUrl,
                 senderId: userId,
                 delivered: false,
                 read: false,
@@ -8558,7 +8559,7 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         title: `Paciente ${tokenRecord.patientName || 'Paciente'} acessou via link`,
         message: `O paciente entrou na consulta usando o código de acesso ${tokenRecord.shortCode}.`,
         priority: 'medium',
-        actionUrl: tokenRecord.consultationId ? `/video-consultation/${tokenRecord.consultationId}` : '/schedule',
+        actionUrl: tokenRecord.consultationId ? `/patient/video/${tokenRecord.consultationId}` : '/schedule',
         delivered: false,
         read: false,
         metadata: {
@@ -9062,7 +9063,7 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
           title: 'Paciente na Sala de Espera',
           message: `${patient[0].name} entrou no seu consultório virtual e aguarda atendimento.`,
           priority: 'high',
-          actionUrl: `/video-consultation/${consultation[0].id}`,
+          actionUrl: `/consultation/video/${patientId}`,
           senderId: req.user.id,
           metadata: {
             patientId,
@@ -11006,7 +11007,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
 
       try {
         if (whatsAppService.isConfigured()) {
-          const whatsappEnabled = await storage.getSystemSetting('notification_whatsapp_enabled');
+          const whatsappEnabled = await storage.getSystemSetting('whatsapp_notifications_enabled');
           if (whatsappEnabled?.value === 'true') {
             const urgencyEmoji = triageData.aiTriageLevel === 'emergency' ? '🔴' : 
               triageData.aiTriageLevel === 'very_urgent' ? '🟠' : 
@@ -11223,7 +11224,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         try {
           await db.insert(pendingNotifications).values({
             userId: otherDocId,
-            type: 'system' as any,
+            type: 'system',
             title: 'Solicitação Atendida',
             message: `Atendido por: Dr(a). ${doctorName} às ${acceptedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
             priority: 'medium',
@@ -11240,7 +11241,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
 
       try {
         if (whatsAppService.isConfigured()) {
-          const whatsappEnabled = await storage.getSystemSetting('notification_whatsapp_enabled');
+          const whatsappEnabled = await storage.getSystemSetting('whatsapp_notifications_enabled');
           if (whatsappEnabled?.value === 'true') {
             const patient = await storage.getPatient(request.patientId);
             const patientCode = patient?.id?.slice(-6)?.toUpperCase() || 'N/A';
