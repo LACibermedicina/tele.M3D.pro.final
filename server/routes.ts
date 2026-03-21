@@ -2485,10 +2485,10 @@ ${clinicalText}`;
 
       await storage.updateMedicalRecord(recordId, {
         patientFriendlyVersion: friendlyVersion,
-        patientFriendlyActive: true,
+        patientFriendlyActive: false,
       });
 
-      res.json({ success: true, patientFriendlyVersion: friendlyVersion });
+      res.json({ success: true, patientFriendlyVersion: friendlyVersion, patientFriendlyActive: false });
     } catch (error) {
       console.error('Generate patient-friendly version error:', error);
       res.status(500).json({ message: 'Erro ao gerar versão acessível' });
@@ -2569,14 +2569,7 @@ ${clinicalText}`;
         const doctorRecords = await storage.getMedicalRecordsByDoctor(user.id);
         const hasOwnRecord = doctorRecords.some(r => r.patientId === patientId);
 
-        let isInTeamHierarchy = false;
-        if (user.superiorDoctorId) {
-          const superiorAppointments = await storage.getAppointmentsByDoctor(user.superiorDoctorId);
-          isInTeamHierarchy = patient.primaryDoctorId === user.superiorDoctorId || 
-            superiorAppointments.some(apt => apt.patientId === patientId);
-        }
-
-        if (isPrimaryDoctor || hasAppointment || hasOwnRecord || isInTeamHierarchy) {
+        if (isPrimaryDoctor || hasAppointment || hasOwnRecord) {
           const records = await storage.getMedicalRecordsByPatient(patientId);
           return res.json(records);
         }
