@@ -18227,6 +18227,16 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
+  app.get('/api/crm/config/public', requireAuth, async (_req: any, res: Response) => {
+    try {
+      const config = await crmVerificationService.getConfig();
+      res.json({ enabled: !!config.enabled });
+    } catch (error) {
+      console.error('Public CRM config error:', error);
+      res.json({ enabled: false });
+    }
+  });
+
   app.get('/api/admin/crm-config', requireAuth, async (req: any, res: Response) => {
     try {
       if (!req.user || req.user.role !== 'admin') {

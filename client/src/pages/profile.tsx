@@ -56,7 +56,7 @@ export default function Profile() {
   });
 
   const { data: crmConfig } = useQuery<{ enabled: boolean }>({
-    queryKey: ['/api/admin/crm-config'],
+    queryKey: ['/api/crm/config/public'],
     enabled: !!user?.id && user?.role === 'doctor',
   });
 
@@ -510,6 +510,18 @@ export default function Profile() {
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
                               <ShieldAlert className="h-3.5 w-3.5" />
                               Verificação Falhou
+                            </span>
+                          )}
+                          {crmStatus.status === 'invalid' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                              <ShieldAlert className="h-3.5 w-3.5" />
+                              CRM Inválido
+                            </span>
+                          )}
+                          {crmStatus.status === 'expired' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                              <ShieldAlert className="h-3.5 w-3.5" />
+                              CRM Expirado
                             </span>
                           )}
                           {crmStatus.status === 'unverified' && (

@@ -89,7 +89,7 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
 
   const { data: doctorCrmStatus } = useQuery<{ status: string }>({
     queryKey: ['/api/crm/status', prescription?.doctorId],
-    enabled: !!prescription?.doctorId && user?.role === 'admin',
+    enabled: !!prescription?.doctorId,
   });
 
   // Sign prescription mutation

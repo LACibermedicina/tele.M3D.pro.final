@@ -3,7 +3,7 @@ import { users, systemSettings } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 interface CRMVerificationResult {
-  status: 'verified' | 'failed' | 'pending' | 'unverified';
+  status: 'verified' | 'failed' | 'pending' | 'unverified' | 'invalid' | 'expired';
   data?: {
     name?: string;
     registrationNumber?: string;
@@ -16,21 +16,30 @@ interface CRMVerificationResult {
   error?: string;
 }
 
+interface CountryConfig {
+  enabled: boolean;
+  apiUrl: string;
+  apiKey: string;
+  provider: string;
+  httpMethod?: 'GET' | 'POST';
+  responseMapping?: {
+    nameField?: string;
+    registrationField?: string;
+    stateField?: string;
+    specialtyField?: string;
+    situationField?: string;
+    dateField?: string;
+    activeValues?: string[];
+    expiredValues?: string[];
+    invalidValues?: string[];
+  };
+}
+
 interface CRMConfig {
   enabled: boolean;
   countries: {
-    BR: {
-      enabled: boolean;
-      apiUrl: string;
-      apiKey: string;
-      provider: string;
-    };
-    PT: {
-      enabled: boolean;
-      apiUrl: string;
-      apiKey: string;
-      provider: string;
-    };
+    BR: CountryConfig;
+    PT: CountryConfig;
   };
 }
 
@@ -42,12 +51,34 @@ const DEFAULT_CRM_CONFIG: CRMConfig = {
       apiUrl: 'https://www.consultacrm.com.br/api/index.php',
       apiKey: '',
       provider: 'CFM',
+      httpMethod: 'GET',
+      responseMapping: {
+        nameField: 'item.0.nome',
+        registrationField: 'item.0.numero',
+        stateField: 'item.0.uf',
+        specialtyField: 'item.0.especialidade',
+        situationField: 'item.0.situacao',
+        dateField: 'item.0.data_inscricao',
+        activeValues: ['Regular', 'Ativo'],
+        expiredValues: ['Cancelado', 'Cassado'],
+        invalidValues: ['Não encontrado', 'Inválido'],
+      },
     },
     PT: {
       enabled: false,
       apiUrl: '',
       apiKey: '',
       provider: 'Ordem dos Médicos',
+      httpMethod: 'GET',
+      responseMapping: {
+        nameField: 'nome',
+        registrationField: 'numero',
+        situationField: 'situacao',
+        specialtyField: 'especialidade',
+        activeValues: ['Activo', 'Ativo'],
+        expiredValues: ['Suspenso', 'Cancelado'],
+        invalidValues: ['Não encontrado'],
+      },
     },
   },
 };
@@ -176,8 +207,9 @@ export class CRMVerificationService {
   }
 
   private extractCRMState(license: string): string {
-    const match = license.match(/[A-Z]{2}/);
-    return match ? match[0] : '';
+    const cleaned = license.replace(/^CRM\/?/i, '');
+    const match = cleaned.match(/([A-Z]{2})/);
+    return match ? match[1] : '';
   }
 
   private async verifyCRMBrazil(crmNumber: string, state: string, config: CRMConfig): Promise<CRMVerificationResult> {
@@ -226,8 +258,25 @@ export class CRMVerificationService {
       
       if (data.item && data.item.length > 0) {
         const item = data.item[0];
+        const mapping = brConfig.responseMapping || {};
+        const situation = item.situacao || '';
+        const situationLower = situation.toLowerCase();
+
+        let verificationStatus: CRMVerificationResult['status'] = 'failed';
+        const activeValues = (mapping.activeValues || ['Regular', 'Ativo']).map(v => v.toLowerCase());
+        const expiredValues = (mapping.expiredValues || ['Cancelado', 'Cassado']).map(v => v.toLowerCase());
+        const invalidValues = (mapping.invalidValues || ['Não encontrado', 'Inválido']).map(v => v.toLowerCase());
+
+        if (activeValues.includes(situationLower)) {
+          verificationStatus = 'verified';
+        } else if (expiredValues.includes(situationLower)) {
+          verificationStatus = 'expired';
+        } else if (invalidValues.includes(situationLower)) {
+          verificationStatus = 'invalid';
+        }
+
         return {
-          status: item.situacao?.toLowerCase() === 'regular' ? 'verified' : 'failed',
+          status: verificationStatus,
           data: {
             name: item.nome,
             registrationNumber: item.numero,
@@ -241,7 +290,7 @@ export class CRMVerificationService {
       }
 
       return {
-        status: 'failed',
+        status: 'invalid',
         error: 'CRM não encontrado na base do CFM',
         data: { apiSource: 'CFM' },
       };
@@ -282,8 +331,25 @@ export class CRMVerificationService {
       }
 
       const data = await response.json();
+      const mapping = ptConfig.responseMapping || {};
+      const situation = data.situacao || '';
+      const situationLower = situation.toLowerCase();
+
+      let verificationStatus: CRMVerificationResult['status'] = 'failed';
+      const activeValues = (mapping.activeValues || ['Activo', 'Ativo']).map(v => v.toLowerCase());
+      const expiredValues = (mapping.expiredValues || ['Suspenso', 'Cancelado']).map(v => v.toLowerCase());
+      const invalidValues = (mapping.invalidValues || ['Não encontrado']).map(v => v.toLowerCase());
+
+      if (activeValues.includes(situationLower)) {
+        verificationStatus = 'verified';
+      } else if (expiredValues.includes(situationLower)) {
+        verificationStatus = 'expired';
+      } else if (invalidValues.includes(situationLower)) {
+        verificationStatus = 'invalid';
+      }
+
       return {
-        status: data.situacao?.toLowerCase() === 'activo' ? 'verified' : 'failed',
+        status: verificationStatus,
         data: {
           name: data.nome,
           registrationNumber: data.numero,
