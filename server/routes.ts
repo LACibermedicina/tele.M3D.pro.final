@@ -8091,13 +8091,14 @@ IMPORTANTE:
         return res.status(400).json({ message: 'Motivo da edição é obrigatório para itens já aprovados' });
       }
 
-      const changedFields: Record<string, any> = {};
-      if (title !== undefined && title !== item.title) changedFields.title = item.title;
-      if (description !== undefined && description !== item.description) changedFields.description = item.description;
-      if (details !== undefined && JSON.stringify(details) !== JSON.stringify(item.details)) changedFields.details = item.details;
-      if (patientSummary !== undefined && patientSummary !== item.patientSummary) changedFields.patientSummary = item.patientSummary;
+      const previousValues: Record<string, any> = {};
+      const newValues: Record<string, any> = {};
+      if (title !== undefined && title !== item.title) { previousValues.title = item.title; newValues.title = title; }
+      if (description !== undefined && description !== item.description) { previousValues.description = item.description; newValues.description = description; }
+      if (details !== undefined && JSON.stringify(details) !== JSON.stringify(item.details)) { previousValues.details = item.details; newValues.details = details; }
+      if (patientSummary !== undefined && patientSummary !== item.patientSummary) { previousValues.patientSummary = item.patientSummary; newValues.patientSummary = patientSummary; }
 
-      if (Object.keys(changedFields).length === 0) {
+      if (Object.keys(previousValues).length === 0) {
         return res.status(400).json({ message: 'Nenhuma alteração detectada' });
       }
 
@@ -8107,8 +8108,9 @@ IMPORTANTE:
         editedByName: req.user.name || req.user.username,
         reason: editReason || '',
         wasApproved,
-        changedFieldNames: Object.keys(changedFields),
-        previousValues: changedFields,
+        changedFieldNames: Object.keys(previousValues),
+        previousValues,
+        newValues,
       };
 
       const existingHistory = Array.isArray(item.editHistory) ? item.editHistory : [];
@@ -8154,6 +8156,102 @@ IMPORTANTE:
     } catch (error) {
       console.error('Error editing item:', error);
       res.status(500).json({ message: 'Erro ao editar item' });
+    }
+  });
+
+  app.post('/api/post-consultation/items/:id/edit-and-approve', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos' });
+      }
+
+      const parsed = editPostConsultationSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: 'Dados inválidos', errors: parsed.error.flatten() });
+      }
+
+      const { title, description, details, patientSummary, editReason } = parsed.data;
+      const reviewNotes = req.body.reviewNotes;
+
+      const item = await storage.getPostConsultationItem(req.params.id);
+      if (!item) {
+        return res.status(404).json({ message: 'Item não encontrado' });
+      }
+
+      if (item.doctorId !== req.user.id && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Você só pode editar seus próprios itens' });
+      }
+
+      const updateData: any = {
+        status: 'approved',
+        reviewedAt: new Date(),
+        reviewNotes: reviewNotes || null,
+      };
+
+      const hasEdits = (title !== undefined && title !== item.title) ||
+        (description !== undefined && description !== item.description) ||
+        (details !== undefined && JSON.stringify(details) !== JSON.stringify(item.details)) ||
+        (patientSummary !== undefined && patientSummary !== item.patientSummary);
+
+      if (hasEdits) {
+        const prevVals: Record<string, any> = {};
+        const newVals: Record<string, any> = {};
+        if (title !== undefined && title !== item.title) { prevVals.title = item.title; newVals.title = title; }
+        if (description !== undefined && description !== item.description) { prevVals.description = item.description; newVals.description = description; }
+        if (details !== undefined && JSON.stringify(details) !== JSON.stringify(item.details)) { prevVals.details = item.details; newVals.details = details; }
+        if (patientSummary !== undefined && patientSummary !== item.patientSummary) { prevVals.patientSummary = item.patientSummary; newVals.patientSummary = patientSummary; }
+
+        const historyEntry = {
+          editedAt: new Date().toISOString(),
+          editedBy: req.user.id,
+          editedByName: req.user.name || req.user.username,
+          reason: editReason || 'Editado durante aprovação',
+          wasApproved: false,
+          changedFieldNames: Object.keys(prevVals),
+          previousValues: prevVals,
+          newValues: newVals,
+        };
+
+        const existingHistory = Array.isArray(item.editHistory) ? item.editHistory : [];
+        updateData.editHistory = [...existingHistory, historyEntry];
+        updateData.editedAt = new Date();
+        updateData.editedBy = req.user.id;
+        if (title !== undefined) updateData.title = title;
+        if (description !== undefined) updateData.description = description;
+        if (details !== undefined) updateData.details = details;
+        if (patientSummary !== undefined) updateData.patientSummary = patientSummary;
+      }
+
+      const updated = await storage.updatePostConsultationItem(req.params.id, updateData);
+      if (!updated) {
+        return res.status(500).json({ message: 'Erro ao aprovar item' });
+      }
+
+      if (updated.patientId) {
+        try {
+          const patient = await storage.getPatient(updated.patientId);
+          if (patient?.userId) {
+            await db.insert(pendingNotifications).values({
+              userId: patient.userId,
+              type: 'prescription_approved',
+              title: `${updated.type === 'prescription' ? 'Prescrição' : updated.type === 'exam' ? 'Exame' : updated.type === 'referral' ? 'Encaminhamento' : 'Retorno'} aprovado`,
+              message: updated.patientSummary || updated.title,
+              priority: 'medium',
+              actionUrl: '/my-consultations',
+              delivered: false,
+              read: false,
+              metadata: { itemId: updated.id, type: updated.type, editedBeforeApproval: hasEdits }
+            });
+          }
+        } catch (notifErr) {
+          console.error('Failed to send approval notification:', notifErr);
+        }
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error('Error edit-and-approve item:', error);
+      res.status(500).json({ message: 'Erro ao editar e aprovar item' });
     }
   });
 

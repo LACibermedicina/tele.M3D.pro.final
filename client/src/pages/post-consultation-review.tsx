@@ -352,6 +352,26 @@ export default function PostConsultationReview() {
     },
   });
 
+  const editAndApproveMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<EditState> & { reviewNotes?: string } }) => {
+      const res = await apiRequest("POST", `/api/post-consultation/items/${id}/edit-and-approve`, data);
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      toast({ title: "Item editado e aprovado com sucesso" });
+      setEditingItems((prev) => {
+        const next = { ...prev };
+        delete next[variables.id];
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/post-consultation/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/post-consultation/approved"] });
+    },
+    onError: () => {
+      toast({ title: "Erro ao editar e aprovar item", variant: "destructive" });
+    },
+  });
+
   const toggleExpand = (id: string) => {
     const next = new Set(expandedItems);
     if (next.has(id)) next.delete(id);
@@ -401,6 +421,22 @@ export default function PostConsultationReview() {
         details: editState.details,
         patientSummary: editState.patientSummary,
         editReason: editState.editReason,
+      },
+    });
+  };
+
+  const saveEditAndApprove = (id: string) => {
+    const editState = editingItems[id];
+    if (!editState) return;
+    editAndApproveMutation.mutate({
+      id,
+      data: {
+        title: editState.title,
+        description: editState.description,
+        details: editState.details,
+        patientSummary: editState.patientSummary,
+        editReason: editState.editReason,
+        reviewNotes: reviewNotes[id],
       },
     });
   };
@@ -829,14 +865,26 @@ export default function PostConsultationReview() {
                                     Cancelar
                                   </Button>
                                   <Button
+                                    variant="outline"
                                     size="sm"
-                                    className="bg-amber-600 hover:bg-amber-700"
+                                    className="bg-amber-600 hover:bg-amber-700 text-white"
                                     onClick={() => saveEdit(item.id)}
                                     disabled={editMutation.isPending || ((item.status === 'approved' || item.status === 'signed') && !editState.editReason.trim())}
                                   >
                                     <Save className="w-4 h-4 mr-1" />
-                                    {editMutation.isPending ? "Salvando..." : "Salvar Alterações"}
+                                    {editMutation.isPending ? "Salvando..." : "Salvar"}
                                   </Button>
+                                  {item.status === 'pending_review' && (
+                                    <Button
+                                      size="sm"
+                                      className="bg-green-600 hover:bg-green-700"
+                                      onClick={() => saveEditAndApprove(item.id)}
+                                      disabled={editAndApproveMutation.isPending}
+                                    >
+                                      <CheckCircle className="w-4 h-4 mr-1" />
+                                      {editAndApproveMutation.isPending ? "Aprovando..." : "Editar e Aprovar"}
+                                    </Button>
+                                  )}
                                 </>
                               ) : (
                                 <>
