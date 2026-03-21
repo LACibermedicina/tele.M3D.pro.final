@@ -85,7 +85,7 @@ interface VideoHistoryItem {
   startedAt: string;
   endedAt: string;
   duration: number;
-  meetingNotes: string;
+  meetingNotes?: string;
   createdAt: string;
   rating: number | null;
   feedback: string | null;
