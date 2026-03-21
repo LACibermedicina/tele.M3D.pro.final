@@ -335,3 +335,55 @@ export default function QuickActionsBar({ userRole }: QuickActionsBarProps) {
     </div>
   );
 }
+
+export function InlineQuickActions({ userRole }: { userRole: string }) {
+  const quickActions: { id: string; title: string; icon: JSX.Element; action: () => void; isEmergency?: boolean }[] = [];
+
+  const commonActions = [
+    { id: 'command-palette', title: 'Comandos', icon: <Command className="w-3.5 h-3.5" />, action: () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })) },
+    { id: 'search', title: 'Buscar', icon: <Search className="w-3.5 h-3.5" />, action: () => window.dispatchEvent(new CustomEvent('quick-search')) },
+  ];
+  quickActions.push(...commonActions);
+
+  if (userRole === 'doctor' || userRole === 'admin') {
+    quickActions.push(
+      { id: 'ai-analysis', title: 'Análise IA', icon: <Brain className="w-3.5 h-3.5" />, action: () => window.dispatchEvent(new CustomEvent('open-ai-analysis')) },
+      { id: 'schedule', title: 'Agenda', icon: <Calendar className="w-3.5 h-3.5" />, action: () => { window.location.href = '/schedule'; } },
+      { id: 'doctor-chat', title: 'Chat', icon: <MessageSquare className="w-3.5 h-3.5" />, action: () => { window.location.href = '/doctor-chat'; } },
+    );
+  }
+  if (userRole === 'admin') {
+    quickActions.push(
+      { id: 'users', title: 'Usuários', icon: <Users className="w-3.5 h-3.5" />, action: () => { window.location.href = '/admin'; } },
+    );
+  }
+  if (userRole === 'patient') {
+    quickActions.push(
+      { id: 'immediate-consultation', title: 'Consulta', icon: <Clock className="w-3.5 h-3.5" />, action: () => { window.location.href = '/immediate-consultation'; } },
+      { id: 'my-consultations', title: 'Consultas', icon: <Calendar className="w-3.5 h-3.5" />, action: () => { window.location.href = '/my-consultations'; } },
+    );
+  }
+  if (['doctor', 'admin'].includes(userRole)) {
+    quickActions.push(
+      { id: 'emergency', title: 'Emergência', icon: <Zap className="w-3.5 h-3.5" />, action: () => window.dispatchEvent(new CustomEvent('emergency-protocol')), isEmergency: true },
+    );
+  }
+
+  return (
+    <>
+      {quickActions.map(qa => (
+        <Tooltip key={qa.id}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={qa.action}
+              className={`w-7 h-7 rounded-md ${qa.isEmergency ? 'bg-red-600 hover:bg-red-500' : 'bg-slate-700/80 hover:bg-slate-600/80'} text-slate-200 hover:text-white transition-all flex items-center justify-center shrink-0`}
+            >
+              {qa.icon}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top"><p>{qa.title}</p></TooltipContent>
+        </Tooltip>
+      ))}
+    </>
+  );
+}

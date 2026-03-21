@@ -24,6 +24,7 @@ import { useLayoutSettings } from "@/contexts/LayoutSettingsContext";
 import DockableNavBar from "@/components/layout/dockable-nav-bar";
 import { InlineTrayIcons } from "@/components/layout/minimized-panel-dock";
 import { InlineTrayAnalysisButtons } from "@/components/ui/draggable-widget-buttons";
+import { InlineQuickActions } from "@/components/quick-actions-bar";
 
 export default function Header() {
   const [location, navigate] = useLocation();
@@ -40,6 +41,7 @@ export default function Header() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showClearScheduleConfirm, setShowClearScheduleConfirm] = useState(false);
+  const [toolboxOpen, setToolboxOpen] = useState(false);
 
   const clearScheduleMutation = useMutation({
     mutationFn: async () => {
@@ -86,6 +88,15 @@ export default function Header() {
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const onToolboxState = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setToolboxOpen(detail?.visible ?? false);
+    };
+    window.addEventListener('toolbox-state-changed', onToolboxState);
+    return () => window.removeEventListener('toolbox-state-changed', onToolboxState);
   }, []);
 
   // Determine if we're on an authenticated page (not home/login)
@@ -713,14 +724,14 @@ export default function Header() {
                       <TooltipTrigger asChild>
                         <button
                           onClick={() => window.dispatchEvent(new Event('toggle-toolbox-visibility'))}
-                          className="w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-200 hover:bg-white/15 active:bg-white/25 hover:shadow-[0_0_12px_rgba(255,255,255,0.2)] active:shadow-[0_0_16px_rgba(255,255,255,0.35)] group/logo shrink-0"
+                          className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-200 group/logo shrink-0 ${toolboxOpen ? 'bg-white/20 shadow-[0_0_16px_rgba(99,182,255,0.45)] ring-1 ring-sky-400/40' : 'hover:bg-white/15 active:bg-white/25 hover:shadow-[0_0_12px_rgba(255,255,255,0.2)] active:shadow-[0_0_16px_rgba(255,255,255,0.35)]'}`}
                           data-testid="button-toolbox-toggle"
                         >
                           <img 
                             src={telemedLogo} 
                             alt="Tele<M3D> Logo" 
-                            className="w-8 h-8 object-contain transition-all duration-200 group-hover/logo:brightness-[1.3] group-active/logo:brightness-[1.5]"
-                            style={{ filter: 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+                            className={`w-8 h-8 object-contain transition-all duration-200 ${toolboxOpen ? 'brightness-[1.4]' : 'group-hover/logo:brightness-[1.3] group-active/logo:brightness-[1.5]'}`}
+                            style={{ filter: `brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))${toolboxOpen ? ' drop-shadow(0 0 8px rgba(99,182,255,0.5))' : ''}` }}
                           />
                         </button>
                       </TooltipTrigger>
@@ -733,6 +744,8 @@ export default function Header() {
                   <div className="flex-1 flex items-center gap-1.5 overflow-x-auto px-1 scrollbar-none">
                     <TooltipProvider>
                       <InlineTrayAnalysisButtons userRole={user.role} />
+                      <div className="h-6 w-px bg-slate-600/40 shrink-0" />
+                      <InlineQuickActions userRole={user.role} />
                       <InlineTrayIcons />
                     </TooltipProvider>
                   </div>

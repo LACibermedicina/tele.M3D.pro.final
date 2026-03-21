@@ -278,6 +278,7 @@ export default function UnifiedToolbox() {
     minimize({ id: "unified-toolbox", label: "Toolbox", icon: "settings" });
     setVisible(false);
     try { localStorage.setItem(STORAGE_KEY_VISIBLE, "false"); } catch {}
+    window.dispatchEvent(new CustomEvent('toolbox-state-changed', { detail: { visible: false } }));
   }, [minimize]);
 
   const [wasMinimizedToDock, setWasMinimizedToDock] = useState(false);
@@ -302,6 +303,7 @@ export default function UnifiedToolbox() {
         const next = !prev;
         try { localStorage.setItem(STORAGE_KEY_VISIBLE, String(next)); } catch {}
         if (next) setCollapsed(false);
+        window.dispatchEvent(new CustomEvent('toolbox-state-changed', { detail: { visible: next } }));
         return next;
       });
     };
@@ -351,6 +353,17 @@ export default function UnifiedToolbox() {
 
   const getDockedStyle = (): React.CSSProperties => {
     if (isBottomNavMode) {
+      const hasDraggedPosition = position.x >= 0 && position.y >= 0;
+      if (hasDraggedPosition) {
+        return {
+          position: "fixed",
+          left: position.x,
+          top: position.y,
+          zIndex: isDragging ? 9999 : 49,
+          width: collapsed ? 48 : 240,
+          maxHeight: 'calc(100vh - 120px)',
+        };
+      }
       return {
         position: "fixed",
         bottom: 58,
