@@ -102,6 +102,7 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
     setNavDockModeState(LAYOUT_DEFAULTS.navDockMode);
     setNavFloatingPositionState(LAYOUT_DEFAULTS.navFloatingPosition);
     setSidebarCollapsed(false);
+    window.dispatchEvent(new Event('reset-tray-buttons'));
   }, []);
 
   const { data: layoutData } = useQuery<any[]>({

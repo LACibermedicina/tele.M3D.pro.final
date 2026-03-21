@@ -275,11 +275,13 @@ export default function UnifiedToolbox() {
   }, [isDragging, handleDragEnd]);
 
   const handleMinimize = useCallback(() => {
-    minimize({ id: "unified-toolbox", label: "Toolbox", icon: "settings" });
+    if (navDockMode !== 'bottom') {
+      minimize({ id: "unified-toolbox", label: "Toolbox", icon: "settings" });
+    }
     setVisible(false);
     try { localStorage.setItem(STORAGE_KEY_VISIBLE, "false"); } catch {}
     window.dispatchEvent(new CustomEvent('toolbox-state-changed', { detail: { visible: false } }));
-  }, [minimize]);
+  }, [minimize, navDockMode]);
 
   const [wasMinimizedToDock, setWasMinimizedToDock] = useState(false);
 

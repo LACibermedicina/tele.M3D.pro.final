@@ -1,7 +1,8 @@
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDraggable } from '@/hooks/use-draggable';
 import { useLayoutSettings } from '@/contexts/LayoutSettingsContext';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import QuickActionsBar from '@/components/quick-actions-bar';
 
@@ -77,25 +78,112 @@ const trayButtons = [
   },
 ];
 
+const TRAY_DETACHED_KEY = 'tray_detached_buttons';
+
+function getDetachedIds(): string[] {
+  try {
+    const val = localStorage.getItem(TRAY_DETACHED_KEY);
+    return val ? JSON.parse(val) : [];
+  } catch { return []; }
+}
+
+function saveDetachedIds(ids: string[]) {
+  try { localStorage.setItem(TRAY_DETACHED_KEY, JSON.stringify(ids)); } catch {}
+}
+
+function DetachedTrayButton({ btn, onReattach }: { btn: typeof trayButtons[0]; onReattach: (id: string) => void }) {
+  const { position, onDragStart } = useDraggable({
+    storageKey: `tray_btn_${btn.id}`,
+    defaultPosition: { x: -1, y: -1 },
+    constrainToWindow: true,
+    elementSize: { w: 48, h: 48 },
+  });
+
+  return (
+    <div
+      data-draggable-root
+      className="fixed z-40 group/detached"
+      style={position.x >= 0 ? { left: position.x, top: position.y } : { bottom: 80, right: 60 }}
+    >
+      <div
+        className="absolute -top-4 left-1/2 -translate-x-1/2 opacity-0 group-hover/detached:opacity-80 transition-opacity flex items-center gap-0.5"
+      >
+        <div className="cursor-grab active:cursor-grabbing" onMouseDown={onDragStart} onTouchStart={onDragStart}>
+          <GripVertical className="w-3 h-3 text-gray-400 rotate-90" />
+        </div>
+        <button
+          className="w-4 h-4 rounded-full bg-slate-700/80 text-white flex items-center justify-center hover:bg-red-500 transition-colors"
+          onClick={() => onReattach(btn.id)}
+          title="Voltar para barra"
+        >
+          <X className="w-2.5 h-2.5" />
+        </button>
+      </div>
+      <button
+        onClick={() => window.dispatchEvent(new Event(btn.event))}
+        className={`w-12 h-12 rounded-full bg-gradient-to-br ${btn.gradient} text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center hover:scale-110`}
+        title={btn.title}
+      >
+        {btn.icon}
+      </button>
+    </div>
+  );
+}
+
 export function InlineTrayAnalysisButtons({ userRole }: { userRole: string }) {
+  const [detachedIds, setDetachedIds] = useState<string[]>(getDetachedIds);
   const visibleButtons = trayButtons.filter(b => b.roles.includes(userRole));
+
+  useEffect(() => {
+    const onReset = () => {
+      setDetachedIds([]);
+      saveDetachedIds([]);
+    };
+    window.addEventListener('reset-tray-buttons', onReset);
+    return () => window.removeEventListener('reset-tray-buttons', onReset);
+  }, []);
+
+  const handleDetach = useCallback((id: string) => {
+    setDetachedIds(prev => {
+      const next = [...prev, id];
+      saveDetachedIds(next);
+      return next;
+    });
+  }, []);
+
+  const handleReattach = useCallback((id: string) => {
+    setDetachedIds(prev => {
+      const next = prev.filter(x => x !== id);
+      saveDetachedIds(next);
+      try { localStorage.removeItem(`draggable_tray_btn_${id}`); } catch {}
+      return next;
+    });
+  }, []);
+
   if (visibleButtons.length === 0) return null;
+
+  const inTray = visibleButtons.filter(b => !detachedIds.includes(b.id));
+  const floating = visibleButtons.filter(b => detachedIds.includes(b.id));
 
   return (
     <>
-      {visibleButtons.map(btn => (
+      {inTray.map(btn => (
         <Tooltip key={btn.id}>
           <TooltipTrigger asChild>
             <button
               onClick={() => window.dispatchEvent(new Event(btn.event))}
+              onDoubleClick={() => handleDetach(btn.id)}
               className={`w-8 h-8 rounded-lg bg-gradient-to-br ${btn.gradient} text-white shadow-md hover:shadow-lg transition-all flex items-center justify-center hover:scale-105 shrink-0`}
-              title={btn.title}
+              title={`${btn.title} (duplo-clique para destacar)`}
             >
               {btn.icon}
             </button>
           </TooltipTrigger>
           <TooltipContent side="top"><p>{btn.title}</p></TooltipContent>
         </Tooltip>
+      ))}
+      {floating.map(btn => (
+        <DetachedTrayButton key={btn.id} btn={btn} onReattach={handleReattach} />
       ))}
     </>
   );
