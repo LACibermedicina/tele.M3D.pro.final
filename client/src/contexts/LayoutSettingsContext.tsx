@@ -80,10 +80,22 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
     LAYOUT_STORAGE_KEYS.forEach(key => {
       try { localStorage.removeItem(key); } catch {}
     });
-    const draggableKeys = Object.keys(localStorage).filter(k =>
-      k.startsWith("draggable_") || k.startsWith("dashboard_") || k.startsWith("detached_nav_") || k.startsWith("unified_toolbox")
+    const dynamicKeys = Object.keys(localStorage).filter(k =>
+      k.startsWith("draggable_") ||
+      k.startsWith("dashboard_") ||
+      k.startsWith("detached_nav_") ||
+      k.startsWith("unified_toolbox") ||
+      k.startsWith("widget-buttons") ||
+      k.startsWith("quick-actions") ||
+      k.startsWith("study-notes") ||
+      k.startsWith("chatbot-widget") ||
+      k.startsWith("ecg-widget") ||
+      k.startsWith("radiology-widget") ||
+      k.startsWith("panel_") ||
+      k === "quick-actions-panel" ||
+      k === "widget-buttons-column"
     );
-    draggableKeys.forEach(key => {
+    dynamicKeys.forEach(key => {
       try { localStorage.removeItem(key); } catch {}
     });
     setNavDockModeState(LAYOUT_DEFAULTS.navDockMode);
