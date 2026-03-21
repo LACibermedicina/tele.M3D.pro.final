@@ -157,7 +157,7 @@ function Router() {
         userRole={user?.role}
       />
 
-      <div data-page-content={!isInVideoConsultation ? "" : undefined} className={isDesktopWindowed ? "hidden" : ""}>
+      {!isDesktopWindowed && <div data-page-content={!isInVideoConsultation ? "" : undefined}>
       <Switch>
         {/* Public routes */}
         <Route path="/login">
@@ -540,7 +540,7 @@ function Router() {
           <NotFound />
         </Route>
       </Switch>
-      </div>
+      </div>}
       
       <footer className={`bg-card border-t border-border mt-12 desktop-glass-footer ${isDesktopWindowed ? "hidden" : ""}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

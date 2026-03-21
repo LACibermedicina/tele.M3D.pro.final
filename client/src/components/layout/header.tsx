@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
+import { useDesktopNavigation } from "@/components/layout/desktop-window-layer";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -93,7 +94,12 @@ function DesktopTaskbarWindows() {
 }
 
 export default function Header() {
-  const [location, navigate] = useLocation();
+  const [location, rawNavigate] = useLocation();
+  const { navigateToWindow, isDesktopMode: isDesktopNav } = useDesktopNavigation();
+  const navigate = useCallback((path: string) => {
+    if (isDesktopNav && navigateToWindow(path)) return;
+    rawNavigate(path);
+  }, [isDesktopNav, navigateToWindow, rawNavigate]);
   const { t, i18n } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -714,7 +720,7 @@ export default function Header() {
                   const IconComponent = item.icon;
                   const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
                   return (
-                    <Link key={item.path} href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}>
+                    <Link key={item.path} href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`} onClick={(e: React.MouseEvent) => { if (isDesktopNav && navigateToWindow(item.path)) e.preventDefault(); }}>
                       <div
                         className={`relative w-full rounded-xl flex items-center gap-2.5 px-2.5 py-2 transition-all duration-200 ${
                           isActive ? "text-white shadow-md" : "text-white/60 hover:text-white hover:bg-white/10"
@@ -906,7 +912,7 @@ export default function Header() {
                   return (
                     <Tooltip key={item.path}>
                       <TooltipTrigger asChild>
-                        <Link href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}>
+                        <Link href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`} onClick={(e: React.MouseEvent) => { if (isDesktopNav && navigateToWindow(item.path)) e.preventDefault(); }}>
                           <div
                             className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
                               isActive ? "text-white shadow-md" : "text-white/60 hover:text-white hover:bg-white/10"
@@ -1268,7 +1274,7 @@ export default function Header() {
                       )}
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Link href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`}>
+                          <Link href={item.path} data-testid={`link-nav-${item.path.slice(1) || 'dashboard'}`} onClick={(e: React.MouseEvent) => { if (isDesktopNav && navigateToWindow(item.path)) e.preventDefault(); }}>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1842,7 +1848,7 @@ export default function Header() {
                   return sidebarCollapsed ? (
                     <Tooltip key={item.path}>
                       <TooltipTrigger asChild>
-                        <Link href={item.path}>
+                        <Link href={item.path} onClick={(e: React.MouseEvent) => { if (isDesktopNav && navigateToWindow(item.path)) e.preventDefault(); }}>
                           <div
                             className={`flex items-center justify-center w-10 h-10 mx-auto rounded-xl transition-all duration-200 ${
                               isActive
@@ -1864,7 +1870,7 @@ export default function Header() {
                       </TooltipContent>
                     </Tooltip>
                   ) : (
-                    <Link key={item.path} href={item.path}>
+                    <Link key={item.path} href={item.path} onClick={(e: React.MouseEvent) => { if (isDesktopNav && navigateToWindow(item.path)) e.preventDefault(); }}>
                       <div
                         className={`flex items-center space-x-2.5 px-2.5 py-2 rounded-xl transition-all duration-200 ${
                           isActive

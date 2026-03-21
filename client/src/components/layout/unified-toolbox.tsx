@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { useDesktopNavigation } from "@/components/layout/desktop-window-layer";
 import { useDraggable } from "@/hooks/use-draggable";
 import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -141,6 +142,7 @@ function DetachedNavPanel({ path, label, icon: Icon, onReattach }: {
   path: string; label: string; icon: LucideIcon; onReattach: (path: string) => void;
 }) {
   const [location] = useLocation();
+  const { navigateToWindow, isDesktopMode: isDesktopNav } = useDesktopNavigation();
   const { minimize, isMinimized } = useMinimizedPanels();
   const [wasMinimized, setWasMinimized] = useState(false);
   const panelId = `detached-${path.replace(/\//g, "-")}`;
@@ -192,7 +194,7 @@ function DetachedNavPanel({ path, label, icon: Icon, onReattach }: {
         />
       </div>
       <div className="p-1">
-        <Link href={path}>
+        <Link href={path} onClick={(e: React.MouseEvent) => { if (isDesktopNav && navigateToWindow(path)) e.preventDefault(); }}>
           <button className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs w-full transition-colors ${
             isActive ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted"
           }`}>
@@ -215,6 +217,7 @@ export default function UnifiedToolbox() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [location, navigate] = useLocation();
+  const { navigateToWindow, isDesktopMode: isDesktopNav } = useDesktopNavigation();
   const { minimize, isMinimized, restoreAll } = useMinimizedPanels();
   const { resetAllLayout, navDockMode } = useLayoutSettings();
   const [collapsed, setCollapsed] = useState(true);
@@ -288,6 +291,12 @@ export default function UnifiedToolbox() {
   const handleClose = useCallback(() => {
     handleMinimize();
   }, [handleMinimize]);
+
+  const handleNavClick = useCallback((e: React.MouseEvent, path: string) => {
+    if (isDesktopNav && navigateToWindow(path)) {
+      e.preventDefault();
+    }
+  }, [isDesktopNav, navigateToWindow]);
 
   useEffect(() => {
     if (isMinimized("unified-toolbox")) {
@@ -460,7 +469,7 @@ export default function UnifiedToolbox() {
                       <div key={item.path} className="group relative flex items-center">
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Link href={item.path}>
+                            <Link href={item.path} onClick={(e: React.MouseEvent) => handleNavClick(e, item.path)}>
                               <button
                                 className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs w-full transition-colors ${
                                   isActive
