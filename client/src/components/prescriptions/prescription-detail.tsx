@@ -68,11 +68,18 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
   const [showSignDialog, setShowSignDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const parsedCRM = (() => {
+    const ml = user?.medicalLicense || '';
+    const stateMatch = ml.match(/[A-Z]{2}/);
+    const numMatch = ml.replace(/[^\d]/g, '');
+    return { number: numMatch, state: (user as any)?.medicalLicenseState || (stateMatch ? stateMatch[0] : 'SP') };
+  })();
+
   const [signForm, setSignForm] = useState({
     pin: '',
-    doctorName: '',
-    crm: '',
-    crmState: 'SP',
+    doctorName: user?.name || '',
+    crm: parsedCRM.number,
+    crmState: parsedCRM.state,
   });
 
   const { data: prescription, isLoading, error } = useQuery<PrescriptionDetail>({

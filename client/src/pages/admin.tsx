@@ -22,6 +22,7 @@ import PageWrapper from '@/components/layout/page-wrapper';
 import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
 import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 import { ECGConfigTab, RadiologyConfigTab } from '@/components/admin/ai-prompt-config';
+import { CRMVerificationConfigTab } from '@/components/admin/crm-verification-config';
 
 interface Collaborator {
   id: string;
@@ -501,6 +502,12 @@ export default function AdminPage() {
             <div className="flex items-center space-x-2">
               <FileText className="h-4 w-4" />
               <span>Config Radiologia</span>
+            </div>
+          </TabsTrigger>
+          <TabsTrigger value="crm-verification" data-testid="tab-crm-verification">
+            <div className="flex items-center space-x-2">
+              <ShieldCheck className="h-4 w-4" />
+              <span>Verificação CRM</span>
             </div>
           </TabsTrigger>
           <TabsTrigger value="system-settings" data-testid="tab-system-settings">
@@ -3686,6 +3693,10 @@ function DatabaseCleanupTab() {
 
     <TabsContent value="ai-radiology-config" className="space-y-4">
       <RadiologyConfigTab />
+    </TabsContent>
+
+    <TabsContent value="crm-verification" className="space-y-4">
+      <CRMVerificationConfigTab />
     </TabsContent>
 
     <TabsContent value="database-cleanup" className="space-y-4">

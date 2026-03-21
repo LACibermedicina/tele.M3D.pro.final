@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { User, Mail, Phone, CreditCard, Shield, Save, Upload, Trash2, Star } from "lucide-react";
+import { User, Mail, Phone, CreditCard, Shield, ShieldCheck, ShieldAlert, ShieldQuestion, Save, Upload, Trash2, Star, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
@@ -38,16 +38,45 @@ export default function Profile() {
     phone: user?.phone || "",
     whatsappNumber: user?.whatsappNumber || "",
     medicalLicense: user?.medicalLicense || "",
+    medicalLicenseState: (user as any)?.medicalLicenseState || "",
     specialization: user?.specialization || "",
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Fetch doctor rating statistics (only for doctors)
   const { data: ratingStats } = useQuery<RatingStats>({
     queryKey: user?.id ? [`/api/doctors/${user.id}/rating-stats`] : ['rating-stats-placeholder'],
     enabled: !!user?.id && user?.role === 'doctor',
+  });
+
+  const { data: crmStatus } = useQuery<{ status: string; data?: any }>({
+    queryKey: ['/api/crm/status', user?.id],
+    enabled: !!user?.id && user?.role === 'doctor',
+  });
+
+  const verifyCRMMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', `/api/crm/verify/${user?.id}`);
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/status', user?.id] });
+      toast({
+        title: data.status === 'verified' ? 'CRM Verificado!' : 'Verificação Falhou',
+        description: data.status === 'verified'
+          ? 'Seu registro profissional foi verificado com sucesso.'
+          : data.error || 'Não foi possível verificar o CRM.',
+        variant: data.status === 'verified' ? 'default' : 'destructive',
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Erro',
+        description: 'Falha ao verificar CRM. Tente novamente.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const updateProfileMutation = useMutation({
@@ -453,21 +482,64 @@ export default function Profile() {
                 <>
                   <Separator />
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold flex items-center">
-                      <Shield className="h-5 w-5 mr-2" />
-                      Informações Profissionais
-                    </h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold flex items-center">
+                        <Shield className="h-5 w-5 mr-2" />
+                        Informações Profissionais
+                      </h3>
+                      {crmStatus && (
+                        <div className="flex items-center gap-2">
+                          {crmStatus.status === 'verified' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+                              <ShieldCheck className="h-3.5 w-3.5" />
+                              CRM Verificado
+                            </span>
+                          )}
+                          {crmStatus.status === 'pending' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              Verificando...
+                            </span>
+                          )}
+                          {crmStatus.status === 'failed' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
+                              <ShieldAlert className="h-3.5 w-3.5" />
+                              Verificação Falhou
+                            </span>
+                          )}
+                          {crmStatus.status === 'unverified' && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30">
+                              <ShieldQuestion className="h-3.5 w-3.5" />
+                              Não Verificado
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-3">
                       <div className="space-y-2">
-                        <Label htmlFor="medicalLicense">CRM</Label>
+                        <Label htmlFor="medicalLicense">Número CRM</Label>
                         <Input
                           id="medicalLicense"
                           name="medicalLicense"
                           value={formData.medicalLicense}
                           onChange={handleInputChange}
-                          placeholder="CRM/UF 000000"
+                          placeholder="000000"
                           data-testid="input-medical-license"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="medicalLicenseState">UF do CRM</Label>
+                        <Input
+                          id="medicalLicenseState"
+                          name="medicalLicenseState"
+                          value={formData.medicalLicenseState}
+                          onChange={(e) => setFormData({ ...formData, medicalLicenseState: e.target.value.toUpperCase() })}
+                          placeholder="SP"
+                          maxLength={2}
+                          data-testid="input-medical-license-state"
                         />
                       </div>
 
@@ -483,6 +555,35 @@ export default function Profile() {
                         />
                       </div>
                     </div>
+
+                    {formData.medicalLicense && (
+                      <div className="flex items-center gap-3">
+                        <Button
+                          type="button"
+                          variant={crmStatus?.status === 'verified' ? 'outline' : 'default'}
+                          size="sm"
+                          onClick={() => verifyCRMMutation.mutate()}
+                          disabled={verifyCRMMutation.isPending}
+                        >
+                          {verifyCRMMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Verificando...
+                            </>
+                          ) : (
+                            <>
+                              <ShieldCheck className="h-4 w-4 mr-2" />
+                              {crmStatus?.status === 'verified' ? 'Reverificar CRM' : 'Verificar Registro'}
+                            </>
+                          )}
+                        </Button>
+                        {crmStatus?.data?.situation && (
+                          <span className="text-xs text-muted-foreground">
+                            Situação: {crmStatus.data.situation}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </>
               )}

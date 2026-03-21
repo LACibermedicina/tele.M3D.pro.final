@@ -13398,6 +13398,7 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         phone: z.string().max(20).optional(),
         whatsappNumber: z.string().max(20).optional(),
         medicalLicense: z.string().max(50).optional(),
+        medicalLicenseState: z.string().max(2).optional(),
         specialization: z.string().max(100).optional(),
         consultationPrice: z.number().int().min(0).max(100000).optional(),
       });
@@ -13414,6 +13415,7 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       
       if (user.role === 'doctor') {
         if (validatedData.medicalLicense !== undefined) updateData.medicalLicense = validatedData.medicalLicense;
+        if (validatedData.medicalLicenseState !== undefined) updateData.medicalLicenseState = validatedData.medicalLicenseState;
         if (validatedData.specialization !== undefined) updateData.specialization = validatedData.specialization;
         if (validatedData.consultationPrice !== undefined) updateData.consultationPrice = validatedData.consultationPrice;
       }
@@ -18171,6 +18173,86 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     } catch (error) {
       console.error('Reset AI config error:', error);
       res.status(500).json({ message: 'Falha ao resetar configuração de IA' });
+    }
+  });
+
+  // ======= CRM Verification Routes =======
+  const { crmVerificationService } = await import('./services/crm-verification');
+
+  app.post('/api/crm/verify/:userId', requireAuth, async (req: any, res: Response) => {
+    try {
+      if (!req.user || !['admin', 'doctor'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+      const targetUserId = req.params.userId;
+      if (req.user.role === 'doctor' && req.user.id !== targetUserId) {
+        return res.status(403).json({ message: 'Médicos só podem verificar o próprio CRM' });
+      }
+      const result = await crmVerificationService.verifyDoctor(targetUserId);
+      res.json(result);
+    } catch (error: any) {
+      console.error('CRM verification error:', error);
+      res.status(500).json({ message: 'Erro na verificação CRM', error: error.message });
+    }
+  });
+
+  app.get('/api/crm/status/:userId', requireAuth, async (req: any, res: Response) => {
+    try {
+      const targetUserId = req.params.userId;
+      if (req.user.role !== 'admin' && req.user.id !== targetUserId) {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+      const result = await crmVerificationService.getVerificationStatus(targetUserId);
+      res.json(result);
+    } catch (error: any) {
+      console.error('CRM status error:', error);
+      res.status(500).json({ message: 'Erro ao consultar status CRM' });
+    }
+  });
+
+  app.get('/api/admin/crm-config', requireAuth, async (req: any, res: Response) => {
+    try {
+      if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      const config = await crmVerificationService.getConfig();
+      res.json(config);
+    } catch (error: any) {
+      console.error('Get CRM config error:', error);
+      res.status(500).json({ message: 'Erro ao carregar configuração CRM' });
+    }
+  });
+
+  app.put('/api/admin/crm-config', requireAuth, async (req: any, res: Response) => {
+    try {
+      if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      await crmVerificationService.saveConfig(req.body, req.user.id);
+      res.json({ message: 'Configuração salva com sucesso' });
+    } catch (error: any) {
+      console.error('Save CRM config error:', error);
+      res.status(500).json({ message: 'Erro ao salvar configuração CRM' });
+    }
+  });
+
+  app.post('/api/admin/crm-config/reset', requireAuth, async (req: any, res: Response) => {
+    try {
+      if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+      const defaultConfig = {
+        enabled: true,
+        countries: {
+          BR: { enabled: true, apiUrl: 'https://www.consultacrm.com.br/api/index.php', apiKey: '', provider: 'CFM' },
+          PT: { enabled: false, apiUrl: '', apiKey: '', provider: 'Ordem dos Médicos' },
+        },
+      };
+      await crmVerificationService.saveConfig(defaultConfig, req.user.id);
+      res.json(defaultConfig);
+    } catch (error: any) {
+      console.error('Reset CRM config error:', error);
+      res.status(500).json({ message: 'Erro ao restaurar padrões' });
     }
   });
 

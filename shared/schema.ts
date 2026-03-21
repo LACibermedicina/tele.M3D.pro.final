@@ -30,6 +30,10 @@ export const users = pgTable("users", {
   inviteQrCode: text("invite_qr_code"),
   percentageFromInferiors: integer("percentage_from_inferiors").default(10), // Percentage received from hierarchical inferiors
   medicalLicense: text("medical_license"), // CRM number for doctors
+  medicalLicenseState: text("medical_license_state"), // UF/State for CRM
+  crmVerificationStatus: text("crm_verification_status").default("unverified"), // unverified, pending, verified, failed
+  crmVerifiedAt: timestamp("crm_verified_at"),
+  crmVerificationData: jsonb("crm_verification_data"), // API response data from verification
   specialization: text("specialization"),
   lastLogin: timestamp("last_login"),
   isOnline: boolean("is_online").default(false), // Doctor online status
