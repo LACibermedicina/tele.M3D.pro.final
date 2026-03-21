@@ -154,7 +154,7 @@ function Router() {
         userRole={user?.role}
       />
 
-      <div data-page-content>
+      <div data-page-content={!isInVideoConsultation ? "" : undefined}>
       <Switch>
         {/* Public routes */}
         <Route path="/login">
