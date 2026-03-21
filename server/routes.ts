@@ -11025,9 +11025,10 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
               try {
                 const doctor = await storage.getUser(docId);
                 if (doctor?.whatsappNumber) {
+                  const baseUrl = process.env.BASE_URL || `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
                   await whatsAppService.sendMessage(
                     doctor.whatsappNumber,
-                    `${urgencyEmoji} Nova Solicitação de Consulta\n\n📋 Paciente: #${patientCode}\n⚡ Urgência: ${urgencyLabel}\n🏥 Especialidade: ${doctor.specialty || 'Geral'}\n📝 Sintomas: ${symptoms.slice(0, 200)}\n\n▶️ Aceitar: Acesse a plataforma → Painel Médico → Aceitar solicitação\n💬 Responder via chat: /doctor-chat\n❌ Recusar: Acesse a plataforma → Recusar\n\n🏥 Tele<M3D> Pro`
+                    `${urgencyEmoji} Nova Solicitação de Consulta\n\n📋 Paciente: #${patientCode}\n⚡ Urgência: ${urgencyLabel}\n🏥 Especialidade: ${doctor.specialty || 'Geral'}\n📝 Sintomas: ${symptoms.slice(0, 200)}\n\n▶️ Aceitar: ${baseUrl}/doctor-chat\n💬 Chat: ${baseUrl}/doctor-chat\n❌ Recusar: ${baseUrl}/doctor-chat\n\n🏥 Tele<M3D> Pro`
                   );
                 }
               } catch {}

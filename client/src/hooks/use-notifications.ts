@@ -62,7 +62,16 @@ export function useNotifications() {
         }
 
         if (mapped.length > 0) {
-          setNotifications(prev => [...mapped, ...prev]);
+          const acceptedRequestIds = new Set(
+            mapped.filter(n => n.type === 'urgency_accepted' && n.data?.requestId)
+              .map(n => n.data.requestId)
+          );
+          const reconciled = mapped.map(n =>
+            n.type === 'urgency_request' && n.data?.requestId && acceptedRequestIds.has(n.data.requestId)
+              ? { ...n, read: true }
+              : n
+          );
+          setNotifications(prev => [...reconciled, ...prev]);
         }
       });
     }
