@@ -28,14 +28,14 @@ export default function DesktopBackground() {
       <div className="absolute top-2/3 left-1/3 w-64 h-64 rounded-full bg-blue-500/[0.04] blur-3xl animate-pulse" style={{ animationDuration: '10s' }} />
 
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 opacity-[0.06]">
+        <div className="flex flex-col items-center gap-6 opacity-[0.12]">
           <img
             src={telemedLogo}
             alt=""
-            className="w-28 h-28 object-contain"
+            className="w-56 h-56 object-contain"
             draggable={false}
           />
-          <span className="text-white text-lg font-light tracking-[0.3em] uppercase">
+          <span className="text-white text-2xl font-light tracking-[0.4em] uppercase">
             tele.m3d.pro
           </span>
         </div>

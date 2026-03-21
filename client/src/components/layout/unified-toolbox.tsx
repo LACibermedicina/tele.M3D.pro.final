@@ -177,7 +177,7 @@ function DetachedNavPanel({ path, label, icon: Icon, onReattach }: {
 
   return (
     <div
-      className={`bg-background/95 backdrop-blur-md border shadow-xl rounded-lg transition-all duration-200 ${isDragging ? "opacity-90 shadow-2xl" : ""}`}
+      className={`bg-background/95 backdrop-blur-md border shadow-xl rounded-lg transition-all duration-200 desktop-glass-panel ${isDragging ? "opacity-90 shadow-2xl" : ""}`}
       style={style}
       data-draggable-root
     >
@@ -401,7 +401,7 @@ export default function UnifiedToolbox() {
     <>
       {detachedPanels}
       <div
-        className={`bg-background/95 backdrop-blur-md border shadow-xl transition-all duration-200 ${
+        className={`bg-background/95 backdrop-blur-md border shadow-xl transition-all duration-200 desktop-glass-panel ${
           isBottomNavMode ? "rounded-xl" : isDocked ? "" : "rounded-xl"
         } ${isDragging ? "opacity-90 shadow-2xl" : ""} ${
           !isBottomNavMode && isHorizontal ? "rounded-none" : ""

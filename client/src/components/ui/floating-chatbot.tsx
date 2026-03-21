@@ -521,7 +521,7 @@ export default function FloatingChatbot() {
       className="fixed z-50"
       style={chatPos.x >= 0 ? { left: chatPos.x, top: chatPos.y } : { bottom: 80, right: 24 }}
     >
-      <Card className={`w-96 shadow-xl border-2 border-white/20 dark:border-gray-700 backdrop-blur-sm ${isMinimized ? 'h-16' : 'h-[500px]'} transition-all duration-300`}>
+      <Card className={`w-96 shadow-xl border-2 border-white/20 dark:border-gray-700 bg-background/95 backdrop-blur-sm desktop-glass-panel ${isMinimized ? 'h-16' : 'h-[500px]'} transition-all duration-300`}>
         <CardHeader
           className="pb-3 border-b bg-gradient-to-r from-primary to-medical-primary text-white rounded-t-lg cursor-grab active:cursor-grabbing select-none"
           onMouseDown={onChatDragStart}

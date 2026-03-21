@@ -163,7 +163,7 @@ export default function FloatingStudyNotes() {
       className={`fixed z-50 ${panelWidth} ${panelHeight} flex flex-col`}
       style={notesPos.x >= 0 ? { left: notesPos.x, top: notesPos.y } : { bottom: 16, right: 412 }}
     >
-      <Card className="flex flex-col h-full border-amber-500/30 shadow-2xl bg-background/95 backdrop-blur-sm">
+      <Card className="flex flex-col h-full border-amber-500/30 shadow-2xl bg-background/95 backdrop-blur-sm desktop-glass-panel">
         <CardHeader
           className="p-3 pb-2 flex flex-row items-center justify-between border-b shrink-0 cursor-grab active:cursor-grabbing select-none"
           onMouseDown={onNotesDragStart}

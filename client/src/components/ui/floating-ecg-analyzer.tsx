@@ -370,7 +370,7 @@ export default function FloatingECGAnalyzer() {
         className="fixed z-50 flex flex-col"
         style={{ left: pos.x, top: pos.y, width: size.w, height: size.h }}
       >
-        <Card className="flex flex-col h-full border-red-500/30 shadow-2xl bg-background/95 backdrop-blur-sm">
+        <Card className="flex flex-col h-full border-red-500/30 shadow-2xl bg-background/95 backdrop-blur-sm desktop-glass-panel">
           <CardHeader
             className="p-3 pb-2 flex flex-row items-center justify-between border-b shrink-0 cursor-grab active:cursor-grabbing select-none"
             onMouseDown={onDragStart}
