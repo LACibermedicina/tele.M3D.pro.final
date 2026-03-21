@@ -239,7 +239,7 @@ export default function UnifiedToolbox() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  const { position, isDragging, onDragStart } = useDraggable({
+  const { position, setPosition, isDragging, onDragStart } = useDraggable({
     storageKey: "unified_toolbox",
     defaultPosition: { x: -1, y: -1 },
     constrainToWindow: true,
@@ -294,22 +294,32 @@ export default function UnifiedToolbox() {
       setVisible(true);
       setWasMinimizedToDock(false);
       try { localStorage.setItem(STORAGE_KEY_VISIBLE, "true"); } catch {}
+      window.dispatchEvent(new CustomEvent('toolbox-state-changed', { detail: { visible: true } }));
     }
   }, [isMinimized, visible, wasMinimizedToDock]);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('toolbox-state-changed', { detail: { visible } }));
+  }, []);
 
   useEffect(() => {
     const handleToggle = () => {
       setVisible(prev => {
         const next = !prev;
         try { localStorage.setItem(STORAGE_KEY_VISIBLE, String(next)); } catch {}
-        if (next) setCollapsed(false);
+        if (next) {
+          setCollapsed(false);
+          if (navDockMode === 'bottom') {
+            setPosition({ x: -1, y: -1 });
+          }
+        }
         window.dispatchEvent(new CustomEvent('toolbox-state-changed', { detail: { visible: next } }));
         return next;
       });
     };
     window.addEventListener('toggle-toolbox-visibility', handleToggle);
     return () => window.removeEventListener('toggle-toolbox-visibility', handleToggle);
-  }, []);
+  }, [navDockMode, setPosition]);
 
   const handleDetach = useCallback((path: string) => {
     setDetachedPaths(prev => {
