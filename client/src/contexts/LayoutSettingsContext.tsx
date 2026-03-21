@@ -92,6 +92,7 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
       k.startsWith("ecg-widget") ||
       k.startsWith("radiology-widget") ||
       k.startsWith("panel_") ||
+      k.startsWith("tray_") ||
       k === "quick-actions-panel" ||
       k === "widget-buttons-column"
     );

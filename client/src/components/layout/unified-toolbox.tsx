@@ -216,7 +216,7 @@ export default function UnifiedToolbox() {
   const { t } = useTranslation();
   const [location, navigate] = useLocation();
   const { minimize, isMinimized, restoreAll } = useMinimizedPanels();
-  const { resetAllLayout } = useLayoutSettings();
+  const { resetAllLayout, navDockMode } = useLayoutSettings();
   const [collapsed, setCollapsed] = useState(true);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
   const [detachedPaths, setDetachedPaths] = useState<string[]>(loadDetached);
@@ -296,6 +296,19 @@ export default function UnifiedToolbox() {
     }
   }, [isMinimized, visible, wasMinimizedToDock]);
 
+  useEffect(() => {
+    const handleToggle = () => {
+      setVisible(prev => {
+        const next = !prev;
+        try { localStorage.setItem(STORAGE_KEY_VISIBLE, String(next)); } catch {}
+        if (next) setCollapsed(false);
+        return next;
+      });
+    };
+    window.addEventListener('toggle-toolbox-visibility', handleToggle);
+    return () => window.removeEventListener('toggle-toolbox-visibility', handleToggle);
+  }, []);
+
   const handleDetach = useCallback((path: string) => {
     setDetachedPaths(prev => {
       const next = [...prev, path];
@@ -330,11 +343,23 @@ export default function UnifiedToolbox() {
   if (isMobile || !user) return <>{detachedPanels}</>;
   if (!visible) return <>{detachedPanels}</>;
 
+  const isBottomNavMode = navDockMode === 'bottom';
+
   const isDocked = dockMode !== "floating";
   const isHorizontal = dockMode === "top" || dockMode === "bottom";
   const isVertical = dockMode === "left" || dockMode === "right";
 
   const getDockedStyle = (): React.CSSProperties => {
+    if (isBottomNavMode) {
+      return {
+        position: "fixed",
+        bottom: 58,
+        right: 8,
+        zIndex: 49,
+        width: collapsed ? 48 : 240,
+        maxHeight: 'calc(100vh - 120px)',
+      };
+    }
     switch (dockMode) {
       case "top": return { position: "fixed", top: 60, left: 0, right: 0, zIndex: 45 };
       case "bottom": return { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 45 };
@@ -352,10 +377,10 @@ export default function UnifiedToolbox() {
       {detachedPanels}
       <div
         className={`bg-background/95 backdrop-blur-md border shadow-xl transition-all duration-200 ${
-          isDocked ? "" : "rounded-xl"
+          isBottomNavMode ? "rounded-xl" : isDocked ? "" : "rounded-xl"
         } ${isDragging ? "opacity-90 shadow-2xl" : ""} ${
-          isHorizontal ? "rounded-none" : ""
-        } ${isVertical ? "rounded-none overflow-y-auto" : ""}`}
+          !isBottomNavMode && isHorizontal ? "rounded-none" : ""
+        } ${!isBottomNavMode && isVertical ? "rounded-none overflow-y-auto" : ""}`}
         style={getDockedStyle()}
         data-draggable-root
       >

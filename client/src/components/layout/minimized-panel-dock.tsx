@@ -53,6 +53,51 @@ function getIcon(iconName: string): LucideIcon {
   return iconMap[iconName.toLowerCase()] || LayoutDashboard;
 }
 
+export function InlineTrayIcons() {
+  const { minimizedPanels, restore, restoreAll } = useMinimizedPanels();
+
+  if (minimizedPanels.length === 0) return null;
+
+  return (
+    <>
+      {minimizedPanels.map(panel => {
+        const Icon = getIcon(panel.icon);
+        return (
+          <Tooltip key={panel.id}>
+            <TooltipTrigger asChild>
+              <button
+                className="relative flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 transition-colors text-slate-300 hover:text-white shrink-0"
+                onClick={() => restore(panel.id)}
+              >
+                <Icon className="h-4 w-4" />
+                {panel.badge !== undefined && panel.badge > 0 && (
+                  <Badge variant="destructive" className="absolute -top-1 -right-1 h-3.5 min-w-[14px] px-0.5 text-[8px] flex items-center justify-center">
+                    {panel.badge > 99 ? "99+" : panel.badge}
+                  </Badge>
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top"><p>{panel.label}</p></TooltipContent>
+          </Tooltip>
+        );
+      })}
+      {minimizedPanels.length > 1 && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-white/10 transition-colors text-slate-400 hover:text-white shrink-0"
+              onClick={restoreAll}
+            >
+              <RotateCcw className="h-3 w-3" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top"><p>Restaurar todos</p></TooltipContent>
+        </Tooltip>
+      )}
+    </>
+  );
+}
+
 export default function MinimizedPanelDock() {
   const { minimizedPanels, restore, restoreAll } = useMinimizedPanels();
   const { navDockMode } = useLayoutSettings();
@@ -68,6 +113,8 @@ export default function MinimizedPanelDock() {
   if (minimizedPanels.length === 0) return null;
 
   const isBottomNav = navDockMode === 'bottom';
+
+  if (isBottomNav && !isMobile) return null;
 
   if (isMobile) {
     return (
@@ -107,54 +154,6 @@ export default function MinimizedPanelDock() {
             </TooltipTrigger>
             <TooltipContent side="top"><p>Restaurar todos</p></TooltipContent>
           </Tooltip>
-        )}
-      </div>
-    );
-  }
-
-  if (isBottomNav) {
-    return (
-      <div
-        className="fixed bottom-[58px] left-0 right-0 z-40 flex items-center justify-center gap-1 py-1 px-3 bg-slate-800/90 backdrop-blur-sm border-t border-slate-700/50"
-      >
-        <span className="text-[10px] text-slate-400 uppercase tracking-wider mr-2 shrink-0">Taskbar</span>
-        <div className="h-4 w-px bg-slate-600 mr-1" />
-        <div className="flex items-center gap-1 overflow-x-auto">
-          {minimizedPanels.map(panel => {
-            const Icon = getIcon(panel.icon);
-            return (
-              <Tooltip key={panel.id}>
-                <TooltipTrigger asChild>
-                  <button
-                    className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-700/60 transition-colors text-slate-300 hover:text-white shrink-0"
-                    onClick={() => restore(panel.id)}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    <span className="text-[11px] truncate max-w-[80px]">{panel.label}</span>
-                    {panel.badge !== undefined && panel.badge > 0 && (
-                      <Badge variant="destructive" className="h-4 min-w-[16px] px-1 text-[9px] flex items-center justify-center">
-                        {panel.badge > 99 ? "99+" : panel.badge}
-                      </Badge>
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top"><p>{panel.label}</p></TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </div>
-        {minimizedPanels.length > 1 && (
-          <>
-            <div className="h-4 w-px bg-slate-600 ml-1" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-slate-400 hover:text-white hover:bg-slate-700/60" onClick={restoreAll}>
-                  <RotateCcw className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top"><p>Restaurar todos</p></TooltipContent>
-            </Tooltip>
-          </>
         )}
       </div>
     );

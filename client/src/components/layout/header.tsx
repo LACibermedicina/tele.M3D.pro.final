@@ -22,6 +22,8 @@ import userIcon from "@/assets/user-icon.png";
 import { useVoiceAssistant } from "@/contexts/VoiceAssistantContext";
 import { useLayoutSettings } from "@/contexts/LayoutSettingsContext";
 import DockableNavBar from "@/components/layout/dockable-nav-bar";
+import { InlineTrayIcons } from "@/components/layout/minimized-panel-dock";
+import { InlineTrayAnalysisButtons } from "@/components/ui/draggable-widget-buttons";
 
 export default function Header() {
   const [location, navigate] = useLocation();
@@ -704,26 +706,40 @@ export default function Header() {
         {user && (
           <DockableNavBar>
             <header className="border-t bg-slate-900/95 backdrop-blur-md border-slate-700 shadow-lg w-full" data-testid="header-main">
-              <div className="w-full px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center h-14">
-                  <div className="flex items-center space-x-3">
-                    <Link href="/" data-testid="link-logo">
-                      <div className="w-10 h-10 flex items-center justify-center">
-                        <img 
-                          src={telemedLogo} 
-                          alt="Tele<M3D> Logo" 
-                          className="w-full h-full object-contain"
-                          style={{ filter: 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
-                        />
-                      </div>
-                    </Link>
+              <div className="w-full px-2 sm:px-4">
+                <div className="flex items-center h-14 gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => window.dispatchEvent(new Event('toggle-toolbox-visibility'))}
+                          className="w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-200 hover:bg-white/15 active:bg-white/25 hover:shadow-[0_0_12px_rgba(255,255,255,0.2)] active:shadow-[0_0_16px_rgba(255,255,255,0.35)] group/logo shrink-0"
+                          data-testid="button-toolbox-toggle"
+                        >
+                          <img 
+                            src={telemedLogo} 
+                            alt="Tele<M3D> Logo" 
+                            className="w-8 h-8 object-contain transition-all duration-200 group-hover/logo:brightness-[1.3] group-active/logo:brightness-[1.5]"
+                            style={{ filter: 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+                          />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top"><p>Abrir/Fechar Toolbox</p></TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  <div className="h-8 w-px bg-slate-600/50 shrink-0" />
+
+                  <div className="flex-1 flex items-center gap-1.5 overflow-x-auto px-1 scrollbar-none">
+                    <TooltipProvider>
+                      <InlineTrayAnalysisButtons userRole={user.role} />
+                      <InlineTrayIcons />
+                    </TooltipProvider>
                   </div>
 
-                  <div className="flex items-center">
-                    <span className="text-white/40 text-[10px] uppercase tracking-wider">Navegação no Toolbox →</span>
-                  </div>
+                  <div className="h-8 w-px bg-slate-600/50 shrink-0" />
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     {user.role !== 'visitor' && creditData !== undefined && (
                       <Link href="/wallet">
                         <Badge className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-2 py-0.5 text-[10px] font-semibold hover:from-amber-600 hover:to-orange-600 transition-all flex items-center gap-1">

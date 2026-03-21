@@ -11698,7 +11698,7 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
             message: `Paciente #${patientCode}: ${symptoms.substring(0, 200)}`,
             priority: notifPriority,
             actionUrl: '/doctor-chat',
-            senderId: patientId,
+            senderId: userId,
             delivered: false,
             read: false,
             metadata: { requestId: consultationRequest.id, patientId, patientCode, urgencyLevel: triageData.aiTriageLevel, wsType: 'urgency_request' }

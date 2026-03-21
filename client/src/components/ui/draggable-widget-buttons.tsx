@@ -1,6 +1,8 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useDraggable } from '@/hooks/use-draggable';
+import { useLayoutSettings } from '@/contexts/LayoutSettingsContext';
 import { GripVertical } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import QuickActionsBar from '@/components/quick-actions-bar';
 
 function DraggableQuickActions({ userRole }: { userRole: string }) {
@@ -32,8 +34,76 @@ function DraggableQuickActions({ userRole }: { userRole: string }) {
   );
 }
 
+const trayButtons = [
+  {
+    id: 'chatbot',
+    event: 'open-chatbot-widget',
+    title: 'Chatbot IA',
+    gradient: 'from-blue-500 to-cyan-600',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+    ),
+    roles: ['doctor', 'admin', 'patient', 'visitor', 'researcher', 'pharmacist'],
+  },
+  {
+    id: 'study-notes',
+    event: 'open-study-notes-widget',
+    title: 'Notas de Estudo',
+    gradient: 'from-amber-500 to-orange-600',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+    ),
+    roles: ['doctor', 'admin'],
+  },
+  {
+    id: 'ecg',
+    event: 'open-ecg-widget',
+    title: 'Estudo de ECG',
+    gradient: 'from-red-500 to-pink-600',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+    ),
+    roles: ['doctor', 'admin'],
+  },
+  {
+    id: 'radiology',
+    event: 'open-radiology-widget',
+    title: 'Estudo de Imagem',
+    gradient: 'from-indigo-500 to-purple-600',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="2" x2="22" y1="7" y2="7"/><line x1="7" x2="7" y1="2" y2="22"/><line x1="17" x2="17" y1="2" y2="22"/><line x1="2" x2="22" y1="17" y2="17"/></svg>
+    ),
+    roles: ['doctor', 'admin'],
+  },
+];
+
+export function InlineTrayAnalysisButtons({ userRole }: { userRole: string }) {
+  const visibleButtons = trayButtons.filter(b => b.roles.includes(userRole));
+  if (visibleButtons.length === 0) return null;
+
+  return (
+    <>
+      {visibleButtons.map(btn => (
+        <Tooltip key={btn.id}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => window.dispatchEvent(new Event(btn.event))}
+              className={`w-8 h-8 rounded-lg bg-gradient-to-br ${btn.gradient} text-white shadow-md hover:shadow-lg transition-all flex items-center justify-center hover:scale-105 shrink-0`}
+              title={btn.title}
+            >
+              {btn.icon}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top"><p>{btn.title}</p></TooltipContent>
+        </Tooltip>
+      ))}
+    </>
+  );
+}
+
 export default function DraggableWidgetButtons() {
   const { user } = useAuth();
+  const { navDockMode } = useLayoutSettings();
 
   const { position, onDragStart } = useDraggable({
     storageKey: 'widget-buttons-column',
@@ -41,6 +111,11 @@ export default function DraggableWidgetButtons() {
     constrainToWindow: true,
     elementSize: { w: 48, h: 240 },
   });
+
+  const isBottomNav = navDockMode === 'bottom';
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  if (isBottomNav && !isMobile) return null;
 
   return (
     <>
