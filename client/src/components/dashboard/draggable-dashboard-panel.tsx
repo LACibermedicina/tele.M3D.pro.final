@@ -90,7 +90,7 @@ export default function DraggableDashboardPanel({
 
   return (
     <div
-      className={`relative group transition-shadow duration-200 ${isDragging ? "shadow-2xl z-50 opacity-90" : ""} ${className}`}
+      className={`relative group transition-shadow duration-200 ${isDragging ? "shadow-2xl z-50 opacity-90" : ""} desktop-glass-panel ${className}`}
       data-panel-id={id}
       data-draggable-root
       style={useAbsolutePos ? {

@@ -87,6 +87,7 @@ import { VoiceAssistantProvider } from "@/contexts/VoiceAssistantContext";
 import { LayoutSettingsProvider, useLayoutSettings } from "@/contexts/LayoutSettingsContext";
 import { VoiceAssistantPrompt } from "@/components/voice-assistant-prompt";
 import { VoiceAssistantOverlay } from "@/components/voice-assistant-overlay";
+import DesktopBackground from "@/components/layout/desktop-background";
 
 // Responsive Dashboard Components
 import { ResponsiveDashboard } from "@/components/responsive-dashboard";
@@ -141,7 +142,9 @@ function Router() {
   const bottomPadding = mobileMenuStyle === 'bottom' && user ? 'md:pb-0 pb-16' : '';
 
   return (
-    <div className={`min-h-screen bg-background transition-all duration-300 ${sidebarMargin} ${bottomPadding}`}>
+    <>
+    <DesktopBackground />
+    <div className={`min-h-screen transition-all duration-300 ${sidebarMargin} ${bottomPadding} relative z-[1] md:bg-transparent bg-background desktop-env-root`}>
       {user && <UrgentAlertOverlay />}
       
       {/* Command Palette */}
@@ -151,6 +154,7 @@ function Router() {
         userRole={user?.role}
       />
 
+      <div data-page-content>
       <Switch>
         {/* Public routes */}
         <Route path="/login">
@@ -533,9 +537,10 @@ function Router() {
           <NotFound />
         </Route>
       </Switch>
+      </div>
       
       {/* Enhanced Footer with Quick Access */}
-      <footer className="bg-card border-t border-border mt-12">
+      <footer className="bg-card border-t border-border mt-12 desktop-glass-footer">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6 text-sm text-muted-foreground">
@@ -571,6 +576,7 @@ function Router() {
       {!isInVideoConsultation && <VoiceAssistantOverlay />}
       
     </div>
+    </>
   );
 }
 
