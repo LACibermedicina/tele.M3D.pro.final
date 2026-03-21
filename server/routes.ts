@@ -8037,14 +8037,17 @@ IMPORTANTE:
       if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Acesso restrito a médicos' });
       }
+      const conditions = [
+        or(
+          eq(postConsultationItems.status, 'approved'),
+          eq(postConsultationItems.status, 'signed')
+        )
+      ];
+      if (req.user.role !== 'admin') {
+        conditions.push(eq(postConsultationItems.doctorId, req.user.id));
+      }
       const allItems = await db.select().from(postConsultationItems)
-        .where(and(
-          eq(postConsultationItems.doctorId, req.user.id),
-          or(
-            eq(postConsultationItems.status, 'approved'),
-            eq(postConsultationItems.status, 'signed')
-          )
-        ))
+        .where(and(...conditions))
         .orderBy(desc(postConsultationItems.reviewedAt));
       res.json(allItems);
     } catch (error) {
@@ -8173,7 +8176,7 @@ IMPORTANTE:
       }
 
       const { title, description, details, patientSummary, editReason } = parsed.data;
-      const reviewNotes = req.body.reviewNotes;
+      const reviewNotes = typeof req.body.reviewNotes === 'string' ? req.body.reviewNotes.trim() : undefined;
 
       const item = await storage.getPostConsultationItem(req.params.id);
       if (!item) {
