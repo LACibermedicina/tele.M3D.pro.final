@@ -123,10 +123,30 @@ export default function VideoConsultation() {
   const [showEndCallDialog, setShowEndCallDialog] = useState(false);
   const [endCallReason, setEndCallReason] = useState('');
   const [showPostConsultSummary, setShowPostConsultSummary] = useState(false);
-  const [postConsultItems, setPostConsultItems] = useState<any[]>([]);
+
+  type PostConsultItemSummary = {
+    id: string;
+    type: string;
+    title: string;
+    description: string;
+    status: string;
+    details?: Record<string, unknown>;
+    patientSummary?: string;
+  };
+  type SusProntuarioSummary = {
+    id: string;
+    consultationId: string;
+    chiefComplaint: string | null;
+    assessment: string | null;
+    soapComplianceScore: number | null;
+    soapComplianceFlags: Array<{ section: string; severity: string; message: string }> | null;
+    reviewedByDoctor: boolean | null;
+  };
+
+  const [postConsultItems, setPostConsultItems] = useState<PostConsultItemSummary[]>([]);
   const [postConsultLoading, setPostConsultLoading] = useState(false);
   const [susProntuarioLoading, setSusProntuarioLoading] = useState(false);
-  const [susProntuario, setSusProntuario] = useState<any>(null);
+  const [susProntuario, setSusProntuario] = useState<SusProntuarioSummary | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingItemTitle, setEditingItemTitle] = useState('');
   const [editingItemDescription, setEditingItemDescription] = useState('');
@@ -241,11 +261,22 @@ export default function VideoConsultation() {
         setPostConsultLoading(true);
         setShowPostConsultSummary(true);
         try {
-          const summaryRes = await fetch('/api/post-consultation/summary/' + consultationId, { credentials: 'include' });
+          const [summaryRes, susRes] = await Promise.all([
+            fetch('/api/post-consultation/summary/' + consultationId, { credentials: 'include' }),
+            fetch('/api/sus-prontuario/generate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ consultationId }),
+            }),
+          ]);
           if (summaryRes.ok) {
             const summary = await summaryRes.json();
             setPostConsultItems(summary.items || []);
-            setSusProntuario(summary.susProntuario || null);
+          }
+          if (susRes.ok) {
+            const susData = await susRes.json();
+            setSusProntuario(susData);
           }
         } catch (err) {
           console.error('Failed to load post-consultation summary:', err);
@@ -1724,11 +1755,15 @@ export default function VideoConsultation() {
                       <Badge variant="default" className="text-[10px] bg-emerald-600">
                         Gerado
                       </Badge>
-                      {susProntuario.soapComplianceScore !== undefined && (
+                      {susProntuario.soapComplianceScore != null && (
                         <Badge variant={susProntuario.soapComplianceScore >= 70 ? 'default' : 'destructive'} className="text-[10px]">
                           SOAP: {susProntuario.soapComplianceScore}%
                         </Badge>
                       )}
+                    </div>
+                  ) : susProntuarioLoading ? (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Gerando...
                     </div>
                   ) : (
                     <Button
@@ -1759,11 +1794,7 @@ export default function VideoConsultation() {
                         setSusProntuarioLoading(false);
                       }}
                     >
-                      {susProntuarioLoading ? (
-                        <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Gerando...</>
-                      ) : (
-                        'Gerar Prontuário SUS'
-                      )}
+                      Regenerar Prontuário SUS
                     </Button>
                   )}
                 </div>

@@ -8507,7 +8507,7 @@ Data de nascimento: ${patient?.dateOfBirth ? new Date(patient.dateOfBirth).toLoc
 Gênero: ${patient?.gender || 'Não informado'}
 Tipo sanguíneo: ${patient?.bloodType || 'Não informado'}
 Alergias: ${patient?.allergies || 'Nenhuma registrada'}
-Cartão SUS: ${(patient as any)?.document || 'Não informado'}
+Cartão SUS: ${(patient as Record<string, unknown>)?.document || 'Não informado'}
 
 HISTÓRICO MÉDICO PRÉVIO:
 ${historyContext}
