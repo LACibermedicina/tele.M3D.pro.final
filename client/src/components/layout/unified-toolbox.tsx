@@ -283,10 +283,8 @@ export default function UnifiedToolbox() {
   const [wasMinimizedToDock, setWasMinimizedToDock] = useState(false);
 
   const handleClose = useCallback(() => {
-    setVisible(false);
-    setWasMinimizedToDock(false);
-    try { localStorage.setItem(STORAGE_KEY_VISIBLE, "false"); } catch {}
-  }, []);
+    handleMinimize();
+  }, [handleMinimize]);
 
   useEffect(() => {
     if (isMinimized("unified-toolbox")) {
