@@ -14,7 +14,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers, profileMergeAuditLogs, prescriptionShares, labOrders, hospitalReferrals, clinicalAssets } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers, profileMergeAuditLogs, prescriptionShares, labOrders, hospitalReferrals, clinicalAssets, susProntuarios } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
@@ -91,6 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migrateUserDeactivationFields();
   await migrateFhirTables();
   await migratePostConsultationEditColumns();
+  await migrateSusProntuariosTable();
   await initStripeSync();
   
   // Initialize default doctor if not exists and get the actual ID
@@ -3878,13 +3879,19 @@ ${clinicalSummary}`;
           console.log(`✅ Auto-generated medical record for patient ${consultation.patientId}`);
 
           // Auto-generate post-consultation items (prescriptions, exams, referrals)
+          // Follow-ups are only generated when explicitly mentioned in the clinical notes
           try {
-            const itemsPrompt = `Com base nos dados da teleconsulta abaixo, extraia TODOS os itens pós-consulta em formato JSON. Para cada item, retorne um objeto com: type ("prescription"|"exam"|"referral"|"followup"), title (nome curto), description (descrição clínica detalhada), details (objeto JSON com dados específicos), patientSummary (explicação em linguagem acessível para o paciente).
+            const itemsPrompt = `Com base nos dados da teleconsulta abaixo, extraia TODOS os itens pós-consulta em formato JSON. Para cada item, retorne um objeto com: type ("prescription"|"exam"|"referral"|"followup"), title (nome curto), description (descrição clínica detalhada), details (objeto JSON com dados específicos), patientSummary (explicação em linguagem acessível para o paciente), enabled (boolean - true por padrão).
 
 Para prescrições (prescription): details deve conter { medications: [{ name, dosage, frequency, duration, route, instructions }] }
 Para exames (exam): details deve conter { exams: [{ name, type, urgency, justification }] }
 Para encaminhamentos (referral): details deve conter { specialty, reason, urgency, notes }
 Para retornos (followup): details deve conter { suggestedDate, reason, instructions }
+
+REGRA IMPORTANTE PARA RETORNOS (followup):
+- Só gere um item do tipo "followup" SE o médico EXPLICITAMENTE solicitou ou mencionou retorno/acompanhamento na consulta.
+- Se não houver menção explícita de retorno, NÃO inclua itens do tipo "followup".
+- Quando incluir retorno, marque enabled como false (o médico deve ativá-lo manualmente).
 
 Retorne APENAS um array JSON válido. Se não houver itens, retorne [].
 
@@ -3895,6 +3902,8 @@ ${clinicalSummary}`;
             const items = JSON.parse(cleanJson);
             if (Array.isArray(items)) {
               for (const item of items) {
+                const isFollowup = item.type === 'followup';
+                const isEnabled = isFollowup ? (item.enabled === true) : (item.enabled !== false);
                 await storage.createPostConsultationItem({
                   consultationId: consultation.id,
                   patientId: consultation.patientId!,
@@ -3903,31 +3912,32 @@ ${clinicalSummary}`;
                   title: item.title || 'Item pós-consulta',
                   description: item.description || '',
                   details: item.details || {},
-                  status: 'pending_review',
+                  status: isEnabled ? 'pending_review' : 'disabled',
                   patientSummary: item.patientSummary || '',
                   reviewNotes: null,
                   aiAnalysis: null,
                   reviewedAt: null,
                 });
               }
-              console.log(`✅ Auto-generated ${items.length} post-consultation items`);
+              console.log(`✅ Auto-generated ${items.length} post-consultation items (followups conditional)`);
 
-              if (items.length > 0) {
+              const enabledItems = items.filter((i: any) => i.type !== 'followup' || i.enabled === true);
+              if (enabledItems.length > 0) {
                 const doctorId = consultation.doctorId || req.user?.id || DEFAULT_DOCTOR_ID;
                 await db.insert(pendingNotifications).values({
                   userId: doctorId,
                   type: 'post_consultation_review',
-                  title: `${items.length} itens pós-consulta aguardam revisão`,
+                  title: `${enabledItems.length} itens pós-consulta aguardam revisão`,
                   message: `Prescrições, exames e encaminhamentos gerados automaticamente para ${patient?.name || 'paciente'} precisam da sua aprovação.`,
                   priority: 'high',
                   actionUrl: '/post-consultation-review',
                   delivered: false,
                   read: false,
-                  metadata: { consultationId: consultation.id, itemCount: items.length }
+                  metadata: { consultationId: consultation.id, itemCount: items.length, enabledCount: enabledItems.length }
                 });
                 broadcastToDoctor(doctorId, {
                   type: 'post_consultation_review',
-                  data: { consultationId: consultation.id, itemCount: items.length, patientName: patient?.name }
+                  data: { consultationId: consultation.id, itemCount: items.length, enabledCount: enabledItems.length, patientName: patient?.name }
                 });
               }
             }
@@ -8379,6 +8389,313 @@ Retorne JSON com:
     } catch (error) {
       console.error('Error bulk reviewing:', error);
       res.status(500).json({ message: 'Erro na revisão em lote' });
+    }
+  });
+
+  // ===== POST-CONSULTATION ITEM TOGGLE (Enable/Disable) =====
+  app.patch('/api/post-consultation/items/:id/toggle', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos' });
+      }
+      const { enabled } = req.body;
+      const item = await storage.getPostConsultationItem(req.params.id);
+      if (!item) {
+        return res.status(404).json({ message: 'Item não encontrado' });
+      }
+      if (item.doctorId !== req.user.id && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Você só pode alterar seus próprios itens' });
+      }
+      const newStatus = enabled ? 'pending_review' : 'disabled';
+      const updated = await storage.updatePostConsultationItem(req.params.id, { status: newStatus });
+      res.json(updated);
+    } catch (error) {
+      console.error('Error toggling item:', error);
+      res.status(500).json({ message: 'Erro ao alternar item' });
+    }
+  });
+
+  // ===== POST-CONSULTATION SUMMARY (End-of-consultation preview) =====
+  app.get('/api/post-consultation/summary/:consultationId', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos' });
+      }
+      if (req.user.role === 'doctor') {
+        const consultation = await db.select().from(videoConsultations)
+          .where(eq(videoConsultations.id, req.params.consultationId)).limit(1);
+        if (consultation[0] && consultation[0].doctorId !== req.user.id) {
+          return res.status(403).json({ message: 'Acesso não autorizado a esta consulta' });
+        }
+      }
+      const items = await db.select().from(postConsultationItems)
+        .where(eq(postConsultationItems.consultationId, req.params.consultationId))
+        .orderBy(postConsultationItems.createdAt);
+      const susProntuario = await db.select().from(susProntuarios)
+        .where(eq(susProntuarios.consultationId, req.params.consultationId))
+        .orderBy(desc(susProntuarios.createdAt))
+        .limit(1);
+      res.json({
+        items,
+        susProntuario: susProntuario[0] || null,
+      });
+    } catch (error) {
+      console.error('Error fetching consultation summary:', error);
+      res.status(500).json({ message: 'Erro ao buscar resumo da consulta' });
+    }
+  });
+
+  // ===== SUS PRONTUÁRIO GENERATION =====
+  app.post('/api/sus-prontuario/generate', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos' });
+      }
+      const { consultationId } = req.body;
+      if (!consultationId) {
+        return res.status(400).json({ message: 'consultationId é obrigatório' });
+      }
+
+      const consultation = await db.select().from(videoConsultations)
+        .where(eq(videoConsultations.id, consultationId))
+        .limit(1);
+      if (!consultation[0]) {
+        return res.status(404).json({ message: 'Consulta não encontrada' });
+      }
+      const consult = consultation[0];
+      if (req.user.role === 'doctor' && consult.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Acesso não autorizado a esta consulta' });
+      }
+
+      const existingProntuario = await db.select().from(susProntuarios)
+        .where(eq(susProntuarios.consultationId, consultationId))
+        .orderBy(desc(susProntuarios.createdAt))
+        .limit(1);
+      if (existingProntuario[0]) {
+        return res.json(existingProntuario[0]);
+      }
+      const patient = consult.patientId ? await storage.getPatient(consult.patientId) : null;
+      const consultNotes = await storage.getConsultationNotes(consultationId);
+      const doctorNotes = consultNotes.filter((n: any) => n.type === 'doctor_note' || n.type === 'annotation').map((n: any) => n.content).join('\n');
+      const transcriptions = consultNotes.filter((n: any) => n.type === 'transcription').map((n: any) => n.content).join('\n');
+      const chatMessages = consultNotes.filter((n: any) => n.type === 'chat').map((n: any) => n.content).join('\n');
+      const aiResponses = consultNotes.filter((n: any) => n.type === 'ai_response').map((n: any) => n.content).join('\n');
+
+      const clinicalSummary = [
+        consult.meetingNotes ? `Notas da consulta: ${consult.meetingNotes}` : '',
+        doctorNotes ? `Anotações médicas: ${doctorNotes}` : '',
+        transcriptions ? `Transcrição: ${transcriptions}` : '',
+        chatMessages ? `Chat: ${chatMessages}` : '',
+        aiResponses ? `Análise IA: ${aiResponses}` : '',
+      ].filter(Boolean).join('\n\n');
+
+      let medicalHistory: any[] = [];
+      if (consult.patientId) {
+        try {
+          medicalHistory = await storage.getMedicalRecordsByPatient(consult.patientId);
+        } catch {}
+      }
+      const historyContext = medicalHistory.length > 0
+        ? medicalHistory.slice(0, 5).map((r: any) => `${r.diagnosis || 'Consulta'}: ${r.treatment || ''}`).join('; ')
+        : 'Sem histórico prévio registrado';
+
+      const susPrompt = `Com base nos dados da teleconsulta a seguir, gere um prontuário médico COMPLETO seguindo o padrão SUS (Sistema Único de Saúde do Brasil). O prontuário deve seguir as normas do CFM (Conselho Federal de Medicina), LGPD e diretrizes do Ministério da Saúde.
+
+DADOS DO PACIENTE:
+Nome: ${patient?.name || 'Não identificado'}
+Data de nascimento: ${patient?.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString('pt-BR') : 'Não informada'}
+Gênero: ${patient?.gender || 'Não informado'}
+Tipo sanguíneo: ${patient?.bloodType || 'Não informado'}
+Alergias: ${patient?.allergies || 'Nenhuma registrada'}
+Cartão SUS: ${(patient as any)?.document || 'Não informado'}
+
+HISTÓRICO MÉDICO PRÉVIO:
+${historyContext}
+
+DADOS DA CONSULTA:
+${clinicalSummary}
+
+GERE O PRONTUÁRIO NO SEGUINTE FORMATO JSON:
+{
+  "identification": {
+    "patientName": "nome",
+    "birthDate": "data",
+    "gender": "gênero",
+    "bloodType": "tipo sanguíneo",
+    "allergies": "alergias",
+    "susCard": "cartão SUS",
+    "consultationDate": "data da consulta",
+    "consultationType": "teleconsulta"
+  },
+  "chiefComplaint": "Queixa principal do paciente",
+  "historyPresentIllness": "História da doença atual (HDA) - cronologia, evolução, fatores agravantes/atenuantes",
+  "pastMedicalHistory": "Antecedentes pessoais patológicos - doenças prévias, cirurgias, internações, medicações em uso",
+  "familyHistory": "Antecedentes familiares relevantes",
+  "socialHistory": "História social - ocupação, tabagismo, etilismo, atividade física, condições de moradia",
+  "reviewOfSystems": "Revisão por sistemas - cardiovascular, respiratório, gastrointestinal, neurológico, etc.",
+  "physicalExam": "Exame físico (limitado pela teleconsulta) - observações visuais, sinais vitais se reportados",
+  "assessment": "Avaliação/Impressão diagnóstica - hipóteses diagnósticas com CID-10",
+  "plan": "Plano terapêutico - medicações, exames, encaminhamentos, orientações, retorno",
+  "soapNotes": {
+    "subjective": "dados subjetivos do paciente",
+    "objective": "dados objetivos observados",
+    "assessment": "avaliação clínica",
+    "plan": "plano terapêutico"
+  }
+}
+
+IMPORTANTE:
+- Responda APENAS com JSON válido
+- Preencha todas as seções com base nos dados disponíveis
+- Se alguma informação não estiver disponível, indique "Não avaliado nesta consulta" ou "Sem dados disponíveis"
+- A seção SOAP deve ser consistente com as seções narrativas
+- Siga terminologia médica brasileira padrão`;
+
+      const prontuarioJson = await geminiService.generateText(susPrompt, 'Você é um médico especialista em documentação clínica do SUS (Sistema Único de Saúde) e elaboração de prontuários conforme normas do CFM, Ministério da Saúde e LGPD. Retorne APENAS JSON válido.');
+      const cleanProntuario = prontuarioJson.replace(/```json?\s*/g, '').replace(/```\s*/g, '').trim();
+      const prontuario = JSON.parse(cleanProntuario);
+
+      // SOAP Compliance verification
+      let complianceScore = 100;
+      const complianceFlags: any[] = [];
+      const soap = prontuario.soapNotes || {};
+
+      if (!soap.subjective || soap.subjective.length < 20) {
+        complianceScore -= 20;
+        complianceFlags.push({ section: 'subjective', severity: 'warning', message: 'Seção Subjetiva insuficiente ou ausente' });
+      }
+      if (!soap.objective || soap.objective.length < 15) {
+        complianceScore -= 15;
+        complianceFlags.push({ section: 'objective', severity: 'warning', message: 'Seção Objetiva insuficiente (limitações de teleconsulta)' });
+      }
+      if (!soap.assessment || soap.assessment.length < 20) {
+        complianceScore -= 25;
+        complianceFlags.push({ section: 'assessment', severity: 'error', message: 'Avaliação diagnóstica insuficiente' });
+      }
+      if (!soap.plan || soap.plan.length < 20) {
+        complianceScore -= 20;
+        complianceFlags.push({ section: 'plan', severity: 'error', message: 'Plano terapêutico insuficiente' });
+      }
+
+      if (transcriptions && soap.subjective) {
+        const transcriptKeywords = transcriptions.toLowerCase().split(/\s+/).filter((w: string) => w.length > 4).slice(0, 20);
+        const subjectiveText = soap.subjective.toLowerCase();
+        const matchCount = transcriptKeywords.filter((k: string) => subjectiveText.includes(k)).length;
+        const matchRatio = transcriptKeywords.length > 0 ? matchCount / transcriptKeywords.length : 1;
+        if (matchRatio < 0.2 && transcriptKeywords.length > 5) {
+          complianceScore -= 10;
+          complianceFlags.push({ section: 'consistency', severity: 'warning', message: 'Baixa correspondência entre notas SOAP e transcrição da consulta. Revise os dados subjetivos.' });
+        }
+      }
+
+      if (prontuario.chiefComplaint && soap.subjective && !soap.subjective.toLowerCase().includes(prontuario.chiefComplaint.toLowerCase().split(' ').slice(0, 2).join(' '))) {
+        complianceFlags.push({ section: 'consistency', severity: 'info', message: 'Queixa principal pode não estar refletida na seção subjetiva do SOAP' });
+      }
+
+      complianceScore = Math.max(0, complianceScore);
+
+      const [savedProntuario] = await db.insert(susProntuarios).values({
+        consultationId,
+        patientId: consult.patientId || '',
+        doctorId: consult.doctorId || req.user.id,
+        identification: prontuario.identification || {},
+        chiefComplaint: prontuario.chiefComplaint || '',
+        historyPresentIllness: prontuario.historyPresentIllness || '',
+        pastMedicalHistory: prontuario.pastMedicalHistory || '',
+        familyHistory: prontuario.familyHistory || '',
+        socialHistory: prontuario.socialHistory || '',
+        reviewOfSystems: prontuario.reviewOfSystems || '',
+        physicalExam: prontuario.physicalExam || '',
+        assessment: prontuario.assessment || '',
+        plan: prontuario.plan || '',
+        soapNotes: prontuario.soapNotes || {},
+        soapComplianceScore: complianceScore,
+        soapComplianceFlags: complianceFlags,
+        sourceTranscription: transcriptions || null,
+        sourceMeetingNotes: consult.meetingNotes || null,
+        generatedByAi: true,
+        reviewedByDoctor: false,
+      }).returning();
+
+      console.log(`✅ SUS prontuário generated for consultation ${consultationId}, SOAP compliance: ${complianceScore}%`);
+      res.json(savedProntuario);
+    } catch (error) {
+      console.error('Error generating SUS prontuário:', error);
+      res.status(500).json({ message: 'Erro ao gerar prontuário SUS' });
+    }
+  });
+
+  // Get SUS prontuário by consultation (with ownership check)
+  app.get('/api/sus-prontuario/:consultationId', requireAuth, async (req: any, res) => {
+    try {
+      const results = await db.select().from(susProntuarios)
+        .where(eq(susProntuarios.consultationId, req.params.consultationId))
+        .orderBy(desc(susProntuarios.createdAt))
+        .limit(1);
+      if (!results[0]) {
+        return res.status(404).json({ message: 'Prontuário SUS não encontrado' });
+      }
+      const prontuario = results[0];
+      if (req.user.role !== 'admin' && prontuario.doctorId !== req.user.id && prontuario.patientId !== req.user.id) {
+        return res.status(403).json({ message: 'Acesso não autorizado a este prontuário' });
+      }
+      res.json(prontuario);
+    } catch (error) {
+      console.error('Error fetching SUS prontuário:', error);
+      res.status(500).json({ message: 'Erro ao buscar prontuário SUS' });
+    }
+  });
+
+  // Mark SUS prontuário as reviewed (with ownership check)
+  app.patch('/api/sus-prontuario/:id/review', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos' });
+      }
+      const existing = await db.select().from(susProntuarios).where(eq(susProntuarios.id, req.params.id)).limit(1);
+      if (!existing[0]) {
+        return res.status(404).json({ message: 'Prontuário não encontrado' });
+      }
+      if (req.user.role !== 'admin' && existing[0].doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Você só pode revisar seus próprios prontuários' });
+      }
+      const { updates } = req.body;
+      const updateData: any = { reviewedByDoctor: true, updatedAt: new Date() };
+      if (updates) {
+        if (updates.chiefComplaint !== undefined) updateData.chiefComplaint = updates.chiefComplaint;
+        if (updates.historyPresentIllness !== undefined) updateData.historyPresentIllness = updates.historyPresentIllness;
+        if (updates.pastMedicalHistory !== undefined) updateData.pastMedicalHistory = updates.pastMedicalHistory;
+        if (updates.familyHistory !== undefined) updateData.familyHistory = updates.familyHistory;
+        if (updates.socialHistory !== undefined) updateData.socialHistory = updates.socialHistory;
+        if (updates.reviewOfSystems !== undefined) updateData.reviewOfSystems = updates.reviewOfSystems;
+        if (updates.physicalExam !== undefined) updateData.physicalExam = updates.physicalExam;
+        if (updates.assessment !== undefined) updateData.assessment = updates.assessment;
+        if (updates.plan !== undefined) updateData.plan = updates.plan;
+      }
+      const [updated] = await db.update(susProntuarios)
+        .set(updateData)
+        .where(eq(susProntuarios.id, req.params.id))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error('Error reviewing SUS prontuário:', error);
+      res.status(500).json({ message: 'Erro ao revisar prontuário' });
+    }
+  });
+
+  // Get SUS prontuários for a patient (with ownership check)
+  app.get('/api/sus-prontuarios/patient/:patientId', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin' && req.user.role !== 'doctor' && req.user.id !== req.params.patientId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+      const results = await db.select().from(susProntuarios)
+        .where(eq(susProntuarios.patientId, req.params.patientId))
+        .orderBy(desc(susProntuarios.createdAt));
+      res.json(results);
+    } catch (error) {
+      console.error('Error fetching patient SUS prontuários:', error);
+      res.status(500).json({ message: 'Erro ao buscar prontuários' });
     }
   });
 
@@ -23637,5 +23954,40 @@ async function migratePostConsultationEditColumns() {
     console.log('✓ Post-consultation edit columns migrated successfully');
   } catch (error) {
     console.error('Failed to migrate post-consultation edit columns:', error);
+  }
+}
+
+async function migrateSusProntuariosTable() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS sus_prontuarios (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        consultation_id varchar NOT NULL,
+        patient_id varchar NOT NULL,
+        doctor_id varchar NOT NULL,
+        identification jsonb,
+        chief_complaint text,
+        history_present_illness text,
+        past_medical_history text,
+        family_history text,
+        social_history text,
+        review_of_systems text,
+        physical_exam text,
+        assessment text,
+        plan text,
+        soap_notes jsonb,
+        soap_compliance_score integer,
+        soap_compliance_flags jsonb,
+        source_transcription text,
+        source_meeting_notes text,
+        generated_by_ai boolean DEFAULT true,
+        reviewed_by_doctor boolean DEFAULT false,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    console.log('✓ SUS prontuários table migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate SUS prontuários table:', error);
   }
 }

@@ -50,6 +50,17 @@ import {
   PanelRightClose,
   PanelRightOpen,
   X,
+  Check,
+  XCircle,
+  ToggleLeft,
+  ToggleRight,
+  ClipboardList,
+  Pill,
+  TestTube,
+  ArrowUpRight,
+  CalendarCheck,
+  ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWebSocket, onForceDisconnect } from '@/hooks/use-websocket';
@@ -111,6 +122,11 @@ export default function VideoConsultation() {
   const [showSpecialistDialog, setShowSpecialistDialog] = useState(false);
   const [showEndCallDialog, setShowEndCallDialog] = useState(false);
   const [endCallReason, setEndCallReason] = useState('');
+  const [showPostConsultSummary, setShowPostConsultSummary] = useState(false);
+  const [postConsultItems, setPostConsultItems] = useState<any[]>([]);
+  const [postConsultLoading, setPostConsultLoading] = useState(false);
+  const [susProntuarioLoading, setSusProntuarioLoading] = useState(false);
+  const [susProntuario, setSusProntuario] = useState<any>(null);
   const [videoSwapped, setVideoSwapped] = useState(false);
   const [screenShareFullscreen, setScreenShareFullscreen] = useState(true);
   const [showSideChat, setShowSideChat] = useState(false);
@@ -214,16 +230,33 @@ export default function VideoConsultation() {
         data
       );
     },
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/video-consultations', consultationId] });
       const isCompleted = variables.completionStatus === 'completed';
-      toast({
-        title: isCompleted ? 'Consulta Concluída' : 'Consulta Encerrada',
-        description: isCompleted 
-          ? 'Consulta concluída com sucesso. Prontuário gerado automaticamente.'
-          : 'Consulta encerrada como inconcluída. Você poderá retomá-la posteriormente.',
-      });
-      setLocation('/schedule');
+      if (isCompleted && consultationId && user?.role === 'doctor') {
+        toast({ title: 'Consulta Concluída', description: 'Carregando resumo pós-consulta...' });
+        setPostConsultLoading(true);
+        setShowPostConsultSummary(true);
+        try {
+          const summaryRes = await fetch('/api/post-consultation/summary/' + consultationId, { credentials: 'include' });
+          if (summaryRes.ok) {
+            const summary = await summaryRes.json();
+            setPostConsultItems(summary.items || []);
+            setSusProntuario(summary.susProntuario || null);
+          }
+        } catch (err) {
+          console.error('Failed to load post-consultation summary:', err);
+        }
+        setPostConsultLoading(false);
+      } else {
+        toast({
+          title: isCompleted ? 'Consulta Concluída' : 'Consulta Encerrada',
+          description: isCompleted 
+            ? 'Consulta concluída com sucesso. Prontuário gerado automaticamente.'
+            : 'Consulta encerrada como inconcluída. Você poderá retomá-la posteriormente.',
+        });
+        setLocation('/schedule');
+      }
     },
   });
 
@@ -1490,6 +1523,234 @@ export default function VideoConsultation() {
               Cancelar
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Post-Consultation Summary Panel */}
+      <Dialog open={showPostConsultSummary} onOpenChange={(open) => {
+        if (!open) {
+          setShowPostConsultSummary(false);
+          setLocation('/schedule');
+        }
+      }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-blue-600" />
+              Resumo Pós-Consulta
+            </DialogTitle>
+          </DialogHeader>
+          {postConsultLoading ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <p className="text-sm text-muted-foreground">Gerando itens pós-consulta...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {postConsultItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhum item pós-consulta foi gerado automaticamente.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Revise os itens gerados automaticamente. Use os botões para ativar ou desativar cada item antes de prosseguir.
+                  </p>
+                  <div className="space-y-2">
+                    {postConsultItems.map((item, idx) => {
+                      const isEnabled = item.status !== 'disabled';
+                      const typeIcons: Record<string, any> = {
+                        prescription: Pill,
+                        exam: TestTube,
+                        referral: ArrowUpRight,
+                        followup: CalendarCheck,
+                      };
+                      const typeLabels: Record<string, string> = {
+                        prescription: 'Prescrição',
+                        exam: 'Exame',
+                        referral: 'Encaminhamento',
+                        followup: 'Retorno',
+                      };
+                      const typeColors: Record<string, string> = {
+                        prescription: 'text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400',
+                        exam: 'text-purple-600 bg-purple-50 dark:bg-purple-950 dark:text-purple-400',
+                        referral: 'text-orange-600 bg-orange-50 dark:bg-orange-950 dark:text-orange-400',
+                        followup: 'text-green-600 bg-green-50 dark:bg-green-950 dark:text-green-400',
+                      };
+                      const IconComponent = typeIcons[item.type] || FileText;
+                      return (
+                        <div
+                          key={item.id || idx}
+                          className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
+                            isEnabled
+                              ? 'border-border bg-card'
+                              : 'border-dashed border-muted bg-muted/30 opacity-60'
+                          }`}
+                        >
+                          <div className={`p-1.5 rounded-md ${typeColors[item.type] || 'text-gray-600 bg-gray-50'}`}>
+                            <IconComponent className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                {typeLabels[item.type] || item.type}
+                              </Badge>
+                              {item.type === 'followup' && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-300">
+                                  Opcional
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="font-medium text-sm truncate">{item.title}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{item.description}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0 h-8 px-2"
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`/api/post-consultation/items/${item.id}/toggle`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  credentials: 'include',
+                                  body: JSON.stringify({ enabled: !isEnabled }),
+                                });
+                                if (res.ok) {
+                                  setPostConsultItems(prev => prev.map(i =>
+                                    i.id === item.id ? { ...i, status: isEnabled ? 'disabled' : 'pending_review' } : i
+                                  ));
+                                } else {
+                                  toast({ title: 'Erro ao alternar item', variant: 'destructive' });
+                                }
+                              } catch (err) {
+                                console.error('Toggle error:', err);
+                                toast({ title: 'Erro ao alternar item', variant: 'destructive' });
+                              }
+                            }}
+                          >
+                            {isEnabled ? (
+                              <ToggleRight className="w-5 h-5 text-green-600" />
+                            ) : (
+                              <ToggleLeft className="w-5 h-5 text-gray-400" />
+                            )}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {/* SUS Prontuário Section */}
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span className="text-sm font-medium">Prontuário SUS</span>
+                  </div>
+                  {susProntuario ? (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="default" className="text-[10px] bg-emerald-600">
+                        Gerado
+                      </Badge>
+                      {susProntuario.soapComplianceScore !== undefined && (
+                        <Badge variant={susProntuario.soapComplianceScore >= 70 ? 'default' : 'destructive'} className="text-[10px]">
+                          SOAP: {susProntuario.soapComplianceScore}%
+                        </Badge>
+                      )}
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      disabled={susProntuarioLoading}
+                      onClick={async () => {
+                        setSusProntuarioLoading(true);
+                        try {
+                          const res = await fetch('/api/sus-prontuario/generate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ consultationId }),
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setSusProntuario(data);
+                            toast({ title: 'Prontuário SUS gerado com sucesso' });
+                          } else {
+                            toast({ title: 'Erro ao gerar prontuário', variant: 'destructive' });
+                          }
+                        } catch (err) {
+                          console.error('SUS generation error:', err);
+                          toast({ title: 'Erro ao gerar prontuário', variant: 'destructive' });
+                        }
+                        setSusProntuarioLoading(false);
+                      }}
+                    >
+                      {susProntuarioLoading ? (
+                        <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Gerando...</>
+                      ) : (
+                        'Gerar Prontuário SUS'
+                      )}
+                    </Button>
+                  )}
+                </div>
+                {susProntuario && (
+                  <div className="space-y-2 mt-2">
+                    {susProntuario.soapComplianceFlags && susProntuario.soapComplianceFlags.length > 0 && (
+                      <div className="space-y-1">
+                        {susProntuario.soapComplianceFlags.map((flag: any, i: number) => (
+                          <div key={i} className={`flex items-start gap-2 text-xs p-2 rounded ${
+                            flag.severity === 'error' ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400' :
+                            flag.severity === 'warning' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400' :
+                            'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400'
+                          }`}>
+                            <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+                            <span>{flag.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="p-2 bg-muted/50 rounded">
+                        <span className="font-medium block mb-1">Queixa Principal</span>
+                        <span className="text-muted-foreground line-clamp-3">{susProntuario.chiefComplaint || '-'}</span>
+                      </div>
+                      <div className="p-2 bg-muted/50 rounded">
+                        <span className="font-medium block mb-1">Avaliação</span>
+                        <span className="text-muted-foreground line-clamp-3">{susProntuario.assessment || '-'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-2">
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    setShowPostConsultSummary(false);
+                    setLocation('/post-consultation-review');
+                  }}
+                >
+                  <Check className="w-4 h-4 mr-1" />
+                  Revisar Itens
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowPostConsultSummary(false);
+                    setLocation('/schedule');
+                  }}
+                >
+                  Concluir
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

@@ -1601,6 +1601,36 @@ export const insertPostConsultationItemSchema = createInsertSchema(postConsultat
 export type InsertPostConsultationItem = z.infer<typeof insertPostConsultationItemSchema>;
 export type PostConsultationItem = typeof postConsultationItems.$inferSelect;
 
+export const susProntuarios = pgTable('sus_prontuarios', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  consultationId: varchar('consultation_id').notNull(),
+  patientId: varchar('patient_id').notNull(),
+  doctorId: varchar('doctor_id').notNull(),
+  identification: jsonb('identification'),
+  chiefComplaint: text('chief_complaint'),
+  historyPresentIllness: text('history_present_illness'),
+  pastMedicalHistory: text('past_medical_history'),
+  familyHistory: text('family_history'),
+  socialHistory: text('social_history'),
+  reviewOfSystems: text('review_of_systems'),
+  physicalExam: text('physical_exam'),
+  assessment: text('assessment'),
+  plan: text('plan'),
+  soapNotes: jsonb('soap_notes'),
+  soapComplianceScore: integer('soap_compliance_score'),
+  soapComplianceFlags: jsonb('soap_compliance_flags'),
+  sourceTranscription: text('source_transcription'),
+  sourceMeetingNotes: text('source_meeting_notes'),
+  generatedByAi: boolean('generated_by_ai').default(true),
+  reviewedByDoctor: boolean('reviewed_by_doctor').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const insertSusProntuarioSchema = createInsertSchema(susProntuarios).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSusProntuario = z.infer<typeof insertSusProntuarioSchema>;
+export type SusProntuario = typeof susProntuarios.$inferSelect;
+
 // Diagnostic Inferences - AI-generated syndromic classifications per consultation
 export const diagnosticInferences = pgTable('diagnostic_inferences', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
