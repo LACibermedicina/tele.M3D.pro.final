@@ -8687,21 +8687,23 @@ IMPORTANTE:
   app.get('/api/sus-prontuarios/patient/:patientId', requireAuth, async (req: any, res) => {
     try {
       if (req.user.role === 'admin') {
-        // admin can access all
+        const results = await db.select().from(susProntuarios)
+          .where(eq(susProntuarios.patientId, req.params.patientId))
+          .orderBy(desc(susProntuarios.createdAt));
+        return res.json(results);
       } else if (req.user.role === 'doctor') {
-        const doctorProntuarios = await db.select({ id: susProntuarios.id }).from(susProntuarios)
+        const results = await db.select().from(susProntuarios)
           .where(and(eq(susProntuarios.patientId, req.params.patientId), eq(susProntuarios.doctorId, req.user.id)))
-          .limit(1);
-        if (doctorProntuarios.length === 0) {
-          return res.status(403).json({ message: 'Acesso não autorizado - sem prontuários para este paciente' });
-        }
-      } else if (req.user.id !== req.params.patientId) {
+          .orderBy(desc(susProntuarios.createdAt));
+        return res.json(results);
+      } else if (req.user.id === req.params.patientId) {
+        const results = await db.select().from(susProntuarios)
+          .where(eq(susProntuarios.patientId, req.params.patientId))
+          .orderBy(desc(susProntuarios.createdAt));
+        return res.json(results);
+      } else {
         return res.status(403).json({ message: 'Acesso não autorizado' });
       }
-      const results = await db.select().from(susProntuarios)
-        .where(eq(susProntuarios.patientId, req.params.patientId))
-        .orderBy(desc(susProntuarios.createdAt));
-      res.json(results);
     } catch (error) {
       console.error('Error fetching patient SUS prontuários:', error);
       res.status(500).json({ message: 'Erro ao buscar prontuários' });
