@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, useEffect, type ReactNode } from "react"
 import { useDesktopWindowManager, type DesktopWindow as DWin } from "@/contexts/DesktopWindowManagerContext";
 import { Minus, Square, X, Maximize2 } from "lucide-react";
 
+
 interface DesktopWindowProps {
   windowData: DWin;
   children: ReactNode;
@@ -14,6 +15,7 @@ export default function DesktopWindowComponent({ windowData, children }: Desktop
     focusWindow,
     toggleMaximize,
     updateWindowPosition,
+    updateWindowSize,
     activeWindowId,
   } = useDesktopWindowManager();
 
@@ -90,6 +92,10 @@ export default function DesktopWindowComponent({ windowData, children }: Desktop
     };
     const handleUp = () => {
       setResizing(false);
+      setLocalSize(prev => {
+        updateWindowSize(windowData.id, prev);
+        return prev;
+      });
     };
     window.addEventListener("mousemove", handleMove);
     window.addEventListener("mouseup", handleUp);
@@ -97,7 +103,7 @@ export default function DesktopWindowComponent({ windowData, children }: Desktop
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", handleUp);
     };
-  }, [resizing, windowData.id]);
+  }, [resizing, windowData.id, updateWindowSize]);
 
   if (windowData.state !== "open") return null;
 

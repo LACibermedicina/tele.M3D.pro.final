@@ -89,7 +89,7 @@ import { VoiceAssistantPrompt } from "@/components/voice-assistant-prompt";
 import { VoiceAssistantOverlay } from "@/components/voice-assistant-overlay";
 import DesktopBackground from "@/components/layout/desktop-background";
 import { DesktopWindowManagerProvider } from "@/contexts/DesktopWindowManagerContext";
-import DesktopWindowLayer from "@/components/layout/desktop-window-layer";
+import DesktopWindowLayer, { isWindowedRoute } from "@/components/layout/desktop-window-layer";
 
 import { ResponsiveDashboard } from "@/components/responsive-dashboard";
 
@@ -141,7 +141,7 @@ function Router() {
     : '';
   const bottomPadding = mobileMenuStyle === 'bottom' && user ? 'md:pb-0 pb-16' : '';
 
-  const isDesktopWindowed = typeof window !== "undefined" && window.innerWidth >= 768 && !!user && !isInVideoConsultation;
+  const isDesktopWindowed = typeof window !== "undefined" && window.innerWidth >= 768 && !!user && !isInVideoConsultation && isWindowedRoute(location);
 
   return (
     <>

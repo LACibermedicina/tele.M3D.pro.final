@@ -379,7 +379,7 @@ export default function UnifiedToolbox() {
       return {
         position: "fixed",
         bottom: 58,
-        right: 8,
+        left: 8,
         zIndex: 49,
         width: collapsed ? 48 : 240,
         maxHeight: 'calc(100vh - 120px)',

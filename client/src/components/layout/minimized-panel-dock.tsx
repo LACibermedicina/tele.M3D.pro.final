@@ -65,7 +65,7 @@ export function InlineTrayIcons() {
           <Tooltip key={panel.id}>
             <TooltipTrigger asChild>
               <button
-                className="relative flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 transition-colors text-slate-300 hover:text-white shrink-0"
+                className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-white/[0.07] hover:bg-white/15 transition-colors text-slate-300 hover:text-white shrink-0"
                 onClick={() => restore(panel.id)}
               >
                 <Icon className="h-4 w-4" />

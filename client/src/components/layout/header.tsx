@@ -26,7 +26,71 @@ import { InlineTrayIcons } from "@/components/layout/minimized-panel-dock";
 import { InlineTrayAnalysisButtons } from "@/components/ui/draggable-widget-buttons";
 import { InlineQuickActions } from "@/components/quick-actions-bar";
 import { useDesktopWindowManager } from "@/contexts/DesktopWindowManagerContext";
-import { Home } from "lucide-react";
+
+function DesktopTaskbarWindows() {
+  const { windows, restoreWindow, openWindow, focusWindow } = useDesktopWindowManager();
+
+  const closedWindows = windows.filter((w: any) => w.state === "closed");
+  const minimizedWindows = windows.filter((w: any) => w.state === "minimized");
+  const openWindows = windows.filter((w: any) => w.state === "open");
+
+  if (closedWindows.length === 0 && minimizedWindows.length === 0 && openWindows.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-1 shrink-0 overflow-x-auto scrollbar-none max-w-[300px]">
+      <TooltipProvider>
+        {openWindows.map((w: any) => {
+          const WinIcon = w.icon;
+          return (
+            <Tooltip key={w.id}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => focusWindow(w.id)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-sky-500/20 border border-sky-400/30 text-sky-300 hover:bg-sky-500/30 transition-all shrink-0"
+                >
+                  <WinIcon className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><p>{w.title}</p></TooltipContent>
+            </Tooltip>
+          );
+        })}
+        {minimizedWindows.map((w: any) => {
+          const WinIcon = w.icon;
+          return (
+            <Tooltip key={w.id}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => restoreWindow(w.id)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.12] border border-white/15 text-white/50 hover:bg-white/20 hover:text-white/70 transition-all shrink-0"
+                >
+                  <WinIcon className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><p>{w.title} (minimizado)</p></TooltipContent>
+            </Tooltip>
+          );
+        })}
+        {closedWindows.map((w: any) => {
+          const WinIcon = w.icon;
+          return (
+            <Tooltip key={w.id}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => openWindow({ id: w.id, title: w.title, icon: w.icon, route: w.route })}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.06] text-white/30 hover:bg-white/15 hover:text-white/50 transition-all shrink-0"
+                >
+                  <WinIcon className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><p>{w.title} (fechado)</p></TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </TooltipProvider>
+    </div>
+  );
+}
 
 export default function Header() {
   const [location, navigate] = useLocation();

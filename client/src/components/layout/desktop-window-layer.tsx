@@ -128,10 +128,10 @@ const WINDOW_ROUTES: WindowRoute[] = [
   { path: "/pharmacy/reports", title: "Relatórios Farmácia", icon: FileBarChart, roles: ["pharmacist", "admin"], component: PharmacyReportsPage },
 ];
 
-const PARAM_ROUTES: { pattern: RegExp; getTitle: (path: string) => string; icon: LucideIcon; roles?: string[]; component: ComponentType }[] = [
-  { pattern: /^\/patients\/\d+/, getTitle: () => "Perfil do Paciente", icon: Users, roles: ["doctor", "admin"], component: PatientProfile },
-  { pattern: /^\/consultation-session\//, getTitle: () => "Sessão de Consulta", icon: Stethoscope, roles: ["doctor", "patient", "admin"], component: ConsultationSession },
-  { pattern: /^\/team-room\//, getTitle: () => "Sala de Equipe", icon: Users, roles: ["doctor"], component: TeamRoom },
+const PARAM_ROUTES: { pattern: RegExp; routePattern: string; getTitle: (path: string) => string; icon: LucideIcon; roles?: string[]; component: ComponentType }[] = [
+  { pattern: /^\/patients\/\d+/, routePattern: "/patients/:id", getTitle: () => "Perfil do Paciente", icon: Users, roles: ["doctor", "admin"], component: PatientProfile },
+  { pattern: /^\/consultation-session\//, routePattern: "/consultation-session/:sessionId", getTitle: () => "Sessão de Consulta", icon: Stethoscope, roles: ["doctor", "patient", "admin"], component: ConsultationSession },
+  { pattern: /^\/team-room\//, routePattern: "/team-room/:id", getTitle: () => "Sala de Equipe", icon: Users, roles: ["doctor"], component: TeamRoom },
 ];
 
 const EXCLUDED_PATHS = [
@@ -251,17 +251,32 @@ export default function DesktopWindowLayer() {
   );
 }
 
+function hasAccess(roles: string[] | undefined, userRole: string): boolean {
+  if (!roles) return true;
+  return roles.includes(userRole);
+}
+
+function AccessDenied() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[200px]">
+      <p className="text-sm text-white/50">Acesso não autorizado</p>
+    </div>
+  );
+}
+
 function getWindowContent(route: string, userRole: string) {
   if (route === "home") return <DesktopHome />;
 
   const staticRoute = WINDOW_ROUTES.find(r => r.path === route);
   if (staticRoute) {
+    if (!hasAccess(staticRoute.roles, userRole)) return <AccessDenied />;
     const Comp = staticRoute.component;
     return <Comp />;
   }
 
   const paramRoute = PARAM_ROUTES.find(r => r.pattern.test(route));
   if (paramRoute) {
+    if (!hasAccess(paramRoute.roles, userRole)) return <AccessDenied />;
     const Comp = paramRoute.component;
     return <Comp />;
   }
@@ -269,4 +284,11 @@ function getWindowContent(route: string, userRole: string) {
   return null;
 }
 
-export { WINDOW_ROUTES, PARAM_ROUTES, isExcludedPath };
+function isWindowedRoute(path: string): boolean {
+  if (path === "/" || path === "") return true;
+  if (WINDOW_ROUTES.some(r => r.path === path)) return true;
+  if (PARAM_ROUTES.some(r => r.pattern.test(path))) return true;
+  return false;
+}
+
+export { WINDOW_ROUTES, PARAM_ROUTES, isExcludedPath, isWindowedRoute };
