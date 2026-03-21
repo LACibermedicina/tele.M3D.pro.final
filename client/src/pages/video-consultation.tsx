@@ -127,6 +127,9 @@ export default function VideoConsultation() {
   const [postConsultLoading, setPostConsultLoading] = useState(false);
   const [susProntuarioLoading, setSusProntuarioLoading] = useState(false);
   const [susProntuario, setSusProntuario] = useState<any>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingItemTitle, setEditingItemTitle] = useState('');
+  const [editingItemDescription, setEditingItemDescription] = useState('');
   const [videoSwapped, setVideoSwapped] = useState(false);
   const [screenShareFullscreen, setScreenShareFullscreen] = useState(true);
   const [showSideChat, setShowSideChat] = useState(false);
@@ -1601,8 +1604,75 @@ export default function VideoConsultation() {
                                 </Badge>
                               )}
                             </div>
-                            <p className="font-medium text-sm truncate">{item.title}</p>
-                            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{item.description}</p>
+                            {editingItemId === item.id ? (
+                              <div className="space-y-1.5 w-full">
+                                <Input
+                                  value={editingItemTitle}
+                                  onChange={(e) => setEditingItemTitle(e.target.value)}
+                                  className="h-7 text-sm"
+                                  placeholder="Título"
+                                />
+                                <Textarea
+                                  value={editingItemDescription}
+                                  onChange={(e) => setEditingItemDescription(e.target.value)}
+                                  className="text-xs min-h-[50px]"
+                                  rows={2}
+                                  placeholder="Descrição"
+                                />
+                                <div className="flex gap-1">
+                                  <Button size="sm" className="h-6 text-[10px] px-2" onClick={async () => {
+                                    try {
+                                      const res = await fetch(`/api/post-consultation/items/${item.id}/edit`, {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        credentials: 'include',
+                                        body: JSON.stringify({
+                                          title: editingItemTitle,
+                                          description: editingItemDescription,
+                                          editReason: 'Editado no resumo pós-consulta',
+                                        }),
+                                      });
+                                      if (res.ok) {
+                                        const updated = await res.json();
+                                        setPostConsultItems(prev => prev.map(i =>
+                                          i.id === item.id ? { ...i, title: editingItemTitle, description: editingItemDescription } : i
+                                        ));
+                                        setEditingItemId(null);
+                                        toast({ title: 'Item atualizado' });
+                                      } else {
+                                        toast({ title: 'Erro ao salvar edição', variant: 'destructive' });
+                                      }
+                                    } catch { toast({ title: 'Erro ao salvar', variant: 'destructive' }); }
+                                  }}>
+                                    <Check className="w-3 h-3 mr-0.5" /> Salvar
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => setEditingItemId(null)}>
+                                    Cancelar
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <p className="font-medium text-sm truncate">{item.title}</p>
+                                <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{item.description}</p>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-1 shrink-0">
+                            {editingItemId !== item.id && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-1.5"
+                                onClick={() => {
+                                  setEditingItemId(item.id);
+                                  setEditingItemTitle(item.title || '');
+                                  setEditingItemDescription(item.description || '');
+                                }}
+                              >
+                                <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                              </Button>
+                            )}
                           </div>
                           <Button
                             variant="ghost"
