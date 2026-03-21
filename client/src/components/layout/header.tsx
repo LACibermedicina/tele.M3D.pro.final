@@ -613,7 +613,7 @@ export default function Header() {
   if (!isMobileView && (navDockMode === 'left' || navDockMode === 'right')) {
     const tooltipSide = navDockMode === 'left' ? 'right' as const : 'left' as const;
     return (
-      <>{topLoginBar}<DockableNavBar>
+      <>{topLoginBar}{user && <DockableNavBar>
         <div className="group/sidebar flex flex-col items-center w-full gap-0.5 py-1 transition-all duration-300">
           <Link href="/" data-testid="link-logo">
             <div className="w-10 h-10 flex items-center justify-center mb-1">
@@ -693,7 +693,7 @@ export default function Header() {
           onClose={() => setIsCommandPaletteOpen(false)}
           userRole={user?.role}
         />
-      </DockableNavBar></>
+      </DockableNavBar>}</>
     );
   }
 
@@ -701,79 +701,77 @@ export default function Header() {
     return (
       <>
         {topLoginBar}
-        <DockableNavBar>
-          <header className="border-t bg-slate-900/95 backdrop-blur-md border-slate-700 shadow-lg w-full" data-testid="header-main">
-            <div className="w-full px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center h-14">
-                <div className="flex items-center space-x-3">
-                  <Link href="/" data-testid="link-logo">
-                    <div className="w-10 h-10 flex items-center justify-center">
-                      <img 
-                        src={telemedLogo} 
-                        alt="Tele<M3D> Logo" 
-                        className="w-full h-full object-contain"
-                        style={{ filter: 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
-                      />
-                    </div>
-                  </Link>
-                </div>
+        {user && (
+          <DockableNavBar>
+            <header className="border-t bg-slate-900/95 backdrop-blur-md border-slate-700 shadow-lg w-full" data-testid="header-main">
+              <div className="w-full px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center h-14">
+                  <div className="flex items-center space-x-3">
+                    <Link href="/" data-testid="link-logo">
+                      <div className="w-10 h-10 flex items-center justify-center">
+                        <img 
+                          src={telemedLogo} 
+                          alt="Tele<M3D> Logo" 
+                          className="w-full h-full object-contain"
+                          style={{ filter: 'brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
+                        />
+                      </div>
+                    </Link>
+                  </div>
 
-                <div className="flex items-center">
-                  <span className="text-white/40 text-[10px] uppercase tracking-wider">Navegação no Toolbox →</span>
-                </div>
+                  <div className="flex items-center">
+                    <span className="text-white/40 text-[10px] uppercase tracking-wider">Navegação no Toolbox →</span>
+                  </div>
 
-                <div className="flex items-center space-x-2">
-                  {user && (
-                    <>
-                      {user.role !== 'visitor' && creditData !== undefined && (
-                        <Link href="/wallet">
-                          <Badge className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-2 py-0.5 text-[10px] font-semibold hover:from-amber-600 hover:to-orange-600 transition-all flex items-center gap-1">
-                            <Coins className="w-3 h-3" />
-                            <span>{creditBalance} TMC</span>
-                          </Badge>
-                        </Link>
-                      )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-white/10 transition-colors" data-testid="button-user-menu">
-                            <Avatar className="w-8 h-8">
-                              <AvatarFallback className="text-white font-semibold text-[10px]" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
-                                {getUserInitials(user.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" side="top" className="w-56">
-                          <DropdownMenuLabel>
-                            <p className="font-semibold">{user.name}</p>
-                            <p className="text-xs text-muted-foreground font-normal">{getRoleDisplay(user.role)}</p>
-                          </DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => navigate('/profile')}><User className="mr-2 h-4 w-4" />{t("auth.profile")}</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => navigate('/profile')}><Settings className="mr-2 h-4 w-4" />{t("auth.settings")}</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive"><LogOut className="mr-2 h-4 w-4" />{t("auth.logout")}</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    {user.role !== 'visitor' && creditData !== undefined && (
+                      <Link href="/wallet">
+                        <Badge className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-2 py-0.5 text-[10px] font-semibold hover:from-amber-600 hover:to-orange-600 transition-all flex items-center gap-1">
+                          <Coins className="w-3 h-3" />
+                          <span>{creditBalance} TMC</span>
+                        </Badge>
+                      </Link>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-white/10 transition-colors" data-testid="button-user-menu">
+                          <Avatar className="w-8 h-8">
+                            <AvatarFallback className="text-white font-semibold text-[10px]" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
+                              {getUserInitials(user.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" side="top" className="w-56">
+                        <DropdownMenuLabel>
+                          <p className="font-semibold">{user.name}</p>
+                          <p className="text-xs text-muted-foreground font-normal">{getRoleDisplay(user.role)}</p>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => navigate('/profile')}><User className="mr-2 h-4 w-4" />{t("auth.profile")}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate('/profile')}><Settings className="mr-2 h-4 w-4" />{t("auth.settings")}</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive"><LogOut className="mr-2 h-4 w-4" />{t("auth.logout")}</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </div>
-            </div>
-          </header>
-          <CommandPalette 
-            isOpen={isCommandPaletteOpen} 
-            onClose={() => setIsCommandPaletteOpen(false)}
-            userRole={user?.role}
-          />
-        </DockableNavBar>
+            </header>
+            <CommandPalette 
+              isOpen={isCommandPaletteOpen} 
+              onClose={() => setIsCommandPaletteOpen(false)}
+              userRole={user?.role}
+            />
+          </DockableNavBar>
+        )}
       </>
     );
   }
 
   if (!isMobileView && navDockMode === 'floating') {
     return (
-      <>{topLoginBar}<DockableNavBar>
+      <>{topLoginBar}{user && <DockableNavBar>
         <div className="flex items-center gap-1 px-1">
           <Link href="/" data-testid="link-logo">
             <div className="w-8 h-8 flex items-center justify-center shrink-0">
@@ -842,12 +840,12 @@ export default function Header() {
           onClose={() => setIsCommandPaletteOpen(false)}
           userRole={user?.role}
         />
-      </DockableNavBar></>
+      </DockableNavBar>}</>
     );
   }
 
   return (
-    <>{topLoginBar}<DockableNavBar>
+    <>{topLoginBar}{user && <DockableNavBar>
     <header 
       className={`border-b sticky top-0 z-50 transition-all duration-300 w-full ${
         isScrolled 
@@ -1832,6 +1830,6 @@ export default function Header() {
         </div>
       )}
     </header>
-    </DockableNavBar></>
+    </DockableNavBar>}</>
   );
 }
