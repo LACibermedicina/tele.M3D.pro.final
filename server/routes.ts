@@ -7975,7 +7975,8 @@ IMPORTANTE:
       }
       const items = await storage.getPostConsultationItemsByPatient(patient.id);
       const visibleItems = items.filter(i => i.status === 'approved' || i.status === 'signed');
-      res.json(visibleItems);
+      const sanitized = visibleItems.map(({ editHistory, editedAt, editedBy, reviewNotes, ...safeFields }) => safeFields);
+      res.json(sanitized);
     } catch (error) {
       console.error('Error fetching patient items:', error);
       res.status(500).json({ message: 'Erro ao buscar itens' });
