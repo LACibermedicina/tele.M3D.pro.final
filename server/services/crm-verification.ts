@@ -121,9 +121,15 @@ export class CRMVerificationService {
 
     const crmNumber = this.extractCRMNumber(doctor.medicalLicense);
     const crmState = doctor.medicalLicenseState || this.extractCRMState(doctor.medicalLicense);
+    const country = (doctor.documentCountry || 'BR').toUpperCase();
 
     try {
-      const result = await this.verifyCRMBrazil(crmNumber, crmState, config);
+      let result: CRMVerificationResult;
+      if (country === 'PT' && config.countries.PT.enabled) {
+        result = await this.verifyCRMPortugal(crmNumber, config);
+      } else {
+        result = await this.verifyCRMBrazil(crmNumber, crmState, config);
+      }
 
       await db.update(users)
         .set({
@@ -159,8 +165,8 @@ export class CRMVerificationService {
     }
 
     return {
-      status: (doctor.crmVerificationStatus as any) || 'unverified',
-      data: doctor.crmVerificationData as any,
+      status: (doctor.crmVerificationStatus || 'unverified') as CRMVerificationResult['status'],
+      data: doctor.crmVerificationData as CRMVerificationResult['data'],
     };
   }
 
@@ -244,6 +250,51 @@ export class CRMVerificationService {
         return this.simulateVerification(crmNumber, state);
       }
       return { status: 'failed', error: `Erro ao consultar CFM: ${error.message}` };
+    }
+  }
+
+  private async verifyCRMPortugal(crmNumber: string, config: CRMConfig): Promise<CRMVerificationResult> {
+    const ptConfig = config.countries.PT;
+    
+    if (!ptConfig.enabled) {
+      return { status: 'unverified', error: 'Verificação Portugal (Ordem dos Médicos) desabilitada' };
+    }
+
+    if (!ptConfig.apiUrl || !ptConfig.apiKey) {
+      return {
+        status: 'unverified',
+        error: 'API da Ordem dos Médicos não configurada. Configure URL e chave nas configurações admin.',
+        data: { registrationNumber: crmNumber, apiSource: 'ordem_medicos_pt' },
+      };
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(`${ptConfig.apiUrl}?numero=${encodeURIComponent(crmNumber)}&key=${encodeURIComponent(ptConfig.apiKey)}`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return { status: 'failed', error: `API Ordem dos Médicos retornou status ${response.status}` };
+      }
+
+      const data = await response.json();
+      return {
+        status: data.situacao?.toLowerCase() === 'activo' ? 'verified' : 'failed',
+        data: {
+          name: data.nome,
+          registrationNumber: data.numero,
+          situation: data.situacao,
+          specialty: data.especialidade,
+          apiSource: 'ordem_medicos_pt',
+        },
+      };
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      return { status: 'failed', error: `Erro ao consultar Ordem dos Médicos: ${errMsg}` };
     }
   }
 

@@ -15,6 +15,28 @@ export interface MedicationWarning {
   pregnancyCategory?: string;
 }
 
+export interface ExamRequestData {
+  patientName: string;
+  date: string;
+  examRequests: string;
+  doctorName: string;
+  doctorCRM: string;
+  doctorCRMState: string;
+  crmVerified?: boolean;
+}
+
+export interface MedicalCertificateData {
+  patientName: string;
+  patientDocument: string;
+  restDays: number;
+  cid10: string;
+  date: string;
+  doctorName: string;
+  doctorCRM: string;
+  doctorCRMState: string;
+  crmVerified?: boolean;
+}
+
 export interface PrescriptionData {
   patientName: string;
   patientAge: number;
@@ -22,12 +44,13 @@ export interface PrescriptionData {
   doctorName: string;
   doctorCRM: string;
   doctorCRMState: string;
+  crmVerified?: boolean;
   prescriptionText: string;
   prescriptionNumber?: string;
   date: string;
   digitalSignature?: {
     signature: string;
-    certificateInfo: any;
+    certificateInfo: Record<string, unknown>;
     timestamp: string;
     qrCodeData?: string;
     documentHash?: string;
@@ -257,7 +280,7 @@ export class PDFGeneratorService {
         
         <div class="doctor-info">
           <div class="doctor-name">${data.doctorName}</div>
-          <div class="doctor-crm">CRM ${data.doctorCRM}/${data.doctorCRMState}</div>
+          <div class="doctor-crm">CRM ${data.doctorCRM}/${data.doctorCRMState}${data.crmVerified ? ' ✓ Verificado' : ''}</div>
         </div>
         
         <div class="patient-info">
@@ -336,7 +359,7 @@ export class PDFGeneratorService {
             ` : ''}
             <div class="signature-line"></div>
             <div class="signature-name">${data.doctorName}</div>
-            <div class="signature-crm">CRM ${data.doctorCRM}/${data.doctorCRMState}</div>
+            <div class="signature-crm">CRM ${data.doctorCRM}/${data.doctorCRMState}${data.crmVerified ? ' ✓ Verificado' : ''}</div>
           </div>
         </div>
         
@@ -354,7 +377,7 @@ export class PDFGeneratorService {
     `;
   }
 
-  async generateExamRequestPDF(examData: any): Promise<string> {
+  async generateExamRequestPDF(examData: ExamRequestData): Promise<string> {
     // Similar structure for exam requests
     return `
       <!DOCTYPE html>
@@ -387,14 +410,14 @@ export class PDFGeneratorService {
         
         <div class="signature">
           <p>Médico: ${examData.doctorName}</p>
-          <p>CRM: ${examData.doctorCRM}/${examData.doctorCRMState}</p>
+          <p>CRM: ${examData.doctorCRM}/${examData.doctorCRMState}${examData.crmVerified ? ' ✓ Verificado' : ''}</p>
         </div>
       </body>
       </html>
     `;
   }
 
-  async generateMedicalCertificatePDF(certificateData: any): Promise<string> {
+  async generateMedicalCertificatePDF(certificateData: MedicalCertificateData): Promise<string> {
     return `
       <!DOCTYPE html>
       <html lang="pt-BR">
@@ -431,7 +454,7 @@ export class PDFGeneratorService {
           <br/><br/>
           <p>_________________________________</p>
           <p><strong>${certificateData.doctorName}</strong></p>
-          <p>CRM ${certificateData.doctorCRM}/${certificateData.doctorCRMState}</p>
+          <p>CRM ${certificateData.doctorCRM}/${certificateData.doctorCRMState}${certificateData.crmVerified ? ' ✓ Verificado' : ''}</p>
         </div>
       </body>
       </html>

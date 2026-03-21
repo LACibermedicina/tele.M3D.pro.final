@@ -38,7 +38,7 @@ export default function Profile() {
     phone: user?.phone || "",
     whatsappNumber: user?.whatsappNumber || "",
     medicalLicense: user?.medicalLicense || "",
-    medicalLicenseState: (user as any)?.medicalLicenseState || "",
+    medicalLicenseState: user?.medicalLicenseState || "",
     specialization: user?.specialization || "",
   });
 
@@ -50,8 +50,13 @@ export default function Profile() {
     enabled: !!user?.id && user?.role === 'doctor',
   });
 
-  const { data: crmStatus } = useQuery<{ status: string; data?: any }>({
+  const { data: crmStatus } = useQuery<{ status: string; data?: Record<string, string> }>({
     queryKey: ['/api/crm/status', user?.id],
+    enabled: !!user?.id && user?.role === 'doctor',
+  });
+
+  const { data: crmConfig } = useQuery<{ enabled: boolean }>({
+    queryKey: ['/api/admin/crm-config'],
     enabled: !!user?.id && user?.role === 'doctor',
   });
 
@@ -556,7 +561,7 @@ export default function Profile() {
                       </div>
                     </div>
 
-                    {formData.medicalLicense && (
+                    {formData.medicalLicense && crmConfig?.enabled && (
                       <div className="flex items-center gap-3">
                         <Button
                           type="button"

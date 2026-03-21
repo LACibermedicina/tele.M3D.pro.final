@@ -8,7 +8,17 @@ import { SchedulingService } from "./services/scheduling";
 import { whisperService } from "./services/whisper";
 import { cryptoService } from "./services/crypto";
 import { clinicalInterviewService } from "./services/clinical-interview";
-import { pdfGeneratorService, PrescriptionData } from "./services/pdf-generator";
+import { pdfGeneratorService, PrescriptionData, ExamRequestData, MedicalCertificateData } from "./services/pdf-generator";
+
+function parseDoctorCRM(doctor: { medicalLicense?: string | null; medicalLicenseState?: string | null }): { number: string; state: string } {
+  const ml = doctor.medicalLicense || '';
+  const numMatch = ml.replace(/[^\d]/g, '');
+  const stateFromLicense = ml.replace(/^CRM\/?/i, '').match(/([A-Z]{2})/)?.[1];
+  return {
+    number: numMatch || 'Não informado',
+    state: doctor.medicalLicenseState || stateFromLicense || 'Não informado',
+  };
+}
 import * as tmcCreditsService from "./services/tmc-credits";
 import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./paypal";
 import creditsRouter from "./routes/credits";
@@ -10186,13 +10196,15 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
       }
 
       // Prepare prescription data
+      const doctorCrm = parseDoctorCRM(doctor);
       const prescriptionData: PrescriptionData = {
         patientName: patient.name,
         patientAge: patient.age || 0,
         patientAddress: patient.address || 'Não informado',
         doctorName: doctor.name,
-        doctorCRM: doctor.digitalCertificate?.split('-')[1] || '123456',
-        doctorCRMState: 'SP',
+        doctorCRM: doctorCrm.number,
+        doctorCRMState: doctorCrm.state,
+        crmVerified: doctor.crmVerificationStatus === 'verified',
         prescriptionText: medicalRecord.prescription,
         date: new Date(medicalRecord.createdAt).toLocaleDateString('pt-BR', {
           day: '2-digit',
@@ -10232,13 +10244,15 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
       const patient = await storage.getPatient(medicalRecord.patientId);
       const doctor = await storage.getUser(medicalRecord.doctorId);
       
-      const examData = {
+      const examDoctorCrm = parseDoctorCRM(doctor || {});
+      const examData: ExamRequestData = {
         patientName: patient?.name || 'N/A',
         date: new Date(medicalRecord.createdAt).toLocaleDateString('pt-BR'),
         examRequests: medicalRecord.diagnosis || 'Exames conforme avaliação clínica',
         doctorName: doctor?.name || 'Médico',
-        doctorCRM: doctor?.digitalCertificate?.split('-')[1] || '123456',
-        doctorCRMState: 'SP'
+        doctorCRM: examDoctorCrm.number,
+        doctorCRMState: examDoctorCrm.state,
+        crmVerified: doctor?.crmVerificationStatus === 'verified',
       };
 
       const htmlContent = await pdfGeneratorService.generateExamRequestPDF(examData);
@@ -10267,15 +10281,17 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
       const patient = await storage.getPatient(medicalRecord.patientId);
       const doctor = await storage.getUser(medicalRecord.doctorId);
       
-      const certificateData = {
+      const certDoctorCrm = parseDoctorCRM(doctor || {});
+      const certificateData: MedicalCertificateData = {
         patientName: patient?.name || 'N/A',
         patientDocument: 'Não informado',
         restDays: restDays || 1,
         cid10: cid10 || '',
         date: new Date().toLocaleDateString('pt-BR'),
         doctorName: doctor?.name || 'Médico',
-        doctorCRM: doctor?.digitalCertificate?.split('-')[1] || '123456',
-        doctorCRMState: 'SP'
+        doctorCRM: certDoctorCrm.number,
+        doctorCRMState: certDoctorCrm.state,
+        crmVerified: doctor?.crmVerificationStatus === 'verified',
       };
 
       const htmlContent = await pdfGeneratorService.generateMedicalCertificatePDF(certificateData);
@@ -16992,8 +17008,9 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         patientAge: new Date().getFullYear() - (patientData[0]?.dateOfBirth ? new Date(patientData[0].dateOfBirth).getFullYear() : 0),
         patientAddress: patientData[0]?.address || 'Não informado',
         doctorName: doctorData[0]?.name || 'Médico',
-        doctorCRM: doctorData[0]?.digitalCertificate?.split('-')[1] || '000000',
-        doctorCRMState: doctorData[0]?.digitalCertificate?.split('-')[2] || 'SP',
+        doctorCRM: parseDoctorCRM(doctorData[0] || {}).number,
+        doctorCRMState: parseDoctorCRM(doctorData[0] || {}).state,
+        crmVerified: doctorData[0]?.crmVerificationStatus === 'verified',
         prescriptionText: prescriptionText,
         date: new Date(prescriptionData.createdAt).toLocaleDateString('pt-BR', { 
           day: 'numeric', 

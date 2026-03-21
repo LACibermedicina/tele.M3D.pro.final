@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Calendar, User, Pill, AlertTriangle, Download, Share2, FileSignature, CheckCircle2 } from 'lucide-react';
+import { FileText, Calendar, User, Pill, AlertTriangle, Download, Share2, FileSignature, CheckCircle2, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -72,7 +72,7 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
     const ml = user?.medicalLicense || '';
     const stateMatch = ml.match(/[A-Z]{2}/);
     const numMatch = ml.replace(/[^\d]/g, '');
-    return { number: numMatch, state: (user as any)?.medicalLicenseState || (stateMatch ? stateMatch[0] : 'SP') };
+    return { number: numMatch, state: user?.medicalLicenseState || (stateMatch ? stateMatch[0] : 'SP') };
   })();
 
   const [signForm, setSignForm] = useState({
@@ -85,6 +85,11 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
   const { data: prescription, isLoading, error } = useQuery<PrescriptionDetail>({
     queryKey: ['/api/prescriptions', prescriptionId],
     enabled: !!prescriptionId,
+  });
+
+  const { data: doctorCrmStatus } = useQuery<{ status: string }>({
+    queryKey: ['/api/crm/status', prescription?.doctorId],
+    enabled: !!prescription?.doctorId && user?.role === 'admin',
   });
 
   // Sign prescription mutation
@@ -293,6 +298,18 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
             <Badge variant="outline" className="text-blue-600 border-blue-600">
               <CheckCircle2 className="h-3 w-3 mr-1" />
               Assinada
+            </Badge>
+          )}
+          {doctorCrmStatus?.status === 'verified' && (
+            <Badge variant="outline" className="text-green-600 border-green-600">
+              <ShieldCheck className="h-3 w-3 mr-1" />
+              CRM Verificado
+            </Badge>
+          )}
+          {doctorCrmStatus && doctorCrmStatus.status === 'failed' && (
+            <Badge variant="outline" className="text-red-500 border-red-500">
+              <ShieldAlert className="h-3 w-3 mr-1" />
+              CRM Não Verificado
             </Badge>
           )}
         </div>
