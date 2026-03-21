@@ -8618,6 +8618,24 @@ IMPORTANTE:
       }).returning();
 
       console.log(`✅ SUS prontuário generated for consultation ${consultationId}, SOAP compliance: ${complianceScore}%`);
+
+      if (consult.patientId) {
+        try {
+          await storage.createMedicalRecord({
+            patientId: consult.patientId,
+            doctorId: consult.doctorId || req.user.id,
+            date: new Date(),
+            diagnosis: prontuario.assessment || 'Avaliação clínica - ver prontuário SUS',
+            treatment: prontuario.plan || '',
+            notes: `Prontuário SUS (ID: ${savedProntuario.id}). Queixa: ${prontuario.chiefComplaint || '-'}. Conformidade SOAP: ${complianceScore}%.`,
+            vitalSigns: {},
+          });
+          console.log(`✅ Linked SUS prontuário to unified medical record for patient ${consult.patientId}`);
+        } catch (linkErr) {
+          console.error('Failed to link SUS prontuário to medical record:', linkErr);
+        }
+      }
+
       res.json(savedProntuario);
     } catch (error) {
       console.error('Error generating SUS prontuário:', error);
