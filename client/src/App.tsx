@@ -90,6 +90,9 @@ import { VoiceAssistantOverlay } from "@/components/voice-assistant-overlay";
 import DesktopBackground from "@/components/layout/desktop-background";
 import { DesktopWindowManagerProvider } from "@/contexts/DesktopWindowManagerContext";
 import DesktopWindowLayer, { isWindowedRoute } from "@/components/layout/desktop-window-layer";
+import { ViewModeProvider, useViewMode } from "@/contexts/ViewModeContext";
+import ModeSelection from "@/pages/mode-selection";
+import { ImmersiveFloatingChat } from "@/components/immersive/immersive-floating-chat";
 
 import { ResponsiveDashboard } from "@/components/responsive-dashboard";
 
@@ -126,15 +129,16 @@ function RecordsRouter() {
 function Router() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { viewMode } = useViewMode();
   const { isCommandPaletteOpen, setIsCommandPaletteOpen } = useGlobalShortcuts();
   const { mobileMenuStyle, sidebarCollapsed } = useLayoutSettings();
   
-  // Enable command events and global shortcuts
   useCommandEvents();
   useApplicationShortcuts();
 
   const [location] = useLocation();
   const isInVideoConsultation = location.startsWith('/consultation/video') || location.startsWith('/patient/video');
+  const isImmersiveMode = !!user && viewMode === 'immersive';
 
   const sidebarMargin = mobileMenuStyle === 'sidebar' && user
     ? (sidebarCollapsed ? 'md:ml-0 ml-[60px]' : 'md:ml-0 ml-64')
@@ -205,6 +209,13 @@ function Router() {
           <Features />
         </Route>
         
+        <Route path="/mode-selection">
+          <ProtectedRoute skipModeCheck>
+            <Header />
+            <ModeSelection />
+          </ProtectedRoute>
+        </Route>
+
         {/* Documentation page - public */}
         <Route path="/documentation">
           <Header />
@@ -542,7 +553,7 @@ function Router() {
       </Switch>
       </div>}
       
-      <footer className={`bg-card border-t border-border mt-12 desktop-glass-footer ${isDesktopWindowed ? "hidden" : ""}`}>
+      <footer className={`bg-card border-t border-border mt-12 desktop-glass-footer ${isDesktopWindowed || isImmersiveMode ? "hidden" : ""}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6 text-sm text-muted-foreground">
@@ -566,16 +577,18 @@ function Router() {
         </div>
       </footer>
       
-      {!isInVideoConsultation && <FloatingChatbot />}
-      {!isInVideoConsultation && <FloatingRadiologyAnalyzer />}
-      {!isInVideoConsultation && <FloatingECGAnalyzer />}
-      {!isInVideoConsultation && <FloatingStudyNotes />}
+      {!isInVideoConsultation && !isImmersiveMode && <FloatingChatbot />}
+      {!isInVideoConsultation && !isImmersiveMode && <FloatingRadiologyAnalyzer />}
+      {!isInVideoConsultation && !isImmersiveMode && <FloatingECGAnalyzer />}
+      {!isInVideoConsultation && !isImmersiveMode && <FloatingStudyNotes />}
 
-      {!isInVideoConsultation && <DraggableWidgetButtons />}
+      {!isInVideoConsultation && !isImmersiveMode && <DraggableWidgetButtons />}
 
-      {!isInVideoConsultation && <VoiceAssistantPrompt />}
+      {!isInVideoConsultation && !isImmersiveMode && <VoiceAssistantPrompt />}
       
-      {!isInVideoConsultation && <VoiceAssistantOverlay />}
+      {!isInVideoConsultation && !isImmersiveMode && <VoiceAssistantOverlay />}
+
+      {isImmersiveMode && location !== '/' && location !== '/dashboard' && <ImmersiveFloatingChat />}
       
     </div>
     </>
@@ -621,25 +634,27 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <NavigationProvider>
-            <LayoutSettingsProvider>
-              <VoiceAssistantProvider>
-                <MinimizedPanelsProvider>
-                  <DesktopWindowManagerProvider>
-                    <TooltipProvider>
-                      <Toaster />
-                      <InactivityMonitor />
-                      <ForceDisconnectGuard />
-                      <PostLoadEffects />
-                      <MinimizedPanelDock />
-                      <UnifiedToolbox />
-                      <Router />
-                    </TooltipProvider>
-                  </DesktopWindowManagerProvider>
-                </MinimizedPanelsProvider>
-              </VoiceAssistantProvider>
-            </LayoutSettingsProvider>
-          </NavigationProvider>
+          <ViewModeProvider>
+            <NavigationProvider>
+              <LayoutSettingsProvider>
+                <VoiceAssistantProvider>
+                  <MinimizedPanelsProvider>
+                    <DesktopWindowManagerProvider>
+                      <TooltipProvider>
+                        <Toaster />
+                        <InactivityMonitor />
+                        <ForceDisconnectGuard />
+                        <PostLoadEffects />
+                        <MinimizedPanelDock />
+                        <UnifiedToolbox />
+                        <Router />
+                      </TooltipProvider>
+                    </DesktopWindowManagerProvider>
+                  </MinimizedPanelsProvider>
+                </VoiceAssistantProvider>
+              </LayoutSettingsProvider>
+            </NavigationProvider>
+          </ViewModeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

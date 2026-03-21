@@ -13,11 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { User, UserCheck, Stethoscope } from "lucide-react";
+import { User, UserCheck, Stethoscope, MessageCircle, Send, Loader2 } from "lucide-react";
 import telemedLogo from "@/assets/logo-fundo.png";
 import origamiHeroImage from "@assets/LogoOrigami_1759774106948.png";
 import { formatErrorForToast } from "@/lib/error-handler";
 import PageWrapper from "@/components/layout/page-wrapper";
+import { apiRequest } from "@/lib/queryClient";
+import { useViewMode } from "@/contexts/ViewModeContext";
 
 // Create schemas using translation function
 const createLoginSchema = (t: any) => z.object({
@@ -500,23 +502,118 @@ function RegisterFormSection({ defaultValues, onSubmit, isSubmitting, getRoleIco
   );
 }
 
+function LoginSimplifiedChat() {
+  const [isOpen, setIsOpen] = useState(true);
+  const [messages, setMessages] = useState<{ id: string; role: "user" | "ai"; content: string }[]>([
+    { id: "1", role: "ai", content: "Olá! Sou o assistente virtual da Tele<M3D>. Posso tirar dúvidas sobre a plataforma, agendar consultas ou ajudar com triagem de sintomas. Como posso ajudar?" },
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleChatSend = async () => {
+    if (!chatInput.trim() || chatLoading) return;
+    const msg = chatInput.trim();
+    setMessages((prev) => [...prev, { id: Date.now().toString(), role: "user", content: msg }]);
+    setChatInput("");
+    setChatLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/chatbot/visitor-message", { message: msg });
+      const data = await res.json();
+      setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), role: "ai", content: data.response || "Como posso ajudar?" }]);
+    } catch {
+      setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), role: "ai", content: "Desculpe, ocorreu um erro. Tente novamente." }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  if (!isOpen) {
+    return (
+      <div className="mt-6">
+        <Button
+          variant="outline"
+          className="w-full h-12 border-dashed border-2 border-primary/30 hover:border-primary/50 text-primary/70 hover:text-primary"
+          onClick={() => setIsOpen(true)}
+        >
+          <MessageCircle className="w-4 h-4 mr-2" />
+          Fale com o Assistente IA
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Card className="mt-6 shadow-md border-primary/20">
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">Assistente IA</span>
+          </div>
+          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setIsOpen(false)}>
+            Fechar
+          </Button>
+        </div>
+        <div ref={chatScrollRef} className="h-40 overflow-y-auto space-y-2 pr-1">
+          {messages.map((m) => (
+            <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[80%] rounded-lg px-3 py-2 text-xs ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+                {m.content}
+              </div>
+            </div>
+          ))}
+          {chatLoading && (
+            <div className="flex justify-start">
+              <div className="bg-muted rounded-lg px-3 py-2">
+                <Loader2 className="w-3 h-3 animate-spin" />
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Input
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleChatSend(); } }}
+            placeholder="Faça uma pergunta..."
+            className="text-xs h-8"
+          />
+          <Button size="sm" className="h-8 w-8 p-0" onClick={handleChatSend} disabled={chatLoading}>
+            <Send className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Login() {
   const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const { login, register: registerUser, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const { hasChosenMode } = useViewMode();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Avatar state
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      setLocation("/");
+      if (hasChosenMode) {
+        setLocation("/");
+      } else {
+        setLocation("/mode-selection");
+      }
     }
-  }, [isAuthenticated, setLocation]);
+  }, [isAuthenticated, setLocation, hasChosenMode]);
 
   // Form state hoisted to parent to preserve across language changes
   const [loginValues, setLoginValues] = useState<LoginForm>({ username: "", password: "" });
@@ -733,9 +830,14 @@ export default function Login() {
           </div>
         </div>
 
+        <LoginSimplifiedChat />
+
         <div className="text-center mt-6 text-sm text-muted-foreground">
           <p>
             {t("ui.app_subtitle")}
+          </p>
+          <p className="mt-2 text-xs">
+            Plataforma de telemedicina com consultas por vídeo, triagem por IA, prontuários digitais e gestão de créditos TM3D.
           </p>
         </div>
       </div>

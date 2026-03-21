@@ -41,7 +41,9 @@ import {
   Trash2,
   FileText,
   Filter,
+  QrCode,
 } from "lucide-react";
+import { QRTransfer } from "@/components/wallet/qr-transfer";
 
 function isCredit(type: string) {
   return ['credit', 'purchase', 'recharge', 'bonus', 'commission'].includes(type);
@@ -94,6 +96,7 @@ export default function WalletPage() {
   const [transferUserId, setTransferUserId] = useState("");
   const [transferReason, setTransferReason] = useState("");
   const [transferOpen, setTransferOpen] = useState(false);
+  const [qrTransferOpen, setQrTransferOpen] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userSearchResults, setUserSearchResults] = useState<any[]>([]);
   const [selectedRecipient, setSelectedRecipient] = useState<any>(null);
@@ -404,6 +407,7 @@ export default function WalletPage() {
   ];
 
   return (
+    <>
     <PageWrapper variant="origami" origamiImage={origamiHeroImage}>
     <div className="container mx-auto px-4 py-6 max-w-6xl">
       <div className="flex items-center gap-3 mb-6">
@@ -881,9 +885,20 @@ export default function WalletPage() {
         </TabsContent>
 
         <TabsContent value="transferir" className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Send className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Transferir Créditos</h2>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Transferir Créditos</h2>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setQrTransferOpen(true)}
+            >
+              <QrCode className="h-4 w-4" />
+              QR Code
+            </Button>
           </div>
 
           {pendingTransfers.length > 0 && (
@@ -1607,5 +1622,7 @@ export default function WalletPage() {
       </Tabs>
     </div>
     </PageWrapper>
+    <QRTransfer open={qrTransferOpen} onOpenChange={setQrTransferOpen} />
+    </>
   );
 }

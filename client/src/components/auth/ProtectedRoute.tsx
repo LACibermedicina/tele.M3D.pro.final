@@ -1,27 +1,36 @@
 import { ReactNode, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useViewMode } from "@/contexts/ViewModeContext";
 import { useLocation } from "wouter";
 
 interface ProtectedRouteProps {
   children: ReactNode;
   requiredRoles?: Array<'doctor' | 'admin' | 'patient' | 'pharmacist' | 'researcher' | 'visitor'>;
   fallback?: ReactNode;
+  skipModeCheck?: boolean;
 }
 
 export default function ProtectedRoute({ 
   children, 
   requiredRoles = [], 
-  fallback 
+  fallback,
+  skipModeCheck = false 
 }: ProtectedRouteProps) {
   const { user, isLoading, isAuthenticated } = useAuth();
-  const [, setLocation] = useLocation();
+  const { hasChosenMode } = useViewMode();
+  const [location, setLocation] = useLocation();
 
-  // Handle redirect to login when not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       setLocation("/login");
     }
   }, [isLoading, isAuthenticated, setLocation]);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && !hasChosenMode && !skipModeCheck && location !== "/mode-selection") {
+      setLocation("/mode-selection");
+    }
+  }, [isLoading, isAuthenticated, hasChosenMode, skipModeCheck, location, setLocation]);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -35,8 +44,11 @@ export default function ProtectedRoute({
     );
   }
 
-  // Don't render anything if not authenticated (redirect will happen via useEffect)
   if (!isAuthenticated) {
+    return null;
+  }
+
+  if (!hasChosenMode && !skipModeCheck && location !== "/mode-selection") {
     return null;
   }
 

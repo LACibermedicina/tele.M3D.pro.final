@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/use-admin";
-import { LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, Menu, Settings, User, Lock, Shield, Headphones, Ambulance, Plus, AlertTriangle, Pill, Clock3, Coffee } from "lucide-react";
+import { LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, Menu, Settings, User, Lock, Shield, Headphones, Ambulance, Plus, AlertTriangle, Pill, Clock3, Coffee, Monitor } from "lucide-react";
+import { useViewMode } from "@/contexts/ViewModeContext";
 import telemedLogo from "@/assets/logo-fundo.png";
 
 interface SidebarProps {
@@ -18,6 +19,27 @@ interface SidebarProps {
 // Navigation items will be generated inside the component using translations
 
 // Quick actions will be generated inside the component using translations
+
+function SwitchModeButton() {
+  const { clearViewMode } = useViewMode();
+  const [, setLocation] = useLocation();
+  return (
+    <div className="border-t border-border px-4 py-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="w-full justify-start text-xs text-muted-foreground hover:text-foreground"
+        onClick={() => {
+          clearViewMode();
+          setLocation("/mode-selection");
+        }}
+      >
+        <Monitor className="w-3.5 h-3.5 mr-2" />
+        Trocar modalidade
+      </Button>
+    </div>
+  );
+}
 
 function SidebarContent() {
   const [location] = useLocation();
@@ -307,6 +329,7 @@ function SidebarContent() {
       </div>
 
       {/* Modern Security Footer */}
+      <SwitchModeButton />
       <div className="border-t border-border p-4">
         <div className="space-y-3 text-xs">
           <div className="flex items-center space-x-3 p-2 rounded-lg bg-security-gradient/10 border border-accent/20">
