@@ -147,6 +147,7 @@ function Router() {
     <>
     <DesktopBackground />
     <DesktopWindowLayer />
+    {isDesktopWindowed && <Header />}
     <div className={`min-h-screen transition-all duration-300 ${sidebarMargin} ${bottomPadding} relative z-[1] md:bg-transparent bg-background desktop-env-root`}>
       {user && <UrgentAlertOverlay />}
       

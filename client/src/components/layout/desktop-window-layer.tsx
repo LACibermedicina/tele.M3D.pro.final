@@ -92,7 +92,7 @@ const WINDOW_ROUTES: WindowRoute[] = [
   { path: "/patients", title: "Pacientes", icon: Users, roles: ["doctor", "admin"], component: Patients },
   { path: "/schedule", title: "Agenda", icon: CalendarClock, roles: ["doctor", "admin"], component: Schedule },
   { path: "/whatsapp", title: "WhatsApp IA", icon: MessageCircle, roles: ["doctor", "admin"], component: WhatsApp },
-  { path: "/records", title: "Prontuários", icon: FileText, roles: ["doctor", "admin", "patient"], component: RecordsRouter as any },
+  { path: "/records", title: "Prontuários", icon: FileText, roles: ["doctor", "admin", "patient"], component: RecordsRouter },
   { path: "/prescriptions", title: "Prescrições", icon: ClipboardList, roles: ["doctor", "admin", "patient"], component: Prescriptions },
   { path: "/analytics", title: "Analytics", icon: BarChart3, roles: ["admin"], component: Analytics },
   { path: "/admin", title: "Administração", icon: Shield, roles: ["admin"], component: AdminPage },
@@ -181,7 +181,7 @@ export function useDesktopNavigation() {
 }
 
 export default function DesktopWindowLayer() {
-  const { windows, openWindow, isDesktopMode } = useDesktopWindowManager();
+  const { windows, openWindow, seedClosedWindow, isDesktopMode } = useDesktopWindowManager();
   const { user } = useAuth();
   const [location] = useLocation();
   const lastLocationRef = useRef(location);
@@ -199,6 +199,14 @@ export default function DesktopWindowLayer() {
         route: "home",
         size: { w: 440, h: 520 },
         position: { x: Math.max(80, (window.innerWidth - 440) / 2), y: 60 },
+      });
+
+      seedClosedWindow({
+        id: "win-/dashboard",
+        title: "Dashboard",
+        icon: LayoutDashboard,
+        route: "/dashboard",
+        size: { w: 900, h: 600 },
       });
 
       if (location !== "/" && !isExcludedPath(location)) {

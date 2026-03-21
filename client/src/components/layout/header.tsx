@@ -25,21 +25,21 @@ import DockableNavBar from "@/components/layout/dockable-nav-bar";
 import { InlineTrayIcons } from "@/components/layout/minimized-panel-dock";
 import { InlineTrayAnalysisButtons } from "@/components/ui/draggable-widget-buttons";
 import { InlineQuickActions } from "@/components/quick-actions-bar";
-import { useDesktopWindowManager } from "@/contexts/DesktopWindowManagerContext";
+import { useDesktopWindowManager, type DesktopWindow as DWin } from "@/contexts/DesktopWindowManagerContext";
 
 function DesktopTaskbarWindows() {
   const { windows, restoreWindow, openWindow, focusWindow } = useDesktopWindowManager();
 
-  const closedWindows = windows.filter((w: any) => w.state === "closed");
-  const minimizedWindows = windows.filter((w: any) => w.state === "minimized");
-  const openWindows = windows.filter((w: any) => w.state === "open");
+  const closedWindows = windows.filter((w: DWin) => w.state === "closed");
+  const minimizedWindows = windows.filter((w: DWin) => w.state === "minimized");
+  const openWindows = windows.filter((w: DWin) => w.state === "open");
 
   if (closedWindows.length === 0 && minimizedWindows.length === 0 && openWindows.length === 0) return null;
 
   return (
     <div className="flex items-center gap-1 shrink-0 overflow-x-auto scrollbar-none max-w-[300px]">
       <TooltipProvider>
-        {openWindows.map((w: any) => {
+        {openWindows.map((w: DWin) => {
           const WinIcon = w.icon;
           return (
             <Tooltip key={w.id}>
@@ -55,7 +55,7 @@ function DesktopTaskbarWindows() {
             </Tooltip>
           );
         })}
-        {minimizedWindows.map((w: any) => {
+        {minimizedWindows.map((w: DWin) => {
           const WinIcon = w.icon;
           return (
             <Tooltip key={w.id}>
@@ -71,7 +71,7 @@ function DesktopTaskbarWindows() {
             </Tooltip>
           );
         })}
-        {closedWindows.map((w: any) => {
+        {closedWindows.map((w: DWin) => {
           const WinIcon = w.icon;
           return (
             <Tooltip key={w.id}>

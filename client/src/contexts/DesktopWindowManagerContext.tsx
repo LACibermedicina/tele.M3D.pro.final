@@ -18,6 +18,7 @@ export interface DesktopWindow {
 interface DesktopWindowManagerContextType {
   windows: DesktopWindow[];
   openWindow: (win: Omit<DesktopWindow, "state" | "zIndex" | "position" | "size"> & Partial<Pick<DesktopWindow, "position" | "size">>) => void;
+  seedClosedWindow: (win: Omit<DesktopWindow, "state" | "zIndex" | "position" | "size"> & Partial<Pick<DesktopWindow, "position" | "size">>) => void;
   closeWindow: (id: string) => void;
   minimizeWindow: (id: string) => void;
   restoreWindow: (id: string) => void;
@@ -83,6 +84,24 @@ export function DesktopWindowManagerProvider({ children }: { children: ReactNode
     setActiveWindowId(win.id);
   }, []);
 
+  const seedClosedWindow = useCallback((win: Omit<DesktopWindow, "state" | "zIndex" | "position" | "size"> & Partial<Pick<DesktopWindow, "position" | "size">>) => {
+    setWindows(prev => {
+      if (prev.find(w => w.id === win.id)) return prev;
+      const pos = win.position || getInitialPosition(prev.length);
+      const size = win.size || { w: DEFAULT_WIDTH, h: DEFAULT_HEIGHT };
+      return [
+        ...prev,
+        {
+          ...win,
+          state: "closed" as WindowState,
+          zIndex: 0,
+          position: pos,
+          size,
+        },
+      ];
+    });
+  }, []);
+
   const closeWindow = useCallback((id: string) => {
     setWindows(prev => prev.map(w =>
       w.id === id ? { ...w, state: "closed" as WindowState } : w
@@ -137,6 +156,7 @@ export function DesktopWindowManagerProvider({ children }: { children: ReactNode
       value={{
         windows,
         openWindow,
+        seedClosedWindow,
         closeWindow,
         minimizeWindow,
         restoreWindow,
