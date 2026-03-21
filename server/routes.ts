@@ -90,6 +90,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migrateClinicTables();
   await migrateUserDeactivationFields();
   await migrateFhirTables();
+  await migratePostConsultationEditColumns();
   await initStripeSync();
   
   // Initialize default doctor if not exists and get the actual ID
@@ -8180,6 +8181,10 @@ IMPORTANTE:
 
       if (item.doctorId !== req.user.id && req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Você só pode editar seus próprios itens' });
+      }
+
+      if (item.status !== 'pending_review') {
+        return res.status(400).json({ message: 'Apenas itens pendentes podem ser editados e aprovados simultaneamente' });
       }
 
       const updateData: any = {
@@ -23608,5 +23613,25 @@ async function initializeCreditPackagesAndCosts() {
     }
   } catch (error) {
     console.error('Failed to initialize credit packages/costs:', error);
+  }
+}
+
+async function migratePostConsultationEditColumns() {
+  try {
+    await db.execute(sql`
+      ALTER TABLE post_consultation_items
+      ADD COLUMN IF NOT EXISTS edit_history jsonb DEFAULT '[]'::jsonb
+    `);
+    await db.execute(sql`
+      ALTER TABLE post_consultation_items
+      ADD COLUMN IF NOT EXISTS edited_at timestamp
+    `);
+    await db.execute(sql`
+      ALTER TABLE post_consultation_items
+      ADD COLUMN IF NOT EXISTS edited_by varchar(255)
+    `);
+    console.log('✓ Post-consultation edit columns migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate post-consultation edit columns:', error);
   }
 }
