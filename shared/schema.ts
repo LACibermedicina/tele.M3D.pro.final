@@ -1591,6 +1591,9 @@ export const postConsultationItems = pgTable('post_consultation_items', {
   reviewNotes: text('review_notes'),
   aiAnalysis: jsonb('ai_analysis'), // drug interactions, contraindications, etc.
   reviewedAt: timestamp('reviewed_at'),
+  editHistory: jsonb('edit_history').default(sql`'[]'::jsonb`),
+  editedAt: timestamp('edited_at'),
+  editedBy: varchar('edited_by', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

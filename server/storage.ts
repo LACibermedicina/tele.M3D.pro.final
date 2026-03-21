@@ -1979,6 +1979,12 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async getPostConsultationItem(id: string): Promise<PostConsultationItem | undefined> {
+    const [item] = await db.select().from(postConsultationItems)
+      .where(eq(postConsultationItems.id, id));
+    return item || undefined;
+  }
+
   async getPostConsultationItemsByConsultation(consultationId: string): Promise<PostConsultationItem[]> {
     return db.select().from(postConsultationItems)
       .where(eq(postConsultationItems.consultationId, consultationId))
