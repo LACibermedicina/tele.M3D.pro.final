@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Bell, Calendar, StickyNote, Clock, Activity, Shield, Users, Stethoscope, Circle } from "lucide-react";
+import { Bell, Calendar, StickyNote, Clock, Activity, Shield, Users, Stethoscope, Circle, Plus, Pin, Trash2, MessageCircle, Video } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 
 function NotificationsWidget() {
@@ -95,46 +95,144 @@ function CalendarWidget({ userRole }: { userRole: string }) {
   );
 }
 
+const NOTE_COLORS: Record<string, string> = {
+  default: "bg-white/[0.06] border-white/10",
+  yellow: "bg-amber-500/10 border-amber-500/20",
+  green: "bg-emerald-500/10 border-emerald-500/20",
+  blue: "bg-sky-500/10 border-sky-500/20",
+  red: "bg-rose-500/10 border-rose-500/20",
+  purple: "bg-violet-500/10 border-violet-500/20",
+};
+
+const NOTE_DOT_COLORS: Record<string, string> = {
+  default: "bg-white/30",
+  yellow: "bg-amber-400",
+  green: "bg-emerald-400",
+  blue: "bg-sky-400",
+  red: "bg-rose-400",
+  purple: "bg-violet-400",
+};
+
 function NotepadWidget() {
-  const { data: noteData } = useQuery<{ content: string }>({
-    queryKey: ["/api/user-notes"],
+  const { data: notes } = useQuery<any[]>({
+    queryKey: ["/api/notes"],
   });
 
-  const [text, setText] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const saveMutation = useMutation({
-    mutationFn: (content: string) => apiRequest('PUT', '/api/user-notes', { content }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user-notes"] });
-    },
+  const createMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('POST', '/api/notes', data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/notes"] }),
   });
 
-  const displayText = text !== null ? text : (noteData?.content || "");
+  const updateMutation = useMutation({
+    mutationFn: ({ id, ...data }: any) => apiRequest('PATCH', `/api/notes/${id}`, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/notes"] }),
+  });
 
-  const handleChange = useCallback((val: string) => {
-    setText(val);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/notes/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/notes"] }),
+  });
+
+  const handleAutoSave = useCallback((id: string, field: string, value: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      saveMutation.mutate(val);
+      updateMutation.mutate({ id, [field]: value });
     }, 800);
-  }, [saveMutation]);
+  }, [updateMutation]);
+
+  const allNotes = notes || [];
 
   return (
     <div className="rounded-xl p-4 bg-white/[0.06] border border-white/10">
       <div className="flex items-center gap-2 mb-3">
         <StickyNote className="w-4 h-4 text-emerald-400" />
         <h3 className="text-sm font-semibold text-white/90">Bloco de Notas</h3>
-        {saveMutation.isPending && (
-          <span className="ml-auto text-[10px] text-white/30">Salvando...</span>
-        )}
+        <button
+          className="ml-auto w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition-colors"
+          onClick={() => createMutation.mutate({ title: "", content: "" })}
+        >
+          <Plus className="w-3 h-3" />
+        </button>
       </div>
-      <textarea
-        className="w-full h-28 bg-transparent text-xs text-white/70 placeholder:text-white/30 border-0 outline-none resize-none"
-        placeholder="Escreva suas anotações rápidas aqui..."
-        value={displayText}
-        onChange={(e) => handleChange(e.target.value)}
-      />
+      {allNotes.length === 0 ? (
+        <p className="text-xs text-white/40 italic">Clique em + para criar uma nota</p>
+      ) : (
+        <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-none">
+          {allNotes.map((note: any) => {
+            const colorClass = NOTE_COLORS[note.color] || NOTE_COLORS.default;
+            const dotClass = NOTE_DOT_COLORS[note.color] || NOTE_DOT_COLORS.default;
+            const isEditing = editingId === note.id;
+            return (
+              <div key={note.id} className={`rounded-lg p-2 border ${colorClass} group relative`}>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
+                  {isEditing ? (
+                    <input
+                      className="flex-1 text-xs font-medium text-white/80 bg-transparent border-0 outline-none placeholder:text-white/30"
+                      value={editTitle}
+                      placeholder="Título..."
+                      onChange={(e) => { setEditTitle(e.target.value); handleAutoSave(note.id, 'title', e.target.value); }}
+                      autoFocus
+                    />
+                  ) : (
+                    <span
+                      className="flex-1 text-xs font-medium text-white/80 truncate cursor-pointer"
+                      onClick={() => { setEditingId(note.id); setEditTitle(note.title || ''); setEditContent(note.content || ''); }}
+                    >
+                      {note.title || "Sem título"}
+                    </span>
+                  )}
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      className="w-4 h-4 flex items-center justify-center text-white/40 hover:text-amber-400"
+                      onClick={() => updateMutation.mutate({ id: note.id, pinned: !note.pinned })}
+                    >
+                      <Pin className={`w-2.5 h-2.5 ${note.pinned ? 'text-amber-400' : ''}`} />
+                    </button>
+                    <select
+                      className="w-4 h-4 bg-transparent text-[8px] appearance-none cursor-pointer"
+                      value={note.color}
+                      onChange={(e) => updateMutation.mutate({ id: note.id, color: e.target.value })}
+                      title="Cor"
+                    >
+                      {Object.keys(NOTE_COLORS).map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <button
+                      className="w-4 h-4 flex items-center justify-center text-white/40 hover:text-red-400"
+                      onClick={() => deleteMutation.mutate(note.id)}
+                    >
+                      <Trash2 className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                </div>
+                {isEditing ? (
+                  <textarea
+                    className="w-full h-16 bg-transparent text-[11px] text-white/60 placeholder:text-white/25 border-0 outline-none resize-none"
+                    value={editContent}
+                    placeholder="Conteúdo..."
+                    onChange={(e) => { setEditContent(e.target.value); handleAutoSave(note.id, 'content', e.target.value); }}
+                    onBlur={() => setEditingId(null)}
+                  />
+                ) : (
+                  <p
+                    className="text-[11px] text-white/50 truncate cursor-pointer"
+                    onClick={() => { setEditingId(note.id); setEditTitle(note.title || ''); setEditContent(note.content || ''); }}
+                  >
+                    {note.content || "Clique para editar..."}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -172,34 +270,88 @@ function AvailableDoctorsWidget() {
     refetchInterval: 15000,
   });
 
-  const available = doctors || [];
+  const allDoctors = doctors || [];
+  const online = allDoctors.filter((d: any) => d.isOnline);
+  const offline = allDoctors.filter((d: any) => !d.isOnline);
 
   return (
     <div className="rounded-xl p-4 bg-white/[0.06] border border-white/10">
       <div className="flex items-center gap-2 mb-3">
         <Stethoscope className="w-4 h-4 text-emerald-400" />
-        <h3 className="text-sm font-semibold text-white/90">Médicos Disponíveis</h3>
-        {available.length > 0 && (
+        <h3 className="text-sm font-semibold text-white/90">Médicos</h3>
+        {online.length > 0 && (
           <span className="ml-auto text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-full">
-            {available.length} online
+            {online.length} online
           </span>
         )}
       </div>
-      {available.length === 0 ? (
-        <p className="text-xs text-white/40 italic">Nenhum médico disponível no momento</p>
+      {allDoctors.length === 0 ? (
+        <p className="text-xs text-white/40 italic">Nenhum médico cadastrado</p>
       ) : (
-        <div className="space-y-2">
-          {available.slice(0, 5).map((doc: any) => (
-            <div key={doc.id} className="flex items-center gap-2 text-xs rounded-lg px-2 py-1.5 bg-white/[0.04]">
+        <div className="space-y-1.5 max-h-48 overflow-y-auto scrollbar-none">
+          {online.map((doc: any) => (
+            <div key={doc.id} className="flex items-center gap-2 text-xs rounded-lg px-2 py-1.5 bg-emerald-500/5 border border-emerald-500/10 group">
               <Circle className="w-2 h-2 text-emerald-400 fill-emerald-400 shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-white/70 truncate">{doc.name}</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-white/70 truncate">{doc.name}</p>
+                  {doc.priorAttendance && (
+                    <span className="text-[8px] bg-sky-500/20 text-sky-300 px-1 py-0.5 rounded shrink-0">já te atendeu</span>
+                  )}
+                </div>
                 {doc.specialization && (
                   <p className="text-white/40 text-[10px] truncate">{doc.specialization}</p>
                 )}
               </div>
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <button
+                  className="w-5 h-5 flex items-center justify-center rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+                  title="Consulta imediata"
+                  onClick={() => window.location.href = '/immediate-consultation'}
+                >
+                  <Video className="w-2.5 h-2.5" />
+                </button>
+                <button
+                  className="w-5 h-5 flex items-center justify-center rounded bg-sky-500/20 text-sky-300 hover:bg-sky-500/30"
+                  title="Agendar consulta"
+                  onClick={() => window.location.href = '/consultation-request'}
+                >
+                  <Calendar className="w-2.5 h-2.5" />
+                </button>
+              </div>
             </div>
           ))}
+          {offline.length > 0 && online.length > 0 && (
+            <div className="border-t border-white/5 pt-1 mt-1" />
+          )}
+          {offline.slice(0, 5).map((doc: any) => (
+            <div key={doc.id} className="flex items-center gap-2 text-xs rounded-lg px-2 py-1.5 bg-white/[0.02] group">
+              <Circle className="w-2 h-2 text-white/20 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1">
+                  <p className="text-white/40 truncate">{doc.name}</p>
+                  {doc.priorAttendance && (
+                    <span className="text-[8px] bg-white/5 text-white/30 px-1 py-0.5 rounded shrink-0">já te atendeu</span>
+                  )}
+                </div>
+                {doc.specialization && (
+                  <p className="text-white/25 text-[10px] truncate">{doc.specialization}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <button
+                  className="w-5 h-5 flex items-center justify-center rounded bg-white/5 text-white/30 hover:bg-white/10"
+                  title="Agendar consulta"
+                  onClick={() => window.location.href = '/consultation-request'}
+                >
+                  <Calendar className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+          {offline.length > 5 && (
+            <p className="text-[10px] text-white/25 text-center pt-1">+{offline.length - 5} médicos offline</p>
+          )}
         </div>
       )}
     </div>

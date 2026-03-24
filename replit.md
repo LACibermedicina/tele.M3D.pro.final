@@ -1,7 +1,7 @@
 # Medical Practice Management App
 
 ## Overview
-This full-stack medical practice management application aims to modernize healthcare operations by streamlining clinical workflows, enhancing patient care with AI-powered tools, and providing robust administrative features. It integrates video consultations, AI diagnostics, advanced scheduling, and comprehensive patient record management, focusing on efficiency for providers and accessibility for patients while ensuring data security and adherence to medical guidelines.
+This full-stack medical practice management application aims to modernize healthcare operations by streamlining clinical workflows, enhancing patient care with AI-powered tools, and providing robust administrative features. It integrates video consultations, AI diagnostics, advanced scheduling, and comprehensive patient record management, focusing on efficiency for providers and accessibility for patients while ensuring data security and adherence to medical guidelines. The project envisions significant market potential by delivering a secure, AI-enhanced platform that improves healthcare delivery and operational efficiency.
 
 ## User Preferences
 I want iterative development.
@@ -9,60 +9,49 @@ I prefer detailed explanations.
 Ask before making major changes.
 
 ## System Architecture
-The application is built with an Express.js backend and a React frontend, utilizing shared TypeScript schemas for data consistency. PostgreSQL with Drizzle ORM is used for database management. AI services primarily leverage Google Gemini API, with Replit OpenAI AI Integrations (`gpt-4o-mini`) as a fallback.
+The application is built with an Express.js backend and a React frontend, utilizing shared TypeScript schemas for data consistency. PostgreSQL with Drizzle ORM is used for database management. AI services primarily leverage Google Gemini API, with Replit OpenAI AI Integrations as a fallback.
 
 **UI/UX Decisions:**
-- **Navigation:** Desktop uses dropdowns and icon links; mobile uses a slide-out sheet. Icons have consistent drop-shadows.
-- **Admin Theme:** Distinctive dark indigo/slate gradient with subtle patterns.
-- **Voice Assistant:** IAM3D voice assistant with half-screen overlay on mobile and full-screen on desktop.
-- **Doctor Notes:** macOS Notes-style interface with folders, search, pinning, and color labels.
-- **Triage System:** 5-level Manchester Protocol (or WHO ETAT fallback) visual classification.
-- **Dashboards:** Rebuilt mobile patient dashboard, visitor dashboard with IAM3D, and desktop patient dashboard with "Consultar Agora" button.
-- **Interactive Dashboard System:** Draggable panels with minimization to a bottom taskbar dock. `UnifiedToolbox` defaults to right side with navigation links, detachable items, and a "Reset Interface" button. Main nav bar defaults to bottom (draggable from any non-button area). Minimized panels appear as a taskbar strip above the bottom nav. Centralized `resetAllLayout()` in `LayoutSettingsContext` clears all layout localStorage keys and restores defaults.
-- **Desktop OS-Style Windowed Environment:** macOS-inspired immersive background (dark indigo/slate gradient with animated ambient orbs and tele.m3d.pro watermark logo). All desktop panels and pages use semi-transparent glass morphism (`backdrop-blur`, `hsla` backgrounds) via CSS utility classes (`desktop-glass-panel`, `desktop-glass-page`, `desktop-glass-footer`). Glass CSS variables defined in `:root` and `.dark` for theme compatibility — opacity tuned to ~0.70-0.72 for more transparency. Window title bars use stronger contrast (`bg-white/[0.14]` active, `bg-white/[0.07]` inactive) with subtle bottom border. `DesktopBackground` component renders behind all content at `z-0`, desktop-only. `DesktopWindowManagerProvider` manages window state (open/minimized/closed), positions, sizes, z-order. `DesktopWindowComponent` provides draggable/resizable/minimizable/closable windows with glass morphism title bars. `DesktopWindowLayer` intercepts URL navigation on desktop to open pages as floating windows, with a route registry mapping all pages to window configs. `DesktopHome` is the default first window with role-based widgets: notifications, calendar, DB-persistent notepad (`user_notes` table), available doctors (patients only, auto-refreshes). Dashboard is a taskbar icon, not auto-opened. Taskbar shows open/minimized/closed window icons. `UnifiedToolbox` starts expanded by default, anchors above logo icon (bottom-left) in bottom nav mode. Mobile routing unchanged. Video consultation excluded from windowing.
-- **Admin Theme Dashboard:** Expanded Layout & Tema admin tab with per-role accent color configuration (admin/doctor/patient/pharmacist), desktop glass opacity sliders, and mobile menu style selector. Settings persisted via `layout_settings` table. API: `GET/POST /api/admin/layout-settings`.
+- **Navigation:** Adaptive navigation for desktop (dropdowns, icon links) and mobile (slide-out sheet).
+- **Theming:** Distinctive dark indigo/slate gradient for admin, glass morphism for desktop windows (`backdrop-blur`, `hsla` backgrounds).
+- **Dashboards:** Interactive, draggable panels with minimization to a bottom taskbar dock. Role-based widgets are displayed in the `DesktopHome` window.
+- **Desktop OS-Style Environment:** macOS-inspired windowed environment with draggable, resizable, minimizable, and closable windows.
+- **Voice Assistant:** IAM3D voice assistant with context-aware overlays.
+- **Doctor Notes:** macOS Notes-style interface with comprehensive management features.
+- **Triage System:** Visual 5-level Manchester Protocol (or WHO ETAT) classification.
+- **Contextual Search:** Command palette (`⌘K`) for role-scoped data search.
+- **Admin Theme Customization:** Per-role accent color configuration, desktop glass opacity sliders, and mobile menu style selection.
+- **View Modes:** Three distinct modes (Immersive, Mobile, Desktop) selectable by the user post-login, optimized for different interaction styles and devices.
 
 **Technical Implementations:**
-- **AI Services:** Google Gemini API (with Replit OpenAI fallback) for chatbot, triage, video consultation support, medical records, and SOAP reports, adhering to medical guidelines (OMS, MS/Brasil, DSM-5/DSM-5-TR).
-- **Video Consultations:** Agora for real-time video, audio, screen sharing, chat, AI diagnostic queries, transcription, and specialist invitations, including AI-driven medical record generation and dual-side transcription.
-- **Patient Features:** AI-powered symptom triage, waiting room, prescription management, and medical record access. Consultation access via QR codes and short codes.
-- **Post-Consultation Workflow:** AI auto-generates prescriptions, exams, referrals, and follow-up items from clinical notes, requiring doctor review and including drug interaction analysis.
+- **AI Services:** Google Gemini API (with Replit OpenAI fallback) for chatbot, triage, video consultation support, medical records, and SOAP reports, adhering to medical guidelines (OMS, MS/Brasil, DSM-5/DSM-5-TR). AI prompt configurations are admin-manageable.
+- **Video Consultations:** Agora for real-time video, audio, screen sharing, chat, AI diagnostic queries, transcription, and specialist invitations.
+- **Patient Features:** AI-powered symptom triage, waiting room, prescription management, and medical record access.
+- **Post-Consultation Workflow:** AI auto-generates prescriptions, exams, referrals, and follow-up items from clinical notes, requiring doctor review, with drug interaction analysis and inline editing capabilities.
 - **WhatsApp IA:** Intelligent messaging for doctors with persistence and AI analysis.
-- **Financial Management / Digital Wallet:** Comprehensive dashboard for balances, purchases, transfers (with escrow), history, external wallet linking, and withdrawal requests.
-- **Epidemiological Reports:** AI-powered analysis of clinical data for epidemiological insights using MeSH and ICD codes.
-- **Medical Teams & Inter-Consultations:** Collaboration features and structured inter-consultation note-taking.
-- **IAM3D Voice Assistant:** Full-screen voice interface for scheduling, urgent consultations, patient registration, profile navigation, and inter-consultations with real-time AI diagnostic analysis during video calls.
-- **External Medication Search & AI Generation:** Prescription form integrates external medication databases (RxNorm/NIH, OpenFDA, ANVISA/RENAME) and generates complete treatment plans from diagnosis.
-- **CRM/Professional License Verification:** Automated verification of medical registration (CRM) via external APIs (CFM for Brazil, Ordem dos Médicos for Portugal). Schema fields: `medicalLicenseState`, `crmVerificationStatus` (unverified/pending/verified/failed), `crmVerifiedAt`, `crmVerificationData`. Admin config via `system_settings` (`crm_verification_config` key). Service: `server/services/crm-verification.ts`. API: `POST /api/crm/verify/:userId`, `GET /api/crm/status/:userId`, admin config at `/api/admin/crm-config`. Frontend: verification badge + button on doctor profile, admin tab `CRMVerificationConfigTab`. Prescription sign dialog pre-fills CRM from `medicalLicense` + `medicalLicenseState`.
-- **Digital Signature Verification:** Dual-path signature verification (RSA-PSS ICP-Brasil A3, RSA-SHA256 SignatureService) with public QR code-based verification endpoint and OCSP checks.
-- **Post-Consultation Diagnostic Classification:** AI extracts syndromic diagnostic hypotheses with CID-10/11 and DSM-5/TR codes, confidence levels, and suggested exams.
-- **Unified Payment Checkout:** Wallet purchase supports PayPal, Stripe (card/Apple Pay), and PagBank (PIX/Boleto).
-- **Inactivity Detection & Auto-Logout:** Configurable inactivity timeout with prompt and auto-logout, disconnecting Agora services. Consultation-level inactivity monitor with auto-close functionality.
-- **Admin Mass Disconnect Controls:** Admin controls to disconnect all users, all doctors, or all services.
-- **Patient Data Export:** HL7 FHIR R4 compliant export in JSON or PDF, with de-identification options.
-- **Pharmacy Integration System:** Module with pharmacist role, prescription verification, dispensing, and LGPD-compliant reporting.
-- **PMD v1.0 (Prontuário Médico Digital):** CFM/LGPD/RGPD-compliant structured medical records with audit logs.
-- **Prontuário Unificado (Unified Record):** Consolidates all patient data into a single timeline view.
-- **Clinic Management System:** Multi-clinic support with shared patients/records, revenue sharing, and patient discounts.
-- **Per-User Access Control:** Admins can deactivate/activate individual users.
-- **FHIR R4 Dashboard + ECG Analysis Engine:** Medical dashboard with FHIR R4 patient/observation CRUD, clinical history, and AI ECG analysis with a **triple verification pipeline** for enhanced accuracy, color-coded annotations, action plans, and auto-generated immersive AI visualizations.
-- **Radiology Imaging Analysis Module:** AI-powered radiographic analysis with a 4-phase procedural analysis pipeline, structured output, probabilistic diagnosis, and immersive visualization generation.
-- **AI Technical Detail Visibility Control:** Non-admin users see clinical results only, while admins see full AI technical details (confidence, probabilities, engine names).
-- **Post-Load Effects System:** Configurable behaviors that execute automatically after each page load, including auto-scroll and custom JavaScript execution.
-- **MCP Server (TELE-M3D-ECG-MCP):** Model Context Protocol server exposing ECG analysis and study management to ChatGPT and MCP-compatible AI clients via SSE.
-- **Profile Unification & Duplicate Prevention:** Document+country unique constraint on users/patients, automatic merge of temporary patient data into permanent accounts during registration or access-link validation, admin manual merge endpoint, and `profileMergeAuditLogs` audit trail.
-- **Consultation Notification System:** Room presence detection (patient/doctor join broadcasts with persistent DB fallback + WhatsApp), urgency request panel for doctors with Accept/Chat/Discard buttons and first-accept-wins logic, post-acceptance broadcast to other doctors with "Atendido por" message, WhatsApp notifications using patient code (not name) for privacy, and admin-configurable WhatsApp sender number via system settings.
-- **AI Prompt Configuration Admin Module (ECG + Radiology):** Admin interface with two sub-modules ("Config ECG" and "Config Radiologia") for customizing AI analysis prompts without code changes. Configurable: analysis prompt templates (ECG triple-verification passes, radiology procedural phases), severity scale definitions (1-5), color semantics (hex + meaning), image generation prompt templates, AI model parameters (temperature, max tokens, model), and JSON schema templates. Persisted in `system_settings` table (`ai_ecg_config`, `ai_radiology_config` categories). Deep merge with hardcoded defaults ensures robustness. Backend: `server/services/aiPromptConfig.ts`, API routes `GET/PUT /api/admin/ai-config/:module`, `POST /api/admin/ai-config/:module/reset`. Frontend: `client/src/components/admin/ai-prompt-config.tsx`.
-- **Post-Consultation Item Editing:** Inline editing of prescriptions, exams, referrals, and follow-ups during review and post-approval. Tabbed UI with "Pendentes" and "Aprovados" views. Edit audit trail with `editHistory` jsonb column tracking previous values, editor, timestamp, and reason. Server-side Zod validation enforces mandatory edit reason for approved items, prevents no-op edits, and rejects unchanged submissions. "Editado após aprovação" badge indicators. Patient notifications on post-approval edits. API: `PATCH /api/post-consultation/items/:id/edit`, `GET /api/post-consultation/approved`.
-- **Post-Consultation Workflow + SUS Prontuário:** Enhanced end-of-consultation flow with 2-step summary panel. Follow-ups are only auto-generated when explicitly mentioned in consultation notes. Summary panel shows all auto-generated items (prescriptions, exams, referrals, follow-ups) with enable/disable toggles. SUS-standard prontuário generation with full clinical sections (identification, chief complaint, HDA, past history, family history, social history, review of systems, physical exam, assessment, plan). SOAP compliance verification cross-references AI transcription with SOAP notes, scoring 0-100% with flagged inconsistencies. Table: `susProntuarios`. API: `POST /api/sus-prontuario/generate`, `GET /api/sus-prontuario/:consultationId`, `PATCH /api/sus-prontuario/:id/review`, `GET /api/sus-prontuarios/patient/:patientId`, `PATCH /api/post-consultation/items/:id/toggle`, `GET /api/post-consultation/summary/:consultationId`.
-- **Clinical History Access Control (Doctor/Patient):** Patient-facing medical records (`/api/medical-records/my`) now filter to only show records with `patientFriendlyActive=true`, returning AI-generated patient-friendly summaries instead of raw clinical data. Doctors can generate patient-friendly versions via AI (`POST /api/medical-records/:id/patient-friendly`) and toggle patient visibility (`PATCH /api/medical-records/:id/patient-friendly/toggle`). Raw clinical notes hidden from patients in `my-consultations.tsx`. Doctor access scoped to patients they have appointments, records, or team hierarchy with. Schema: `patientFriendlyVersion` (text) and `patientFriendlyActive` (boolean) columns on `medicalRecords`.
-
-- **Three View Modes (Immersive/Mobile/Desktop):** Post-login mode selection screen (`/mode-selection`) lets users choose between Immersive (voice-first, phone-optimized), Mobile (simplified tablet UI), and Desktop (full interface). `ViewModeContext` (`client/src/contexts/ViewModeContext.tsx`) persists choice in localStorage and auto-detects recommended mode by device. Immersive mode (`client/src/components/immersive/immersive-layout.tsx`) provides full-screen chat with voice input, TTS, and navigation command parsing. Mobile mode has role-specific views: `MobileModePatient` (Consultar, Créditos, Feedback do Doutor) and `MobileModeDoctor` (notifications, online/offline toggle, wallet, patients). QR Code credit transfer (`client/src/components/wallet/qr-transfer.tsx`). Login page includes simplified visitor AI chat. Desktop mode unchanged.
+- **Financial Management:** Comprehensive digital wallet with dashboards, transfers, and external integration.
+- **Epidemiological Reports:** AI-powered analysis of clinical data using MeSH and ICD codes.
+- **Medical Teams & Inter-Consultations:** Collaboration features for healthcare professionals.
+- **External Medication Search & AI Generation:** Prescription forms integrate external databases (RxNorm/NIH, OpenFDA, ANVISA/RENAME) for treatment plan generation.
+- **CRM/Professional License Verification:** Automated verification of medical registrations via external APIs (CFM, Ordem dos Médicos).
+- **Digital Signature Verification:** Dual-path signature verification (ICP-Brasil A3, SignatureService) with public QR code verification.
+- **Post-Consultation Diagnostic Classification:** AI extracts syndromic diagnostic hypotheses with CID-10/11 and DSM-5/TR codes.
+- **Unified Payment Checkout:** Supports PayPal, Stripe, and PagBank.
+- **Inactivity Detection & Auto-Logout:** Configurable timeout with session management and Agora disconnection.
+- **Admin Controls:** Mass user/service disconnection, user deactivation/activation.
+- **Patient Data Export:** HL7 FHIR R4 compliant export (JSON/PDF) with de-identification.
+- **Pharmacy Integration:** Module with pharmacist role, prescription verification, and dispensing.
+- **Medical Records:** CFM/LGPD/RGPD-compliant structured digital medical records (PMD v1.0) with audit logs and a unified timeline view.
+- **Clinic Management:** Multi-clinic support with shared patient records and revenue sharing.
+- **FHIR R4 Dashboard & ECG/Radiology Analysis:** Medical dashboard with FHIR R4 CRUD, clinical history, and AI ECG/Radiology analysis featuring triple verification pipelines, color-coded annotations, and AI visualizations.
+- **Profile Unification:** Automatic merging of temporary patient data and prevention of duplicate profiles.
+- **Consultation Notification System:** Real-time room presence detection, urgency request panel for doctors, and WhatsApp notifications.
+- **Clinical History Access Control:** Patient-facing records show AI-generated summaries; doctor access is role-scoped.
+- **SUS Prontuário:** SUS-standard prontuário generation with full clinical sections and SOAP compliance verification.
 
 ## External Dependencies
 - **Database:** PostgreSQL (Neon)
 - **ORM:** Drizzle ORM
 - **AI/ML:** Google Gemini API, Replit OpenAI AI Integrations
 - **Video Conferencing:** Agora
-- **PDF Generation:** jspdf
 - **Payment Processing:** PayPal, Stripe, PagBank

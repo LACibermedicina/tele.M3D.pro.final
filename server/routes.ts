@@ -15315,14 +15315,88 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
   });
 
   // ======================
-  // USER NOTES API ROUTES
+  // USER NOTES CRUD API ROUTES
   // ======================
 
+  app.get('/api/notes', requireAuth, async (req, res) => {
+    try {
+      const notes = await db.select()
+        .from(userNotes)
+        .where(eq(userNotes.userId, req.user!.id))
+        .orderBy(desc(userNotes.pinned), desc(userNotes.updatedAt));
+      res.json(notes);
+    } catch (error) {
+      console.error('Error fetching notes:', error);
+      res.json([]);
+    }
+  });
+
+  app.post('/api/notes', requireAuth, async (req, res) => {
+    try {
+      const { title, content, color, pinned } = req.body;
+      const created = await db.insert(userNotes)
+        .values({
+          userId: req.user!.id,
+          title: title || '',
+          content: content || '',
+          color: color || 'default',
+          pinned: pinned || false,
+        })
+        .returning();
+      res.json(created[0]);
+    } catch (error) {
+      console.error('Error creating note:', error);
+      res.status(500).json({ message: 'Failed to create note' });
+    }
+  });
+
+  app.patch('/api/notes/:id', requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { title, content, color, pinned } = req.body;
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (typeof title === 'string') updates.title = title;
+      if (typeof content === 'string') updates.content = content;
+      if (typeof color === 'string') updates.color = color;
+      if (typeof pinned === 'boolean') updates.pinned = pinned;
+
+      const updated = await db.update(userNotes)
+        .set(updates)
+        .where(and(eq(userNotes.id, id), eq(userNotes.userId, req.user!.id)))
+        .returning();
+      if (updated.length === 0) {
+        return res.status(404).json({ message: 'Note not found' });
+      }
+      res.json(updated[0]);
+    } catch (error) {
+      console.error('Error updating note:', error);
+      res.status(500).json({ message: 'Failed to update note' });
+    }
+  });
+
+  app.delete('/api/notes/:id', requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await db.delete(userNotes)
+        .where(and(eq(userNotes.id, id), eq(userNotes.userId, req.user!.id)))
+        .returning();
+      if (deleted.length === 0) {
+        return res.status(404).json({ message: 'Note not found' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      res.status(500).json({ message: 'Failed to delete note' });
+    }
+  });
+
+  // Legacy single-note endpoint (backwards compatibility)
   app.get('/api/user-notes', requireAuth, async (req, res) => {
     try {
       const note = await db.select()
         .from(userNotes)
         .where(eq(userNotes.userId, req.user!.id))
+        .orderBy(desc(userNotes.updatedAt))
         .limit(1);
       res.json(note[0] || { content: "" });
     } catch (error) {
@@ -15340,11 +15414,12 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       const existing = await db.select()
         .from(userNotes)
         .where(eq(userNotes.userId, req.user!.id))
+        .orderBy(desc(userNotes.updatedAt))
         .limit(1);
       if (existing.length > 0) {
         const updated = await db.update(userNotes)
           .set({ content, updatedAt: new Date() })
-          .where(eq(userNotes.userId, req.user!.id))
+          .where(eq(userNotes.id, existing[0].id))
           .returning();
         return res.json(updated[0]);
       }
@@ -15364,7 +15439,7 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
 
   app.get('/api/doctors/available', async (req, res) => {
     try {
-      const doctors = await db.select({
+      const allDoctors = await db.select({
         id: users.id,
         name: users.name,
         specialization: users.specialization,
@@ -15372,15 +15447,98 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         availableForImmediate: users.availableForImmediate,
       })
         .from(users)
-        .where(and(
-          eq(users.role, 'doctor'),
-          eq(users.isOnline, true),
-          eq(users.availableForImmediate, true),
-        ));
-      res.json(doctors);
+        .where(eq(users.role, 'doctor'));
+
+      const userId = req.user?.id;
+      let priorDoctorIds: string[] = [];
+      if (userId) {
+        const patientRecord = await db.select({ id: patients.id })
+          .from(patients)
+          .where(eq(patients.userId, userId))
+          .limit(1);
+        if (patientRecord.length > 0) {
+          const priorAppointments = await db.select({ doctorId: appointments.doctorId })
+            .from(appointments)
+            .where(eq(appointments.patientId, patientRecord[0].id));
+          priorDoctorIds = [...new Set(priorAppointments.map(a => a.doctorId).filter(Boolean) as string[])];
+        }
+      }
+
+      const result = allDoctors.map(d => ({
+        ...d,
+        priorAttendance: priorDoctorIds.includes(d.id),
+      }));
+
+      const online = result.filter(d => d.isOnline);
+      const offline = result.filter(d => !d.isOnline);
+      res.json([...online, ...offline]);
     } catch (error) {
       console.error('Error fetching available doctors:', error);
       res.json([]);
+    }
+  });
+
+  // Contextual search API - role-scoped data search
+  app.get('/api/search', requireAuth, async (req, res) => {
+    try {
+      const q = (req.query.q as string || '').trim().toLowerCase();
+      if (!q || q.length < 2) {
+        return res.json({ patients: [], appointments: [], records: [], doctors: [] });
+      }
+      const role = req.user!.role;
+      const results: any = { patients: [], appointments: [], records: [], doctors: [] };
+
+      if (role === 'doctor' || role === 'admin') {
+        const patientResults = await db.select({
+          id: patients.id,
+          name: patients.name,
+          email: patients.email,
+          phone: patients.phone,
+        })
+          .from(patients)
+          .where(or(
+            ilike(patients.name, `%${q}%`),
+            ilike(patients.email, `%${q}%`),
+            ilike(patients.phone, `%${q}%`)
+          ))
+          .limit(10);
+        results.patients = patientResults;
+      }
+
+      const doctorResults = await db.select({
+        id: users.id,
+        name: users.name,
+        specialization: users.specialization,
+        isOnline: users.isOnline,
+      })
+        .from(users)
+        .where(and(
+          eq(users.role, 'doctor'),
+          or(
+            ilike(users.name, `%${q}%`),
+            ilike(users.specialization, `%${q}%`)
+          )
+        ))
+        .limit(10);
+      results.doctors = doctorResults;
+
+      if (role === 'doctor' || role === 'admin') {
+        const recordResults = await db.select({
+          id: medicalRecords.id,
+          patientId: medicalRecords.patientId,
+          diagnosis: medicalRecords.diagnosis,
+          createdAt: medicalRecords.createdAt,
+        })
+          .from(medicalRecords)
+          .where(ilike(medicalRecords.diagnosis, `%${q}%`))
+          .limit(10);
+        results.records = recordResults;
+      }
+
+      res.json(results);
+    } catch (error) {
+      console.error('Error in contextual search:', error);
+      res.json({ patients: [], appointments: [], records: [], doctors: [] });
     }
   });
 
@@ -24327,11 +24485,19 @@ async function migrateUserNotesTable() {
       CREATE TABLE IF NOT EXISTS user_notes (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id UUID NOT NULL REFERENCES users(id),
+        title TEXT NOT NULL DEFAULT '',
         content TEXT NOT NULL DEFAULT '',
+        color TEXT NOT NULL DEFAULT 'default',
+        pinned BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMP DEFAULT now() NOT NULL,
         updated_at TIMESTAMP DEFAULT now() NOT NULL
       )
     `);
-    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS user_notes_user_id_idx ON user_notes(user_id)`);
+    await db.execute(sql`ALTER TABLE user_notes ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT ''`);
+    await db.execute(sql`ALTER TABLE user_notes ADD COLUMN IF NOT EXISTS color TEXT NOT NULL DEFAULT 'default'`);
+    await db.execute(sql`ALTER TABLE user_notes ADD COLUMN IF NOT EXISTS pinned BOOLEAN NOT NULL DEFAULT false`);
+    await db.execute(sql`ALTER TABLE user_notes ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT now() NOT NULL`);
+    await db.execute(sql`DROP INDEX IF EXISTS user_notes_user_id_idx`);
     console.log('✓ User notes table migrated successfully');
   } catch (error) {
     console.error('Failed to migrate user notes table:', error);

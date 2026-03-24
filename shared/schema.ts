@@ -2094,15 +2094,19 @@ export const insertProfileMergeAuditLogSchema = createInsertSchema(profileMergeA
 export type InsertProfileMergeAuditLog = z.infer<typeof insertProfileMergeAuditLogSchema>;
 export type ProfileMergeAuditLog = typeof profileMergeAuditLogs.$inferSelect;
 
-// User Notes — persistent notepad for desktop home widget
+// User Notes — persistent multi-note system for desktop home widget
 export const userNotes = pgTable("user_notes", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
+  title: text("title").default("").notNull(),
   content: text("content").default("").notNull(),
+  color: text("color").default("default").notNull(),
+  pinned: boolean("pinned").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const insertUserNoteSchema = createInsertSchema(userNotes).omit({ id: true, updatedAt: true });
+export const insertUserNoteSchema = createInsertSchema(userNotes).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertUserNote = z.infer<typeof insertUserNoteSchema>;
 export type UserNote = typeof userNotes.$inferSelect;
 
