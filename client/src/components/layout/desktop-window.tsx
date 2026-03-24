@@ -153,7 +153,7 @@ export default function DesktopWindowComponent({ windowData, children }: Desktop
         onDoubleClick={() => toggleMaximize(windowData.id)}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <Icon className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+          <Icon className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--role-icon-color, #38bdf8)" }} />
           <span className="text-xs font-medium text-white/80 truncate">{windowData.title}</span>
         </div>
         <div className="flex items-center gap-0.5">

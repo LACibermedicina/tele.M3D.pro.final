@@ -12,7 +12,7 @@ function NotificationsWidget() {
   const recent = (notifications || []).slice(0, 5);
 
   return (
-    <div className="rounded-xl p-4 bg-white/[0.08] border border-white/10">
+    <div className="rounded-xl p-4 border border-white/10" style={{ background: "var(--role-panel-bg, rgba(255,255,255,0.08))" }}>
       <div className="flex items-center gap-2 mb-3">
         <Bell className="w-4 h-4 text-amber-400" />
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Notificações</h3>
@@ -61,7 +61,7 @@ function CalendarWidget({ userRole }: { userRole: string }) {
     .slice(0, 4);
 
   return (
-    <div className="rounded-xl p-4 bg-white/[0.08] border border-white/10">
+    <div className="rounded-xl p-4 border border-white/10" style={{ background: "var(--role-panel-bg, rgba(255,255,255,0.08))" }}>
       <div className="flex items-center gap-2 mb-3">
         <Calendar className="w-4 h-4 text-sky-400" />
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
@@ -148,7 +148,7 @@ function NotepadWidget() {
   const allNotes = notes || [];
 
   return (
-    <div className="rounded-xl p-4 bg-white/[0.08] border border-white/10">
+    <div className="rounded-xl p-4 border border-white/10" style={{ background: "var(--role-panel-bg, rgba(255,255,255,0.08))" }}>
       <div className="flex items-center gap-2 mb-3">
         <StickyNote className="w-4 h-4 text-emerald-400" />
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Bloco de Notas</h3>
@@ -243,7 +243,7 @@ function AdminStatsWidget() {
   });
 
   return (
-    <div className="rounded-xl p-4 bg-white/[0.08] border border-white/10">
+    <div className="rounded-xl p-4 border border-white/10" style={{ background: "var(--role-panel-bg, rgba(255,255,255,0.08))" }}>
       <div className="flex items-center gap-2 mb-3">
         <Shield className="w-4 h-4 text-violet-400" />
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Sistema</h3>
@@ -275,7 +275,7 @@ function AvailableDoctorsWidget() {
   const offline = allDoctors.filter((d: any) => !d.isOnline);
 
   return (
-    <div className="rounded-xl p-4 bg-white/[0.08] border border-white/10">
+    <div className="rounded-xl p-4 border border-white/10" style={{ background: "var(--role-panel-bg, rgba(255,255,255,0.08))" }}>
       <div className="flex items-center gap-2 mb-3">
         <Stethoscope className="w-4 h-4 text-emerald-400" />
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Médicos</h3>
@@ -380,7 +380,7 @@ export default function DesktopHome() {
   const role = user?.role || "patient";
 
   return (
-    <div className="p-5 space-y-4">
+    <div className="p-5 space-y-4" style={{ color: "var(--role-text-color)" }}>
       <div className="mb-2">
         <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">
           Olá, {user?.name?.split(" ")[0] || "Usuário"}

@@ -183,7 +183,15 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
     }
     if (cfg.titlebarColor) {
       document.documentElement.style.setProperty('--titlebar-active', cfg.titlebarColor);
-      document.documentElement.style.setProperty('--titlebar-inactive', cfg.titlebarColor + 'cc');
+      const hex = cfg.titlebarColor.replace('#', '');
+      if (hex.length === 6) {
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        document.documentElement.style.setProperty('--titlebar-inactive', `rgba(${r}, ${g}, ${b}, 0.7)`);
+      } else {
+        document.documentElement.style.setProperty('--titlebar-inactive', cfg.titlebarColor);
+      }
     }
     if (cfg.iconColor) {
       document.documentElement.style.setProperty('--role-icon-color', cfg.iconColor);
