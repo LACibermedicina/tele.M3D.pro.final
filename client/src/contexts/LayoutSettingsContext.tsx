@@ -176,8 +176,25 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const userRole = user?.role;
-    const cfg = (userRole && roleThemeConfig[userRole]) ? roleThemeConfig[userRole] : roleThemeConfig['_global'];
-    if (!cfg) return;
+    const globalCfg = roleThemeConfig['_global'] || {};
+    const roleCfg = (userRole && roleThemeConfig[userRole]) ? roleThemeConfig[userRole] : {};
+    const cfg: RoleThemeConfig = { ...globalCfg, ...roleCfg };
+
+    const defaults: Record<string, string> = {
+      '--role-accent-color': '#6366f1',
+      '--role-panel-bg': 'rgba(255,255,255,0.08)',
+      '--role-text-color': '#e2e8f0',
+      '--role-icon-color': '#38bdf8',
+      '--titlebar-active': 'rgba(15, 23, 42, 0.45)',
+      '--titlebar-inactive': 'rgba(15, 23, 42, 0.32)',
+      '--card-glass': 'hsla(230, 21%, 18%, 0.70)',
+      '--bg-glass': 'hsla(230, 21%, 11%, 0.65)',
+      '--footer-glass': 'hsla(230, 21%, 13%, 0.75)',
+    };
+    Object.entries(defaults).forEach(([k, v]) => {
+      document.documentElement.style.setProperty(k, v);
+    });
+
     if (cfg.accentColor) {
       document.documentElement.style.setProperty('--role-accent-color', cfg.accentColor);
     }

@@ -4,8 +4,53 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Bell, Calendar, StickyNote, Clock, Activity, Shield, Users, Stethoscope, Circle, Plus, Pin, Trash2, MessageCircle, Video, MessageSquare, BellRing } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 
+interface Notification {
+  id: string;
+  message?: string;
+  title?: string;
+  createdAt?: string;
+}
+
+interface AppointmentItem {
+  id: string;
+  date?: string;
+  scheduledDate?: string;
+  patientName?: string;
+  doctorName?: string;
+  time?: string;
+}
+
+interface UserNote {
+  id: string;
+  title: string;
+  content: string;
+  color: string;
+  isPinned?: boolean;
+}
+
+interface NoteCreateData {
+  title: string;
+  content: string;
+}
+
+interface NoteUpdateData {
+  id: string;
+  title?: string;
+  content?: string;
+  color?: string;
+  isPinned?: boolean;
+}
+
+interface DoctorInfo {
+  id: string;
+  name: string;
+  specialization?: string;
+  isOnline?: boolean;
+  priorAttendance?: boolean;
+}
+
 function NotificationsWidget() {
-  const { data: notifications } = useQuery<any[]>({
+  const { data: notifications } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
   });
 
@@ -26,7 +71,7 @@ function NotificationsWidget() {
         <p className="text-xs text-slate-500 dark:text-slate-400 italic">Nenhuma notificação recente</p>
       ) : (
         <div className="space-y-2">
-          {recent.map((n: any, i: number) => (
+          {recent.map((n: Notification, i: number) => (
             <div key={n.id || i} className="flex items-start gap-2 text-xs">
               <div className="w-1.5 h-1.5 rounded-full bg-sky-400 mt-1.5 shrink-0" />
               <div className="min-w-0">
@@ -44,12 +89,12 @@ function NotificationsWidget() {
 }
 
 function CalendarWidget({ userRole }: { userRole: string }) {
-  const { data: appointments } = useQuery<any[]>({
+  const { data: appointments } = useQuery<AppointmentItem[]>({
     queryKey: ["/api/appointments"],
     enabled: userRole === "doctor" || userRole === "admin",
   });
 
-  const { data: patientAppointments } = useQuery<any[]>({
+  const { data: patientAppointments } = useQuery<AppointmentItem[]>({
     queryKey: ["/api/patient-appointments"],
     enabled: userRole === "patient",
   });
@@ -57,7 +102,7 @@ function CalendarWidget({ userRole }: { userRole: string }) {
   const items = userRole === "patient" ? patientAppointments : appointments;
   const today = new Date().toDateString();
   const upcoming = (items || [])
-    .filter((a: any) => new Date(a.date || a.scheduledDate) >= new Date())
+    .filter((a: AppointmentItem) => new Date(a.date || a.scheduledDate || '') >= new Date())
     .slice(0, 4);
 
   return (
@@ -74,7 +119,7 @@ function CalendarWidget({ userRole }: { userRole: string }) {
         </p>
       ) : (
         <div className="space-y-2">
-          {upcoming.map((a: any, i: number) => {
+          {upcoming.map((a: AppointmentItem, i: number) => {
             const d = new Date(a.date || a.scheduledDate);
             const isToday = d.toDateString() === today;
             return (
@@ -114,7 +159,7 @@ const NOTE_DOT_COLORS: Record<string, string> = {
 };
 
 function NotepadWidget() {
-  const { data: notes } = useQuery<any[]>({
+  const { data: notes } = useQuery<UserNote[]>({
     queryKey: ["/api/notes"],
   });
 
@@ -124,12 +169,12 @@ function NotepadWidget() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('POST', '/api/notes', data),
+    mutationFn: (data: NoteCreateData) => apiRequest('POST', '/api/notes', data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/notes"] }),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, ...data }: any) => apiRequest('PATCH', `/api/notes/${id}`, data),
+    mutationFn: ({ id, ...data }: NoteUpdateData) => apiRequest('PATCH', `/api/notes/${id}`, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/notes"] }),
   });
 
@@ -163,7 +208,7 @@ function NotepadWidget() {
         <p className="text-xs text-slate-500 dark:text-slate-400 italic">Clique em + para criar uma nota</p>
       ) : (
         <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-none">
-          {allNotes.map((note: any) => {
+          {allNotes.map((note: UserNote) => {
             const colorClass = NOTE_COLORS[note.color] || NOTE_COLORS.default;
             const dotClass = NOTE_DOT_COLORS[note.color] || NOTE_DOT_COLORS.default;
             const isEditing = editingId === note.id;
@@ -238,7 +283,7 @@ function NotepadWidget() {
 }
 
 function AdminStatsWidget() {
-  const { data: stats } = useQuery<any>({
+  const { data: stats } = useQuery<{ totalPatients?: number; totalAppointments?: number; totalDoctors?: number; pendingAppointments?: number }>({
     queryKey: ["/api/admin/stats"],
   });
 
@@ -265,14 +310,14 @@ function AdminStatsWidget() {
 }
 
 function AvailableDoctorsWidget() {
-  const { data: doctors } = useQuery<any[]>({
+  const { data: doctors } = useQuery<DoctorInfo[]>({
     queryKey: ["/api/doctors/available"],
     refetchInterval: 15000,
   });
 
   const allDoctors = doctors || [];
-  const online = allDoctors.filter((d: any) => d.isOnline);
-  const offline = allDoctors.filter((d: any) => !d.isOnline);
+  const online = allDoctors.filter((d: DoctorInfo) => d.isOnline);
+  const offline = allDoctors.filter((d: DoctorInfo) => !d.isOnline);
 
   return (
     <div className="rounded-xl p-4 border border-white/10" style={{ background: "var(--role-panel-bg, rgba(255,255,255,0.08))" }}>
@@ -289,7 +334,7 @@ function AvailableDoctorsWidget() {
         <p className="text-xs text-slate-500 dark:text-slate-400 italic">Nenhum médico cadastrado</p>
       ) : (
         <div className="space-y-1.5 max-h-48 overflow-y-auto scrollbar-none">
-          {online.map((doc: any) => (
+          {online.map((doc: DoctorInfo) => (
             <div key={doc.id} className="flex items-center gap-2 text-xs rounded-lg px-2 py-1.5 bg-emerald-500/5 border border-emerald-500/10 group">
               <Circle className="w-2 h-2 text-emerald-400 fill-emerald-400 shrink-0" />
               <div className="min-w-0 flex-1">
@@ -339,9 +384,9 @@ function AvailableDoctorsWidget() {
             <div className="border-t border-white/5 pt-1 mt-1" />
           )}
           {offline
-            .sort((a: any, b: any) => (b.priorAttendance ? 1 : 0) - (a.priorAttendance ? 1 : 0))
-            .filter((doc: any, i: number) => doc.priorAttendance || i < 5)
-            .map((doc: any) => (
+            .sort((a: DoctorInfo, b: DoctorInfo) => (b.priorAttendance ? 1 : 0) - (a.priorAttendance ? 1 : 0))
+            .filter((doc: DoctorInfo, i: number) => doc.priorAttendance || i < 5)
+            .map((doc: DoctorInfo) => (
             <div key={doc.id} className="flex items-center gap-2 text-xs rounded-lg px-2 py-1.5 bg-white/[0.02] group">
               <Circle className="w-2 h-2 text-slate-500 shrink-0" />
               <div className="min-w-0 flex-1">
@@ -366,8 +411,8 @@ function AvailableDoctorsWidget() {
               </div>
             </div>
           ))}
-          {offline.filter((d: any) => !d.priorAttendance).length > 5 && (
-            <p className="text-[10px] text-slate-500 text-center pt-1">+{offline.filter((d: any) => !d.priorAttendance).length - 5} médicos offline</p>
+          {offline.filter((d: DoctorInfo) => !d.priorAttendance).length > 5 && (
+            <p className="text-[10px] text-slate-500 text-center pt-1">+{offline.filter((d: DoctorInfo) => !d.priorAttendance).length - 5} médicos offline</p>
           )}
         </div>
       )}
