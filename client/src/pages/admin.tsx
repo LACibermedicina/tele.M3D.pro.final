@@ -2510,6 +2510,7 @@ function LayoutThemeTab() {
             { role: 'doctor', label: 'Médico', desc: 'Tons profissionais e confiáveis', color: 'bg-sky-500' },
             { role: 'patient', label: 'Paciente', desc: 'Interface acessível e acolhedora', color: 'bg-emerald-500' },
             { role: 'pharmacist', label: 'Farmacêutico', desc: 'Cores de confiança e saúde', color: 'bg-teal-500' },
+            { role: 'researcher', label: 'Pesquisador', desc: 'Interface analítica e focada em dados', color: 'bg-violet-500' },
           ].map((item) => {
             const colorFields = [
               { suffix: 'accent', label: 'Destaque', defaultVal: '#6366f1' },
@@ -2532,7 +2533,7 @@ function LayoutThemeTab() {
                 <div className="flex flex-wrap gap-3 pl-11">
                   {colorFields.map((cf) => {
                     const settingKey = `theme_${cf.suffix}_${item.role}`;
-                    const currentSetting = layoutSettings?.find((s: any) => s.settingKey === settingKey);
+                    const currentSetting = layoutSettings?.find((s: { settingKey: string; settingValue: string }) => s.settingKey === settingKey);
                     const currentColor = currentSetting?.settingValue || cf.defaultVal;
                     return (
                       <div key={cf.suffix} className="flex items-center gap-1.5">
@@ -2574,9 +2575,9 @@ function LayoutThemeTab() {
         <CardContent className="space-y-4">
           {[
             { key: 'desktop_glass_opacity', label: 'Janelas (Glass)', desc: 'Opacidade das janelas flutuantes', defaultVal: '72' },
-            { key: 'desktop_titlebar_opacity', label: 'Barra de Título', desc: 'Contraste da barra de título das janelas', defaultVal: '14' },
+            { key: 'desktop_titlebar_opacity', label: 'Barra de Título', desc: 'Contraste da barra de título das janelas', defaultVal: '45' },
           ].map((item) => {
-            const currentSetting = layoutSettings?.find((s: any) => s.settingKey === item.key);
+            const currentSetting = layoutSettings?.find((s: { settingKey: string; settingValue: string }) => s.settingKey === item.key);
             const currentVal = currentSetting?.settingValue || item.defaultVal;
             return (
               <div key={item.key} className="flex items-center gap-4 p-3 rounded-lg bg-white/[0.04] border border-white/5">

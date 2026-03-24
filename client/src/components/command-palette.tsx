@@ -49,12 +49,49 @@ interface CommandPaletteProps {
   initialTab?: 'commands' | 'search';
 }
 
+interface SearchPatient {
+  id: string;
+  name: string;
+  email?: string;
+}
+
+interface SearchDoctor {
+  id: string;
+  name: string;
+  specialization?: string;
+  isOnline?: boolean;
+}
+
+interface SearchRecord {
+  id: string;
+  diagnosis?: string;
+  patientId?: string;
+  createdAt?: string;
+}
+
+interface SearchAppointment {
+  id: string;
+  patientId?: string;
+  doctorId?: string;
+  scheduledAt?: string;
+  type?: string;
+  status?: string;
+}
+
+interface SearchPrescription {
+  id: string;
+  prescriptionNumber?: string;
+  diagnosis?: string;
+  status?: string;
+  patientId?: string;
+}
+
 interface SearchResults {
-  patients: any[];
-  doctors: any[];
-  records: any[];
-  appointments: any[];
-  prescriptions: any[];
+  patients: SearchPatient[];
+  doctors: SearchDoctor[];
+  records: SearchRecord[];
+  appointments: SearchAppointment[];
+  prescriptions: SearchPrescription[];
 }
 
 export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', initialTab = 'commands' }: CommandPaletteProps) {
@@ -571,7 +608,7 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
                 <div className="mb-3">
                   <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">Médicos</div>
                   <div className="space-y-1">
-                    {searchResults.doctors.map((doc: any) => (
+                    {searchResults.doctors.map((doc: SearchDoctor) => (
                       <div key={doc.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted cursor-pointer" onClick={() => { onClose(); setLocation('/consultation-request'); }}>
                         <Stethoscope className="w-4 h-4 text-emerald-500 shrink-0" />
                         <div className="flex-1 min-w-0">
@@ -588,7 +625,7 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
                 <div className="mb-3">
                   <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">Pacientes</div>
                   <div className="space-y-1">
-                    {searchResults.patients.map((p: any) => (
+                    {searchResults.patients.map((p: SearchPatient) => (
                       <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted cursor-pointer" onClick={() => { onClose(); setLocation(`/patients`); }}>
                         <Users className="w-4 h-4 text-sky-500 shrink-0" />
                         <div className="flex-1 min-w-0">
@@ -604,7 +641,7 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
                 <div className="mb-3">
                   <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">Consultas</div>
                   <div className="space-y-1">
-                    {searchResults.appointments.map((a: any) => (
+                    {searchResults.appointments.map((a: SearchAppointment) => (
                       <div key={a.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted cursor-pointer" onClick={() => { onClose(); setLocation('/schedule'); }}>
                         <Calendar className="w-4 h-4 text-amber-500 shrink-0" />
                         <div className="flex-1 min-w-0">
@@ -620,7 +657,7 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
                 <div className="mb-3">
                   <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">Prontuários</div>
                   <div className="space-y-1">
-                    {searchResults.records.map((r: any) => (
+                    {searchResults.records.map((r: SearchRecord) => (
                       <div key={r.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted cursor-pointer" onClick={() => { onClose(); setLocation(`/medical-records`); }}>
                         <ClipboardList className="w-4 h-4 text-violet-500 shrink-0" />
                         <div className="flex-1 min-w-0">
@@ -636,7 +673,7 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
                 <div className="mb-3">
                   <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">Prescrições</div>
                   <div className="space-y-1">
-                    {searchResults.prescriptions.map((p: any) => (
+                    {searchResults.prescriptions.map((p: SearchPrescription) => (
                       <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted cursor-pointer" onClick={() => { onClose(); setLocation(`/prescriptions`); }}>
                         <PillBottle className="w-4 h-4 text-emerald-500 shrink-0" />
                         <div className="flex-1 min-w-0">

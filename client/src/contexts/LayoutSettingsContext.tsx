@@ -31,6 +31,12 @@ const LAYOUT_STORAGE_KEYS = [
   'minimized_dock_side',
 ];
 
+interface LayoutSettingRow {
+  settingKey: string;
+  settingValue: string;
+  category?: string;
+}
+
 interface LayoutSettings {
   mobileMenuStyle: MobileMenuStyle;
   sidebarCollapsed: boolean;
@@ -125,7 +131,7 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
 
   const mobileMenuStyle: MobileMenuStyle = (() => {
     if (!layoutData) return "slide";
-    const setting = layoutData.find((s: any) => s.settingKey === "mobile_menu_style");
+    const setting = layoutData.find((s: LayoutSettingRow) => s.settingKey === "mobile_menu_style");
     const val = setting?.settingValue;
     if (val === "slide" || val === "sidebar" || val === "bottom") return val;
     return "slide";
@@ -134,9 +140,9 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
   const roleThemeConfig: Record<string, RoleThemeConfig> = (() => {
     if (!layoutData) return {};
     const config: Record<string, RoleThemeConfig> = {};
-    layoutData.forEach((s: any) => {
+    layoutData.forEach((s: LayoutSettingRow) => {
       if (s.category === 'theme') {
-        const roles = ['admin', 'doctor', 'patient', 'pharmacist'];
+        const roles = ['admin', 'doctor', 'patient', 'pharmacist', 'researcher'];
         for (const role of roles) {
           if (s.settingKey?.endsWith(`_${role}`)) {
             const prefix = s.settingKey.slice(0, -(role.length + 1));
@@ -202,7 +208,7 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
       document.documentElement.style.setProperty('--bg-glass', `hsla(230, 21%, 11%, ${Math.max(0, opacity - 0.05)})`);
       document.documentElement.style.setProperty('--footer-glass', `hsla(230, 21%, 13%, ${Math.min(1, opacity + 0.05)})`);
     }
-    if (cfg.titlebarOpacity !== undefined && !isNaN(cfg.titlebarOpacity)) {
+    if (!cfg.titlebarColor && cfg.titlebarOpacity !== undefined && !isNaN(cfg.titlebarOpacity)) {
       const tbOpacity = Math.max(0.05, Math.min(0.95, cfg.titlebarOpacity));
       document.documentElement.style.setProperty('--titlebar-active', `rgba(15, 23, 42, ${tbOpacity})`);
       document.documentElement.style.setProperty('--titlebar-inactive', `rgba(15, 23, 42, ${Math.max(0.03, tbOpacity * 0.7)})`);
