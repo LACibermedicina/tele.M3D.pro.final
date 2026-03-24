@@ -171,9 +171,9 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
       document.documentElement.style.setProperty('--footer-glass', `hsla(230, 21%, 13%, ${Math.min(1, opacity + 0.05)})`);
     }
     if (cfg.titlebarOpacity !== undefined && !isNaN(cfg.titlebarOpacity)) {
-      const tbOpacity = Math.max(0.05, Math.min(0.5, cfg.titlebarOpacity));
-      document.documentElement.style.setProperty('--titlebar-active', `rgba(255, 255, 255, ${tbOpacity})`);
-      document.documentElement.style.setProperty('--titlebar-inactive', `rgba(255, 255, 255, ${Math.max(0.03, tbOpacity * 0.5)})`);
+      const tbOpacity = Math.max(0.05, Math.min(0.95, cfg.titlebarOpacity));
+      document.documentElement.style.setProperty('--titlebar-active', `rgba(15, 23, 42, ${tbOpacity})`);
+      document.documentElement.style.setProperty('--titlebar-inactive', `rgba(15, 23, 42, ${Math.max(0.03, tbOpacity * 0.7)})`);
     }
   }, [roleThemeConfig, user?.role]);
 

@@ -68,7 +68,7 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
 
   const performContextualSearch = useCallback(async (query: string) => {
     if (query.length < 2) {
-      setSearchResults({ patients: [], doctors: [], records: [], appointments: [] });
+      setSearchResults({ patients: [], doctors: [], records: [], appointments: [], prescriptions: [] });
       return;
     }
     setIsSearching(true);

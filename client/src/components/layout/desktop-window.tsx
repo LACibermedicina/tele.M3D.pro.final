@@ -145,8 +145,8 @@ export default function DesktopWindowComponent({ windowData, children }: Desktop
         className="flex items-center h-9 px-3 shrink-0 select-none border-b border-white/10"
         style={{
           background: isActive
-            ? "var(--titlebar-active, rgba(255, 255, 255, 0.14))"
-            : "var(--titlebar-inactive, rgba(255, 255, 255, 0.07))",
+            ? "var(--titlebar-active, rgba(15, 23, 42, 0.65))"
+            : "var(--titlebar-inactive, rgba(15, 23, 42, 0.45))",
           cursor: isDragging ? "grabbing" : "grab",
         }}
         onMouseDown={handleMouseDown}
