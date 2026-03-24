@@ -7,6 +7,10 @@ export type NavDockMode = "top" | "left" | "right" | "bottom" | "floating";
 
 export interface RoleThemeConfig {
   accentColor?: string;
+  panelBgColor?: string;
+  textColor?: string;
+  titlebarColor?: string;
+  iconColor?: string;
   glassOpacity?: number;
   titlebarOpacity?: number;
 }
@@ -132,11 +136,18 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
     const config: Record<string, RoleThemeConfig> = {};
     layoutData.forEach((s: any) => {
       if (s.category === 'theme') {
-        const accentMatch = s.settingKey?.match(/^theme_accent_(\w+)$/);
-        if (accentMatch) {
-          const role = accentMatch[1];
-          if (!config[role]) config[role] = {};
-          config[role].accentColor = s.settingValue;
+        const roles = ['admin', 'doctor', 'patient', 'pharmacist'];
+        for (const role of roles) {
+          if (s.settingKey?.endsWith(`_${role}`)) {
+            const prefix = s.settingKey.slice(0, -(role.length + 1));
+            if (!config[role]) config[role] = {};
+            if (prefix === 'theme_accent') config[role].accentColor = s.settingValue;
+            else if (prefix === 'theme_panel_bg') config[role].panelBgColor = s.settingValue;
+            else if (prefix === 'theme_text') config[role].textColor = s.settingValue;
+            else if (prefix === 'theme_titlebar') config[role].titlebarColor = s.settingValue;
+            else if (prefix === 'theme_icon') config[role].iconColor = s.settingValue;
+            break;
+          }
         }
         const roleOpacityMatch = s.settingKey?.match(/^glass_opacity_(\w+)$/);
         if (roleOpacityMatch) {
@@ -163,6 +174,19 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
     if (!cfg) return;
     if (cfg.accentColor) {
       document.documentElement.style.setProperty('--role-accent-color', cfg.accentColor);
+    }
+    if (cfg.panelBgColor) {
+      document.documentElement.style.setProperty('--role-panel-bg', cfg.panelBgColor);
+    }
+    if (cfg.textColor) {
+      document.documentElement.style.setProperty('--role-text-color', cfg.textColor);
+    }
+    if (cfg.titlebarColor) {
+      document.documentElement.style.setProperty('--titlebar-active', cfg.titlebarColor);
+      document.documentElement.style.setProperty('--titlebar-inactive', cfg.titlebarColor + 'cc');
+    }
+    if (cfg.iconColor) {
+      document.documentElement.style.setProperty('--role-icon-color', cfg.iconColor);
     }
     if (cfg.glassOpacity !== undefined && !isNaN(cfg.glassOpacity)) {
       const opacity = Math.max(0.1, Math.min(1, cfg.glassOpacity));

@@ -15592,16 +15592,21 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
           const pid = patientRecord[0].id;
           const ownRecords = await db.select({
             id: medicalRecords.id,
-            diagnosis: medicalRecords.diagnosis,
+            patientFriendlyVersion: medicalRecords.patientFriendlyVersion,
             createdAt: medicalRecords.createdAt,
           })
             .from(medicalRecords)
             .where(and(
               eq(medicalRecords.patientId, pid),
-              ilike(medicalRecords.diagnosis, `%${q}%`)
+              eq(medicalRecords.patientFriendlyActive, true),
+              ilike(medicalRecords.patientFriendlyVersion, `%${q}%`)
             ))
             .limit(10);
-          results.records = ownRecords;
+          results.records = ownRecords.map(r => ({
+            id: r.id,
+            diagnosis: r.patientFriendlyVersion || "Prontuário",
+            createdAt: r.createdAt,
+          }));
 
           const patPrescriptions = await db.select({
             id: prescriptions.id,

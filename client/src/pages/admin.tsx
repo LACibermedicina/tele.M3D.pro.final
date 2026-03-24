@@ -2511,34 +2511,49 @@ function LayoutThemeTab() {
             { role: 'patient', label: 'Paciente', desc: 'Interface acessível e acolhedora', color: 'bg-emerald-500' },
             { role: 'pharmacist', label: 'Farmacêutico', desc: 'Cores de confiança e saúde', color: 'bg-teal-500' },
           ].map((item) => {
-            const settingKey = `theme_accent_${item.role}`;
-            const currentSetting = layoutSettings?.find((s: any) => s.settingKey === settingKey);
-            const currentColor = currentSetting?.settingValue || '';
+            const colorFields = [
+              { suffix: 'accent', label: 'Destaque', defaultVal: '#6366f1' },
+              { suffix: 'panel_bg', label: 'Painel BG', defaultVal: '#1e293b' },
+              { suffix: 'text', label: 'Texto', defaultVal: '#e2e8f0' },
+              { suffix: 'titlebar', label: 'Barra Título', defaultVal: '#0f172a' },
+              { suffix: 'icon', label: 'Ícones', defaultVal: '#38bdf8' },
+            ];
             return (
-              <div key={item.role} className="flex items-center gap-4 p-3 rounded-lg bg-white/[0.04] border border-white/5">
-                <div className={`w-8 h-8 rounded-lg ${item.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
-                  {item.label[0]}
+              <div key={item.role} className="p-3 rounded-lg bg-white/[0.04] border border-white/5 space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg ${item.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+                    {item.label[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white">{item.label}</p>
+                    <p className="text-xs text-gray-400">{item.desc}</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white">{item.label}</p>
-                  <p className="text-xs text-gray-400">{item.desc}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Input
-                    type="color"
-                    className="w-8 h-8 p-0 border-0 cursor-pointer bg-transparent rounded"
-                    defaultValue={currentColor || '#6366f1'}
-                    onBlur={(e) => {
-                      saveSetting.mutate({
-                        key: settingKey,
-                        value: e.target.value,
-                        type: 'text',
-                        category: 'theme',
-                        description: `Cor de destaque para ${item.label}`,
-                      });
-                    }}
-                  />
-                  <span className="text-[10px] text-gray-500 font-mono w-16">{currentColor || '#6366f1'}</span>
+                <div className="flex flex-wrap gap-3 pl-11">
+                  {colorFields.map((cf) => {
+                    const settingKey = `theme_${cf.suffix}_${item.role}`;
+                    const currentSetting = layoutSettings?.find((s: any) => s.settingKey === settingKey);
+                    const currentColor = currentSetting?.settingValue || cf.defaultVal;
+                    return (
+                      <div key={cf.suffix} className="flex items-center gap-1.5">
+                        <Input
+                          type="color"
+                          className="w-6 h-6 p-0 border-0 cursor-pointer bg-transparent rounded"
+                          defaultValue={currentColor}
+                          onBlur={(e) => {
+                            saveSetting.mutate({
+                              key: settingKey,
+                              value: e.target.value,
+                              type: 'text',
+                              category: 'theme',
+                              description: `${cf.label} para ${item.label}`,
+                            });
+                          }}
+                        />
+                        <span className="text-[10px] text-gray-400">{cf.label}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
