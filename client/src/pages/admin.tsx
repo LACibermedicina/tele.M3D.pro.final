@@ -77,6 +77,7 @@ interface AdminUser {
   deactivationReason?: string;
   isProtected?: boolean;
   lastLogin?: string;
+  totalUsageSeconds?: number;
   hierarchyLevel?: number;
   superiorDoctorId?: string;
   medicalLicense?: string;
@@ -106,6 +107,16 @@ interface ErrorLog {
   resolvedAt?: string;
   adminNotes?: string;
   createdAt: string;
+}
+
+function formatUsageTime(seconds: number): string {
+  if (seconds <= 0) return '0min';
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}min`;
+  return `${minutes}min`;
 }
 
 export default function AdminPage() {
@@ -265,6 +276,20 @@ export default function AdminPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       toast({ title: 'Success', description: 'User unblocked successfully' });
+    },
+    onError: (error: any) => {
+      const errorInfo = formatErrorForToast(error);
+      toast({ title: errorInfo.title, description: errorInfo.description, variant: 'destructive' });
+    }
+  });
+
+  const forceDisconnectMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest('POST', `/api/admin/users/${userId}/force-disconnect`, {});
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: 'Desconectado', description: data.message || 'Usuário desconectado com sucesso.' });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -627,7 +652,8 @@ export default function AdminPage() {
                         { key: 'name', label: 'Name' },
                         { key: 'role', label: 'Role' },
                         { key: 'status', label: 'Status' },
-                        { key: 'lastLogin', label: 'Last Login' },
+                        { key: 'lastLogin', label: 'Último Login' },
+                        { key: 'usageTime', label: 'Tempo de Uso' },
                         { key: 'credits', label: 'TM3D Credits' },
                       ].map(col => (
                         <TableHead
@@ -666,6 +692,7 @@ export default function AdminPage() {
                           case 'role': valA = a.role || ''; valB = b.role || ''; break;
                           case 'status': valA = a.isBlocked ? 1 : 0; valB = b.isBlocked ? 1 : 0; break;
                           case 'lastLogin': valA = a.lastLogin ? new Date(a.lastLogin).getTime() : 0; valB = b.lastLogin ? new Date(b.lastLogin).getTime() : 0; break;
+                          case 'usageTime': valA = a.totalUsageSeconds || 0; valB = b.totalUsageSeconds || 0; break;
                           case 'credits': valA = a.tmcCredits || 0; valB = b.tmcCredits || 0; break;
                           default: valA = a.username?.toLowerCase() || ''; valB = b.username?.toLowerCase() || '';
                         }
@@ -720,13 +747,18 @@ export default function AdminPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {user.lastLogin ? format(new Date(user.lastLogin), 'MMM dd, yyyy HH:mm') : 'Never'}
+                          <div>
+                            <span className="text-xs">{user.lastLogin ? format(new Date(user.lastLogin), 'dd/MM/yyyy HH:mm') : 'Nunca'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-mono">{formatUsageTime(user.totalUsageSeconds || 0)}</span>
                         </TableCell>
                         <TableCell>
                           <span className="font-mono">{user.tmcCredits || 0} TM3D</span>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-1">
                             {user.isBlocked ? (
                               <Button
                                 variant="ghost"
@@ -734,6 +766,7 @@ export default function AdminPage() {
                                 onClick={() => unblockUserMutation.mutate(user.id)}
                                 data-testid={`button-unblock-${user.id}`}
                                 disabled={unblockUserMutation.isPending}
+                                title="Desbloquear"
                               >
                                 <UserCheck className="h-4 w-4" />
                               </Button>
@@ -747,8 +780,21 @@ export default function AdminPage() {
                                 })}
                                 data-testid={`button-block-${user.id}`}
                                 disabled={blockUserMutation.isPending}
+                                title="Bloquear"
                               >
                                 <UserX className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {user.username !== 'root' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => forceDisconnectMutation.mutate(user.id)}
+                                disabled={forceDisconnectMutation.isPending}
+                                title="Desconectar imediatamente"
+                                className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                              >
+                                <Unplug className="h-4 w-4" />
                               </Button>
                             )}
                             <Button
@@ -761,6 +807,7 @@ export default function AdminPage() {
                                 setEditDeactivationReason(user.deactivationReason || '');
                                 setShowEditUserDialog(true);
                               }}
+                              title="Editar"
                             >
                               <Edit3 className="h-4 w-4" />
                             </Button>

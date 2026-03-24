@@ -358,26 +358,26 @@ export default function FloatingRadiologyAnalyzer() {
       >
         <Card className="flex flex-col h-full border-indigo-500/30 shadow-2xl bg-background/95 backdrop-blur-sm desktop-glass-panel">
           <CardHeader
-            className="p-3 pb-2 flex flex-row items-center justify-between border-b shrink-0 cursor-grab active:cursor-grabbing select-none"
+            className="p-3 pb-2 flex flex-row items-center justify-between border-b border-white/10 shrink-0 cursor-grab active:cursor-grabbing select-none bg-slate-900 rounded-t-lg"
             onMouseDown={onDragStart}
             onTouchStart={onDragStart}
           >
-            <CardTitle className="text-sm flex items-center gap-2 pointer-events-none">
-              <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-              <Scan className="h-4 w-4 text-indigo-500" />
+            <CardTitle className="text-sm flex items-center gap-2 pointer-events-none text-white">
+              <GripVertical className="h-3.5 w-3.5 text-white/50" />
+              <Scan className="h-4 w-4 text-indigo-400" />
               Estudo de Imagem
             </CardTitle>
             <div className="flex items-center gap-0.5">
-              <Button variant="ghost" size="icon" className="h-6 w-6" title="Vincular a paciente" onClick={(e) => { e.stopPropagation(); setShowAssociateDialog(true); }}>
-                <User className="h-3 w-3 text-blue-500" />
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/10" title="Vincular a paciente" onClick={(e) => { e.stopPropagation(); setShowAssociateDialog(true); }}>
+                <User className="h-3 w-3" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6" title="Criar novo paciente" onClick={(e) => { e.stopPropagation(); setShowCreatePatientDialog(true); }}>
-                <UserPlus className="h-3 w-3 text-emerald-500" />
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/10" title="Criar novo paciente" onClick={(e) => { e.stopPropagation(); setShowCreatePatientDialog(true); }}>
+                <UserPlus className="h-3 w-3" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6" title="Minimizar" onClick={(e) => { e.stopPropagation(); setIsOpen(false); minimize({ id: 'floating-radiology', label: 'Análise Radiológica', icon: 'scan' }); }}>
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/10" title="Minimizar" onClick={(e) => { e.stopPropagation(); setIsOpen(false); minimize({ id: 'floating-radiology', label: 'Análise Radiológica', icon: 'scan' }); }}>
                 <Minus className="h-3 w-3" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}>
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/10" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}>
                 <X className="h-3 w-3" />
               </Button>
             </div>

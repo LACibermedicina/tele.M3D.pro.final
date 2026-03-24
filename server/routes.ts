@@ -104,6 +104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migrateSusProntuariosTable();
   await migratePatientFriendlyColumns();
   await migrateUserNotesTable();
+  await migrateUserUsageFields();
   await initStripeSync();
   
   // Initialize default doctor if not exists and get the actual ID
@@ -6902,6 +6903,15 @@ Responda em português brasileiro, de forma estruturada e concisa, com linguagem
         return res.status(403).json({ message: reason, blocked: true });
       }
 
+      // Check if user was force-disconnected (token issued before forceLogoutAt)
+      if (user.forceLogoutAt && payload.iat) {
+        const forceLogoutTime = Math.floor(new Date(user.forceLogoutAt).getTime() / 1000);
+        if (payload.iat < forceLogoutTime) {
+          res.clearCookie('authToken');
+          return res.status(401).json({ message: 'Sua sessão foi encerrada pelo administrador. Faça login novamente.', forceDisconnected: true });
+        }
+      }
+
       // Attach user to request
       req.user = user;
       next();
@@ -10351,6 +10361,16 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         return res.status(409).json({ message: 'Este nome de usuário já está em uso. Por favor, escolha outro.' });
       }
 
+      // Check if email already exists (enforce email uniqueness)
+      if (email && email.trim()) {
+        const existingByEmail = await db.select({ id: users.id }).from(users)
+          .where(sql`LOWER(email) = LOWER(${email.trim()})`)
+          .limit(1);
+        if (existingByEmail.length > 0) {
+          return res.status(409).json({ message: 'Este e-mail já está cadastrado em outra conta. Use outro e-mail ou faça login com sua conta existente.' });
+        }
+      }
+
       // Check for duplicate document+country
       let temporaryPatientToMerge: any = null;
       if (docNumber && documentCountry) {
@@ -10599,6 +10619,21 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         console.log(`Doctor ${user.name} auto-activated for on-duty shift`);
       }
       
+      // Update lastLogin and session start time, accumulate previous session usage
+      const now = new Date();
+      const usageUpdate: any = {
+        lastLogin: now,
+        lastSessionStart: now,
+      };
+      // If there was a previous session, accumulate its duration
+      if (user.lastSessionStart) {
+        const sessionDuration = Math.floor((now.getTime() - new Date(user.lastSessionStart).getTime()) / 1000);
+        if (sessionDuration > 0 && sessionDuration < 86400) {
+          usageUpdate.totalUsageSeconds = sql`COALESCE(total_usage_seconds, 0) + ${sessionDuration}`;
+        }
+      }
+      await db.update(users).set(usageUpdate).where(eq(users.id, user.id));
+
       // Return user data (without password)
       const { password: _, ...userWithoutPassword} = user;
       res.json({ 
@@ -10657,6 +10692,28 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         } catch (cleanupError) {
           console.warn('Doctor session cleanup error (non-blocking):', cleanupError);
         }
+      }
+
+      // Accumulate session duration on logout
+      const token = req.headers.authorization?.replace('Bearer ', '') || req.cookies?.authToken;
+      if (token) {
+        try {
+          const jwtSecret = process.env.SESSION_SECRET;
+          if (jwtSecret) {
+            const payload = jwt.verify(token, jwtSecret, { issuer: 'telemed-system', audience: 'web-app', algorithms: ['HS256'] }) as any;
+            const logoutUser = await storage.getUser(payload.userId);
+            if (logoutUser?.lastSessionStart) {
+              const now = new Date();
+              const sessionDuration = Math.floor((now.getTime() - new Date(logoutUser.lastSessionStart).getTime()) / 1000);
+              if (sessionDuration > 0 && sessionDuration < 86400) {
+                await db.update(users).set({
+                  totalUsageSeconds: sql`COALESCE(total_usage_seconds, 0) + ${sessionDuration}`,
+                  lastSessionStart: null,
+                }).where(eq(users.id, logoutUser.id));
+              }
+            }
+          }
+        } catch {}
       }
 
       res.clearCookie('authToken');
@@ -15022,6 +15079,96 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     } catch (error) {
       console.error('Admin user unblock error:', error);
       res.status(500).json({ message: 'Failed to unblock user' });
+    }
+  });
+
+  // Force disconnect a single user
+  app.post('/api/admin/users/:userId/force-disconnect', requireAuth, async (req: any, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
+      const user = req.user as User;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied: admin privileges required' });
+      }
+
+      const { userId } = req.params;
+      if (userId === user.id) {
+        return res.status(400).json({ message: 'Não é possível desconectar a si mesmo.' });
+      }
+
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ message: 'Usuário não encontrado' });
+      }
+
+      let disconnectedCount = 0;
+      const adminMessage = JSON.stringify({
+        type: 'force-disconnect',
+        reason: 'admin_disconnect_user',
+        message: 'Sua sessão foi encerrada pelo administrador.',
+        timestamp: new Date().toISOString(),
+      });
+
+      const clients = authenticatedClients.get(userId);
+      if (clients) {
+        clients.forEach((ws) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            try {
+              ws.send(adminMessage);
+              ws.close(4000, 'Admin disconnect');
+              disconnectedCount++;
+            } catch {}
+          }
+        });
+      }
+
+      // Set forceLogoutAt to invalidate all existing tokens and accumulate session usage
+      const now = new Date();
+      const updateData: any = {
+        forceLogoutAt: now,
+        lastSessionStart: null,
+      };
+      if (targetUser.lastSessionStart) {
+        const sessionDuration = Math.floor((now.getTime() - new Date(targetUser.lastSessionStart).getTime()) / 1000);
+        if (sessionDuration > 0 && sessionDuration < 86400) {
+          updateData.totalUsageSeconds = sql`COALESCE(total_usage_seconds, 0) + ${sessionDuration}`;
+        }
+      }
+      await db.update(users).set(updateData).where(eq(users.id, userId));
+
+      // Log the action
+      const systemCollaborator = await storage.getOrCreateSystemCollaborator();
+      await storage.createCollaboratorIntegration({
+        collaboratorId: systemCollaborator.id,
+        integrationType: 'user_management',
+        entityId: userId,
+        action: 'user_force_disconnected',
+        status: 'success',
+        requestData: {
+          disconnectedBy: user.id,
+          disconnectedByUsername: user.username,
+          disconnectedConnections: disconnectedCount,
+          timestamp: new Date().toISOString()
+        },
+      });
+
+      await broadcastAdminActivity({
+        type: 'user_management',
+        action: 'user_force_disconnected',
+        entityId: userId,
+        userId: user.id,
+        details: {
+          disconnectedUsername: targetUser.username,
+          disconnectedUserName: targetUser.name,
+          disconnectedBy: user.username,
+          connectionsTerminated: disconnectedCount
+        }
+      });
+
+      res.json({ message: `Usuário ${targetUser.name} desconectado com sucesso. ${disconnectedCount} conexão(ões) encerrada(s).`, disconnectedCount });
+    } catch (error) {
+      console.error('Admin force disconnect user error:', error);
+      res.status(500).json({ message: 'Falha ao desconectar o usuário' });
     }
   });
 
@@ -24674,6 +24821,19 @@ async function migrateSusProntuariosTable() {
     console.log('✓ SUS prontuários table migrated successfully');
   } catch (error) {
     console.error('Failed to migrate SUS prontuários table:', error);
+  }
+}
+
+async function migrateUserUsageFields() {
+  try {
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS total_usage_seconds INTEGER DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_session_start TIMESTAMP`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS force_logout_at TIMESTAMP`);
+    // Enforce email uniqueness at DB level (case-insensitive, ignoring NULLs)
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_lower ON users (LOWER(email)) WHERE email IS NOT NULL`);
+    console.log('✓ User usage tracking fields migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate user usage fields:', error);
   }
 }
 

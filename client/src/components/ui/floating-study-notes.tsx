@@ -165,30 +165,30 @@ export default function FloatingStudyNotes() {
     >
       <Card className="flex flex-col h-full border-amber-500/30 shadow-2xl bg-background/95 backdrop-blur-sm desktop-glass-panel">
         <CardHeader
-          className="p-3 pb-2 flex flex-row items-center justify-between border-b shrink-0 cursor-grab active:cursor-grabbing select-none"
+          className="p-3 pb-2 flex flex-row items-center justify-between border-b border-white/10 shrink-0 cursor-grab active:cursor-grabbing select-none bg-slate-900 rounded-t-lg"
           onMouseDown={onNotesDragStart}
           onTouchStart={onNotesDragStart}
         >
-          <CardTitle className="text-sm flex items-center gap-2 pointer-events-none">
-            <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-            <BookOpen className="h-4 w-4 text-amber-500" />
+          <CardTitle className="text-sm flex items-center gap-2 pointer-events-none text-white">
+            <GripVertical className="h-3.5 w-3.5 text-white/50" />
+            <BookOpen className="h-4 w-4 text-amber-400" />
             Study Notes
             <Badge variant="secondary" className="text-[10px]">{notes.length}</Badge>
           </CardTitle>
           <div className="flex items-center gap-1" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={startNewNote}>
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/10" onClick={startNewNote}>
               <Plus className="h-3 w-3" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsExpanded(!isExpanded)}>
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/10" onClick={() => setIsExpanded(!isExpanded)}>
               {isExpanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/10" onClick={() => {
               minimize({ id: 'floating-study-notes', label: 'Notas de Estudo', icon: 'book-open' });
               setIsOpen(false);
             }} title="Minimizar para dock">
               <Minus className="h-3 w-3" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsOpen(false)}>
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/10" onClick={() => setIsOpen(false)}>
               <X className="h-3 w-3" />
             </Button>
           </div>

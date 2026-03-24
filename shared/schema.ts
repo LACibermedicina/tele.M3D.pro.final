@@ -36,6 +36,9 @@ export const users = pgTable("users", {
   crmVerificationData: jsonb("crm_verification_data"), // API response data from verification
   specialization: text("specialization"),
   lastLogin: timestamp("last_login"),
+  totalUsageSeconds: integer("total_usage_seconds").default(0),
+  lastSessionStart: timestamp("last_session_start"),
+  forceLogoutAt: timestamp("force_logout_at"),
   isOnline: boolean("is_online").default(false), // Doctor online status
   availableForImmediate: boolean("available_for_immediate").default(false), // Available for immediate consultations
   onlineSince: timestamp("online_since"), // When doctor went online
