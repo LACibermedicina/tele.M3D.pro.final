@@ -312,6 +312,18 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
               CRM Não Verificado
             </Badge>
           )}
+          {doctorCrmStatus?.status === 'invalid' && (
+            <Badge variant="outline" className="text-orange-500 border-orange-500">
+              <ShieldAlert className="h-3 w-3 mr-1" />
+              CRM Inválido
+            </Badge>
+          )}
+          {doctorCrmStatus?.status === 'expired' && (
+            <Badge variant="outline" className="text-amber-500 border-amber-500">
+              <ShieldAlert className="h-3 w-3 mr-1" />
+              CRM Expirado
+            </Badge>
+          )}
         </div>
       </div>
       

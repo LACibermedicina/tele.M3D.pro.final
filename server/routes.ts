@@ -18268,14 +18268,8 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
       if (!req.user || req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Admin access required' });
       }
-      const defaultConfig = {
-        enabled: true,
-        countries: {
-          BR: { enabled: true, apiUrl: 'https://www.consultacrm.com.br/api/index.php', apiKey: '', provider: 'CFM' },
-          PT: { enabled: false, apiUrl: '', apiKey: '', provider: 'Ordem dos Médicos' },
-        },
-      };
-      await crmVerificationService.saveConfig(defaultConfig, req.user.id);
+      await db.delete(systemSettings).where(eq(systemSettings.settingKey, 'crm_verification_config'));
+      const defaultConfig = await crmVerificationService.getConfig();
       res.json(defaultConfig);
     } catch (error: any) {
       console.error('Reset CRM config error:', error);

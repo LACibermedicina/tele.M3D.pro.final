@@ -8,13 +8,29 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Save, RotateCcw, ShieldCheck, Globe, Key } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Save, RotateCcw, ShieldCheck, Globe, Key, Settings2 } from 'lucide-react';
+
+interface ResponseMapping {
+  nameField?: string;
+  registrationField?: string;
+  stateField?: string;
+  specialtyField?: string;
+  situationField?: string;
+  dateField?: string;
+  activeValues?: string[];
+  expiredValues?: string[];
+  invalidValues?: string[];
+}
 
 interface CountryConfig {
   enabled: boolean;
   apiUrl: string;
   apiKey: string;
   provider: string;
+  httpMethod?: 'GET' | 'POST';
+  responseMapping?: ResponseMapping;
 }
 
 interface CRMConfig {
@@ -87,6 +103,18 @@ export function CRMVerificationConfigTab() {
       });
       setHasChanges(true);
     }
+  };
+
+  const updateMapping = (country: 'BR' | 'PT', field: keyof ResponseMapping, value: string) => {
+    if (!config) return;
+    const current = config.countries[country].responseMapping || {};
+    const isArrayField = field === 'activeValues' || field === 'expiredValues' || field === 'invalidValues';
+    updateCountry(country, {
+      responseMapping: {
+        ...current,
+        [field]: isArrayField ? value.split(',').map(v => v.trim()).filter(Boolean) : value,
+      },
+    });
   };
 
   if (isLoading || !config) {
@@ -192,20 +220,82 @@ export function CRMVerificationConfigTab() {
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Key className="h-4 w-4" />
-              Chave de API (opcional)
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Key className="h-4 w-4" />
+                Chave de API (opcional)
+              </Label>
+              <Input
+                type="password"
+                value={config.countries.BR.apiKey}
+                onChange={(e) => updateCountry('BR', { apiKey: e.target.value })}
+                placeholder="Deixe vazio para usar validação local"
+              />
+              <p className="text-xs text-muted-foreground">
+                Obtenha uma chave em consultacrm.com.br.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Método HTTP</Label>
+              <Select
+                value={config.countries.BR.httpMethod || 'GET'}
+                onValueChange={(v) => updateCountry('BR', { httpMethod: v as 'GET' | 'POST' })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="POST">POST</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Separator />
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2 text-sm font-semibold">
+              <Settings2 className="h-4 w-4" />
+              Mapeamento de Resposta
             </Label>
-            <Input
-              type="password"
-              value={config.countries.BR.apiKey}
-              onChange={(e) => updateCountry('BR', { apiKey: e.target.value })}
-              placeholder="Deixe vazio para usar validação local"
-            />
-            <p className="text-xs text-muted-foreground">
-              Obtenha uma chave em consultacrm.com.br. Sem chave, o sistema faz validação local do formato CRM.
-            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Campo Situação</Label>
+                <Input
+                  value={config.countries.BR.responseMapping?.situationField || ''}
+                  onChange={(e) => updateMapping('BR', 'situationField', e.target.value)}
+                  placeholder="item.0.situacao"
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Valores Ativos (vírgula)</Label>
+                <Input
+                  value={(config.countries.BR.responseMapping?.activeValues || []).join(', ')}
+                  onChange={(e) => updateMapping('BR', 'activeValues', e.target.value)}
+                  placeholder="Regular, Ativo"
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Valores Expirados (vírgula)</Label>
+                <Input
+                  value={(config.countries.BR.responseMapping?.expiredValues || []).join(', ')}
+                  onChange={(e) => updateMapping('BR', 'expiredValues', e.target.value)}
+                  placeholder="Cancelado, Cassado"
+                  className="text-xs"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Valores Inválidos (vírgula)</Label>
+              <Input
+                value={(config.countries.BR.responseMapping?.invalidValues || []).join(', ')}
+                onChange={(e) => updateMapping('BR', 'invalidValues', e.target.value)}
+                placeholder="Não encontrado, Inválido"
+                className="text-xs"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -249,17 +339,70 @@ export function CRMVerificationConfigTab() {
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Key className="h-4 w-4" />
-              Chave de API
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Key className="h-4 w-4" />
+                Chave de API
+              </Label>
+              <Input
+                type="password"
+                value={config.countries.PT.apiKey}
+                onChange={(e) => updateCountry('PT', { apiKey: e.target.value })}
+                placeholder="Chave de API"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Método HTTP</Label>
+              <Select
+                value={config.countries.PT.httpMethod || 'GET'}
+                onValueChange={(v) => updateCountry('PT', { httpMethod: v as 'GET' | 'POST' })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="POST">POST</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Separator />
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2 text-sm font-semibold">
+              <Settings2 className="h-4 w-4" />
+              Mapeamento de Resposta
             </Label>
-            <Input
-              type="password"
-              value={config.countries.PT.apiKey}
-              onChange={(e) => updateCountry('PT', { apiKey: e.target.value })}
-              placeholder="Chave de API"
-            />
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Valores Ativos (vírgula)</Label>
+                <Input
+                  value={(config.countries.PT.responseMapping?.activeValues || []).join(', ')}
+                  onChange={(e) => updateMapping('PT', 'activeValues', e.target.value)}
+                  placeholder="Activo, Ativo"
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Valores Expirados (vírgula)</Label>
+                <Input
+                  value={(config.countries.PT.responseMapping?.expiredValues || []).join(', ')}
+                  onChange={(e) => updateMapping('PT', 'expiredValues', e.target.value)}
+                  placeholder="Suspenso, Cancelado"
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Valores Inválidos (vírgula)</Label>
+                <Input
+                  value={(config.countries.PT.responseMapping?.invalidValues || []).join(', ')}
+                  onChange={(e) => updateMapping('PT', 'invalidValues', e.target.value)}
+                  placeholder="Não encontrado"
+                  className="text-xs"
+                />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
