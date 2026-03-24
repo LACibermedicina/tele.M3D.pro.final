@@ -212,6 +212,68 @@ export class CRMVerificationService {
     return match ? match[1] : '';
   }
 
+  private resolveField(data: any, path: string): string {
+    const parts = path.split('.');
+    let current = data;
+    for (const part of parts) {
+      if (current == null) return '';
+      if (Array.isArray(current) && /^\d+$/.test(part)) {
+        current = current[parseInt(part, 10)];
+      } else {
+        current = current[part];
+      }
+    }
+    return typeof current === 'string' ? current : (current != null ? String(current) : '');
+  }
+
+  private classifyStatus(
+    situation: string,
+    mapping: NonNullable<CountryConfig['responseMapping']>,
+  ): CRMVerificationResult['status'] {
+    const sitLower = situation.toLowerCase();
+    const activeValues = (mapping.activeValues || ['Regular', 'Ativo']).map(v => v.toLowerCase());
+    const expiredValues = (mapping.expiredValues || ['Cancelado', 'Cassado']).map(v => v.toLowerCase());
+    const invalidValues = (mapping.invalidValues || ['Não encontrado', 'Inválido']).map(v => v.toLowerCase());
+
+    if (activeValues.includes(sitLower)) return 'verified';
+    if (expiredValues.includes(sitLower)) return 'expired';
+    if (invalidValues.includes(sitLower)) return 'invalid';
+    return 'failed';
+  }
+
+  private extractMappedData(data: any, mapping: NonNullable<CountryConfig['responseMapping']>, apiSource: string): CRMVerificationResult['data'] {
+    return {
+      name: this.resolveField(data, mapping.nameField || 'nome') || undefined,
+      registrationNumber: this.resolveField(data, mapping.registrationField || 'numero') || undefined,
+      state: this.resolveField(data, mapping.stateField || 'uf') || undefined,
+      specialty: this.resolveField(data, mapping.specialtyField || 'especialidade') || undefined,
+      situation: this.resolveField(data, mapping.situationField || 'situacao') || undefined,
+      registrationDate: this.resolveField(data, mapping.dateField || 'data_inscricao') || undefined,
+      apiSource,
+    };
+  }
+
+  private async fetchApi(url: string, countryConfig: CountryConfig, body?: Record<string, string>): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const method = countryConfig.httpMethod || 'GET';
+    const options: RequestInit = { signal: controller.signal, method };
+
+    if (method === 'POST') {
+      options.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+      options.body = new URLSearchParams(body || {}).toString();
+    }
+
+    try {
+      const response = await fetch(method === 'GET' ? url : countryConfig.apiUrl, options);
+      clearTimeout(timeout);
+      return response;
+    } catch (err) {
+      clearTimeout(timeout);
+      throw err;
+    }
+  }
+
   private async verifyCRMBrazil(crmNumber: string, state: string, config: CRMConfig): Promise<CRMVerificationResult> {
     const brConfig = config.countries.BR;
     
@@ -219,28 +281,24 @@ export class CRMVerificationService {
       return { status: 'failed', error: 'Verificação Brasil (CFM) desabilitada' };
     }
 
+    const mapping = brConfig.responseMapping || DEFAULT_CRM_CONFIG.countries.BR.responseMapping!;
+
     try {
-      const params = new URLSearchParams({
+      const params: Record<string, string> = {
         tipo: 'crm',
         q: crmNumber,
         chave: brConfig.apiKey || '',
         destino: 'json',
-      });
-      if (state) {
-        params.set('uf', state);
-      }
+      };
+      if (state) params.uf = state;
 
-      const url = `${brConfig.apiUrl}?${params.toString()}`;
-      
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
+      const queryString = new URLSearchParams(params).toString();
+      const url = `${brConfig.apiUrl}?${queryString}`;
 
       let response: Response;
       try {
-        response = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeout);
+        response = await this.fetchApi(url, brConfig, params);
       } catch (fetchError: any) {
-        clearTimeout(timeout);
         if (brConfig.apiKey) {
           return { status: 'failed', error: 'API CFM indisponível. Verifique a chave de API e tente novamente.' };
         }
@@ -255,37 +313,13 @@ export class CRMVerificationService {
       }
 
       const data = await response.json();
-      
-      if (data.item && data.item.length > 0) {
-        const item = data.item[0];
-        const mapping = brConfig.responseMapping || {};
-        const situation = item.situacao || '';
-        const situationLower = situation.toLowerCase();
+      const situationPath = mapping.situationField || 'item.0.situacao';
+      const situation = this.resolveField(data, situationPath);
 
-        let verificationStatus: CRMVerificationResult['status'] = 'failed';
-        const activeValues = (mapping.activeValues || ['Regular', 'Ativo']).map(v => v.toLowerCase());
-        const expiredValues = (mapping.expiredValues || ['Cancelado', 'Cassado']).map(v => v.toLowerCase());
-        const invalidValues = (mapping.invalidValues || ['Não encontrado', 'Inválido']).map(v => v.toLowerCase());
-
-        if (activeValues.includes(situationLower)) {
-          verificationStatus = 'verified';
-        } else if (expiredValues.includes(situationLower)) {
-          verificationStatus = 'expired';
-        } else if (invalidValues.includes(situationLower)) {
-          verificationStatus = 'invalid';
-        }
-
+      if (situation || this.resolveField(data, mapping.nameField || 'item.0.nome')) {
         return {
-          status: verificationStatus,
-          data: {
-            name: item.nome,
-            registrationNumber: item.numero,
-            state: item.uf,
-            specialty: item.especialidade,
-            situation: item.situacao,
-            registrationDate: item.data_inscricao,
-            apiSource: 'CFM',
-          },
+          status: this.classifyStatus(situation, mapping),
+          data: this.extractMappedData(data, mapping, 'CFM'),
         };
       }
 
@@ -317,46 +351,29 @@ export class CRMVerificationService {
       };
     }
 
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
+    const mapping = ptConfig.responseMapping || DEFAULT_CRM_CONFIG.countries.PT.responseMapping!;
 
-      const response = await fetch(`${ptConfig.apiUrl}?numero=${encodeURIComponent(crmNumber)}&key=${encodeURIComponent(ptConfig.apiKey)}`, {
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
+    try {
+      const params: Record<string, string> = {
+        numero: crmNumber,
+        key: ptConfig.apiKey,
+      };
+      const queryString = new URLSearchParams(params).toString();
+      const url = `${ptConfig.apiUrl}?${queryString}`;
+
+      const response = await this.fetchApi(url, ptConfig, params);
 
       if (!response.ok) {
         return { status: 'failed', error: `API Ordem dos Médicos retornou status ${response.status}` };
       }
 
       const data = await response.json();
-      const mapping = ptConfig.responseMapping || {};
-      const situation = data.situacao || '';
-      const situationLower = situation.toLowerCase();
-
-      let verificationStatus: CRMVerificationResult['status'] = 'failed';
-      const activeValues = (mapping.activeValues || ['Activo', 'Ativo']).map(v => v.toLowerCase());
-      const expiredValues = (mapping.expiredValues || ['Suspenso', 'Cancelado']).map(v => v.toLowerCase());
-      const invalidValues = (mapping.invalidValues || ['Não encontrado']).map(v => v.toLowerCase());
-
-      if (activeValues.includes(situationLower)) {
-        verificationStatus = 'verified';
-      } else if (expiredValues.includes(situationLower)) {
-        verificationStatus = 'expired';
-      } else if (invalidValues.includes(situationLower)) {
-        verificationStatus = 'invalid';
-      }
+      const situationPath = mapping.situationField || 'situacao';
+      const situation = this.resolveField(data, situationPath);
 
       return {
-        status: verificationStatus,
-        data: {
-          name: data.nome,
-          registrationNumber: data.numero,
-          situation: data.situacao,
-          specialty: data.especialidade,
-          apiSource: 'ordem_medicos_pt',
-        },
+        status: this.classifyStatus(situation, mapping),
+        data: this.extractMappedData(data, mapping, 'ordem_medicos_pt'),
       };
     } catch (error: unknown) {
       const errMsg = error instanceof Error ? error.message : 'Erro desconhecido';
