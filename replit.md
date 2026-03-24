@@ -13,7 +13,7 @@ The application is built with an Express.js backend and a React frontend, utiliz
 
 **UI/UX Decisions:**
 - **Navigation:** Adaptive navigation for desktop (dropdowns, icon links) and mobile (slide-out sheet).
-- **Theming:** Distinctive dark indigo/slate gradient for admin, glass morphism for desktop windows (`backdrop-blur`, `hsla` backgrounds).
+- **Theming:** Distinctive dark indigo/slate gradient for admin, glass morphism for desktop windows (`backdrop-blur`, `hsla` backgrounds). Per-role theme config (accent, panel bg, text, titlebar, icon colors for admin/doctor/patient/pharmacist/researcher) persisted in `layout_settings` table (category `theme`, keys `theme_{field}_{role}`), applied at runtime via CSS variables in `LayoutSettingsContext`. Global desktop opacity sliders (`desktop_glass_opacity`, `desktop_titlebar_opacity`) also in `layout_settings`.
 - **Dashboards:** Interactive, draggable panels with minimization to a bottom taskbar dock. Role-based widgets are displayed in the `DesktopHome` window.
 - **Desktop OS-Style Environment:** macOS-inspired windowed environment with draggable, resizable, minimizable, and closable windows.
 - **Voice Assistant:** IAM3D voice assistant with context-aware overlays.
