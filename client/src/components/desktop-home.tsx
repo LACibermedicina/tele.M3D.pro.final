@@ -153,7 +153,7 @@ function NotepadWidget() {
         <StickyNote className="w-4 h-4 text-emerald-400" />
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Bloco de Notas</h3>
         <button
-          className="ml-auto w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+          className="ml-auto w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-slate-600 dark:text-slate-300 hover:text-white transition-colors"
           onClick={() => createMutation.mutate({ title: "", content: "" })}
         >
           <Plus className="w-3 h-3" />
@@ -214,7 +214,7 @@ function NotepadWidget() {
                 </div>
                 {isEditing ? (
                   <textarea
-                    className="w-full h-16 bg-transparent text-[11px] text-slate-300 placeholder:text-slate-500 border-0 outline-none resize-none"
+                    className="w-full h-16 bg-transparent text-[11px] text-slate-700 dark:text-slate-300 placeholder:text-slate-500 border-0 outline-none resize-none"
                     value={editContent}
                     placeholder="Conteúdo..."
                     onChange={(e) => { setEditContent(e.target.value); handleAutoSave(note.id, 'content', e.target.value); }}

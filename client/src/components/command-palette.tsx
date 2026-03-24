@@ -420,6 +420,11 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
 
+      if (activeTab === 'search') {
+        if (e.key === 'Escape') onClose();
+        return;
+      }
+
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
@@ -443,7 +448,7 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, selectedIndex, filteredCommands, onClose]);
+  }, [isOpen, selectedIndex, filteredCommands, onClose, activeTab]);
 
   // Reset search when opening
   useEffect(() => {
