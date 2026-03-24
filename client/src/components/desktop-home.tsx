@@ -25,7 +25,7 @@ interface UserNote {
   title: string;
   content: string;
   color: string;
-  isPinned?: boolean;
+  pinned?: boolean;
 }
 
 interface NoteCreateData {
@@ -38,7 +38,7 @@ interface NoteUpdateData {
   title?: string;
   content?: string;
   color?: string;
-  isPinned?: boolean;
+  pinned?: boolean;
 }
 
 interface DoctorInfo {
@@ -283,7 +283,7 @@ function NotepadWidget() {
 }
 
 function AdminStatsWidget() {
-  const { data: stats } = useQuery<{ totalPatients?: number; totalAppointments?: number; totalDoctors?: number; pendingAppointments?: number }>({
+  const { data: stats } = useQuery<{ totalPatients?: number; totalAppointments?: number; totalDoctors?: number; pendingAppointments?: number; totalUsers?: number; activeConsultations?: number }>({
     queryKey: ["/api/admin/stats"],
   });
 

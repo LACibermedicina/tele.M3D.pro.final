@@ -15354,7 +15354,7 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     try {
       const { id } = req.params;
       const { title, content, color, pinned } = req.body;
-      const updates: Record<string, any> = { updatedAt: new Date() };
+      const updates: Record<string, string | boolean | Date> = { updatedAt: new Date() };
       if (typeof title === 'string') updates.title = title;
       if (typeof content === 'string') updates.content = content;
       if (typeof color === 'string') updates.color = color;
@@ -15487,7 +15487,7 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       }
       const role = req.user!.role;
       const userId = req.user!.id;
-      const results: any = { patients: [], appointments: [], records: [], doctors: [], prescriptions: [] };
+      const results: { patients: { id: string; name: string; email?: string }[]; appointments: { id: string; patientId?: string; doctorId?: string; scheduledAt?: string; type?: string; status?: string }[]; records: { id: string; diagnosis?: string; patientId?: string; createdAt?: Date }[]; doctors: { id: string; name: string; specialization?: string; isOnline?: boolean }[]; prescriptions: { id: string; prescriptionNumber?: string; diagnosis?: string; status?: string; patientId?: string }[] } = { patients: [], appointments: [], records: [], doctors: [], prescriptions: [] };
 
       if (role === 'admin') {
         const patientResults = await db.select({
