@@ -15486,23 +15486,90 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         return res.json({ patients: [], appointments: [], records: [], doctors: [] });
       }
       const role = req.user!.role;
+      const userId = req.user!.id;
       const results: any = { patients: [], appointments: [], records: [], doctors: [] };
 
-      if (role === 'doctor' || role === 'admin') {
+      if (role === 'admin') {
         const patientResults = await db.select({
           id: patients.id,
           name: patients.name,
           email: patients.email,
-          phone: patients.phone,
         })
           .from(patients)
           .where(or(
             ilike(patients.name, `%${q}%`),
-            ilike(patients.email, `%${q}%`),
-            ilike(patients.phone, `%${q}%`)
+            ilike(patients.email, `%${q}%`)
           ))
           .limit(10);
         results.patients = patientResults;
+
+        const recordResults = await db.select({
+          id: medicalRecords.id,
+          patientId: medicalRecords.patientId,
+          diagnosis: medicalRecords.diagnosis,
+          createdAt: medicalRecords.createdAt,
+        })
+          .from(medicalRecords)
+          .where(ilike(medicalRecords.diagnosis, `%${q}%`))
+          .limit(10);
+        results.records = recordResults;
+      } else if (role === 'doctor') {
+        const linkedPatientIds = await db.select({ patientId: appointments.patientId })
+          .from(appointments)
+          .where(eq(appointments.doctorId, userId));
+        const uniquePatientIds = [...new Set(linkedPatientIds.map(a => a.patientId))];
+
+        if (uniquePatientIds.length > 0) {
+          const patientResults = await db.select({
+            id: patients.id,
+            name: patients.name,
+            email: patients.email,
+          })
+            .from(patients)
+            .where(and(
+              inArray(patients.id, uniquePatientIds),
+              or(
+                ilike(patients.name, `%${q}%`),
+                ilike(patients.email, `%${q}%`)
+              )
+            ))
+            .limit(10);
+          results.patients = patientResults;
+
+          const recordResults = await db.select({
+            id: medicalRecords.id,
+            patientId: medicalRecords.patientId,
+            diagnosis: medicalRecords.diagnosis,
+            createdAt: medicalRecords.createdAt,
+          })
+            .from(medicalRecords)
+            .where(and(
+              inArray(medicalRecords.patientId, uniquePatientIds),
+              ilike(medicalRecords.diagnosis, `%${q}%`)
+            ))
+            .limit(10);
+          results.records = recordResults;
+        }
+      } else if (role === 'patient') {
+        const patientRecord = await db.select({ id: patients.id })
+          .from(patients)
+          .where(eq(patients.userId, userId))
+          .limit(1);
+        if (patientRecord.length > 0) {
+          const pid = patientRecord[0].id;
+          const ownRecords = await db.select({
+            id: medicalRecords.id,
+            diagnosis: medicalRecords.diagnosis,
+            createdAt: medicalRecords.createdAt,
+          })
+            .from(medicalRecords)
+            .where(and(
+              eq(medicalRecords.patientId, pid),
+              ilike(medicalRecords.diagnosis, `%${q}%`)
+            ))
+            .limit(10);
+          results.records = ownRecords;
+        }
       }
 
       const doctorResults = await db.select({
@@ -15521,19 +15588,6 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         ))
         .limit(10);
       results.doctors = doctorResults;
-
-      if (role === 'doctor' || role === 'admin') {
-        const recordResults = await db.select({
-          id: medicalRecords.id,
-          patientId: medicalRecords.patientId,
-          diagnosis: medicalRecords.diagnosis,
-          createdAt: medicalRecords.createdAt,
-        })
-          .from(medicalRecords)
-          .where(ilike(medicalRecords.diagnosis, `%${q}%`))
-          .limit(10);
-        results.records = recordResults;
-      }
 
       res.json(results);
     } catch (error) {
