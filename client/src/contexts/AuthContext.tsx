@@ -115,13 +115,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       disconnectAllMediaServices();
       await apiRequest('POST', '/api/auth/logout');
-      setUser(null);
-      queryClient.clear();
     } catch (error) {
       console.error('Logout failed:', error);
-      disconnectAllMediaServices();
+    } finally {
       setUser(null);
       queryClient.clear();
+      window.location.replace('/login');
     }
   };
 

@@ -1692,6 +1692,21 @@ export default function Header() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleLogout}
+                      className="hidden md:flex items-center gap-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-2 py-1 h-8 rounded-lg transition-colors"
+                      data-testid="button-header-logout-direct"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span className="text-xs font-medium">Sair</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Encerrar sessão</TooltipContent>
+                </Tooltip>
               </>
             ) : (
               <div className="hidden md:flex items-center space-x-1">
