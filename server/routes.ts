@@ -15483,11 +15483,11 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     try {
       const q = (req.query.q as string || '').trim().toLowerCase();
       if (!q || q.length < 2) {
-        return res.json({ patients: [], appointments: [], records: [], doctors: [] });
+        return res.json({ patients: [], appointments: [], records: [], doctors: [], prescriptions: [] });
       }
       const role = req.user!.role;
       const userId = req.user!.id;
-      const results: any = { patients: [], appointments: [], records: [], doctors: [] };
+      const results: any = { patients: [], appointments: [], records: [], doctors: [], prescriptions: [] };
 
       if (role === 'admin') {
         const patientResults = await db.select({
@@ -15513,6 +15513,21 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
           .where(ilike(medicalRecords.diagnosis, `%${q}%`))
           .limit(10);
         results.records = recordResults;
+
+        const adminPrescriptions = await db.select({
+          id: prescriptions.id,
+          patientId: prescriptions.patientId,
+          prescriptionNumber: prescriptions.prescriptionNumber,
+          diagnosis: prescriptions.diagnosis,
+          status: prescriptions.status,
+        })
+          .from(prescriptions)
+          .where(or(
+            ilike(prescriptions.prescriptionNumber, `%${q}%`),
+            ilike(prescriptions.diagnosis, `%${q}%`)
+          ))
+          .limit(10);
+        results.prescriptions = adminPrescriptions;
       } else if (role === 'doctor') {
         const linkedPatientIds = await db.select({ patientId: appointments.patientId })
           .from(appointments)
@@ -15549,6 +15564,24 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
             ))
             .limit(10);
           results.records = recordResults;
+
+          const docPrescriptions = await db.select({
+            id: prescriptions.id,
+            patientId: prescriptions.patientId,
+            prescriptionNumber: prescriptions.prescriptionNumber,
+            diagnosis: prescriptions.diagnosis,
+            status: prescriptions.status,
+          })
+            .from(prescriptions)
+            .where(and(
+              eq(prescriptions.doctorId, userId),
+              or(
+                ilike(prescriptions.prescriptionNumber, `%${q}%`),
+                ilike(prescriptions.diagnosis, `%${q}%`)
+              )
+            ))
+            .limit(10);
+          results.prescriptions = docPrescriptions;
         }
       } else if (role === 'patient') {
         const patientRecord = await db.select({ id: patients.id })
@@ -15569,6 +15602,23 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
             ))
             .limit(10);
           results.records = ownRecords;
+
+          const patPrescriptions = await db.select({
+            id: prescriptions.id,
+            prescriptionNumber: prescriptions.prescriptionNumber,
+            diagnosis: prescriptions.diagnosis,
+            status: prescriptions.status,
+          })
+            .from(prescriptions)
+            .where(and(
+              eq(prescriptions.patientId, pid),
+              or(
+                ilike(prescriptions.prescriptionNumber, `%${q}%`),
+                ilike(prescriptions.diagnosis, `%${q}%`)
+              )
+            ))
+            .limit(10);
+          results.prescriptions = patPrescriptions;
         }
       }
 

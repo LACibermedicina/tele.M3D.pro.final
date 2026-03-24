@@ -54,13 +54,14 @@ interface SearchResults {
   doctors: any[];
   records: any[];
   appointments: any[];
+  prescriptions: any[];
 }
 
 export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', initialTab = 'commands' }: CommandPaletteProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'commands' | 'search'>('commands');
-  const [searchResults, setSearchResults] = useState<SearchResults>({ patients: [], doctors: [], records: [], appointments: [] });
+  const [searchResults, setSearchResults] = useState<SearchResults>({ patients: [], doctors: [], records: [], appointments: [], prescriptions: [] });
   const [isSearching, setIsSearching] = useState(false);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [, setLocation] = useLocation();
@@ -450,11 +451,11 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
       setSearchQuery('');
       setSelectedIndex(0);
       setActiveTab(initialTab);
-      setSearchResults({ patients: [], doctors: [], records: [], appointments: [] });
+      setSearchResults({ patients: [], doctors: [], records: [], appointments: [], prescriptions: [] });
     }
   }, [isOpen]);
 
-  const totalSearchResults = searchResults.patients.length + searchResults.doctors.length + searchResults.records.length + searchResults.appointments.length;
+  const totalSearchResults = searchResults.patients.length + searchResults.doctors.length + searchResults.records.length + searchResults.appointments.length + searchResults.prescriptions.length;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -620,6 +621,22 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{r.diagnosis || "Prontuário"}</p>
                           <p className="text-xs text-muted-foreground">{r.createdAt ? new Date(r.createdAt).toLocaleDateString("pt-BR") : ""}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {!isSearching && searchResults.prescriptions.length > 0 && (
+                <div className="mb-3">
+                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">Prescrições</div>
+                  <div className="space-y-1">
+                    {searchResults.prescriptions.map((p: any) => (
+                      <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted cursor-pointer" onClick={() => { onClose(); setLocation(`/prescriptions`); }}>
+                        <PillBottle className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{p.prescriptionNumber || "Prescrição"}</p>
+                          <p className="text-xs text-muted-foreground">{p.diagnosis || p.status || ""}</p>
                         </div>
                       </div>
                     ))}

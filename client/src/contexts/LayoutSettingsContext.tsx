@@ -1,8 +1,14 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type MobileMenuStyle = "slide" | "sidebar" | "bottom";
 export type NavDockMode = "top" | "left" | "right" | "bottom" | "floating";
+
+export interface RoleThemeConfig {
+  accentColor?: string;
+  glassOpacity?: number;
+}
 
 export const LAYOUT_DEFAULTS = {
   navDockMode: "bottom" as NavDockMode,
@@ -29,6 +35,7 @@ interface LayoutSettings {
   navFloatingPosition: { x: number; y: number };
   setNavFloatingPosition: (pos: { x: number; y: number }) => void;
   resetAllLayout: () => void;
+  roleThemeConfig: Record<string, RoleThemeConfig>;
 }
 
 const LayoutSettingsContext = createContext<LayoutSettings>({
@@ -40,9 +47,11 @@ const LayoutSettingsContext = createContext<LayoutSettings>({
   navFloatingPosition: { x: 100, y: 100 },
   setNavFloatingPosition: () => {},
   resetAllLayout: () => {},
+  roleThemeConfig: {},
 });
 
 export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [navDockMode, setNavDockModeState] = useState<NavDockMode>(() => {
@@ -117,6 +126,47 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
     return "slide";
   })();
 
+  const roleThemeConfig: Record<string, RoleThemeConfig> = (() => {
+    if (!layoutData) return {};
+    const config: Record<string, RoleThemeConfig> = {};
+    layoutData.forEach((s: any) => {
+      if (s.category === 'theme') {
+        const accentMatch = s.settingKey?.match(/^accent_color_(\w+)$/);
+        if (accentMatch) {
+          const role = accentMatch[1];
+          if (!config[role]) config[role] = {};
+          config[role].accentColor = s.settingValue;
+        }
+        const roleOpacityMatch = s.settingKey?.match(/^glass_opacity_(\w+)$/);
+        if (roleOpacityMatch) {
+          const role = roleOpacityMatch[1];
+          if (!config[role]) config[role] = {};
+          config[role].glassOpacity = parseFloat(s.settingValue) / 100;
+        }
+        if (s.settingKey === 'desktop_glass_opacity') {
+          if (!config['_global']) config['_global'] = {};
+          config['_global'].glassOpacity = parseFloat(s.settingValue) / 100;
+        }
+      }
+    });
+    return config;
+  })();
+
+  useEffect(() => {
+    const userRole = user?.role;
+    const cfg = (userRole && roleThemeConfig[userRole]) ? roleThemeConfig[userRole] : roleThemeConfig['_global'];
+    if (!cfg) return;
+    if (cfg.accentColor) {
+      document.documentElement.style.setProperty('--role-accent-color', cfg.accentColor);
+    }
+    if (cfg.glassOpacity !== undefined && !isNaN(cfg.glassOpacity)) {
+      const opacity = Math.max(0.1, Math.min(1, cfg.glassOpacity));
+      document.documentElement.style.setProperty('--card-glass', `hsla(230, 21%, 18%, ${opacity})`);
+      document.documentElement.style.setProperty('--bg-glass', `hsla(230, 21%, 11%, ${Math.max(0, opacity - 0.05)})`);
+      document.documentElement.style.setProperty('--footer-glass', `hsla(230, 21%, 13%, ${Math.min(1, opacity + 0.05)})`);
+    }
+  }, [roleThemeConfig, user?.role]);
+
   return (
     <LayoutSettingsContext.Provider value={{
       mobileMenuStyle,
@@ -127,6 +177,7 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
       navFloatingPosition,
       setNavFloatingPosition,
       resetAllLayout,
+      roleThemeConfig,
     }}>
       {children}
     </LayoutSettingsContext.Provider>
