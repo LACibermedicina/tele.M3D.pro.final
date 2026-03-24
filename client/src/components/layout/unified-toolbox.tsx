@@ -16,7 +16,7 @@ import {
   ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield,
   Stethoscope, StickyNote, Video, Pill, Activity, AlertCircle,
   Microscope, Wallet, FileBarChart, Gem, TrendingUp, Coffee,
-  HeartPulse, CreditCard, UserPlus, ExternalLink, RotateCcw,
+  HeartPulse, CreditCard, UserPlus, ExternalLink, RotateCcw, LogOut,
   type LucideIcon
 } from "lucide-react";
 
@@ -214,7 +214,17 @@ const STORAGE_KEY_DOCK = "unified_toolbox_dock_mode";
 const STORAGE_KEY_VISIBLE = "unified_toolbox_visible";
 
 export default function UnifiedToolbox() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = useCallback(async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch (_) {
+      setIsLoggingOut(false);
+    }
+  }, [logout]);
   const { t } = useTranslation();
   const [location, navigate] = useLocation();
   const { navigateToWindow, isDesktopMode: isDesktopNav } = useDesktopNavigation();
@@ -520,6 +530,22 @@ export default function UnifiedToolbox() {
                   </TooltipTrigger>
                   <TooltipContent side={isVertical ? (dockMode === "left" ? "right" : "left") : "bottom"}>
                     <p>Restaurar posições padrão</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Separator className="my-1" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs w-full transition-colors text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleLogout}
+                      disabled={isLoggingOut}
+                    >
+                      <LogOut className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{isLoggingOut ? "Saindo..." : "Sair / Encerrar Sessão"}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side={isVertical ? (dockMode === "left" ? "right" : "left") : "bottom"}>
+                    <p>Encerrar sessão e sair</p>
                   </TooltipContent>
                 </Tooltip>
               </>

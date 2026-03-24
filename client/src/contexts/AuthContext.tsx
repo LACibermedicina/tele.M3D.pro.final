@@ -112,16 +112,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    try {
-      disconnectAllMediaServices();
-      await apiRequest('POST', '/api/auth/logout');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    } finally {
-      setUser(null);
-      queryClient.clear();
-      window.location.replace('/login');
-    }
+    const cleanupTasks: Promise<unknown>[] = [
+      Promise.resolve().then(() => {
+        try { disconnectAllMediaServices(); } catch (_) { /* ignore */ }
+      }),
+      apiRequest('POST', '/api/auth/logout').catch((err) => {
+        console.warn('Server logout error (non-blocking):', err);
+      }),
+    ];
+
+    await Promise.allSettled(cleanupTasks);
+
+    setUser(null);
+    queryClient.clear();
+    window.location.replace('/login');
   };
 
   const updateUser = (userData: Partial<User>) => {

@@ -10628,14 +10628,43 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
   });
 
   // User Logout
-  app.post('/api/auth/logout', (req, res) => {
+  app.post('/api/auth/logout', async (req: Request, res: Response) => {
     try {
-      // Clear auth cookie
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+
+      if (userId && userRole === 'doctor') {
+        try {
+          await db.update(users).set({
+            onDutyUntil: null,
+            onDutyStartedAt: null,
+            isOnline: false,
+            availableForImmediate: false,
+          }).where(eq(users.id, userId));
+
+          const activeConsultation = await db.query.videoConsultations.findFirst({
+            where: and(
+              eq(videoConsultations.doctorId, userId),
+              eq(videoConsultations.status, 'active')
+            )
+          });
+          if (activeConsultation) {
+            await db.update(videoConsultations).set({
+              status: 'completed',
+              endTime: new Date(),
+            }).where(eq(videoConsultations.id, activeConsultation.id));
+          }
+        } catch (cleanupError) {
+          console.warn('Doctor session cleanup error (non-blocking):', cleanupError);
+        }
+      }
+
       res.clearCookie('authToken');
       res.json({ message: 'Logout successful' });
     } catch (error) {
       console.error('Logout error:', error);
-      res.status(500).json({ message: 'Logout failed' });
+      res.clearCookie('authToken');
+      res.json({ message: 'Logout successful' });
     }
   });
 
