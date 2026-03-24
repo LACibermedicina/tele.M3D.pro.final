@@ -303,31 +303,31 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
           {doctorCrmStatus?.status === 'verified' && (
             <Badge variant="outline" className="text-green-600 border-green-600">
               <ShieldCheck className="h-3 w-3 mr-1" />
-              CRM Verificado
+              Registro Verificado
             </Badge>
           )}
           {doctorCrmStatus?.status === 'pending' && (
             <Badge variant="outline" className="text-yellow-500 border-yellow-500">
               <ShieldAlert className="h-3 w-3 mr-1" />
-              CRM Pendente
+              Verificação Pendente
             </Badge>
           )}
           {(doctorCrmStatus?.status === 'failed' || doctorCrmStatus?.status === 'unverified') && (
             <Badge variant="outline" className="text-red-500 border-red-500">
               <ShieldAlert className="h-3 w-3 mr-1" />
-              CRM Não Verificado
+              Registro Não Verificado
             </Badge>
           )}
           {doctorCrmStatus?.status === 'invalid' && (
             <Badge variant="outline" className="text-orange-500 border-orange-500">
               <ShieldAlert className="h-3 w-3 mr-1" />
-              CRM Inválido
+              Registro Inválido
             </Badge>
           )}
           {doctorCrmStatus?.status === 'expired' && (
             <Badge variant="outline" className="text-amber-500 border-amber-500">
               <ShieldAlert className="h-3 w-3 mr-1" />
-              CRM Expirado
+              Registro Expirado
             </Badge>
           )}
         </div>

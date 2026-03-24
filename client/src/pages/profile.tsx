@@ -497,7 +497,7 @@ export default function Profile() {
                           {crmStatus.status === 'verified' && (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
                               <ShieldCheck className="h-3.5 w-3.5" />
-                              CRM Verificado
+                              Registro Verificado
                             </span>
                           )}
                           {crmStatus.status === 'pending' && (
@@ -515,13 +515,13 @@ export default function Profile() {
                           {crmStatus.status === 'invalid' && (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
                               <ShieldAlert className="h-3.5 w-3.5" />
-                              CRM Inválido
+                              Registro Inválido
                             </span>
                           )}
                           {crmStatus.status === 'expired' && (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30">
                               <ShieldAlert className="h-3.5 w-3.5" />
-                              CRM Expirado
+                              Registro Expirado
                             </span>
                           )}
                           {crmStatus.status === 'unverified' && (
@@ -536,7 +536,7 @@ export default function Profile() {
                     
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="space-y-2">
-                        <Label htmlFor="medicalLicense">Número CRM</Label>
+                        <Label htmlFor="medicalLicense">Nº de Registro Profissional</Label>
                         <Input
                           id="medicalLicense"
                           name="medicalLicense"
@@ -548,7 +548,7 @@ export default function Profile() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="medicalLicenseState">UF do CRM</Label>
+                        <Label htmlFor="medicalLicenseState">UF do Registro</Label>
                         <Input
                           id="medicalLicenseState"
                           name="medicalLicenseState"
@@ -590,7 +590,7 @@ export default function Profile() {
                           ) : (
                             <>
                               <ShieldCheck className="h-4 w-4 mr-2" />
-                              {crmStatus?.status === 'verified' ? 'Reverificar CRM' : 'Verificar Registro'}
+                              {crmStatus?.status === 'verified' ? 'Reverificar Registro' : 'Verificar Registro'}
                             </>
                           )}
                         </Button>

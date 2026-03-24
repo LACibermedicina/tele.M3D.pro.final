@@ -280,7 +280,7 @@ export class PDFGeneratorService {
         
         <div class="doctor-info">
           <div class="doctor-name">${data.doctorName}</div>
-          <div class="doctor-crm">CRM ${data.doctorCRM}/${data.doctorCRMState}${data.crmVerified ? ' ✓ Verificado' : ''}</div>
+          <div class="doctor-crm">Nº Registro: ${data.doctorCRM}/${data.doctorCRMState}${data.crmVerified ? ' ✓ Registro Verificado' : ''}</div>
         </div>
         
         <div class="patient-info">
@@ -359,7 +359,7 @@ export class PDFGeneratorService {
             ` : ''}
             <div class="signature-line"></div>
             <div class="signature-name">${data.doctorName}</div>
-            <div class="signature-crm">CRM ${data.doctorCRM}/${data.doctorCRMState}${data.crmVerified ? ' ✓ Verificado' : ''}</div>
+            <div class="signature-crm">Nº Registro: ${data.doctorCRM}/${data.doctorCRMState}${data.crmVerified ? ' ✓ Registro Verificado' : ''}</div>
           </div>
         </div>
         
@@ -410,7 +410,7 @@ export class PDFGeneratorService {
         
         <div class="signature">
           <p>Médico: ${examData.doctorName}</p>
-          <p>CRM: ${examData.doctorCRM}/${examData.doctorCRMState}${examData.crmVerified ? ' ✓ Verificado' : ''}</p>
+          <p>Nº Registro: ${examData.doctorCRM}/${examData.doctorCRMState}${examData.crmVerified ? ' ✓ Registro Verificado' : ''}</p>
         </div>
       </body>
       </html>
@@ -454,7 +454,7 @@ export class PDFGeneratorService {
           <br/><br/>
           <p>_________________________________</p>
           <p><strong>${certificateData.doctorName}</strong></p>
-          <p>CRM ${certificateData.doctorCRM}/${certificateData.doctorCRMState}${certificateData.crmVerified ? ' ✓ Verificado' : ''}</p>
+          <p>Nº Registro: ${certificateData.doctorCRM}/${certificateData.doctorCRMState}${certificateData.crmVerified ? ' ✓ Registro Verificado' : ''}</p>
         </div>
       </body>
       </html>
