@@ -144,8 +144,8 @@ export default function DesktopWindowComponent({ windowData, children }: Desktop
         ref={dragRef}
         className={`flex items-center h-9 px-3 shrink-0 select-none ${
           isActive
-            ? "bg-white/[0.08]"
-            : "bg-white/[0.04]"
+            ? "bg-white/[0.14] border-b border-white/10"
+            : "bg-white/[0.07] border-b border-white/5"
         }`}
         style={{ cursor: isDragging ? "grabbing" : "grab" }}
         onMouseDown={handleMouseDown}

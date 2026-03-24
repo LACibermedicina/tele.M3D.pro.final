@@ -24,7 +24,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers, profileMergeAuditLogs, prescriptionShares, labOrders, hospitalReferrals, clinicalAssets, susProntuarios } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers, profileMergeAuditLogs, prescriptionShares, labOrders, hospitalReferrals, clinicalAssets, susProntuarios, userNotes } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
@@ -103,6 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migratePostConsultationEditColumns();
   await migrateSusProntuariosTable();
   await migratePatientFriendlyColumns();
+  await migrateUserNotesTable();
   await initStripeSync();
   
   // Initialize default doctor if not exists and get the actual ID
@@ -15314,6 +15315,76 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
   });
 
   // ======================
+  // USER NOTES API ROUTES
+  // ======================
+
+  app.get('/api/user-notes', requireAuth, async (req, res) => {
+    try {
+      const note = await db.select()
+        .from(userNotes)
+        .where(eq(userNotes.userId, req.user!.id))
+        .limit(1);
+      res.json(note[0] || { content: "" });
+    } catch (error) {
+      console.error('Error fetching user notes:', error);
+      res.json({ content: "" });
+    }
+  });
+
+  app.put('/api/user-notes', requireAuth, async (req, res) => {
+    try {
+      const { content } = req.body;
+      if (typeof content !== 'string') {
+        return res.status(400).json({ message: 'Content must be a string' });
+      }
+      const existing = await db.select()
+        .from(userNotes)
+        .where(eq(userNotes.userId, req.user!.id))
+        .limit(1);
+      if (existing.length > 0) {
+        const updated = await db.update(userNotes)
+          .set({ content, updatedAt: new Date() })
+          .where(eq(userNotes.userId, req.user!.id))
+          .returning();
+        return res.json(updated[0]);
+      }
+      const created = await db.insert(userNotes)
+        .values({ userId: req.user!.id, content })
+        .returning();
+      res.json(created[0]);
+    } catch (error) {
+      console.error('Error saving user notes:', error);
+      res.status(500).json({ message: 'Failed to save notes' });
+    }
+  });
+
+  // ======================
+  // AVAILABLE DOCTORS API (for patients)
+  // ======================
+
+  app.get('/api/doctors/available', async (req, res) => {
+    try {
+      const doctors = await db.select({
+        id: users.id,
+        name: users.name,
+        specialization: users.specialization,
+        isOnline: users.isOnline,
+        availableForImmediate: users.availableForImmediate,
+      })
+        .from(users)
+        .where(and(
+          eq(users.role, 'doctor'),
+          eq(users.isOnline, true),
+          eq(users.availableForImmediate, true),
+        ));
+      res.json(doctors);
+    } catch (error) {
+      console.error('Error fetching available doctors:', error);
+      res.json([]);
+    }
+  });
+
+  // ======================
   // LAYOUT SETTINGS API ROUTES
   // ======================
 
@@ -24247,5 +24318,22 @@ async function migrateSusProntuariosTable() {
     console.log('✓ SUS prontuários table migrated successfully');
   } catch (error) {
     console.error('Failed to migrate SUS prontuários table:', error);
+  }
+}
+
+async function migrateUserNotesTable() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_notes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id),
+        content TEXT NOT NULL DEFAULT '',
+        updated_at TIMESTAMP DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS user_notes_user_id_idx ON user_notes(user_id)`);
+    console.log('✓ User notes table migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate user notes table:', error);
   }
 }

@@ -873,16 +873,16 @@ button, input, select, textarea {
 }
 
 :root {
-  --card-glass: hsla(0, 0%, 100%, 0.85);
-  --bg-glass: hsla(45, 30%, 98%, 0.82);
-  --footer-glass: hsla(0, 0%, 100%, 0.7);
-  --border-glass: hsla(40, 20%, 88%, 0.5);
+  --card-glass: hsla(0, 0%, 100%, 0.72);
+  --bg-glass: hsla(45, 30%, 98%, 0.70);
+  --footer-glass: hsla(0, 0%, 100%, 0.60);
+  --border-glass: hsla(40, 20%, 88%, 0.45);
 }
 .dark {
-  --card-glass: hsla(224, 71%, 8%, 0.85);
-  --bg-glass: hsla(224, 71%, 4%, 0.82);
-  --footer-glass: hsla(224, 71%, 8%, 0.7);
-  --border-glass: hsla(217, 33%, 17%, 0.5);
+  --card-glass: hsla(224, 71%, 8%, 0.72);
+  --bg-glass: hsla(224, 71%, 4%, 0.70);
+  --footer-glass: hsla(224, 71%, 8%, 0.60);
+  --border-glass: hsla(217, 33%, 17%, 0.45);
 }
 
 @media (min-width: 768px) {

@@ -2493,6 +2493,106 @@ function LayoutThemeTab() {
           </div>
         </CardContent>
       </Card>
+
+      <Card className="bg-white/5 border-white/10">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Eye className="h-5 w-5" />
+            Tema por Perfil de Usuário
+          </CardTitle>
+          <CardDescription className="text-gray-400">
+            Configure cores e aparência distintas para cada papel de usuário no sistema.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {[
+            { role: 'admin', label: 'Administrador', desc: 'Tema escuro padrão com gradiente indigo/slate', color: 'bg-indigo-500' },
+            { role: 'doctor', label: 'Médico', desc: 'Tons profissionais e confiáveis', color: 'bg-sky-500' },
+            { role: 'patient', label: 'Paciente', desc: 'Interface acessível e acolhedora', color: 'bg-emerald-500' },
+            { role: 'pharmacist', label: 'Farmacêutico', desc: 'Cores de confiança e saúde', color: 'bg-teal-500' },
+          ].map((item) => {
+            const settingKey = `theme_accent_${item.role}`;
+            const currentSetting = layoutSettings?.find((s: any) => s.settingKey === settingKey);
+            const currentColor = currentSetting?.settingValue || '';
+            return (
+              <div key={item.role} className="flex items-center gap-4 p-3 rounded-lg bg-white/[0.04] border border-white/5">
+                <div className={`w-8 h-8 rounded-lg ${item.color} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+                  {item.label[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white">{item.label}</p>
+                  <p className="text-xs text-gray-400">{item.desc}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Input
+                    type="color"
+                    className="w-8 h-8 p-0 border-0 cursor-pointer bg-transparent rounded"
+                    defaultValue={currentColor || '#6366f1'}
+                    onBlur={(e) => {
+                      saveSetting.mutate({
+                        key: settingKey,
+                        value: e.target.value,
+                        type: 'text',
+                        category: 'theme',
+                        description: `Cor de destaque para ${item.label}`,
+                      });
+                    }}
+                  />
+                  <span className="text-[10px] text-gray-500 font-mono w-16">{currentColor || '#6366f1'}</span>
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white/5 border-white/10">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Transparência Desktop
+          </CardTitle>
+          <CardDescription className="text-gray-400">
+            Ajuste a opacidade das janelas no ambiente desktop. Valores mais baixos deixam o fundo mais visível.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {[
+            { key: 'desktop_glass_opacity', label: 'Janelas (Glass)', desc: 'Opacidade das janelas flutuantes', defaultVal: '72' },
+            { key: 'desktop_titlebar_opacity', label: 'Barra de Título', desc: 'Contraste da barra de título das janelas', defaultVal: '14' },
+          ].map((item) => {
+            const currentSetting = layoutSettings?.find((s: any) => s.settingKey === item.key);
+            const currentVal = currentSetting?.settingValue || item.defaultVal;
+            return (
+              <div key={item.key} className="flex items-center gap-4 p-3 rounded-lg bg-white/[0.04] border border-white/5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white">{item.label}</p>
+                  <p className="text-xs text-gray-400">{item.desc}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <input
+                    type="range"
+                    min="30"
+                    max="100"
+                    defaultValue={currentVal}
+                    className="w-24 accent-primary"
+                    onMouseUp={(e) => {
+                      saveSetting.mutate({
+                        key: item.key,
+                        value: (e.target as HTMLInputElement).value,
+                        type: 'number',
+                        category: 'theme',
+                        description: item.desc,
+                      });
+                    }}
+                  />
+                  <span className="text-xs text-gray-400 w-8 text-right">{currentVal}%</span>
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
     </TabsContent>
   );
 }

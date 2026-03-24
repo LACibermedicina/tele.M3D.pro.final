@@ -220,7 +220,7 @@ export default function UnifiedToolbox() {
   const { navigateToWindow, isDesktopMode: isDesktopNav } = useDesktopNavigation();
   const { minimize, isMinimized, restoreAll } = useMinimizedPanels();
   const { resetAllLayout, navDockMode } = useLayoutSettings();
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
   const [detachedPaths, setDetachedPaths] = useState<string[]>(loadDetached);
 

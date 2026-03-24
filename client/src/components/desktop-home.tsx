@@ -1,7 +1,8 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
-import { Bell, Calendar, StickyNote, Clock, Activity, Shield, Users } from "lucide-react";
-import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Bell, Calendar, StickyNote, Clock, Activity, Shield, Users, Stethoscope, Circle } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
 
 function NotificationsWidget() {
   const { data: notifications } = useQuery<any[]>({
@@ -95,26 +96,43 @@ function CalendarWidget({ userRole }: { userRole: string }) {
 }
 
 function NotepadWidget() {
-  const STORAGE_KEY = "desktop-home-notepad";
-  const [text, setText] = useState(() => {
-    try { return localStorage.getItem(STORAGE_KEY) || ""; } catch { return ""; }
+  const { data: noteData } = useQuery<{ content: string }>({
+    queryKey: ["/api/user-notes"],
   });
 
-  const handleChange = (val: string) => {
+  const [text, setText] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const saveMutation = useMutation({
+    mutationFn: (content: string) => apiRequest('PUT', '/api/user-notes', { content }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user-notes"] });
+    },
+  });
+
+  const displayText = text !== null ? text : (noteData?.content || "");
+
+  const handleChange = useCallback((val: string) => {
     setText(val);
-    try { localStorage.setItem(STORAGE_KEY, val); } catch {}
-  };
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      saveMutation.mutate(val);
+    }, 800);
+  }, [saveMutation]);
 
   return (
     <div className="rounded-xl p-4 bg-white/[0.06] border border-white/10">
       <div className="flex items-center gap-2 mb-3">
         <StickyNote className="w-4 h-4 text-emerald-400" />
         <h3 className="text-sm font-semibold text-white/90">Bloco de Notas</h3>
+        {saveMutation.isPending && (
+          <span className="ml-auto text-[10px] text-white/30">Salvando...</span>
+        )}
       </div>
       <textarea
         className="w-full h-28 bg-transparent text-xs text-white/70 placeholder:text-white/30 border-0 outline-none resize-none"
         placeholder="Escreva suas anotações rápidas aqui..."
-        value={text}
+        value={displayText}
         onChange={(e) => handleChange(e.target.value)}
       />
     </div>
@@ -148,6 +166,46 @@ function AdminStatsWidget() {
   );
 }
 
+function AvailableDoctorsWidget() {
+  const { data: doctors } = useQuery<any[]>({
+    queryKey: ["/api/doctors/available"],
+    refetchInterval: 15000,
+  });
+
+  const available = doctors || [];
+
+  return (
+    <div className="rounded-xl p-4 bg-white/[0.06] border border-white/10">
+      <div className="flex items-center gap-2 mb-3">
+        <Stethoscope className="w-4 h-4 text-emerald-400" />
+        <h3 className="text-sm font-semibold text-white/90">Médicos Disponíveis</h3>
+        {available.length > 0 && (
+          <span className="ml-auto text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-full">
+            {available.length} online
+          </span>
+        )}
+      </div>
+      {available.length === 0 ? (
+        <p className="text-xs text-white/40 italic">Nenhum médico disponível no momento</p>
+      ) : (
+        <div className="space-y-2">
+          {available.slice(0, 5).map((doc: any) => (
+            <div key={doc.id} className="flex items-center gap-2 text-xs rounded-lg px-2 py-1.5 bg-white/[0.04]">
+              <Circle className="w-2 h-2 text-emerald-400 fill-emerald-400 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-white/70 truncate">{doc.name}</p>
+                {doc.specialization && (
+                  <p className="text-white/40 text-[10px] truncate">{doc.specialization}</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DesktopHome() {
   const { user } = useAuth();
   const role = user?.role || "patient";
@@ -164,6 +222,7 @@ export default function DesktopHome() {
       <div className="grid grid-cols-1 gap-4">
         <NotificationsWidget />
         <CalendarWidget userRole={role} />
+        {(role === "patient" || role === "visitor") && <AvailableDoctorsWidget />}
         {role === "admin" && <AdminStatsWidget />}
         <NotepadWidget />
       </div>

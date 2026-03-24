@@ -2094,6 +2094,18 @@ export const insertProfileMergeAuditLogSchema = createInsertSchema(profileMergeA
 export type InsertProfileMergeAuditLog = z.infer<typeof insertProfileMergeAuditLogSchema>;
 export type ProfileMergeAuditLog = typeof profileMergeAuditLogs.$inferSelect;
 
+// User Notes — persistent notepad for desktop home widget
+export const userNotes = pgTable("user_notes", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  content: text("content").default("").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertUserNoteSchema = createInsertSchema(userNotes).omit({ id: true, updatedAt: true });
+export type InsertUserNote = z.infer<typeof insertUserNoteSchema>;
+export type UserNote = typeof userNotes.$inferSelect;
+
 // TMC system types
 export interface TmcBalance {
   userId: string;
