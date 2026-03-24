@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Bell, Calendar, StickyNote, Clock, Activity, Shield, Users, Stethoscope, Circle, Plus, Pin, Trash2, MessageCircle, Video, MessageSquare, BellRing } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
+import { useLocation } from "wouter";
 
 interface Notification {
   id: string;
@@ -315,6 +316,7 @@ function AvailableDoctorsWidget() {
     refetchInterval: 15000,
   });
 
+  const [, setLocation] = useLocation();
   const allDoctors = doctors || [];
   const online = allDoctors.filter((d: DoctorInfo) => d.isOnline);
   const offline = allDoctors.filter((d: DoctorInfo) => !d.isOnline);
@@ -352,28 +354,28 @@ function AvailableDoctorsWidget() {
                 <button
                   className="w-5 h-5 flex items-center justify-center rounded bg-sky-500/20 text-sky-300 hover:bg-sky-500/30"
                   title="Chat"
-                  onClick={() => window.location.href = '/chatbot'}
+                  onClick={() => setLocation('/chatbot')}
                 >
                   <MessageSquare className="w-2.5 h-2.5" />
                 </button>
                 <button
                   className="w-5 h-5 flex items-center justify-center rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
                   title="Consulta imediata"
-                  onClick={() => window.location.href = '/immediate-consultation'}
+                  onClick={() => setLocation('/immediate-consultation')}
                 >
                   <Video className="w-2.5 h-2.5" />
                 </button>
                 <button
                   className="w-5 h-5 flex items-center justify-center rounded bg-violet-500/20 text-violet-300 hover:bg-violet-500/30"
                   title="Agendar consulta"
-                  onClick={() => window.location.href = '/consultation-request'}
+                  onClick={() => setLocation('/consultation-request')}
                 >
                   <Calendar className="w-2.5 h-2.5" />
                 </button>
                 <button
                   className="w-5 h-5 flex items-center justify-center rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500/30"
                   title="Solicitar notificação"
-                  onClick={() => window.location.href = '/waiting-room'}
+                  onClick={() => setLocation('/waiting-room')}
                 >
                   <BellRing className="w-2.5 h-2.5" />
                 </button>
@@ -404,7 +406,7 @@ function AvailableDoctorsWidget() {
                 <button
                   className="w-5 h-5 flex items-center justify-center rounded bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-white/10"
                   title="Agendar consulta"
-                  onClick={() => window.location.href = '/consultation-request'}
+                  onClick={() => setLocation('/consultation-request')}
                 >
                   <Calendar className="w-2.5 h-2.5" />
                 </button>
