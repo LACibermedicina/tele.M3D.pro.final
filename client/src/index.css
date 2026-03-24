@@ -905,10 +905,8 @@ button, input, select, textarea {
   }
 
   .desktop-glass-footer {
-    background: var(--footer-glass) !important;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-color: var(--border-glass) !important;
+    background: transparent !important;
+    border-color: transparent !important;
   }
 
   .desktop-env-root > [data-page-content] {

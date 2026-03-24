@@ -553,26 +553,10 @@ function Router() {
       </Switch>
       </div>}
       
-      <footer className={`bg-card border-t border-border mt-12 desktop-glass-footer ${isDesktopWindowed || isImmersiveMode ? "hidden" : ""}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6 text-sm text-muted-foreground">
-              <div className="flex items-center space-x-2">
-                <i className="fas fa-video text-accent"></i>
-                <span>Teleconsultas Ativas</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <i className="fas fa-heartbeat text-accent"></i>
-                <span>Sistema de Monitoramento</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <i className="fas fa-users-cog text-accent"></i>
-                <span>Gestão Integrada</span>
-              </div>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {t("footer.copyright")}
-            </div>
+      <footer className={`desktop-glass-footer ${isDesktopWindowed || isImmersiveMode ? "hidden" : ""}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+          <div className="text-center text-sm text-muted-foreground">
+            {t("footer.copyright")}
           </div>
         </div>
       </footer>

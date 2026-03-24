@@ -2,12 +2,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { UserPlus, Calendar, FileText, Shield, Phone, MessageCircle, Users, Clock, MapPin, Globe, Video, Bot, HeartPulse, Key, RotateCcw } from "lucide-react"
+import { UserPlus, Calendar, FileText, Shield, Phone, MessageCircle, Users, Clock, MapPin, Globe, Video, Bot, HeartPulse, Key } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Link } from "wouter"
 import { useState } from "react"
 import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel"
-import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext"
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -27,7 +27,7 @@ interface Feature {
 export function DesktopVisitorDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { restoreAll } = useMinimizedPanels();
+
   const [showSupportDialog, setShowSupportDialog] = useState(false);
   const [showChatBot, setShowChatBot] = useState(false);
   const [chatMode, setChatMode] = useState<'symptoms' | 'questions' | 'general'>('general');
@@ -105,8 +105,6 @@ export function DesktopVisitorDashboard() {
       </div>
 
       <div className="max-w-6xl mx-auto space-y-8 relative z-10">
-        <div className="flex justify-end"><Button variant="ghost" size="sm" onClick={() => { const keys = Object.keys(localStorage).filter(k => k.startsWith("draggable_dashboard_desktop-visitor_")); keys.forEach(k => localStorage.removeItem(k)); restoreAll(); window.location.reload(); }} className="text-xs text-white/70 hover:text-white"><RotateCcw className="h-3 w-3 mr-1" /> Reset Layout</Button></div>
-        
         {/* Hero Section */}
         <DraggableDashboardPanel id="visitor-hero" label="Boas-Vindas" icon="home" dashboardKey="desktop-visitor">
         <Card className="border-0 shadow-2xl bg-white/10 backdrop-blur-xl text-white overflow-hidden">
