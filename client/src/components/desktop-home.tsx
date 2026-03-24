@@ -338,7 +338,10 @@ function AvailableDoctorsWidget() {
           {offline.length > 0 && online.length > 0 && (
             <div className="border-t border-white/5 pt-1 mt-1" />
           )}
-          {offline.slice(0, 5).map((doc: any) => (
+          {offline
+            .sort((a: any, b: any) => (b.priorAttendance ? 1 : 0) - (a.priorAttendance ? 1 : 0))
+            .filter((doc: any, i: number) => doc.priorAttendance || i < 5)
+            .map((doc: any) => (
             <div key={doc.id} className="flex items-center gap-2 text-xs rounded-lg px-2 py-1.5 bg-white/[0.02] group">
               <Circle className="w-2 h-2 text-slate-500 shrink-0" />
               <div className="min-w-0 flex-1">
@@ -363,8 +366,8 @@ function AvailableDoctorsWidget() {
               </div>
             </div>
           ))}
-          {offline.length > 5 && (
-            <p className="text-[10px] text-slate-500 text-center pt-1">+{offline.length - 5} médicos offline</p>
+          {offline.filter((d: any) => !d.priorAttendance).length > 5 && (
+            <p className="text-[10px] text-slate-500 text-center pt-1">+{offline.filter((d: any) => !d.priorAttendance).length - 5} médicos offline</p>
           )}
         </div>
       )}

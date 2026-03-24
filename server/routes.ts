@@ -15589,6 +15589,66 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         .limit(10);
       results.doctors = doctorResults;
 
+      if (role === 'doctor') {
+        const apptResults = await db.select({
+          id: appointments.id,
+          patientId: appointments.patientId,
+          scheduledAt: appointments.scheduledAt,
+          type: appointments.type,
+          status: appointments.status,
+        })
+          .from(appointments)
+          .where(and(
+            eq(appointments.doctorId, userId),
+            or(
+              ilike(appointments.type, `%${q}%`),
+              ilike(appointments.status, `%${q}%`)
+            )
+          ))
+          .limit(10);
+        results.appointments = apptResults;
+      } else if (role === 'patient') {
+        const patientRec = await db.select({ id: patients.id })
+          .from(patients)
+          .where(eq(patients.userId, userId))
+          .limit(1);
+        if (patientRec.length > 0) {
+          const apptResults = await db.select({
+            id: appointments.id,
+            doctorId: appointments.doctorId,
+            scheduledAt: appointments.scheduledAt,
+            type: appointments.type,
+            status: appointments.status,
+          })
+            .from(appointments)
+            .where(and(
+              eq(appointments.patientId, patientRec[0].id),
+              or(
+                ilike(appointments.type, `%${q}%`),
+                ilike(appointments.status, `%${q}%`)
+              )
+            ))
+            .limit(10);
+          results.appointments = apptResults;
+        }
+      } else if (role === 'admin') {
+        const apptResults = await db.select({
+          id: appointments.id,
+          patientId: appointments.patientId,
+          doctorId: appointments.doctorId,
+          scheduledAt: appointments.scheduledAt,
+          type: appointments.type,
+          status: appointments.status,
+        })
+          .from(appointments)
+          .where(or(
+            ilike(appointments.type, `%${q}%`),
+            ilike(appointments.status, `%${q}%`)
+          ))
+          .limit(10);
+        results.appointments = apptResults;
+      }
+
       res.json(results);
     } catch (error) {
       console.error('Error in contextual search:', error);

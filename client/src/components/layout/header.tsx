@@ -897,8 +897,9 @@ export default function Header() {
             </header>
             <CommandPalette 
               isOpen={isCommandPaletteOpen} 
-              onClose={() => setIsCommandPaletteOpen(false)}
+              onClose={() => { setIsCommandPaletteOpen(false); setCommandPaletteTab('commands'); }}
               userRole={user?.role}
+              initialTab={commandPaletteTab}
             />
           </DockableNavBar>
         )}
@@ -1775,8 +1776,9 @@ export default function Header() {
       {/* Command Palette */}
       <CommandPalette 
         isOpen={isCommandPaletteOpen} 
-        onClose={() => setIsCommandPaletteOpen(false)}
+        onClose={() => { setIsCommandPaletteOpen(false); setCommandPaletteTab('commands'); }}
         userRole={user?.role}
+        initialTab={commandPaletteTab}
       />
 
       {showClearScheduleConfirm && (

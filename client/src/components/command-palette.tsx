@@ -454,7 +454,7 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
     }
   }, [isOpen]);
 
-  const totalSearchResults = searchResults.patients.length + searchResults.doctors.length + searchResults.records.length;
+  const totalSearchResults = searchResults.patients.length + searchResults.doctors.length + searchResults.records.length + searchResults.appointments.length;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -588,6 +588,22 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{p.name}</p>
                           {p.email && <p className="text-xs text-muted-foreground truncate">{p.email}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {!isSearching && searchResults.appointments.length > 0 && (
+                <div className="mb-3">
+                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">Consultas</div>
+                  <div className="space-y-1">
+                    {searchResults.appointments.map((a: any) => (
+                      <div key={a.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted cursor-pointer" onClick={() => { onClose(); setLocation('/schedule'); }}>
+                        <Calendar className="w-4 h-4 text-amber-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{a.type || "Consulta"} — {a.status}</p>
+                          <p className="text-xs text-muted-foreground">{a.scheduledAt ? new Date(a.scheduledAt).toLocaleDateString("pt-BR") : ""}</p>
                         </div>
                       </div>
                     ))}
