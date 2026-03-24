@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Bell, Calendar, StickyNote, Clock, Activity, Shield, Users, Stethoscope, Circle, Plus, Pin, Trash2, MessageCircle, Video, MessageSquare } from "lucide-react";
+import { Bell, Calendar, StickyNote, Clock, Activity, Shield, Users, Stethoscope, Circle, Plus, Pin, Trash2, MessageCircle, Video, MessageSquare, BellRing } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 
 function NotificationsWidget() {
@@ -324,6 +324,13 @@ function AvailableDoctorsWidget() {
                   onClick={() => window.location.href = '/consultation-request'}
                 >
                   <Calendar className="w-2.5 h-2.5" />
+                </button>
+                <button
+                  className="w-5 h-5 flex items-center justify-center rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500/30"
+                  title="Solicitar notificação"
+                  onClick={() => window.location.href = '/waiting-room'}
+                >
+                  <BellRing className="w-2.5 h-2.5" />
                 </button>
               </div>
             </div>

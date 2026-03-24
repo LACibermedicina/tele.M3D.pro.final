@@ -46,6 +46,7 @@ interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   userRole?: string;
+  initialTab?: 'commands' | 'search';
 }
 
 interface SearchResults {
@@ -55,7 +56,7 @@ interface SearchResults {
   appointments: any[];
 }
 
-export default function CommandPalette({ isOpen, onClose, userRole = 'visitor' }: CommandPaletteProps) {
+export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', initialTab = 'commands' }: CommandPaletteProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'commands' | 'search'>('commands');
@@ -448,7 +449,7 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor' }
     if (isOpen) {
       setSearchQuery('');
       setSelectedIndex(0);
-      setActiveTab('commands');
+      setActiveTab(initialTab);
       setSearchResults({ patients: [], doctors: [], records: [], appointments: [] });
     }
   }, [isOpen]);
@@ -471,7 +472,7 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor' }
                 autoFocus
               />
             </div>
-            <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as any); if (v === 'search' && searchQuery.length >= 2) performContextualSearch(searchQuery); }} className="mt-2">
+            <Tabs value={activeTab} onValueChange={(v: string) => { const tab = v === 'search' ? 'search' : 'commands'; setActiveTab(tab); if (tab === 'search' && searchQuery.length >= 2) performContextualSearch(searchQuery); }} className="mt-2">
               <TabsList className="w-full grid grid-cols-2 h-8">
                 <TabsTrigger value="commands" className="text-xs h-7">
                   <Zap className="w-3 h-3 mr-1" /> Comandos

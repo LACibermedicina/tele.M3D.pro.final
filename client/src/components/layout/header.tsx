@@ -103,6 +103,7 @@ export default function Header() {
   const { t, i18n } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [commandPaletteTab, setCommandPaletteTab] = useState<'commands' | 'search'>('commands');
   const { user, logout } = useAuth();
   const isAdmin = useIsAdmin();
   const { toast } = useToast();
@@ -756,6 +757,23 @@ export default function Header() {
               <InlineTrayIcons />
             </div>
           </TooltipProvider>
+          {user && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => { setCommandPaletteTab('search'); setIsCommandPaletteOpen(true); }}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white/50 hover:text-sky-400 hover:bg-sky-500/10 transition-all"
+                  >
+                    <i className="fas fa-search text-sm" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={tooltipSide}>
+                  <p>Busca Contextual</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <div className="w-8 border-t border-white/20 my-1" />
           {user && (
             <TooltipProvider>
@@ -788,8 +806,9 @@ export default function Header() {
         </div>
         <CommandPalette 
           isOpen={isCommandPaletteOpen} 
-          onClose={() => setIsCommandPaletteOpen(false)}
+          onClose={() => { setIsCommandPaletteOpen(false); setCommandPaletteTab('commands'); }}
           userRole={user?.role}
+          initialTab={commandPaletteTab}
         />
       </DockableNavBar>}</>
     );
@@ -960,8 +979,9 @@ export default function Header() {
         </div>
         <CommandPalette 
           isOpen={isCommandPaletteOpen} 
-          onClose={() => setIsCommandPaletteOpen(false)}
+          onClose={() => { setIsCommandPaletteOpen(false); setCommandPaletteTab('commands'); }}
           userRole={user?.role}
+          initialTab={commandPaletteTab}
         />
       </DockableNavBar>}</>
     );
