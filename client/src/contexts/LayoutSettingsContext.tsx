@@ -8,6 +8,7 @@ export type NavDockMode = "top" | "left" | "right" | "bottom" | "floating";
 export interface RoleThemeConfig {
   accentColor?: string;
   glassOpacity?: number;
+  titlebarOpacity?: number;
 }
 
 export const LAYOUT_DEFAULTS = {
@@ -131,7 +132,7 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
     const config: Record<string, RoleThemeConfig> = {};
     layoutData.forEach((s: any) => {
       if (s.category === 'theme') {
-        const accentMatch = s.settingKey?.match(/^accent_color_(\w+)$/);
+        const accentMatch = s.settingKey?.match(/^theme_accent_(\w+)$/);
         if (accentMatch) {
           const role = accentMatch[1];
           if (!config[role]) config[role] = {};
@@ -146,6 +147,10 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
         if (s.settingKey === 'desktop_glass_opacity') {
           if (!config['_global']) config['_global'] = {};
           config['_global'].glassOpacity = parseFloat(s.settingValue) / 100;
+        }
+        if (s.settingKey === 'desktop_titlebar_opacity') {
+          if (!config['_global']) config['_global'] = {};
+          config['_global'].titlebarOpacity = parseFloat(s.settingValue) / 100;
         }
       }
     });
@@ -164,6 +169,11 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
       document.documentElement.style.setProperty('--card-glass', `hsla(230, 21%, 18%, ${opacity})`);
       document.documentElement.style.setProperty('--bg-glass', `hsla(230, 21%, 11%, ${Math.max(0, opacity - 0.05)})`);
       document.documentElement.style.setProperty('--footer-glass', `hsla(230, 21%, 13%, ${Math.min(1, opacity + 0.05)})`);
+    }
+    if (cfg.titlebarOpacity !== undefined && !isNaN(cfg.titlebarOpacity)) {
+      const tbOpacity = Math.max(0.05, Math.min(0.5, cfg.titlebarOpacity));
+      document.documentElement.style.setProperty('--titlebar-active', `rgba(255, 255, 255, ${tbOpacity})`);
+      document.documentElement.style.setProperty('--titlebar-inactive', `rgba(255, 255, 255, ${Math.max(0.03, tbOpacity * 0.5)})`);
     }
   }, [roleThemeConfig, user?.role]);
 

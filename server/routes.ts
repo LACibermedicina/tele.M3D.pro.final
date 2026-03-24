@@ -15702,7 +15702,7 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       res.json(results);
     } catch (error) {
       console.error('Error in contextual search:', error);
-      res.json({ patients: [], appointments: [], records: [], doctors: [] });
+      res.json({ patients: [], appointments: [], records: [], doctors: [], prescriptions: [] });
     }
   });
 
