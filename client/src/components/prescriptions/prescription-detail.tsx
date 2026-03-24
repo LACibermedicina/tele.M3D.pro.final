@@ -306,7 +306,13 @@ export default function PrescriptionDetail({ prescriptionId, onClose }: Prescrip
               CRM Verificado
             </Badge>
           )}
-          {doctorCrmStatus && doctorCrmStatus.status === 'failed' && (
+          {doctorCrmStatus?.status === 'pending' && (
+            <Badge variant="outline" className="text-yellow-500 border-yellow-500">
+              <ShieldAlert className="h-3 w-3 mr-1" />
+              CRM Pendente
+            </Badge>
+          )}
+          {(doctorCrmStatus?.status === 'failed' || doctorCrmStatus?.status === 'unverified') && (
             <Badge variant="outline" className="text-red-500 border-red-500">
               <ShieldAlert className="h-3 w-3 mr-1" />
               CRM Não Verificado

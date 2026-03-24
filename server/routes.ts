@@ -18216,7 +18216,14 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
   app.get('/api/crm/status/:userId', requireAuth, async (req: any, res: Response) => {
     try {
       const targetUserId = req.params.userId;
-      if (req.user.role !== 'admin' && req.user.id !== targetUserId) {
+      const [targetUser] = await db.select({ role: users.role }).from(users).where(eq(users.id, targetUserId)).limit(1);
+      if (!targetUser) {
+        return res.status(404).json({ message: 'Usuário não encontrado' });
+      }
+      const isAdmin = req.user.role === 'admin';
+      const isSelf = req.user.id === targetUserId;
+      const isTargetDoctor = targetUser.role === 'doctor';
+      if (!isAdmin && !isSelf && !isTargetDoctor) {
         return res.status(403).json({ message: 'Acesso negado' });
       }
       const result = await crmVerificationService.getVerificationStatus(targetUserId);
