@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, ShieldCheck, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings, CreditCard, Pill, ArrowUpDown, ArrowUp, ArrowDown, Unplug, Stethoscope, ServerCrash, ScrollText, Code, GripVertical, ToggleLeft, Play, Pause, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, ShieldCheck, Users, Key, Activity, AlertTriangle, Plus, Eye, EyeOff, Copy, Trash2, UserCheck, UserX, Edit3, Clock, Zap, Database, DollarSign, Send, Search, FileText, Settings, CreditCard, Pill, ArrowUpDown, ArrowUp, ArrowDown, Unplug, Stethoscope, ServerCrash, ScrollText, Code, GripVertical, ToggleLeft, Play, Pause, ChevronDown, ChevronUp, BarChart3, BrainCircuit } from 'lucide-react';
 import { useIsPermanentAdmin } from '@/hooks/use-permanent-admin';
 import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/use-websocket';
@@ -339,6 +339,7 @@ export default function AdminPage() {
     }
   });
 
+  const [activeTab, setActiveTab] = useState('users');
   const [disconnectConfirm, setDisconnectConfirm] = useState<'users' | 'doctors' | 'services' | null>(null);
 
   const disconnectAllUsersMutation = useMutation({
@@ -420,6 +421,42 @@ export default function AdminPage() {
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">System Administration</h1>
         </div>
 
+        {/* Dashboard Navigation Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          {[
+            { tab: 'users', label: 'Usuários', icon: Users, badge: String((adminUsers as AdminUser[]).length), badgeVariant: 'secondary' as const },
+            { tab: 'activity', label: 'Atividade', icon: Zap, badge: isConnected ? 'Online' : 'Offline', badgeVariant: (isConnected ? 'default' : 'destructive') as const },
+            { tab: 'error-logs', label: 'Logs de Erro', icon: AlertTriangle, badge: String((errorLogs as ErrorLog[]).filter((e: ErrorLog) => !e.resolved).length), badgeVariant: 'destructive' as const },
+            { tab: 'collaborators', label: 'Colaboradores', icon: Key, badge: String((collaborators as Collaborator[]).length), badgeVariant: 'secondary' as const },
+            { tab: 'financial', label: 'Financeiro', icon: DollarSign, badge: null, badgeVariant: 'secondary' as const },
+            { tab: 'ai-ecg-config', label: 'Config IA', icon: BrainCircuit, badge: null, badgeVariant: 'secondary' as const },
+            { tab: 'system-settings', label: 'Sistema', icon: Settings, badge: null, badgeVariant: 'secondary' as const },
+            { tab: 'security', label: 'Segurança', icon: Shield, badge: String((analytics as any)?.securityAlerts || 0), badgeVariant: 'destructive' as const },
+            { tab: 'monitoring', label: 'Monitoramento', icon: BarChart3, badge: null, badgeVariant: 'secondary' as const },
+            { tab: 'database-cleanup', label: 'Banco de Dados', icon: Database, badge: null, badgeVariant: 'secondary' as const },
+          ].map(({ tab, label, icon: Icon, badge, badgeVariant }) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-150 text-left ${
+                activeTab === tab
+                  ? 'bg-indigo-600/20 border-indigo-500/50 shadow-md shadow-indigo-500/10'
+                  : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+              }`}
+            >
+              <div className={`p-2 rounded-lg ${activeTab === tab ? 'bg-indigo-500/20' : 'bg-white/10'}`}>
+                <Icon className={`h-5 w-5 ${activeTab === tab ? 'text-indigo-400' : 'text-white/60'}`} />
+              </div>
+              <span className={`text-xs font-medium text-center leading-tight ${activeTab === tab ? 'text-indigo-300' : 'text-white/70'}`}>{label}</span>
+              {badge !== null && (
+                <Badge variant={badgeVariant} className="text-[10px] px-1.5 py-0 h-4">
+                  {badge}
+                </Badge>
+              )}
+            </button>
+          ))}
+        </div>
+
       {/* Analytics Cards */}
       <DraggableDashboardPanel id="admin-analytics" label="Métricas do Sistema" icon="activity" dashboardKey="admin">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -483,8 +520,8 @@ export default function AdminPage() {
       </div>
       </DraggableDashboardPanel>
 
-      <Tabs defaultValue="collaborators" className="space-y-4">
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
           <TabsTrigger value="activity" data-testid="tab-activity">
             <div className="flex items-center space-x-2">

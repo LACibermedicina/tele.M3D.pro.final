@@ -158,19 +158,19 @@ export default function DesktopWindowComponent({ windowData, children }: Desktop
         </div>
         <div className="flex items-center gap-0.5">
           <button
-            className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/10 transition-colors text-white/60 hover:text-white"
+            className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/10 transition-colors text-white/80 hover:text-white"
             onClick={(e) => { e.stopPropagation(); minimizeWindow(windowData.id); }}
           >
             <Minus className="w-3 h-3" />
           </button>
           <button
-            className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/10 transition-colors text-white/60 hover:text-white"
+            className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/10 transition-colors text-white/80 hover:text-white"
             onClick={(e) => { e.stopPropagation(); toggleMaximize(windowData.id); }}
           >
             {isMax ? <Square className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
           </button>
           <button
-            className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-red-500/20 transition-colors text-white/60 hover:text-red-400"
+            className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-red-500/20 transition-colors text-white/80 hover:text-red-400"
             onClick={(e) => { e.stopPropagation(); closeWindow(windowData.id); }}
           >
             <X className="w-3 h-3" />

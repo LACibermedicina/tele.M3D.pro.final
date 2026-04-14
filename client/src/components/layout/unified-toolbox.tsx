@@ -235,7 +235,11 @@ export default function UnifiedToolbox() {
   const [detachedPaths, setDetachedPaths] = useState<string[]>(loadDetached);
 
   const [visible, setVisible] = useState(() => {
-    try { return localStorage.getItem(STORAGE_KEY_VISIBLE) !== "false"; } catch { return true; }
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_VISIBLE);
+      if (stored === null) return false;
+      return stored !== "false";
+    } catch { return false; }
   });
 
   const [dockMode, setDockMode] = useState<DockMode>(() => {
@@ -420,7 +424,7 @@ export default function UnifiedToolbox() {
     <>
       {detachedPanels}
       <div
-        className={`bg-background/95 backdrop-blur-md border shadow-xl transition-all duration-200 desktop-glass-panel ${
+        className={`bg-white shadow-lg ring-1 ring-black/5 transition-all duration-200 ${
           isBottomNavMode ? "rounded-xl" : isDocked ? "" : "rounded-xl"
         } ${isDragging ? "opacity-90 shadow-2xl" : ""} ${
           !isBottomNavMode && isHorizontal ? "rounded-none" : ""
@@ -429,31 +433,31 @@ export default function UnifiedToolbox() {
         data-draggable-root
       >
         <div
-          className={`flex items-center gap-1 px-2 py-1 border-b bg-muted/30 cursor-pointer select-none hover:bg-muted/50 transition-colors ${isHorizontal ? "" : ""}`}
+          className={`flex items-center gap-1 px-2 py-1 border-b border-slate-200 bg-slate-50 cursor-pointer select-none hover:bg-slate-100 transition-colors ${isHorizontal ? "" : ""}`}
           onClick={(e) => {
             if ((e.target as HTMLElement).closest('button, [role="button"]')) return;
             setCollapsed(!collapsed);
           }}
         >
           <div
-            className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground"
+            className="cursor-grab active:cursor-grabbing p-1 text-[#1e3a5f]/50 hover:text-[#1e3a5f]"
             onMouseDown={onDragStart}
             onTouchStart={onDragStart}
             onClick={e => e.stopPropagation()}
           >
             <GripVertical className="h-3.5 w-3.5" />
           </div>
-          <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
-          {!collapsed && <span className="text-xs font-medium text-muted-foreground flex-1">tele.m3d.pro</span>}
-          {collapsed && <span className="text-[10px] text-muted-foreground">tele.m3d.pro</span>}
+          <Wrench className="h-3.5 w-3.5 text-[#1e3a5f]" />
+          {!collapsed && <span className="text-xs font-semibold text-[#1e3a5f] flex-1">tele.m3d.pro</span>}
+          {collapsed && <span className="text-[10px] text-[#1e3a5f]">tele.m3d.pro</span>}
           <div className="flex items-center gap-0.5" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setCollapsed(!collapsed)}>
+            <Button variant="ghost" size="icon" className="h-5 w-5 text-[#1e3a5f]/60 hover:text-[#1e3a5f] hover:bg-blue-50" onClick={() => setCollapsed(!collapsed)}>
               {collapsed ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronUp className="h-2.5 w-2.5" />}
             </Button>
-            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={handleMinimize}>
+            <Button variant="ghost" size="icon" className="h-5 w-5 text-[#1e3a5f]/60 hover:text-[#1e3a5f] hover:bg-blue-50" onClick={handleMinimize}>
               <Minus className="h-2.5 w-2.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-5 w-5 hover:bg-destructive/20 hover:text-destructive" onClick={handleClose}>
+            <Button variant="ghost" size="icon" className="h-5 w-5 text-[#1e3a5f]/60 hover:text-red-500 hover:bg-red-50" onClick={handleClose}>
               <X className="h-2.5 w-2.5" />
             </Button>
           </div>
@@ -463,9 +467,9 @@ export default function UnifiedToolbox() {
           <div className={`p-1.5 ${isHorizontal ? "flex items-center gap-1 overflow-x-auto" : isVertical ? "space-y-0.5" : "space-y-0.5"} max-h-[calc(100vh-120px)] overflow-y-auto`}>
             {filteredGroups.map((group, gi) => (
               <div key={group.category}>
-                {gi > 0 && (isHorizontal ? <Separator orientation="vertical" className="h-6 mx-1" /> : <Separator className="my-1" />)}
+                {gi > 0 && (isHorizontal ? <Separator orientation="vertical" className="h-6 mx-1 bg-slate-200" /> : <Separator className="my-1 bg-slate-200" />)}
                 {!isHorizontal && !collapsed && (
-                  <div className="px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  <div className="px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#1e3a5f]/50 font-semibold">
                     {group.label}
                   </div>
                 )}
@@ -483,8 +487,8 @@ export default function UnifiedToolbox() {
                               <button
                                 className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs w-full transition-colors ${
                                   isActive
-                                    ? "bg-primary/10 text-primary font-medium"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    ? "bg-blue-100 text-[#1e3a5f] font-semibold"
+                                    : "text-[#1e3a5f] hover:bg-blue-50"
                                 }`}
                               >
                                 <ItemIcon className="h-3.5 w-3.5 shrink-0" />
@@ -517,11 +521,11 @@ export default function UnifiedToolbox() {
             ))}
             {!isHorizontal && (
               <>
-                <Separator className="my-1" />
+                <Separator className="my-1 bg-slate-200" />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs w-full transition-colors text-muted-foreground hover:text-foreground hover:bg-muted"
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs w-full transition-colors text-[#1e3a5f]/60 hover:text-[#1e3a5f] hover:bg-blue-50"
                       onClick={() => { resetAllLayout(); restoreAll(); window.location.reload(); }}
                     >
                       <RotateCcw className="h-3.5 w-3.5 shrink-0" />
@@ -532,11 +536,11 @@ export default function UnifiedToolbox() {
                     <p>Restaurar posições padrão</p>
                   </TooltipContent>
                 </Tooltip>
-                <Separator className="my-1" />
+                <Separator className="my-1 bg-slate-200" />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs w-full transition-colors text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs w-full transition-colors text-red-500 hover:text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={handleLogout}
                       disabled={isLoggingOut}
                     >

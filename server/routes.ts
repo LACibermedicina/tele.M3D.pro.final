@@ -24826,6 +24826,7 @@ async function migrateSusProntuariosTable() {
 
 async function migrateUserUsageFields() {
   try {
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP`);
     await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS total_usage_seconds INTEGER DEFAULT 0`);
     await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_session_start TIMESTAMP`);
     await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS force_logout_at TIMESTAMP`);

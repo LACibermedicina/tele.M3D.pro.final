@@ -192,14 +192,6 @@ export default function DesktopWindowLayer() {
 
     if (!initializedRef.current) {
       initializedRef.current = true;
-      openWindow({
-        id: "win-home",
-        title: "Início",
-        icon: Home,
-        route: "home",
-        size: { w: 440, h: 520 },
-        position: { x: Math.max(80, (window.innerWidth - 440) / 2), y: 60 },
-      });
 
       seedClosedWindow({
         id: "win-/dashboard",
