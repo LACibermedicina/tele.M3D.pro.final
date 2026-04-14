@@ -447,9 +447,9 @@ export default function UnifiedToolbox() {
           >
             <GripVertical className="h-3.5 w-3.5" />
           </div>
-          <Wrench className="h-3.5 w-3.5 text-[#1e3a5f]" />
-          {!collapsed && <span className="text-xs font-semibold text-[#1e3a5f] flex-1">tele.m3d.pro</span>}
-          {collapsed && <span className="text-[10px] text-[#1e3a5f]">tele.m3d.pro</span>}
+          <Wrench className="h-3.5 w-3.5 text-[#1e3a5f]" style={{ filter: 'drop-shadow(0 1px 1px rgba(30,58,95,0.18))' }} />
+          {!collapsed && <span className="text-xs font-semibold text-[#1e3a5f] flex-1" style={{ textShadow: '0 1px 2px rgba(30,58,95,0.15)' }}>tele.m3d.pro</span>}
+          {collapsed && <span className="text-[10px] text-[#1e3a5f]" style={{ textShadow: '0 1px 2px rgba(30,58,95,0.15)' }}>tele.m3d.pro</span>}
           <div className="flex items-center gap-0.5" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-5 w-5 text-[#1e3a5f]/60 hover:text-[#1e3a5f] hover:bg-blue-50" onClick={() => setCollapsed(!collapsed)}>
               {collapsed ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronUp className="h-2.5 w-2.5" />}
@@ -469,7 +469,7 @@ export default function UnifiedToolbox() {
               <div key={group.category}>
                 {gi > 0 && (isHorizontal ? <Separator orientation="vertical" className="h-6 mx-1 bg-slate-200" /> : <Separator className="my-1 bg-slate-200" />)}
                 {!isHorizontal && !collapsed && (
-                  <div className="px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#1e3a5f]/50 font-semibold">
+                  <div className="px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#1e3a5f]/50 font-semibold" style={{ textShadow: '0 1px 1px rgba(30,58,95,0.08)' }}>
                     {group.label}
                   </div>
                 )}
@@ -491,8 +491,8 @@ export default function UnifiedToolbox() {
                                     : "text-[#1e3a5f] hover:bg-blue-50"
                                 }`}
                               >
-                                <ItemIcon className="h-3.5 w-3.5 shrink-0" />
-                                {!isHorizontal && <span className="truncate">{item.label}</span>}
+                                <ItemIcon className="h-3.5 w-3.5 shrink-0" style={{ filter: 'drop-shadow(0 1px 1px rgba(30,58,95,0.12))' }} />
+                                {!isHorizontal && <span className="truncate" style={{ textShadow: '0 1px 1px rgba(30,58,95,0.10)' }}>{item.label}</span>}
                               </button>
                             </Link>
                           </TooltipTrigger>

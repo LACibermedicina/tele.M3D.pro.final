@@ -123,6 +123,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     await Promise.allSettled(cleanupTasks);
 
+    // Clear toolbox and layout state so next login starts clean/closed
+    try {
+      localStorage.removeItem('unified_toolbox_visible');
+      localStorage.removeItem('unified_toolbox_dock_mode');
+      localStorage.removeItem('unified_toolbox_detached');
+      localStorage.removeItem('unified_toolbox');
+    } catch (_) { /* ignore */ }
+
     setUser(null);
     queryClient.clear();
     window.location.replace('/login');
