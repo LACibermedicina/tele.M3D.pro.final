@@ -58,15 +58,16 @@ import {
   ClipboardList,
   Zap,
   Globe,
-  LayoutDashboard
+  LayoutDashboard,
+  Monitor
 } from "lucide-react";
 
 const docLabels = {
   back: "Voltar",
   pageTitle: "Documentação do Sistema Tele<M3D>",
   pageSubtitle: "Manual completo de recursos, funcionalidades e guias de uso",
-  updatedAt: "Atualizado em Fevereiro 2026",
-  version: "Versão 3.5",
+  updatedAt: "Atualizado em Abril 2026",
+  version: "Versão 4.0",
   printBtn: "Documentação Completa para Impressão",
   dashboardTitle: "Dashboard Intuitivo",
   dashboardDesc: "Interface moderna e fácil de usar",
@@ -369,6 +370,21 @@ export default function Documentation() {
           title: "Bloqueio de Pacientes",
           description: "Médicos podem bloquear pacientes de solicitar consultas",
           features: ["Bloqueio por médico", "Desbloqueio disponível", "Impede novas solicitações", "Registro de bloqueio"]
+        },
+        {
+          title: isAdmin ? "Configuração de Prompts IA (ECG + Radiologia)" : "Configuração de Análise Clínica",
+          description: isAdmin ? "Admin configura prompts customizados para análise de ECG e Radiologia via IA" : "Prompts otimizados para análise de ECG e imagens radiológicas",
+          features: ["Prompt customizado para ECG", "Prompt customizado para Radiologia", isAdmin ? "Editável pelo admin em tempo real" : "Configurado pelo administrador", "Aplicado globalmente a todos os médicos"]
+        },
+        {
+          title: "Desconexão em Massa",
+          description: "Controles administrativos para desconexão em massa de usuários, médicos ou serviços do sistema",
+          features: ["Desconectar todos os usuários", "Desconectar todos os médicos", "Desconectar todos os serviços", "Confirmação obrigatória antes da ação"]
+        },
+        {
+          title: "Temas por Perfil (Per-Role)",
+          description: "Personalização de cores de destaque e opacidade global por papel de usuário",
+          features: ["Cores de destaque (accent) por papel", "Opacidade/transparência global", "Temas independentes por role", "Aplicação em tempo real"]
         }
       ]
     },
@@ -486,6 +502,33 @@ export default function Documentation() {
           features: ["Atalhos filtrados por papel", "Acoplamento magnético às bordas", "Modo compacto (ícones)", "Categorias organizadas"]
         }
       ]
+    },
+    {
+      category: "Interface e UX",
+      icon: Monitor,
+      color: "sky",
+      items: [
+        {
+          title: "Ambiente Windowed Estilo Desktop OS",
+          description: "Ambiente inspirado em macOS com janelas arrastáveis, redimensionáveis, minimizáveis e fecháveis",
+          features: ["Janelas arrastáveis e redimensionáveis", "Minimizar/restaurar/fechar", "Múltiplas janelas simultâneas", "Barra de título escura em todos os painéis flutuantes"]
+        },
+        {
+          title: "Três Modos de Interface",
+          description: "Tela de seleção de modo pós-login: Imersiva (voz/chat), Mobile (tablets) e Desktop (completo)",
+          features: ["Modo Imersiva: controle total por voz e chat", "Modo Mobile: botões essenciais para tablets", "Modo Desktop: interface completa com todos os recursos", "Recomendação automática com base no dispositivo"]
+        },
+        {
+          title: "Aprimoramentos de UX Desktop",
+          description: "Temas de papel de parede, sliders de opacidade global, sticky notes flutuantes, busca global ⌘K e painel de médicos disponíveis",
+          features: ["Temas de wallpaper configuráveis", "Slider de opacidade/transparência global", "Sticky notes flutuantes", "Busca global ⌘K (Command Palette)", "Painel lateral de médicos disponíveis"]
+        },
+        {
+          title: "CRM / Verificação de Licença Profissional",
+          description: "Verificação automatizada de registro profissional via CFM (Brasil) e Ordem dos Médicos (Portugal)",
+          features: ["Verificação CFM automatizada", "Integração Ordem dos Médicos (PT)", "Validação em tempo real", "Status de verificação exibido no perfil"]
+        }
+      ]
     }
   ];
 
@@ -540,7 +583,10 @@ export default function Documentation() {
         "Como visualizar o Prontuário Unificado",
         "Como bloquear/desbloquear pacientes",
         isAdmin ? "Como gerar lista de medicamentos por IA" : "Como gerar lista de medicamentos automaticamente",
-        "Como verificar prescrições na farmácia"
+        "Como verificar prescrições na farmácia",
+        "Como usar o ambiente windowed Desktop OS (mover/redimensionar/minimizar janelas)",
+        "Como verificar CRM junto ao CFM / Ordem dos Médicos",
+        "Como usar o Toolbox — barra de ferramentas contextual"
       ]
     },
     {
@@ -555,7 +601,11 @@ export default function Documentation() {
         "Como auditar transações financeiras",
         "Como gerenciar conformidade FHIR e exportação",
         "Como monitorar pagamentos (Stripe/PagBank/PayPal)",
-        "Como gerenciar farmacêuticos"
+        "Como gerenciar farmacêuticos",
+        isAdmin ? "Como configurar prompts IA (ECG e Radiologia)" : "Como configurar análise clínica",
+        "Como usar a desconexão em massa (usuários/médicos/serviços)",
+        "Como personalizar temas por perfil (accent/opacidade)",
+        "Como configurar o ambiente Desktop (wallpaper, sticky notes, opacidade global)"
       ]
     },
     {

@@ -14,7 +14,8 @@ import {
   ClipboardList, Bell, Search, Phone, ArrowRight, CheckCircle, AlertTriangle,
   Globe, Mic, QrCode, Download, Lock, Wallet, BarChart3, UserCog,
   Eye, Heart, Clock, Share2, Briefcase, Database, Key, LogOut, Pill, Star,
-  Ban, Sparkles, Layers
+  Ban, Sparkles, Layers,
+  Monitor, Palette, UserCheck, Unplug
 } from "lucide-react";
 
 interface Section {
@@ -97,6 +98,34 @@ O chatbot oferece orientações com referências da OMS, Ministério da Saúde d
 - **Exportação FHIR R4**: Exportação de dados em padrões internacionais
 
 Explore cada funcionalidade para entender como o sistema pode beneficiar sua prática médica.`
+      }
+    ]
+  },
+  {
+    id: "v-mode-selection",
+    title: "Seleção de Modo de Interface",
+    icon: <Monitor className="h-5 w-5" />,
+    content: [
+      {
+        title: "Escolhendo seu Modo de Interface",
+        text: `Após fazer login, o sistema exibe uma tela de seleção de modo de interface antes de entrar no dashboard. Existem três modos disponíveis:
+
+**1. Imersiva**
+- Controle total por voz e chat
+- Otimizado para celulares com foco em acessibilidade
+- Interface simplificada para interação natural
+
+**2. Mobile**
+- Interface simplificada com botões essenciais
+- Ideal para tablets e dispositivos touch de médio porte
+- Acesso rápido às funcionalidades mais usadas
+
+**3. Desktop**
+- Interface completa com todos os recursos e menus
+- Para notebooks, desktops e monitores externos
+- Painéis arrastáveis, toolbox e funcionalidades avançadas
+
+O sistema recomenda automaticamente o modo mais adequado com base no dispositivo detectado (ícone "Recomendado" na opção sugerida). Você pode alterar o modo a qualquer momento reiniciando a sessão.`
       }
     ]
   },
@@ -913,6 +942,65 @@ Disponível durante a criação de prescrições e no fluxo pós-consulta.`
     ]
   },
   {
+    id: "d-windowed-env",
+    title: "Ambiente Windowed (Desktop OS)",
+    icon: <Monitor className="h-5 w-5" />,
+    content: [
+      {
+        title: "Trabalhando com Janelas no Modo Desktop",
+        text: `No modo Desktop, o sistema oferece um ambiente de janelas inspirado no macOS, onde cada funcionalidade pode ser aberta como uma janela flutuante independente:
+
+**Abrir uma janela**
+- Clique em qualquer atalho do Toolbox ou em links de funcionalidades para abrir em janela
+- Múltiplas janelas podem estar abertas simultaneamente
+
+**Mover janelas**
+- Clique e arraste a barra de título (parte superior escura da janela) para reposicionar
+- As janelas podem ser movidas para qualquer área da tela
+
+**Redimensionar janelas**
+- Arraste as bordas ou cantos da janela para ajustar o tamanho
+
+**Minimizar e restaurar**
+- Clique no botão (—) na barra de título para minimizar ao dock lateral
+- Clique no ícone da janela no dock para restaurá-la
+
+**Fechar janelas**
+- Clique no (✕) na barra de título para fechar a janela
+
+A barra de título escura é o padrão em todos os painéis flutuantes do sistema.`
+      }
+    ]
+  },
+  {
+    id: "d-crm-verification",
+    title: "Verificação de CRM",
+    icon: <UserCheck className="h-5 w-5" />,
+    content: [
+      {
+        title: "Verificação Automática de Licença Profissional",
+        text: `O sistema realiza verificação automática do seu registro profissional junto aos conselhos médicos:
+
+**Como funciona**
+- O sistema verifica seu CRM automaticamente junto ao **CFM** (Conselho Federal de Medicina do Brasil)
+- Para médicos portugueses, a verificação é feita junto à **Ordem dos Médicos** de Portugal
+- A verificação ocorre em segundo plano, sem necessidade de ação manual
+
+**Status de verificação**
+- **Verificado**: CRM/licença confirmada com sucesso — exibido no perfil com badge verde
+- **Pendente**: Verificação em andamento ou aguardando processamento
+- **Não verificado**: CRM não localizado ou com inconsistência — entre em contato com o suporte
+
+**Impacto no sistema**
+- Farmacêuticos podem confirmar seu CRM ao verificar prescrições que você emitiu
+- O status de verificação é visível para administradores
+- Prescrições incluem automaticamente o status de verificação do médico prescritor
+
+Mantenha seus dados de CRM/licença atualizados no perfil para garantir verificação bem-sucedida.`
+      }
+    ]
+  },
+  {
     id: "d-incomplete",
     title: "Consultas Incompletas",
     icon: <AlertTriangle className="h-5 w-5" />,
@@ -1154,6 +1242,126 @@ Os farmacêuticos possuem um dashboard dedicado com funcionalidades específicas
     ]
   },
   {
+    id: "a-ai-prompt-config",
+    title: "Configuração de Prompts IA",
+    icon: <Bot className="h-5 w-5" />,
+    content: [
+      {
+        title: "Configurando Prompts para ECG e Radiologia",
+        text: `O painel administrativo permite configurar os prompts de IA utilizados na análise clínica de ECG e imagens radiológicas:
+
+**Acesso**
+- Acesse o painel admin e selecione a aba "AI Prompt Config"
+- Há abas separadas para **ECG** e **Radiologia**
+
+**Configurando o Prompt de ECG**
+- Edite o texto do prompt utilizado pela IA ao analisar eletrocardiogramas
+- Personalize as instruções para o contexto clínico da sua instituição
+- Salve para aplicar imediatamente a todos os médicos do sistema
+
+**Configurando o Prompt de Radiologia**
+- Edite o texto do prompt utilizado na análise de imagens radiológicas (RX, TC, RM)
+- Defina o nível de detalhe e foco do relatório gerado pela IA
+- Salve para aplicar imediatamente a todos os médicos do sistema
+
+As alterações são aplicadas em tempo real — médicos verão os resultados da nova configuração na próxima análise realizada.`
+      }
+    ]
+  },
+  {
+    id: "a-mass-disconnection",
+    title: "Desconexão em Massa",
+    icon: <Unplug className="h-5 w-5" />,
+    content: [
+      {
+        title: "Controles de Desconexão em Massa",
+        text: `O painel administrativo oferece controles de desconexão em massa para situações de manutenção ou emergência:
+
+**Desconectar todos os usuários**
+- Remove a sessão ativa de todos os usuários (pacientes) conectados ao sistema
+- Útil em situações de manutenção emergencial ou atualização crítica
+
+**Desconectar todos os médicos**
+- Remove a sessão ativa de todos os médicos conectados
+- Encerra automaticamente disponibilidades e plantões ativos
+
+**Desconectar todos os serviços**
+- Encerra conexões de serviços externos e integrações ativas (WebSocket, Agora, etc.)
+- Útil para reinicialização de serviços sem derrubar o servidor
+
+**Como usar**
+1. Acesse o painel admin
+2. Localize os botões de desconexão em massa (seção de controles)
+3. Clique no botão desejado — uma confirmação será solicitada
+4. Confirme a ação para executar
+
+**Atenção**: A desconexão em massa interrompe consultas em andamento. Use apenas quando estritamente necessário e com ciência do impacto operacional.`
+      }
+    ]
+  },
+  {
+    id: "a-per-role-theme",
+    title: "Temas por Perfil (Per-Role)",
+    icon: <Palette className="h-5 w-5" />,
+    content: [
+      {
+        title: "Personalização de Temas por Papel de Usuário",
+        text: `O administrador pode personalizar as cores de destaque e a opacidade global da interface para cada papel (role) de usuário:
+
+**Cores de destaque (Accent Colors)**
+- Defina uma cor primária diferente para médicos, pacientes, farmacêuticos e administradores
+- As cores são aplicadas em botões, badges, ícones e elementos de destaque de cada perfil
+
+**Opacidade/Transparência Global**
+- Ajuste o nível de transparência (glass effect) para cada papel via slider
+- Valores menores criam interfaces mais transparentes (efeito "vidro fosco")
+- Valores maiores criam interfaces mais opacas e sólidas
+
+**Como configurar**
+1. Acesse o painel admin
+2. Localize as configurações de tema por papel
+3. Selecione o papel que deseja personalizar
+4. Ajuste a cor de destaque e/ou o slider de opacidade
+5. Salve — as mudanças são aplicadas em tempo real para todos os usuários do papel selecionado
+
+As configurações são independentes por papel, permitindo identidade visual distinta para cada grupo de usuários.`
+      }
+    ]
+  },
+  {
+    id: "a-desktop-global-settings",
+    title: "Configurações Globais do Desktop",
+    icon: <Monitor className="h-5 w-5" />,
+    content: [
+      {
+        title: "Gerenciando o Ambiente Desktop do Sistema",
+        text: `O administrador pode configurar e personalizar o ambiente Desktop que os usuários verão ao escolher o Modo Desktop:
+
+**Temas de Wallpaper**
+- Selecione o papel de parede padrão para o ambiente desktop
+- Os temas disponíveis variam de fundos médicos a opções neutras
+- Usuários com Modo Desktop verão o wallpaper configurado
+
+**Opacidade Global (Glass Opacity)**
+- Configure o nível padrão de transparência/opacidade dos painéis e janelas flutuantes
+- O slider vai de completamente opaco a altamente transparente (efeito glass)
+- Esta configuração pode ser sobrescrita por configurações por papel (per-role)
+
+**Sticky Notes**
+- O ambiente desktop suporta sticky notes (notas adesivas) flutuantes
+- Usuários podem criar, mover e fechar sticky notes na área de trabalho
+- Úteis para lembretes rápidos e anotações contextuais
+
+**Busca Global ⌘K (Command Palette)**
+- O atalho ⌘K (macOS) / Ctrl+K (Windows/Linux) abre a paleta de comandos global
+- Permite navegar rapidamente para qualquer funcionalidade sem usar menus
+- Disponível em toda a interface no Modo Desktop
+
+Estas configurações afetam a experiência de todos os usuários que utilizam o Modo Desktop.`
+      }
+    ]
+  },
+  {
     id: "a-installation",
     title: "Guia de Instalação",
     icon: <Settings className="h-5 w-5" />,
@@ -1322,7 +1530,7 @@ function TabContent({ sections, indexLabel }: { sections: Section[]; indexLabel?
 
 const manualLabels = {
   title: "Manual do Usuário",
-  subtitle: "Guia completo de uso da plataforma Tele<M3D> Pro — v3.5",
+  subtitle: "Guia completo de uso da plataforma Tele<M3D> Pro — v4.0",
   visitors: "Visitantes",
   visitorsShort: "Visit.",
   patients: "Pacientes",
@@ -1434,6 +1642,7 @@ export default function Manual() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mt-3">
+            <Badge className="bg-blue-600 text-white">v4.0</Badge>
             <Badge variant="outline">HL7 FHIR R4</Badge>
             <Badge variant="outline">Protocolo de Manchester</Badge>
             <Badge variant="outline">LGPD</Badge>
@@ -1441,6 +1650,9 @@ export default function Manual() {
             <Badge variant="outline">Farmácia</Badge>
             <Badge variant="outline">Stripe/PagBank</Badge>
             <Badge variant="outline">61 Tabelas</Badge>
+            <Badge variant="outline">Desktop OS Windowed</Badge>
+            <Badge variant="outline">3 Modos de Interface</Badge>
+            <Badge variant="outline">CRM / CFM</Badge>
           </div>
         </div>
 
