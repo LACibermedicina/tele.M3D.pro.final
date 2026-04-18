@@ -921,3 +921,18 @@ button, input, select, textarea {
   }
 }
 
+
+/* Access Modality — Classic preset reverts the proposal #39 visual layer to its
+   pre-#39 baseline (subdued chrome, no glass tints) without removing the toolbox.
+   Professional and Assisted modalities keep their own behaviors. */
+html[data-access-modality="classic"] [data-prop39],
+html[data-access-modality="classic"] [data-prop39-decoration] {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-color: hsl(var(--border)) !important;
+}
+html[data-access-modality="classic"] [data-prop39-only] {
+  display: none !important;
+}

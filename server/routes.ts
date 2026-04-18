@@ -13588,12 +13588,10 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     try {
       const admin = req.user!;
       if (admin.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
-      const defaultRes: any = await db.execute(sql`
-        SELECT value FROM system_settings WHERE key = 'access_modality_default' LIMIT 1
-      `);
-      const defaultRow = (defaultRes?.rows || defaultRes || [])[0] as { value?: string } | undefined;
-      const globalDefault = (defaultRow?.value === 'classic' || defaultRow?.value === 'professional' || defaultRow?.value === 'assisted')
-        ? defaultRow.value
+      const defaultSetting = await storage.getSystemSetting('access_modality_default');
+      const defaultValue = defaultSetting?.settingValue;
+      const globalDefault = (defaultValue === 'classic' || defaultValue === 'professional' || defaultValue === 'assisted')
+        ? defaultValue
         : 'professional';
 
       const result: any = await db.execute(sql`

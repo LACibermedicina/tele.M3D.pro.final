@@ -61,18 +61,20 @@ export default function ModeSelection() {
   const { modality, setModality } = useAccessModality();
   const { toast } = useToast();
 
+  const allowRevisit = typeof window !== "undefined" && window.location.search.includes("force=1");
+
   useEffect(() => {
-    if (hasChosenMode) {
+    if (hasChosenMode && !allowRevisit) {
       setLocation("/");
     }
-  }, [hasChosenMode, setLocation]);
+  }, [hasChosenMode, setLocation, allowRevisit]);
 
   const handleSelect = (mode: ViewMode) => {
     setViewMode(mode);
     setLocation("/");
   };
 
-  if (hasChosenMode) return null;
+  if (hasChosenMode && !allowRevisit) return null;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
