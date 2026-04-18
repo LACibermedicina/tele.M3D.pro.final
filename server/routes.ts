@@ -13528,20 +13528,21 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       const { value } = schema.parse(req.body);
       const existing = await storage.getSystemSetting('access_modality_default');
       const previousValue = existing?.settingValue ?? null;
-      if (existing) {
-        await db.execute(sql`UPDATE system_settings SET setting_value = ${value} WHERE setting_key = 'access_modality_default'`);
-      } else {
-        await db.execute(sql`INSERT INTO system_settings (setting_key, setting_value, category) VALUES ('access_modality_default', ${value}, 'access_modality')`);
-      }
-      // Audit: every PUT call must produce a traceable entry, including
-      // same-value submissions. If the audit insert fails, the request
-      // fails too — a successful response must always imply a persisted log.
-      await db.insert(accessModalityAuditLogs).values({
-        adminId: user.id,
-        adminName: user.name ?? null,
-        adminEmail: user.email ?? null,
-        previousValue,
-        newValue: value,
+      // Atomic: setting update + audit insert succeed or fail together.
+      // A successful response must always imply a persisted audit entry.
+      await db.transaction(async (tx) => {
+        if (existing) {
+          await tx.execute(sql`UPDATE system_settings SET setting_value = ${value} WHERE setting_key = 'access_modality_default'`);
+        } else {
+          await tx.execute(sql`INSERT INTO system_settings (setting_key, setting_value, category) VALUES ('access_modality_default', ${value}, 'access_modality')`);
+        }
+        await tx.insert(accessModalityAuditLogs).values({
+          adminId: user.id,
+          adminName: user.name ?? null,
+          adminEmail: user.email ?? null,
+          previousValue,
+          newValue: value,
+        });
       });
       res.json({ value });
     } catch (error) {
@@ -13558,7 +13559,8 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     try {
       const user = req.user!;
       if (user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
-      const limit = Math.min(parseInt(String(req.query.limit ?? '10'), 10) || 10, 100);
+      const parsedLimit = parseInt(String(req.query.limit ?? '10'), 10);
+      const limit = Math.max(1, Math.min(Number.isFinite(parsedLimit) ? parsedLimit : 10, 100));
       const rows: AccessModalityAuditLog[] = await db
         .select()
         .from(accessModalityAuditLogs)
