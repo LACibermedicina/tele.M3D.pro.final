@@ -13506,9 +13506,9 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         accessModality: z.enum(['classic', 'professional', 'assisted']).nullable(),
       });
       const { accessModality } = schema.parse(req.body);
-      const updated = await storage.updateUser(user.id, { accessModality } as any);
+      const updated = await storage.updateUser(user.id, { accessModality });
       if (!updated) return res.status(404).json({ message: 'User not found' });
-      const { password: _, ...rest } = updated as any;
+      const { password: _, ...rest } = updated;
       let effective = accessModality || '';
       if (!effective) {
         const setting = await storage.getSystemSetting('access_modality_default');
@@ -13572,7 +13572,7 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       const { accessModality } = schema.parse(req.body);
       const target = await storage.getUser(req.params.id);
       if (!target) return res.status(404).json({ message: 'User not found' });
-      await db.execute(sql`UPDATE users SET access_modality = ${accessModality as any} WHERE id = ${req.params.id}`);
+      await db.execute(sql`UPDATE users SET access_modality = ${accessModality} WHERE id = ${req.params.id}`);
       res.json({ id: req.params.id, accessModality });
     } catch (error) {
       if (error instanceof z.ZodError) {

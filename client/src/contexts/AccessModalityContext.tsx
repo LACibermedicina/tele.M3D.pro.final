@@ -69,10 +69,10 @@ export function AccessModalityProvider({ children }: { children: ReactNode }) {
         try { localStorage.setItem(STORAGE_KEY, eff); } catch {}
       }
     } else {
-      // Fall back to global default for visitors
-      setModalityState(readStored() ?? globalDefault);
+      // Visitors always render in Professional regardless of stored/global default.
+      setModalityState(DEFAULT_MODALITY);
     }
-  }, [meData, isAuthenticated, globalDefault]);
+  }, [meData, isAuthenticated]);
 
   // Reflect modality on documentElement for CSS-driven styling
   useEffect(() => {

@@ -8,14 +8,25 @@ import { Button } from "@/components/ui/button";
 import { LogOut, Settings, Send, Sparkles, Mic, MicOff, Volume2, VolumeX, Languages } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
-const EXIT_PHRASES = [
+const EXIT_PHRASES_PROFESSIONAL = [
   "voltar para profissional",
+  "modo profissional",
   "sair do modo assistido",
   "sair da modalidade assistida",
   "exit assisted mode",
   "exit assisted",
   "leave assisted mode",
   "salir del modo asistido",
+];
+
+const EXIT_PHRASES_CLASSIC = [
+  "modo clássico",
+  "modo classico",
+  "voltar para clássico",
+  "voltar para classico",
+  "switch to classic",
+  "classic mode",
+  "modo clásico",
 ];
 
 export function AssistedLayout() {
@@ -44,7 +55,9 @@ export function AssistedLayout() {
       const detail = (e as CustomEvent<{ text?: string }>).detail;
       const text = (detail?.text || "").toLowerCase();
       if (!text) return;
-      if (EXIT_PHRASES.some((p) => text.includes(p))) {
+      if (EXIT_PHRASES_CLASSIC.some((p) => text.includes(p))) {
+        void setModality("classic").then(() => setLocation("/"));
+      } else if (EXIT_PHRASES_PROFESSIONAL.some((p) => text.includes(p))) {
         void handleExitToProfessional();
       }
     };
