@@ -25153,7 +25153,26 @@ async function migrateUserUsageFields() {
         END IF;
       END $$;
     `);
-    // Enforce email uniqueness at DB level (case-insensitive, ignoring NULLs)
+    // Enforce email uniqueness at DB level (case-insensitive, ignoring NULLs).
+    // First, deduplicate any case-insensitive collisions by suffixing all but
+    // the oldest row's email with "+dup-<id-prefix>" so the unique index can
+    // be created safely on environments that already contain conflicting data.
+    await db.execute(sql`
+      WITH dups AS (
+        SELECT id, email,
+               ROW_NUMBER() OVER (PARTITION BY LOWER(email) ORDER BY created_at, id) AS rn
+        FROM users
+        WHERE email IS NOT NULL
+      )
+      UPDATE users u
+      SET email = CASE
+        WHEN position('@' IN d.email) > 0
+          THEN regexp_replace(d.email, '@', '+dup-' || u.id::text || '@')
+        ELSE d.email || '+dup-' || u.id::text
+      END
+      FROM dups d
+      WHERE u.id = d.id AND d.rn > 1
+    `);
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_lower ON users (LOWER(email)) WHERE email IS NOT NULL`);
     console.log('✓ User usage tracking fields migrated successfully');
   } catch (error) {
