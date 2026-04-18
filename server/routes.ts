@@ -24591,6 +24591,18 @@ async function migrateFhirTables() {
       CREATE INDEX IF NOT EXISTS idx_access_modality_audit_scope
       ON access_modality_audit_logs (scope, created_at DESC)
     `);
+    // Enforce scope ∈ {'global','user'} at the DB layer (Task #50). Idempotent:
+    // drop any prior version of the constraint before re-adding so the allowed
+    // value set can evolve safely. Existing rows default to 'global' and pass.
+    await db.execute(sql`
+      ALTER TABLE access_modality_audit_logs
+      DROP CONSTRAINT IF EXISTS access_modality_audit_logs_scope_check
+    `);
+    await db.execute(sql`
+      ALTER TABLE access_modality_audit_logs
+      ADD CONSTRAINT access_modality_audit_logs_scope_check
+      CHECK (scope IN ('global', 'user'))
+    `);
     console.log('✓ Access modality audit log table migrated successfully');
   } catch (error) {
     console.error('Failed to migrate access modality audit log table:', error);
