@@ -692,6 +692,9 @@ export default function Documentation() {
                 <CheckCircle className="w-4 h-4 mr-2" />
                 {lb.updatedAt}
               </Badge>
+              <Badge className="bg-white/20 text-white text-sm px-4 py-2" data-testid="badge-modalities">
+                3 Modalidades: Clássica · Profissional · Assistida
+              </Badge>
               <Badge className="bg-white/20 text-white text-sm px-4 py-2">
                 <Star className="w-4 h-4 mr-2" />
                 {lb.version}

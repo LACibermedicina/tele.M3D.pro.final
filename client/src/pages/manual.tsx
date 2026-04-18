@@ -1652,6 +1652,7 @@ export default function Manual() {
             <Badge variant="outline">61 Tabelas</Badge>
             <Badge variant="outline">Desktop OS Windowed</Badge>
             <Badge variant="outline">3 Modos de Interface</Badge>
+            <Badge variant="outline">3 Modalidades de Acesso (Clássica / Profissional / Assistida)</Badge>
             <Badge variant="outline">CRM / CFM</Badge>
           </div>
         </div>

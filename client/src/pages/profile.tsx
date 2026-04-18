@@ -13,6 +13,7 @@ import { User, Mail, Phone, CreditCard, Shield, ShieldCheck, ShieldAlert, Shield
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
+import { useAccessModality, type AccessModality } from "@/contexts/AccessModalityContext";
 
 interface RatingStats {
   averageRating: number;
@@ -31,6 +32,7 @@ export default function Profile() {
   const { user, updateUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { modality, setModality, globalDefault } = useAccessModality();
 
   const [formData, setFormData] = useState({
     name: user?.name || "",
@@ -393,6 +395,40 @@ export default function Profile() {
                 </>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Access Modality compact switch */}
+        <Card className="md:col-span-3" data-testid="card-profile-access-modality">
+          <CardHeader>
+            <CardTitle>Modalidade de Acesso</CardTitle>
+            <CardDescription>
+              Escolha como o sistema é apresentado a você. Padrão atual da plataforma: <strong>{globalDefault}</strong>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {(["classic", "professional", "assisted"] as AccessModality[]).map((m) => (
+                <Button
+                  key={m}
+                  type="button"
+                  variant={modality === m ? "default" : "outline"}
+                  className="justify-start"
+                  onClick={() => {
+                    void setModality(m);
+                    toast({ title: "Modalidade atualizada", description: `Agora você está em modo ${m}.` });
+                  }}
+                  data-testid={`btn-profile-modality-${m}`}
+                >
+                  {m === "classic" && "Clássica — minimalista"}
+                  {m === "professional" && "Profissional — toolbox completa"}
+                  {m === "assisted" && "Assistida — voz e visual"}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              A modalidade Assistida pode ser encerrada a qualquer momento pelo botão "Sair do modo assistido" no topo da tela ou pelo comando de voz "voltar para profissional".
+            </p>
           </CardContent>
         </Card>
 

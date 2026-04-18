@@ -359,6 +359,9 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
     setResponse("");
     setActionButtons([]);
     setLastSymptoms(text);
+    try {
+      window.dispatchEvent(new CustomEvent("iam3d-intent", { detail: { text } }));
+    } catch {}
 
     try {
       const endpoint = user ? "/api/chatbot/message" : "/api/chatbot/visitor-message";
@@ -388,6 +391,9 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
 
       setResponse(aiText);
       speakText(aiText);
+      try {
+        window.dispatchEvent(new CustomEvent("iam3d-result", { detail: { text: aiText, actionType } }));
+      } catch {}
 
       const buttons: ActionButton[] = [];
 

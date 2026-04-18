@@ -216,8 +216,10 @@ const STORAGE_KEY_VISIBLE = "unified_toolbox_visible";
 import { useAccessModality } from "@/contexts/AccessModalityContext";
 
 export default function UnifiedToolbox() {
-  const { isClassic, isAssisted } = useAccessModality();
-  if (isClassic || isAssisted) return null;
+  const { isAssisted } = useAccessModality();
+  // Classic keeps the toolbox mounted (original/legacy behavior).
+  // Assisted replaces the entire shell, so the toolbox must not appear.
+  if (isAssisted) return null;
   return <UnifiedToolboxInner />;
 }
 

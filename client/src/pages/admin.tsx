@@ -124,6 +124,7 @@ export default function AdminPage() {
   const { restoreAll } = useMinimizedPanels();
   const { toast } = useToast();
   const isPermanentAdmin = useIsPermanentAdmin();
+  const { isClassic: isClassicModality } = useAccessModality();
   const [showCreateCollaborator, setShowCreateCollaborator] = useState(false);
   const [showCreateApiKey, setShowCreateApiKey] = useState(false);
   const [selectedCollaborator, setSelectedCollaborator] = useState<string>('');
@@ -564,12 +565,14 @@ export default function AdminPage() {
           <TabsTrigger value="access-modality-config" data-testid="tab-access-modality-config">
             Modalidades de Acesso
           </TabsTrigger>
-          <TabsTrigger value="ai-radiology-config" data-testid="tab-ai-radiology-config">
-            <div className="flex items-center space-x-2">
-              <FileText className="h-4 w-4" />
-              <span>Config Radiologia</span>
-            </div>
-          </TabsTrigger>
+          {!isClassicModality && (
+            <TabsTrigger value="ai-radiology-config" data-testid="tab-ai-radiology-config">
+              <div className="flex items-center space-x-2">
+                <FileText className="h-4 w-4" />
+                <span>Config Radiologia</span>
+              </div>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="crm-verification" data-testid="tab-crm-verification">
             <div className="flex items-center space-x-2">
               <ShieldCheck className="h-4 w-4" />
@@ -4155,7 +4158,14 @@ function AccessModalityAdminSection() {
                               size="sm"
                               variant="outline"
                               disabled={overrideMutation.isPending || draft === current}
-                              onClick={() => overrideMutation.mutate({ userId: u.id, value: draft === 'inherit' ? null : draft as any })}
+                              onClick={() => {
+                                const value = draft === 'inherit'
+                                  ? null
+                                  : (draft === 'classic' || draft === 'professional' || draft === 'assisted')
+                                    ? draft
+                                    : null;
+                                overrideMutation.mutate({ userId: u.id, value });
+                              }}
                               data-testid={`btn-save-modality-user-${u.id}`}
                             >
                               Salvar

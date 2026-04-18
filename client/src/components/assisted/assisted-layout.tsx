@@ -28,6 +28,9 @@ export function AssistedLayout() {
   const [prompt, setPrompt] = useState("");
   const [muted, setMuted] = useState(false);
   const [silentVoice, setSilentVoice] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState<string>("");
+  const [liveIntent, setLiveIntent] = useState<string>("");
+  const [liveResult, setLiveResult] = useState<string>("");
   const lastSubmittedRef = useRef<string>("");
 
   const handleExitToProfessional = async () => {
@@ -45,18 +48,36 @@ export function AssistedLayout() {
         void handleExitToProfessional();
       }
     };
+    const onTranscriptCapture = (e: Event) => {
+      const detail = (e as CustomEvent<{ text?: string }>).detail;
+      if (detail?.text) setLiveTranscript(detail.text);
+    };
+    const onIntent = (e: Event) => {
+      const detail = (e as CustomEvent<{ text?: string }>).detail;
+      if (detail?.text) setLiveIntent(detail.text);
+    };
+    const onResult = (e: Event) => {
+      const detail = (e as CustomEvent<{ text?: string }>).detail;
+      if (detail?.text) setLiveResult(detail.text);
+    };
     window.addEventListener("iam3d-voice-final", onTranscript as EventListener);
-    return () => window.removeEventListener("iam3d-voice-final", onTranscript as EventListener);
+    window.addEventListener("iam3d-voice-final", onTranscriptCapture as EventListener);
+    window.addEventListener("iam3d-intent", onIntent as EventListener);
+    window.addEventListener("iam3d-result", onResult as EventListener);
+    return () => {
+      window.removeEventListener("iam3d-voice-final", onTranscript as EventListener);
+      window.removeEventListener("iam3d-voice-final", onTranscriptCapture as EventListener);
+      window.removeEventListener("iam3d-intent", onIntent as EventListener);
+      window.removeEventListener("iam3d-result", onResult as EventListener);
+    };
   }, []);
 
-  // Mute/unmute by toggling a global flag the assistant inspects
+  // Mute/unmute by dispatching events the assistant inspects
   useEffect(() => {
-    (window as any).__iam3dMicMuted = muted;
     window.dispatchEvent(new CustomEvent("iam3d-mic-mute", { detail: { muted } }));
   }, [muted]);
 
   useEffect(() => {
-    (window as any).__iam3dVoiceSilent = silentVoice;
     window.dispatchEvent(new CustomEvent("iam3d-voice-silent", { detail: { silent: silentVoice } }));
   }, [silentVoice]);
 
@@ -188,6 +209,24 @@ export function AssistedLayout() {
         <p className="text-[10px] text-white/40 italic">
           Comandos de voz: "voltar para profissional" encerra a modalidade assistida.
         </p>
+
+        <div className="border-t border-white/10 pt-3 space-y-2" data-testid="panel-narrative-live">
+          <div className="text-[10px] uppercase tracking-wide text-white/50">Diálogo ao vivo</div>
+          <div className="space-y-1.5">
+            <div data-testid="live-transcript">
+              <div className="text-[10px] text-cyan-300/70">Transcrição</div>
+              <div className="text-xs text-white/90 min-h-[1rem]">{liveTranscript || "—"}</div>
+            </div>
+            <div data-testid="live-intent">
+              <div className="text-[10px] text-amber-300/70">Intenção interpretada</div>
+              <div className="text-xs text-white/90 min-h-[1rem]">{liveIntent || "—"}</div>
+            </div>
+            <div data-testid="live-result">
+              <div className="text-[10px] text-emerald-300/70">Resultado da execução</div>
+              <div className="text-xs text-white/90 min-h-[1rem]">{liveResult || "—"}</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* IAM3D voice assistant — always-on visual */}
