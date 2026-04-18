@@ -2103,14 +2103,20 @@ export const insertProfileMergeAuditLogSchema = createInsertSchema(profileMergeA
 export type InsertProfileMergeAuditLog = z.infer<typeof insertProfileMergeAuditLogSchema>;
 export type ProfileMergeAuditLog = typeof profileMergeAuditLogs.$inferSelect;
 
-// Access Modality Audit Log — tracks every change to the global default access modality
+// Access Modality Audit Log — tracks every change to access modality:
+// scope='global' for changes to the system-wide default,
+// scope='user' for individual overrides on users.access_modality.
 export const accessModalityAuditLogs = pgTable("access_modality_audit_logs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  scope: text("scope").notNull().default('global'), // 'global' | 'user'
   adminId: uuid("admin_id").references(() => users.id).notNull(),
   adminName: text("admin_name"),
   adminEmail: text("admin_email"),
+  targetUserId: uuid("target_user_id").references(() => users.id),
+  targetUserName: text("target_user_name"),
+  targetUserEmail: text("target_user_email"),
   previousValue: text("previous_value"),
-  newValue: text("new_value").notNull(),
+  newValue: text("new_value"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

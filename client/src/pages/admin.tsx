@@ -4032,6 +4032,7 @@ function AccessModalityAdminSection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/access-modality-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/access-modality-audit'] });
       toast({ title: 'Modalidade do usuário atualizada' });
     },
     onError: (e: any) => {
@@ -4190,17 +4191,33 @@ function AccessModalityAdminSection() {
   );
 }
 
+type AccessModalityAuditEntry = {
+  id: string;
+  scope: 'global' | 'user';
+  adminId: string;
+  adminName: string | null;
+  adminEmail: string | null;
+  targetUserId: string | null;
+  targetUserName: string | null;
+  targetUserEmail: string | null;
+  previousValue: string | null;
+  newValue: string | null;
+  createdAt: string;
+};
+
 function AccessModalityAuditTrail() {
-  const { data: entries, isLoading } = useQuery<Array<{
-    id: string;
-    adminId: string;
-    adminName: string | null;
-    adminEmail: string | null;
-    previousValue: string | null;
-    newValue: string;
-    createdAt: string;
-  }>>({
-    queryKey: ['/api/admin/access-modality-audit'],
+  const [scopeFilter, setScopeFilter] = useState<'all' | 'global' | 'user'>('all');
+  const { data: entries, isLoading } = useQuery<AccessModalityAuditEntry[]>({
+    queryKey: ['/api/admin/access-modality-audit', scopeFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams({ limit: '20' });
+      if (scopeFilter !== 'all') params.set('scope', scopeFilter);
+      const res = await fetch(`/api/admin/access-modality-audit?${params.toString()}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      return res.json();
+    },
   });
 
   const fmt = (iso: string) => {
@@ -4209,9 +4226,29 @@ function AccessModalityAuditTrail() {
 
   return (
     <div className="border-t pt-3 mt-2 space-y-2" data-testid="section-access-modality-audit">
-      <div className="text-sm font-semibold">Histórico de mudanças (últimas 10)</div>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="text-sm font-semibold">Histórico de mudanças (últimas 20)</div>
+        <div className="flex gap-1" role="tablist" aria-label="Filtrar por escopo">
+          {([
+            ['all', 'Todas'],
+            ['global', 'Padrão global'],
+            ['user', 'Por usuário'],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setScopeFilter(key)}
+              aria-pressed={scopeFilter === key}
+              data-testid={`audit-filter-${key}`}
+              className={`text-xs px-2 py-1 rounded border ${scopeFilter === key ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
       <p className="text-xs text-muted-foreground">
-        Cada alteração do padrão global é registrada com administrador, valor anterior e novo valor.
+        Mudanças do padrão global e sobrescritas individuais são registradas com administrador, alvo, valor anterior e novo valor.
       </p>
       {isLoading ? (
         <div className="text-xs text-muted-foreground">Carregando...</div>
@@ -4225,7 +4262,9 @@ function AccessModalityAuditTrail() {
             <thead className="bg-muted/50 uppercase">
               <tr>
                 <th className="text-left p-2">Quando</th>
+                <th className="text-left p-2">Escopo</th>
                 <th className="text-left p-2">Administrador</th>
+                <th className="text-left p-2">Alvo</th>
                 <th className="text-left p-2">De</th>
                 <th className="text-left p-2">Para</th>
               </tr>
@@ -4235,11 +4274,29 @@ function AccessModalityAuditTrail() {
                 <tr key={e.id} className="border-t" data-testid={`audit-row-${e.id}`}>
                   <td className="p-2 whitespace-nowrap">{fmt(e.createdAt)}</td>
                   <td className="p-2">
+                    <span
+                      className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${e.scope === 'user' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200' : 'bg-muted'}`}
+                      data-testid={`audit-scope-${e.id}`}
+                    >
+                      {e.scope === 'user' ? 'Usuário' : 'Global'}
+                    </span>
+                  </td>
+                  <td className="p-2">
                     <div className="font-medium">{e.adminName || '—'}</div>
                     <div className="text-muted-foreground">{e.adminEmail || e.adminId}</div>
                   </td>
+                  <td className="p-2">
+                    {e.scope === 'user' ? (
+                      <>
+                        <div className="font-medium">{e.targetUserName || '—'}</div>
+                        <div className="text-muted-foreground">{e.targetUserEmail || e.targetUserId || '—'}</div>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
                   <td className="p-2"><code>{e.previousValue ?? '—'}</code></td>
-                  <td className="p-2"><code className="font-semibold">{e.newValue}</code></td>
+                  <td className="p-2"><code className="font-semibold">{e.newValue ?? 'inherit'}</code></td>
                 </tr>
               ))}
             </tbody>

@@ -13561,9 +13561,19 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       if (user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
       const parsedLimit = parseInt(String(req.query.limit ?? '10'), 10);
       const limit = Math.max(1, Math.min(Number.isFinite(parsedLimit) ? parsedLimit : 10, 100));
-      const rows: AccessModalityAuditLog[] = await db
-        .select()
-        .from(accessModalityAuditLogs)
+      const scopeParam = typeof req.query.scope === 'string' ? req.query.scope : undefined;
+      const scope = (scopeParam === 'global' || scopeParam === 'user') ? scopeParam : undefined;
+      const targetUserId = typeof req.query.targetUserId === 'string' && req.query.targetUserId.length > 0
+        ? req.query.targetUserId
+        : undefined;
+      const conditions = [] as any[];
+      if (scope) conditions.push(eq(accessModalityAuditLogs.scope, scope));
+      if (targetUserId) conditions.push(eq(accessModalityAuditLogs.targetUserId, targetUserId));
+      const baseQuery = db.select().from(accessModalityAuditLogs);
+      const filtered = conditions.length > 0
+        ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
+        : baseQuery;
+      const rows: AccessModalityAuditLog[] = await filtered
         .orderBy(desc(accessModalityAuditLogs.createdAt))
         .limit(limit);
       res.json(rows);
@@ -13587,7 +13597,22 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       const { accessModality } = schema.parse(req.body);
       const target = await storage.getUser(req.params.id);
       if (!target) return res.status(404).json({ message: 'User not found' });
-      await db.execute(sql`UPDATE users SET access_modality = ${accessModality} WHERE id = ${req.params.id}`);
+      const previousValue = (target as any).accessModality ?? null;
+      // Atomic: per-user override + audit insert succeed or fail together.
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`UPDATE users SET access_modality = ${accessModality} WHERE id = ${req.params.id}`);
+        await tx.insert(accessModalityAuditLogs).values({
+          scope: 'user',
+          adminId: admin.id,
+          adminName: admin.name ?? null,
+          adminEmail: admin.email ?? null,
+          targetUserId: target.id,
+          targetUserName: (target as any).name ?? null,
+          targetUserEmail: (target as any).email ?? null,
+          previousValue,
+          newValue: accessModality,
+        });
+      });
       res.json({ id: req.params.id, accessModality });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -24459,6 +24484,20 @@ async function migrateFhirTables() {
     await db.execute(sql`
       CREATE INDEX IF NOT EXISTS idx_access_modality_audit_created_at
       ON access_modality_audit_logs (created_at DESC)
+    `);
+    // Per-user override columns (Task #48): scope + target user metadata.
+    await db.execute(sql`ALTER TABLE access_modality_audit_logs ADD COLUMN IF NOT EXISTS scope TEXT NOT NULL DEFAULT 'global'`);
+    await db.execute(sql`ALTER TABLE access_modality_audit_logs ADD COLUMN IF NOT EXISTS target_user_id UUID`);
+    await db.execute(sql`ALTER TABLE access_modality_audit_logs ADD COLUMN IF NOT EXISTS target_user_name TEXT`);
+    await db.execute(sql`ALTER TABLE access_modality_audit_logs ADD COLUMN IF NOT EXISTS target_user_email TEXT`);
+    await db.execute(sql`ALTER TABLE access_modality_audit_logs ALTER COLUMN new_value DROP NOT NULL`);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_access_modality_audit_target_user
+      ON access_modality_audit_logs (target_user_id, created_at DESC)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_access_modality_audit_scope
+      ON access_modality_audit_logs (scope, created_at DESC)
     `);
     console.log('✓ Access modality audit log table migrated successfully');
   } catch (error) {
