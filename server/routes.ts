@@ -13598,6 +13598,80 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     }
   });
 
+  // Admin: CSV export of the access modality audit log (Task #49).
+  // Same scope/target_user_id filters as the JSON endpoint; capped at 10k rows.
+  app.get('/api/admin/access-modality-audit.csv', requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+      const scopeParam = typeof req.query.scope === 'string' ? req.query.scope : undefined;
+      const scope = (scopeParam === 'global' || scopeParam === 'user') ? scopeParam : undefined;
+      const rawTargetUserId =
+        (typeof req.query.target_user_id === 'string' && req.query.target_user_id) ||
+        (typeof req.query.targetUserId === 'string' && req.query.targetUserId) ||
+        '';
+      const targetUserId = rawTargetUserId.length > 0 ? rawTargetUserId : undefined;
+      const filterSchema = z.object({
+        scope: z.enum(['global', 'user']).optional(),
+        targetUserId: z.string().uuid().optional(),
+      });
+      const parsedFilters = filterSchema.safeParse({ scope, targetUserId });
+      if (!parsedFilters.success) {
+        return res.status(400).json({ message: 'Filtros inválidos', errors: parsedFilters.error.errors });
+      }
+      const conditions: SQL[] = [];
+      if (parsedFilters.data.scope) {
+        conditions.push(eq(accessModalityAuditLogs.scope, parsedFilters.data.scope));
+      }
+      if (parsedFilters.data.targetUserId) {
+        conditions.push(eq(accessModalityAuditLogs.targetUserId, parsedFilters.data.targetUserId));
+      }
+      const baseQuery = db.select().from(accessModalityAuditLogs);
+      const filtered = conditions.length > 0
+        ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
+        : baseQuery;
+      const rows: AccessModalityAuditLog[] = await filtered
+        .orderBy(desc(accessModalityAuditLogs.createdAt))
+        .limit(10000);
+
+      // RFC 4180 CSV escaping: wrap in quotes when value contains quote, comma, or newline.
+      const esc = (v: unknown): string => {
+        if (v === null || v === undefined) return '';
+        const s = v instanceof Date ? v.toISOString() : String(v);
+        return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const header = [
+        'created_at', 'scope', 'admin_id', 'admin_name', 'admin_email',
+        'target_user_id', 'target_user_name', 'target_user_email',
+        'previous_value', 'new_value',
+      ].join(',');
+      const lines = rows.map(r => [
+        esc(r.createdAt),
+        esc(r.scope),
+        esc(r.adminId),
+        esc(r.adminName),
+        esc(r.adminEmail),
+        esc(r.targetUserId),
+        esc(r.targetUserName),
+        esc(r.targetUserEmail),
+        esc(r.previousValue),
+        esc(r.newValue),
+      ].join(','));
+      // BOM so Excel opens UTF-8 correctly.
+      const csv = '\uFEFF' + [header, ...lines].join('\r\n') + '\r\n';
+
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      const filename = `access-modality-audit-${stamp}.csv`;
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Cache-Control', 'no-store');
+      res.send(csv);
+    } catch (error) {
+      console.error('Admin export access modality audit CSV error:', error);
+      res.status(500).json({ message: 'Failed to export access modality audit log' });
+    }
+  });
+
   // Admin: per-user access modality override (null = inherit global default)
   app.patch('/api/admin/users/:id/access-modality', requireAuth, async (req, res) => {
     try {

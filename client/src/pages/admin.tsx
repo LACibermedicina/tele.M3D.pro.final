@@ -4228,23 +4228,36 @@ function AccessModalityAuditTrail() {
     <div className="border-t pt-3 mt-2 space-y-2" data-testid="section-access-modality-audit">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="text-sm font-semibold">Histórico de mudanças (últimas 20)</div>
-        <div className="flex gap-1" role="tablist" aria-label="Filtrar por escopo">
-          {([
-            ['all', 'Todas'],
-            ['global', 'Padrão global'],
-            ['user', 'Por usuário'],
-          ] as const).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setScopeFilter(key)}
-              aria-pressed={scopeFilter === key}
-              data-testid={`audit-filter-${key}`}
-              className={`text-xs px-2 py-1 rounded border ${scopeFilter === key ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex gap-1" role="tablist" aria-label="Filtrar por escopo">
+            {([
+              ['all', 'Todas'],
+              ['global', 'Padrão global'],
+              ['user', 'Por usuário'],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setScopeFilter(key)}
+                aria-pressed={scopeFilter === key}
+                data-testid={`audit-filter-${key}`}
+                className={`text-xs px-2 py-1 rounded border ${scopeFilter === key ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <a
+            href={scopeFilter === 'all'
+              ? '/api/admin/access-modality-audit.csv'
+              : `/api/admin/access-modality-audit.csv?scope=${scopeFilter}`}
+            download
+            data-testid="audit-export-csv"
+            className="text-xs px-2 py-1 rounded border bg-background hover:bg-muted inline-flex items-center gap-1"
+            title="Baixar CSV (até 10.000 linhas) com o filtro atual"
+          >
+            Exportar CSV
+          </a>
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
