@@ -590,7 +590,6 @@ function Router() {
 
       {isImmersiveMode && location !== '/' && location !== '/dashboard' && <ImmersiveFloatingChat />}
 
-      {isAssistedMode && <AssistedLayout />}
 
     </div>
     </>

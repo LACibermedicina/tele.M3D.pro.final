@@ -4018,7 +4018,7 @@ function AccessModalityAdminSection() {
   const [userQuery, setUserQuery] = useState('');
   const [userOverride, setUserOverride] = useState<Record<string, string>>({});
 
-  const { data: counts } = useQuery<Record<string, number>>({
+  const { data: counts } = useQuery<{ classic: number; professional: number; assisted: number; inherit: number; globalDefault: string }>({
     queryKey: ['/api/admin/access-modality-counts'],
   });
 
@@ -4095,15 +4095,18 @@ function AccessModalityAdminSection() {
         </p>
 
         <div className="border-t pt-3 mt-2">
-          <div className="text-sm font-semibold mb-2">Distribuição atual de usuários</div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-            {(['classic', 'professional', 'assisted', 'inherit'] as const).map(k => (
+          <div className="text-sm font-semibold mb-2">Distribuição efetiva de usuários por modalidade</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+            {(['classic', 'professional', 'assisted'] as const).map(k => (
               <div key={k} className="rounded border p-2 bg-muted/30" data-testid={`stat-modality-${k}`}>
-                <div className="text-xs uppercase text-muted-foreground">{k === 'inherit' ? 'Padrão global' : k}</div>
+                <div className="text-xs uppercase text-muted-foreground">{k}</div>
                 <div className="text-lg font-semibold">{counts?.[k] ?? 0}</div>
               </div>
             ))}
           </div>
+          <p className="text-xs text-muted-foreground mt-2" data-testid="stat-modality-inherit">
+            {counts?.inherit ?? 0} usuário(s) sem preferência individual — herdam o padrão global atual ({counts?.globalDefault ?? globalDefault}) e já estão somados acima.
+          </p>
         </div>
 
         <div className="border-t pt-3 mt-2 space-y-2">

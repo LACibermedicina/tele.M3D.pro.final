@@ -5,6 +5,11 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export type AccessModality = "classic" | "professional" | "assisted";
 
+interface AuthMeResponse {
+  effectiveAccessModality?: AccessModality;
+  accessModality?: AccessModality | null;
+}
+
 const STORAGE_KEY = "tele_m3d_access_modality";
 const DEFAULT_MODALITY: AccessModality = "professional";
 
@@ -49,17 +54,25 @@ export function AccessModalityProvider({ children }: { children: ReactNode }) {
   });
   const globalDefault: AccessModality = (defaultData?.value as AccessModality) || DEFAULT_MODALITY;
 
+  // Authoritative server-side modality for the authenticated user
+  const { data: meData } = useQuery<AuthMeResponse>({
+    queryKey: ["/api/auth/me"],
+    enabled: isAuthenticated,
+  });
+
   // Hydrate from server when user logs in (effective modality from /api/auth/me)
   useEffect(() => {
-    const eff = (user as any)?.effectiveAccessModality as AccessModality | undefined;
-    if (isAuthenticated && eff) {
-      setModalityState(eff);
-      try { localStorage.setItem(STORAGE_KEY, eff); } catch {}
-    } else if (!isAuthenticated) {
+    if (isAuthenticated) {
+      const eff = meData?.effectiveAccessModality;
+      if (eff === "classic" || eff === "professional" || eff === "assisted") {
+        setModalityState(eff);
+        try { localStorage.setItem(STORAGE_KEY, eff); } catch {}
+      }
+    } else {
       // Fall back to global default for visitors
       setModalityState(readStored() ?? globalDefault);
     }
-  }, [user, isAuthenticated, globalDefault]);
+  }, [meData, isAuthenticated, globalDefault]);
 
   // Reflect modality on documentElement for CSS-driven styling
   useEffect(() => {

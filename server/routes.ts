@@ -13588,18 +13588,31 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     try {
       const admin = req.user!;
       if (admin.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+      const defaultRes: any = await db.execute(sql`
+        SELECT value FROM system_settings WHERE key = 'access_modality_default' LIMIT 1
+      `);
+      const defaultRow = (defaultRes?.rows || defaultRes || [])[0] as { value?: string } | undefined;
+      const globalDefault = (defaultRow?.value === 'classic' || defaultRow?.value === 'professional' || defaultRow?.value === 'assisted')
+        ? defaultRow.value
+        : 'professional';
+
       const result: any = await db.execute(sql`
         SELECT COALESCE(access_modality, 'inherit') AS modality, COUNT(*)::int AS count
         FROM users
         GROUP BY COALESCE(access_modality, 'inherit')
       `);
       const rows = (result?.rows || result || []) as Array<{ modality: string; count: number }>;
-      const counts: Record<string, number> = { classic: 0, professional: 0, assisted: 0, inherit: 0 };
+      const counts: Record<string, number> = { classic: 0, professional: 0, assisted: 0 };
+      let inheritCount = 0;
       for (const r of rows) {
         const k = (r.modality || 'inherit').toString();
-        counts[k] = Number(r.count) || 0;
+        const n = Number(r.count) || 0;
+        if (k === 'classic' || k === 'professional' || k === 'assisted') counts[k] += n;
+        else inheritCount += n;
       }
-      res.json(counts);
+      // Effective counts: users without an override count toward the global default
+      counts[globalDefault] += inheritCount;
+      res.json({ ...counts, inherit: inheritCount, globalDefault });
     } catch (error) {
       console.error('Admin access modality counts error:', error);
       res.status(500).json({ message: 'Failed to load counts' });
