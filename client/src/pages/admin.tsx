@@ -22,6 +22,7 @@ import PageWrapper from '@/components/layout/page-wrapper';
 import DraggableDashboardPanel from "@/components/dashboard/draggable-dashboard-panel";
 import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 import { ECGConfigTab, RadiologyConfigTab } from '@/components/admin/ai-prompt-config';
+import { useAccessModality } from '@/contexts/AccessModalityContext';
 import { CRMVerificationConfigTab } from '@/components/admin/crm-verification-config';
 
 interface Collaborator {
@@ -559,6 +560,9 @@ export default function AdminPage() {
               <Stethoscope className="h-4 w-4" />
               <span>Config ECG</span>
             </div>
+          </TabsTrigger>
+          <TabsTrigger value="access-modality-config" data-testid="tab-access-modality-config">
+            Modalidades de Acesso
           </TabsTrigger>
           <TabsTrigger value="ai-radiology-config" data-testid="tab-ai-radiology-config">
             <div className="flex items-center space-x-2">
@@ -3891,6 +3895,10 @@ function DatabaseCleanupTab() {
       <ECGConfigTab />
     </TabsContent>
 
+    <TabsContent value="access-modality-config" className="space-y-4">
+      <AccessModalityAdminSection />
+    </TabsContent>
+
     <TabsContent value="ai-radiology-config" className="space-y-4">
       <RadiologyConfigTab />
     </TabsContent>
@@ -3998,4 +4006,68 @@ function DatabaseCleanupTab() {
       </Card>
     </TabsContent>
   </>);
+}
+
+function AccessModalityAdminSection() {
+  const { globalDefault, setGlobalDefault } = useAccessModality();
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+
+  const options: { key: 'classic' | 'professional' | 'assisted'; title: string; desc: string }[] = [
+    { key: 'classic', title: 'Clássica', desc: 'Experiência minimalista, sem propostas #39 e #5 ativas. Foco em fluxos essenciais.' },
+    { key: 'professional', title: 'Profissional', desc: 'Experiência completa com toolbox unificada (#39) e radiologia avançada (#5).' },
+    { key: 'assisted', title: 'Assistida', desc: 'Modo autônomo com IAM3D voz + visual e prompt narrativo (efêmero).' },
+  ];
+
+  const onPick = async (m: 'classic' | 'professional' | 'assisted') => {
+    try {
+      setSaving(true);
+      await setGlobalDefault(m);
+      toast({ title: 'Modalidade global atualizada', description: `Padrão definido para "${m}".` });
+    } catch (e: any) {
+      toast({ title: 'Falha ao salvar', description: e?.message || 'Erro desconhecido', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Modalidade de Acesso (Padrão Global)</CardTitle>
+        <CardDescription>
+          Define a modalidade aplicada a usuários sem preferência individual. Usuários podem sobrescrever em seu perfil.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {options.map(opt => {
+            const active = globalDefault === opt.key;
+            return (
+              <button
+                key={opt.key}
+                onClick={() => onPick(opt.key)}
+                disabled={saving}
+                data-testid={`btn-modality-${opt.key}`}
+                className={`text-left rounded-lg border-2 p-4 transition-all ${
+                  active
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                } ${saving ? 'opacity-60 cursor-wait' : ''}`}
+              >
+                <div className="font-semibold mb-1">{opt.title}</div>
+                <div className="text-xs text-muted-foreground">{opt.desc}</div>
+                {active && (
+                  <div className="mt-2 text-xs font-medium text-primary">Padrão atual</div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Atalho de teclado global: <kbd>Alt</kbd>+<kbd>M</kbd> alterna a modalidade do usuário corrente. O modo Assistido pode ser encerrado a qualquer momento pelo botão "Sair do modo assistido".
+        </p>
+      </CardContent>
+    </Card>
+  );
 }

@@ -91,6 +91,8 @@ import DesktopBackground from "@/components/layout/desktop-background";
 import { DesktopWindowManagerProvider } from "@/contexts/DesktopWindowManagerContext";
 import DesktopWindowLayer, { isWindowedRoute } from "@/components/layout/desktop-window-layer";
 import { ViewModeProvider, useViewMode } from "@/contexts/ViewModeContext";
+import { AccessModalityProvider, useAccessModality } from "@/contexts/AccessModalityContext";
+import { AssistedLayout } from "@/components/assisted/assisted-layout";
 import ModeSelection from "@/pages/mode-selection";
 import { ImmersiveFloatingChat } from "@/components/immersive/immersive-floating-chat";
 
@@ -132,13 +134,19 @@ function Router() {
   const { viewMode } = useViewMode();
   const { isCommandPaletteOpen, setIsCommandPaletteOpen } = useGlobalShortcuts();
   const { mobileMenuStyle, sidebarCollapsed } = useLayoutSettings();
-  
+  const { isClassic, isProfessional, isAssisted } = useAccessModality();
+
   useCommandEvents();
   useApplicationShortcuts();
 
   const [location] = useLocation();
   const isInVideoConsultation = location.startsWith('/consultation/video') || location.startsWith('/patient/video');
   const isImmersiveMode = !!user && viewMode === 'immersive';
+  const isAssistedMode = !!user && isAssisted && !isInVideoConsultation;
+  // Radiology features (Proposta #5) gated to professional/assisted modalities
+  const showRadiologyFeatures = !isClassic;
+  // #39 floating widgets only visible when professional/assisted
+  const showProfessionalWidgets = !isClassic;
 
   const sidebarMargin = mobileMenuStyle === 'sidebar' && user
     ? (sidebarCollapsed ? 'md:ml-0 ml-[60px]' : 'md:ml-0 ml-64')
@@ -561,19 +569,21 @@ function Router() {
         </div>
       </footer>
       
-      {!isInVideoConsultation && !isImmersiveMode && <FloatingChatbot />}
-      {!isInVideoConsultation && !isImmersiveMode && <FloatingRadiologyAnalyzer />}
-      {!isInVideoConsultation && !isImmersiveMode && <FloatingECGAnalyzer />}
-      {!isInVideoConsultation && !isImmersiveMode && <FloatingStudyNotes />}
+      {!isInVideoConsultation && !isImmersiveMode && !isAssistedMode && <FloatingChatbot />}
+      {!isInVideoConsultation && !isImmersiveMode && !isAssistedMode && showRadiologyFeatures && <FloatingRadiologyAnalyzer />}
+      {!isInVideoConsultation && !isImmersiveMode && !isAssistedMode && showProfessionalWidgets && <FloatingECGAnalyzer />}
+      {!isInVideoConsultation && !isImmersiveMode && !isAssistedMode && showProfessionalWidgets && <FloatingStudyNotes />}
 
-      {!isInVideoConsultation && !isImmersiveMode && <DraggableWidgetButtons />}
+      {!isInVideoConsultation && !isImmersiveMode && !isAssistedMode && showProfessionalWidgets && <DraggableWidgetButtons />}
 
-      {!isInVideoConsultation && !isImmersiveMode && <VoiceAssistantPrompt />}
-      
-      {!isInVideoConsultation && !isImmersiveMode && <VoiceAssistantOverlay />}
+      {!isInVideoConsultation && !isImmersiveMode && !isAssistedMode && <VoiceAssistantPrompt />}
+
+      {!isInVideoConsultation && !isImmersiveMode && !isAssistedMode && <VoiceAssistantOverlay />}
 
       {isImmersiveMode && location !== '/' && location !== '/dashboard' && <ImmersiveFloatingChat />}
-      
+
+      {isAssistedMode && <AssistedLayout />}
+
     </div>
     </>
   );
@@ -619,6 +629,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <ViewModeProvider>
+            <AccessModalityProvider>
             <NavigationProvider>
               <LayoutSettingsProvider>
                 <VoiceAssistantProvider>
@@ -638,6 +649,7 @@ function App() {
                 </VoiceAssistantProvider>
               </LayoutSettingsProvider>
             </NavigationProvider>
+            </AccessModalityProvider>
           </ViewModeProvider>
         </AuthProvider>
       </QueryClientProvider>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAccessModality } from '@/contexts/AccessModalityContext';
 import { useDraggable } from '@/hooks/use-draggable';
 import { GripVertical, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -131,7 +132,13 @@ function DetachedTrayButton({ btn, onReattach }: { btn: typeof trayButtons[0]; o
 
 export function InlineTrayAnalysisButtons({ userRole }: { userRole: string }) {
   const [detachedIds, setDetachedIds] = useState<string[]>(getDetachedIds);
-  const visibleButtons = trayButtons.filter(b => b.roles.includes(userRole));
+  const { isClassic } = useAccessModality();
+  const visibleButtons = trayButtons.filter(b => {
+    if (!b.roles.includes(userRole)) return false;
+    // Hide radiology features in classic modality (Proposta #5 gate)
+    if (isClassic && b.id === 'radiology') return false;
+    return true;
+  });
 
   useEffect(() => {
     const onReset = () => {
@@ -190,6 +197,7 @@ export function InlineTrayAnalysisButtons({ userRole }: { userRole: string }) {
 
 export default function DraggableWidgetButtons() {
   const { user } = useAuth();
+  const { isClassic } = useAccessModality();
 
   const { position, onDragStart } = useDraggable({
     storageKey: 'widget-buttons-column',
@@ -238,7 +246,7 @@ export default function DraggableWidgetButtons() {
           </button>
         )}
 
-        {user && ['doctor', 'admin'].includes(user.role) && (
+        {user && ['doctor', 'admin'].includes(user.role) && !isClassic && (
           <button
             onClick={() => window.dispatchEvent(new Event('open-radiology-widget'))}
             className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center hover:scale-110"

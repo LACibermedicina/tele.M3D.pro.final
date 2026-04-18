@@ -123,12 +123,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     await Promise.allSettled(cleanupTasks);
 
-    // Clear toolbox and layout state so next login starts clean/closed
+    // Clear toolbox and layout state so next login starts clean/closed.
+    // Skipped in classic modality to preserve original (pre-#39) behavior.
     try {
-      localStorage.removeItem('unified_toolbox_visible');
-      localStorage.removeItem('unified_toolbox_dock_mode');
-      localStorage.removeItem('unified_toolbox_detached');
-      localStorage.removeItem('unified_toolbox');
+      const modality = localStorage.getItem('tele_m3d_access_modality');
+      if (modality !== 'classic') {
+        localStorage.removeItem('unified_toolbox_visible');
+        localStorage.removeItem('unified_toolbox_dock_mode');
+        localStorage.removeItem('unified_toolbox_detached');
+        localStorage.removeItem('unified_toolbox');
+      }
     } catch (_) { /* ignore */ }
 
     setUser(null);

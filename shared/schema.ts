@@ -45,8 +45,13 @@ export const users = pgTable("users", {
   consultationPrice: integer("consultation_price").default(0),
   onDutyUntil: timestamp("on_duty_until"),
   onDutyStartedAt: timestamp("on_duty_started_at"),
+  accessModality: text("access_modality"), // 'classic' | 'professional' | 'assisted' | null (use global default)
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const ACCESS_MODALITIES = ['classic', 'professional', 'assisted'] as const;
+export type AccessModality = typeof ACCESS_MODALITIES[number];
+export const accessModalitySchema = z.enum(ACCESS_MODALITIES);
 
 export const patients = pgTable("patients", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),

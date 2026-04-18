@@ -5,7 +5,9 @@ import { useViewMode, ViewMode } from "@/contexts/ViewModeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Smartphone, Tablet, Monitor, BookOpen, Star } from "lucide-react";
+import { Smartphone, Tablet, Monitor, BookOpen, Star, Sparkles, Briefcase, Minimize2 } from "lucide-react";
+import { useAccessModality, AccessModality } from "@/contexts/AccessModalityContext";
+import { useToast } from "@/hooks/use-toast";
 
 const modeConfig: Record<ViewMode, { icon: typeof Smartphone; title: string; description: string; color: string; gradient: string }> = {
   immersive: {
@@ -31,10 +33,33 @@ const modeConfig: Record<ViewMode, { icon: typeof Smartphone; title: string; des
   },
 };
 
+const accessModalityConfig: Record<AccessModality, { icon: typeof Sparkles; title: string; description: string; gradient: string }> = {
+  classic: {
+    icon: Minimize2,
+    title: "Clássica",
+    description: "Experiência minimalista — apenas o essencial, sem painéis avançados.",
+    gradient: "from-slate-500 to-slate-700",
+  },
+  professional: {
+    icon: Briefcase,
+    title: "Profissional",
+    description: "Experiência completa com ferramentas integradas e radiologia avançada.",
+    gradient: "from-blue-600 to-indigo-700",
+  },
+  assisted: {
+    icon: Sparkles,
+    title: "Assistida",
+    description: "Modo autônomo guiado por voz e visão da IAM3D, com narrativa contextual.",
+    gradient: "from-fuchsia-500 to-purple-700",
+  },
+};
+
 export default function ModeSelection() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { recommendedMode, setViewMode, hasChosenMode } = useViewMode();
+  const { modality, setModality } = useAccessModality();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (hasChosenMode) {
@@ -100,6 +125,47 @@ export default function ModeSelection() {
               </Card>
             );
           })}
+        </div>
+
+        <div className="space-y-3 pt-2">
+          <div className="text-center space-y-1">
+            <h2 className="text-lg md:text-xl font-semibold">Modalidade de Acesso</h2>
+            <p className="text-sm text-muted-foreground">
+              Escolha o nível de assistência da plataforma. Pode ser alterado a qualquer momento.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {(Object.keys(accessModalityConfig) as AccessModality[]).map((m) => {
+              const cfg = accessModalityConfig[m];
+              const Icon = cfg.icon;
+              const active = modality === m;
+              return (
+                <button
+                  key={m}
+                  data-testid={`btn-pick-modality-${m}`}
+                  onClick={async () => {
+                    try {
+                      await setModality(m);
+                      toast({ title: "Modalidade atualizada", description: cfg.title });
+                    } catch (e: any) {
+                      toast({ title: "Falha ao atualizar", description: e?.message || "Erro", variant: "destructive" });
+                    }
+                  }}
+                  className={`text-left rounded-xl border-2 p-4 transition-all hover:shadow-md ${
+                    active ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <div className={`inline-flex p-2 rounded-lg bg-gradient-to-br ${cfg.gradient} text-white mb-2`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div className="font-semibold">{cfg.title}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{cfg.description}</div>
+                  {active && <div className="mt-2 text-xs font-medium text-primary">Ativa</div>}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="flex justify-center">

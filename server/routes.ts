@@ -13480,12 +13480,81 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
   app.get('/api/auth/me', requireAuth, async (req, res) => {
     try {
       const user = req.user!;
-      // Return user data (without password)
       const { password: _, ...userWithoutPassword } = user as any;
-      res.json(userWithoutPassword);
+      // Resolve effective access modality (user override or global default)
+      let effectiveModality: string = (user as any).accessModality || '';
+      if (!effectiveModality) {
+        try {
+          const setting = await storage.getSystemSetting('access_modality_default');
+          effectiveModality = setting?.settingValue || 'professional';
+        } catch {
+          effectiveModality = 'professional';
+        }
+      }
+      res.json({ ...userWithoutPassword, effectiveAccessModality: effectiveModality });
     } catch (error) {
       console.error('Session check error:', error);
       res.status(500).json({ message: 'Session check failed' });
+    }
+  });
+
+  // Update current user's access modality preference
+  app.patch('/api/auth/access-modality', requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const schema = z.object({
+        accessModality: z.enum(['classic', 'professional', 'assisted']).nullable(),
+      });
+      const { accessModality } = schema.parse(req.body);
+      const updated = await storage.updateUser(user.id, { accessModality } as any);
+      if (!updated) return res.status(404).json({ message: 'User not found' });
+      const { password: _, ...rest } = updated as any;
+      let effective = accessModality || '';
+      if (!effective) {
+        const setting = await storage.getSystemSetting('access_modality_default');
+        effective = setting?.settingValue || 'professional';
+      }
+      res.json({ ...rest, effectiveAccessModality: effective });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      }
+      console.error('Access modality update error:', error);
+      res.status(500).json({ message: 'Failed to update access modality' });
+    }
+  });
+
+  // Public read of the current global default access modality
+  app.get('/api/system/access-modality-default', async (_req, res) => {
+    try {
+      const setting = await storage.getSystemSetting('access_modality_default');
+      res.json({ value: setting?.settingValue || 'professional' });
+    } catch (error) {
+      console.error('Get access modality default error:', error);
+      res.json({ value: 'professional' });
+    }
+  });
+
+  // Admin: set the global default access modality
+  app.put('/api/admin/access-modality-default', requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+      const schema = z.object({ value: z.enum(['classic', 'professional', 'assisted']) });
+      const { value } = schema.parse(req.body);
+      const existing = await storage.getSystemSetting('access_modality_default');
+      if (existing) {
+        await db.execute(sql`UPDATE system_settings SET setting_value = ${value} WHERE setting_key = 'access_modality_default'`);
+      } else {
+        await db.execute(sql`INSERT INTO system_settings (setting_key, setting_value, category) VALUES ('access_modality_default', ${value}, 'access_modality')`);
+      }
+      res.json({ value });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      }
+      console.error('Admin set access modality default error:', error);
+      res.status(500).json({ message: 'Failed to set default access modality' });
     }
   });
 
@@ -24830,6 +24899,15 @@ async function migrateUserUsageFields() {
     await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS total_usage_seconds INTEGER DEFAULT 0`);
     await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_session_start TIMESTAMP`);
     await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS force_logout_at TIMESTAMP`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS access_modality TEXT`);
+    await db.execute(sql`
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_access_modality_check') THEN
+          ALTER TABLE users ADD CONSTRAINT users_access_modality_check
+            CHECK (access_modality IS NULL OR access_modality IN ('classic','professional','assisted'));
+        END IF;
+      END $$;
+    `);
     // Enforce email uniqueness at DB level (case-insensitive, ignoring NULLs)
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_lower ON users (LOWER(email)) WHERE email IS NOT NULL`);
     console.log('✓ User usage tracking fields migrated successfully');
