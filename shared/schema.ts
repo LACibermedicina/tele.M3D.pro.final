@@ -47,7 +47,13 @@ export const users = pgTable("users", {
   onDutyStartedAt: timestamp("on_duty_started_at"),
   accessModality: text("access_modality"), // 'classic' | 'professional' | 'assisted' | null (use global default)
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Case-insensitive unique email (NULLs allowed). Already exists in DB —
+  // declared here so drizzle-kit doesn't try to recreate it on push.
+  emailUniqueLower: uniqueIndex("users_email_unique_lower")
+    .on(sql`LOWER(${table.email})`)
+    .where(sql`${table.email} IS NOT NULL`),
+}));
 
 export const ACCESS_MODALITIES = ['classic', 'professional', 'assisted'] as const;
 export type AccessModality = typeof ACCESS_MODALITIES[number];
