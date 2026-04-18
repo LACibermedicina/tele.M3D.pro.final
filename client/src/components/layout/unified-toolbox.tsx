@@ -213,7 +213,15 @@ const EDGE_THRESHOLD_PCT = 0.10;
 const STORAGE_KEY_DOCK = "unified_toolbox_dock_mode";
 const STORAGE_KEY_VISIBLE = "unified_toolbox_visible";
 
+import { useAccessModality } from "@/contexts/AccessModalityContext";
+
 export default function UnifiedToolbox() {
+  const { isClassic, isAssisted } = useAccessModality();
+  if (isClassic || isAssisted) return null;
+  return <UnifiedToolboxInner />;
+}
+
+function UnifiedToolboxInner() {
   const { user, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 

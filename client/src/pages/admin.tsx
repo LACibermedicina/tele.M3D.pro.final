@@ -4012,6 +4012,29 @@ function AccessModalityAdminSection() {
   const { globalDefault, setGlobalDefault } = useAccessModality();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [userQuery, setUserQuery] = useState('');
+  const [userOverride, setUserOverride] = useState<Record<string, string>>({});
+
+  const { data: counts } = useQuery<Record<string, number>>({
+    queryKey: ['/api/admin/access-modality-counts'],
+  });
+
+  const { data: users } = useQuery<any[]>({
+    queryKey: ['/api/admin/users'],
+  });
+
+  const overrideMutation = useMutation({
+    mutationFn: ({ userId, value }: { userId: string; value: 'classic' | 'professional' | 'assisted' | null }) =>
+      apiRequest('PATCH', `/api/admin/users/${userId}/access-modality`, { accessModality: value }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/access-modality-counts'] });
+      toast({ title: 'Modalidade do usuário atualizada' });
+    },
+    onError: (e: any) => {
+      toast({ title: 'Falha ao atualizar usuário', description: e?.message || 'Erro', variant: 'destructive' });
+    },
+  });
 
   const options: { key: 'classic' | 'professional' | 'assisted'; title: string; desc: string }[] = [
     { key: 'classic', title: 'Clássica', desc: 'Experiência minimalista, sem propostas #39 e #5 ativas. Foco em fluxos essenciais.' },
@@ -4065,8 +4088,88 @@ function AccessModalityAdminSection() {
           })}
         </div>
         <p className="text-xs text-muted-foreground">
-          Atalho de teclado global: <kbd>Alt</kbd>+<kbd>M</kbd> alterna a modalidade do usuário corrente. O modo Assistido pode ser encerrado a qualquer momento pelo botão "Sair do modo assistido".
+          O modo Assistido pode ser encerrado a qualquer momento pelo botão "Sair do modo assistido" ou pela frase de voz "voltar para profissional".
         </p>
+
+        <div className="border-t pt-3 mt-2">
+          <div className="text-sm font-semibold mb-2">Distribuição atual de usuários</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+            {(['classic', 'professional', 'assisted', 'inherit'] as const).map(k => (
+              <div key={k} className="rounded border p-2 bg-muted/30" data-testid={`stat-modality-${k}`}>
+                <div className="text-xs uppercase text-muted-foreground">{k === 'inherit' ? 'Padrão global' : k}</div>
+                <div className="text-lg font-semibold">{counts?.[k] ?? 0}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t pt-3 mt-2 space-y-2">
+          <div className="text-sm font-semibold">Sobrescrever por usuário</div>
+          <Input
+            placeholder="Filtrar por nome ou email..."
+            value={userQuery}
+            onChange={e => setUserQuery(e.target.value)}
+            data-testid="input-modality-user-filter"
+          />
+          <div className="max-h-72 overflow-auto border rounded">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-xs uppercase">
+                <tr>
+                  <th className="text-left p-2">Usuário</th>
+                  <th className="text-left p-2">Atual</th>
+                  <th className="text-left p-2">Definir</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(users || [])
+                  .filter((u: any) => {
+                    if (!userQuery.trim()) return true;
+                    const q = userQuery.toLowerCase();
+                    return (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
+                  })
+                  .slice(0, 50)
+                  .map((u: any) => {
+                    const current = u.accessModality ?? 'inherit';
+                    const draft = userOverride[u.id] ?? current;
+                    return (
+                      <tr key={u.id} className="border-t">
+                        <td className="p-2">
+                          <div className="font-medium">{u.name}</div>
+                          <div className="text-xs text-muted-foreground">{u.email}</div>
+                        </td>
+                        <td className="p-2 text-xs">{current}</td>
+                        <td className="p-2">
+                          <div className="flex gap-1 items-center">
+                            <select
+                              value={draft}
+                              onChange={e => setUserOverride(s => ({ ...s, [u.id]: e.target.value }))}
+                              className="border rounded px-2 py-1 text-xs bg-background"
+                              data-testid={`select-modality-user-${u.id}`}
+                            >
+                              <option value="inherit">Padrão global</option>
+                              <option value="classic">Clássica</option>
+                              <option value="professional">Profissional</option>
+                              <option value="assisted">Assistida</option>
+                            </select>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={overrideMutation.isPending || draft === current}
+                              onClick={() => overrideMutation.mutate({ userId: u.id, value: draft === 'inherit' ? null : draft as any })}
+                              data-testid={`btn-save-modality-user-${u.id}`}
+                            >
+                              Salvar
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted-foreground">"Padrão global" remove a preferência individual e o usuário herda o padrão definido acima.</p>
+        </div>
       </CardContent>
     </Card>
   );

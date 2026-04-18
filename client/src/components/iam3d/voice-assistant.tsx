@@ -96,6 +96,10 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
         }
         setTranscript(final || interim);
         if (final) {
+          // Broadcast final transcript so external shells (e.g. AssistedLayout) can react
+          try {
+            window.dispatchEvent(new CustomEvent("iam3d-voice-final", { detail: { text: final } }));
+          } catch {}
           const lower = final.toLowerCase().trim();
           const closeCommands = ["fechar assistente", "encerrar assistente", "close assistant", "cerrar asistente", "stop assistant", "exit assistant", "fermer assistant"];
           if (closeCommands.some(cmd => lower.includes(cmd))) {
@@ -128,6 +132,36 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, [speechLocale]);
+
+  // External shell integration: prompt injection, mic mute, voice-silent toggles
+  useEffect(() => {
+    const onPrompt = (e: Event) => {
+      const detail = (e as CustomEvent<{ text?: string }>).detail;
+      const text = detail?.text?.trim();
+      if (!text) return;
+      handleSendMessage(text);
+    };
+    const onMicMute = (e: Event) => {
+      const m = !!(e as CustomEvent<{ muted?: boolean }>).detail?.muted;
+      setIsMuted(m);
+      if (m && state === "listening") {
+        try { recognitionRef.current?.stop(); } catch {}
+      }
+    };
+    const onVoiceSilent = (e: Event) => {
+      const s = !!(e as CustomEvent<{ silent?: boolean }>).detail?.silent;
+      setIsSpeakerOn(!s);
+      if (s && synthRef.current) synthRef.current.cancel();
+    };
+    window.addEventListener("iam3d-prompt", onPrompt as EventListener);
+    window.addEventListener("iam3d-mic-mute", onMicMute as EventListener);
+    window.addEventListener("iam3d-voice-silent", onVoiceSilent as EventListener);
+    return () => {
+      window.removeEventListener("iam3d-prompt", onPrompt as EventListener);
+      window.removeEventListener("iam3d-mic-mute", onMicMute as EventListener);
+      window.removeEventListener("iam3d-voice-silent", onVoiceSilent as EventListener);
+    };
+  }, [state]);
 
   useEffect(() => {
     if (!isOpen) {

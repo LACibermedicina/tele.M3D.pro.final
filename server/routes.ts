@@ -13558,6 +13558,54 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     }
   });
 
+  // Admin: per-user access modality override (null = inherit global default)
+  app.patch('/api/admin/users/:id/access-modality', requireAuth, async (req, res) => {
+    try {
+      const admin = req.user!;
+      if (admin.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+      const schema = z.object({
+        accessModality: z.union([
+          z.enum(['classic', 'professional', 'assisted']),
+          z.null(),
+        ]),
+      });
+      const { accessModality } = schema.parse(req.body);
+      const target = await storage.getUser(req.params.id);
+      if (!target) return res.status(404).json({ message: 'User not found' });
+      await db.execute(sql`UPDATE users SET access_modality = ${accessModality as any} WHERE id = ${req.params.id}`);
+      res.json({ id: req.params.id, accessModality });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      }
+      console.error('Admin set per-user access modality error:', error);
+      res.status(500).json({ message: 'Failed to set user access modality' });
+    }
+  });
+
+  // Admin: counts of users per modality (null users count toward the global default)
+  app.get('/api/admin/access-modality-counts', requireAuth, async (req, res) => {
+    try {
+      const admin = req.user!;
+      if (admin.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+      const result: any = await db.execute(sql`
+        SELECT COALESCE(access_modality, 'inherit') AS modality, COUNT(*)::int AS count
+        FROM users
+        GROUP BY COALESCE(access_modality, 'inherit')
+      `);
+      const rows = (result?.rows || result || []) as Array<{ modality: string; count: number }>;
+      const counts: Record<string, number> = { classic: 0, professional: 0, assisted: 0, inherit: 0 };
+      for (const r of rows) {
+        const k = (r.modality || 'inherit').toString();
+        counts[k] = Number(r.count) || 0;
+      }
+      res.json(counts);
+    } catch (error) {
+      console.error('Admin access modality counts error:', error);
+      res.status(500).json({ message: 'Failed to load counts' });
+    }
+  });
+
   // Update User Profile
   app.put('/api/auth/profile', requireAuth, async (req, res) => {
     try {

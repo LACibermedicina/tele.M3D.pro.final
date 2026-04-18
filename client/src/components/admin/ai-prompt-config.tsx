@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Save, RotateCcw, ChevronDown, ChevronUp, Palette, AlertTriangle, Settings, Code, Image } from 'lucide-react';
+import { useAccessModality } from '@/contexts/AccessModalityContext';
 
 interface SeverityLevel {
   level: number;
@@ -308,6 +309,23 @@ export function ECGConfigTab() {
 }
 
 export function RadiologyConfigTab() {
+  const { isClassic } = useAccessModality();
+  if (isClassic) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Configuração de Radiologia indisponível</CardTitle>
+          <CardDescription>
+            A modalidade Clássica está ativa. Mude para Profissional ou Assistida em "Modalidades de Acesso" para configurar a radiologia.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+  return <RadiologyConfigTabInner />;
+}
+
+function RadiologyConfigTabInner() {
   const { toast } = useToast();
   const [config, setConfig] = useState<RadiologyConfig | null>(null);
   const [hasChanges, setHasChanges] = useState(false);

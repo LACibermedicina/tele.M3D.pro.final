@@ -143,6 +143,14 @@ function Router() {
   const isInVideoConsultation = location.startsWith('/consultation/video') || location.startsWith('/patient/video');
   const isImmersiveMode = !!user && viewMode === 'immersive';
   const isAssistedMode = !!user && isAssisted && !isInVideoConsultation;
+
+  if (isAssistedMode) {
+    return (
+      <div data-modality="assisted" className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white">
+        <AssistedLayout />
+      </div>
+    );
+  }
   // Radiology features (Proposta #5) gated to professional/assisted modalities
   const showRadiologyFeatures = !isClassic;
   // #39 floating widgets only visible when professional/assisted
