@@ -87,6 +87,7 @@ export const appointments = pgTable("appointments", {
   aiScheduled: boolean("ai_scheduled").default(false),
   videoCallUrl: text("video_call_url"),
   audioTranscript: text("audio_transcript"),
+  duration: integer("duration"), // Scheduled duration in minutes
   rating: integer("rating"), // 1-5 stars rating from patient (CHECK constraint added in DB)
   feedback: text("feedback"), // Patient feedback text
   rescheduledFromId: uuid("rescheduled_from_id"), // Original appointment ID if rescheduled (no FK to avoid circular ref)

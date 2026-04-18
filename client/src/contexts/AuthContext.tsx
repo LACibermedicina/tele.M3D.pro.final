@@ -12,6 +12,7 @@ interface User {
   phone?: string;
   whatsappNumber?: string;
   medicalLicense?: string;
+  medicalLicenseState?: string;
   specialization?: string;
   tmcCredits?: number;
   digitalCertificate?: string;

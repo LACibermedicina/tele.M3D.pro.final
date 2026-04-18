@@ -13,6 +13,8 @@ export interface Notification {
   read: boolean;
   actionUrl?: string;
   data?: any;
+  metadata?: any;
+  senderId?: string;
 }
 
 export function useNotifications() {
