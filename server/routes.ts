@@ -13634,10 +13634,13 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         .orderBy(desc(accessModalityAuditLogs.createdAt))
         .limit(10000);
 
-      // RFC 4180 CSV escaping: wrap in quotes when value contains quote, comma, or newline.
+      // RFC 4180 CSV escaping + spreadsheet formula-injection mitigation:
+      // values starting with =, +, -, @, tab, or CR are prefixed with a single
+      // quote so Excel/Sheets treat them as literal text instead of formulas.
       const esc = (v: unknown): string => {
         if (v === null || v === undefined) return '';
-        const s = v instanceof Date ? v.toISOString() : String(v);
+        let s = v instanceof Date ? v.toISOString() : String(v);
+        if (s.length > 0 && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
         return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
       };
       const header = [
