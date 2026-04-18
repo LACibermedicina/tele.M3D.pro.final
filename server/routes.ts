@@ -13527,10 +13527,22 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       const schema = z.object({ value: z.enum(['classic', 'professional', 'assisted']) });
       const { value } = schema.parse(req.body);
       const existing = await storage.getSystemSetting('access_modality_default');
+      const previousValue = existing?.settingValue ?? null;
       if (existing) {
         await db.execute(sql`UPDATE system_settings SET setting_value = ${value} WHERE setting_key = 'access_modality_default'`);
       } else {
         await db.execute(sql`INSERT INTO system_settings (setting_key, setting_value, category) VALUES ('access_modality_default', ${value}, 'access_modality')`);
+      }
+      // Audit: record the change (best-effort; never block the response on logging)
+      if (previousValue !== value) {
+        try {
+          await db.execute(sql`
+            INSERT INTO access_modality_audit_logs (admin_id, admin_name, admin_email, previous_value, new_value)
+            VALUES (${user.id}, ${user.name ?? null}, ${user.email ?? null}, ${previousValue}, ${value})
+          `);
+        } catch (auditErr) {
+          console.error('Failed to write access-modality audit entry:', auditErr);
+        }
       }
       res.json({ value });
     } catch (error) {
@@ -13539,6 +13551,34 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       }
       console.error('Admin set access modality default error:', error);
       res.status(500).json({ message: 'Failed to set default access modality' });
+    }
+  });
+
+  // Admin: read recent global default access-modality changes (audit log)
+  app.get('/api/admin/access-modality-audit', requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+      const limit = Math.min(parseInt(String(req.query.limit ?? '10'), 10) || 10, 100);
+      const result = await db.execute(sql`
+        SELECT id, admin_id, admin_name, admin_email, previous_value, new_value, created_at
+        FROM access_modality_audit_logs
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `);
+      const rows = (result as any).rows ?? result ?? [];
+      res.json(rows.map((r: any) => ({
+        id: r.id,
+        adminId: r.admin_id,
+        adminName: r.admin_name,
+        adminEmail: r.admin_email,
+        previousValue: r.previous_value,
+        newValue: r.new_value,
+        createdAt: r.created_at,
+      })));
+    } catch (error) {
+      console.error('Admin get access modality audit error:', error);
+      res.status(500).json({ message: 'Failed to load access modality audit log' });
     }
   });
 
@@ -24411,6 +24451,27 @@ async function migrateFhirTables() {
     console.log('✓ Profile unification fields migrated successfully');
   } catch (error) {
     console.error('Failed to migrate profile unification fields:', error);
+  }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS access_modality_audit_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        admin_id UUID NOT NULL,
+        admin_name TEXT,
+        admin_email TEXT,
+        previous_value TEXT,
+        new_value TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_access_modality_audit_created_at
+      ON access_modality_audit_logs (created_at DESC)
+    `);
+    console.log('✓ Access modality audit log table migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate access modality audit log table:', error);
   }
 }
 

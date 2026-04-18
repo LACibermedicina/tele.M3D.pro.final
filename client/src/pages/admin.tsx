@@ -4183,7 +4183,69 @@ function AccessModalityAdminSection() {
           </div>
           <p className="text-xs text-muted-foreground">"Padrão global" remove a preferência individual e o usuário herda o padrão definido acima.</p>
         </div>
+
+        <AccessModalityAuditTrail />
       </CardContent>
     </Card>
+  );
+}
+
+function AccessModalityAuditTrail() {
+  const { data: entries, isLoading } = useQuery<Array<{
+    id: string;
+    adminId: string;
+    adminName: string | null;
+    adminEmail: string | null;
+    previousValue: string | null;
+    newValue: string;
+    createdAt: string;
+  }>>({
+    queryKey: ['/api/admin/access-modality-audit'],
+  });
+
+  const fmt = (iso: string) => {
+    try { return new Date(iso).toLocaleString('pt-BR'); } catch { return iso; }
+  };
+
+  return (
+    <div className="border-t pt-3 mt-2 space-y-2" data-testid="section-access-modality-audit">
+      <div className="text-sm font-semibold">Histórico de mudanças (últimas 10)</div>
+      <p className="text-xs text-muted-foreground">
+        Cada alteração do padrão global é registrada com administrador, valor anterior e novo valor.
+      </p>
+      {isLoading ? (
+        <div className="text-xs text-muted-foreground">Carregando...</div>
+      ) : !entries || entries.length === 0 ? (
+        <div className="text-xs text-muted-foreground" data-testid="audit-empty">
+          Nenhuma mudança registrada ainda.
+        </div>
+      ) : (
+        <div className="border rounded overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-muted/50 uppercase">
+              <tr>
+                <th className="text-left p-2">Quando</th>
+                <th className="text-left p-2">Administrador</th>
+                <th className="text-left p-2">De</th>
+                <th className="text-left p-2">Para</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map(e => (
+                <tr key={e.id} className="border-t" data-testid={`audit-row-${e.id}`}>
+                  <td className="p-2 whitespace-nowrap">{fmt(e.createdAt)}</td>
+                  <td className="p-2">
+                    <div className="font-medium">{e.adminName || '—'}</div>
+                    <div className="text-muted-foreground">{e.adminEmail || e.adminId}</div>
+                  </td>
+                  <td className="p-2"><code>{e.previousValue ?? '—'}</code></td>
+                  <td className="p-2"><code className="font-semibold">{e.newValue}</code></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }

@@ -97,6 +97,7 @@ export function AccessModalityProvider({ children }: { children: ReactNode }) {
   const setGlobalDefault = useCallback(async (m: AccessModality) => {
     await apiRequest("PUT", "/api/admin/access-modality-default", { value: m });
     queryClient.invalidateQueries({ queryKey: ["/api/system/access-modality-default"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/access-modality-audit"] });
   }, [queryClient]);
 
   return (

@@ -2103,6 +2103,21 @@ export const insertProfileMergeAuditLogSchema = createInsertSchema(profileMergeA
 export type InsertProfileMergeAuditLog = z.infer<typeof insertProfileMergeAuditLogSchema>;
 export type ProfileMergeAuditLog = typeof profileMergeAuditLogs.$inferSelect;
 
+// Access Modality Audit Log — tracks every change to the global default access modality
+export const accessModalityAuditLogs = pgTable("access_modality_audit_logs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminId: uuid("admin_id").references(() => users.id).notNull(),
+  adminName: text("admin_name"),
+  adminEmail: text("admin_email"),
+  previousValue: text("previous_value"),
+  newValue: text("new_value").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAccessModalityAuditLogSchema = createInsertSchema(accessModalityAuditLogs).omit({ id: true, createdAt: true });
+export type InsertAccessModalityAuditLog = z.infer<typeof insertAccessModalityAuditLogSchema>;
+export type AccessModalityAuditLog = typeof accessModalityAuditLogs.$inferSelect;
+
 // User Notes — persistent multi-note system for desktop home widget
 export const userNotes = pgTable("user_notes", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
