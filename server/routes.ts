@@ -24593,10 +24593,16 @@ async function migrateFhirTables() {
     `);
     // Enforce scope ∈ {'global','user'} at the DB layer (Task #50). Idempotent:
     // drop any prior version of the constraint before re-adding so the allowed
-    // value set can evolve safely. Existing rows default to 'global' and pass.
+    // value set can evolve safely. We first normalize any pre-existing rows
+    // with an unexpected scope to 'global' so ADD CONSTRAINT cannot fail.
     await db.execute(sql`
       ALTER TABLE access_modality_audit_logs
       DROP CONSTRAINT IF EXISTS access_modality_audit_logs_scope_check
+    `);
+    await db.execute(sql`
+      UPDATE access_modality_audit_logs
+      SET scope = 'global'
+      WHERE scope IS NULL OR scope NOT IN ('global', 'user')
     `);
     await db.execute(sql`
       ALTER TABLE access_modality_audit_logs
