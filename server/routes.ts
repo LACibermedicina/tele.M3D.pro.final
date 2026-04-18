@@ -30,7 +30,7 @@ import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
 import { z } from "zod";
 import { db } from "./db";
-import { eq, desc, sql, and, or, isNotNull, isNull, inArray, gte, lte, lt, ne, ilike } from "drizzle-orm";
+import { eq, desc, sql, and, or, isNotNull, isNull, inArray, gte, lte, lt, ne, ilike, type SQL } from "drizzle-orm";
 import { generateAgoraToken, getAgoraAppId } from "./agora";
 
 // TMC Credit System Validation Schemas
@@ -13563,12 +13563,27 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       const limit = Math.max(1, Math.min(Number.isFinite(parsedLimit) ? parsedLimit : 10, 100));
       const scopeParam = typeof req.query.scope === 'string' ? req.query.scope : undefined;
       const scope = (scopeParam === 'global' || scopeParam === 'user') ? scopeParam : undefined;
-      const targetUserId = typeof req.query.targetUserId === 'string' && req.query.targetUserId.length > 0
-        ? req.query.targetUserId
-        : undefined;
-      const conditions = [] as any[];
-      if (scope) conditions.push(eq(accessModalityAuditLogs.scope, scope));
-      if (targetUserId) conditions.push(eq(accessModalityAuditLogs.targetUserId, targetUserId));
+      // Accept both target_user_id (snake_case, per spec) and targetUserId (camelCase).
+      const rawTargetUserId =
+        (typeof req.query.target_user_id === 'string' && req.query.target_user_id) ||
+        (typeof req.query.targetUserId === 'string' && req.query.targetUserId) ||
+        '';
+      const targetUserId = rawTargetUserId.length > 0 ? rawTargetUserId : undefined;
+      const filterSchema = z.object({
+        scope: z.enum(['global', 'user']).optional(),
+        targetUserId: z.string().uuid().optional(),
+      });
+      const parsedFilters = filterSchema.safeParse({ scope, targetUserId });
+      if (!parsedFilters.success) {
+        return res.status(400).json({ message: 'Filtros inválidos', errors: parsedFilters.error.errors });
+      }
+      const conditions: SQL[] = [];
+      if (parsedFilters.data.scope) {
+        conditions.push(eq(accessModalityAuditLogs.scope, parsedFilters.data.scope));
+      }
+      if (parsedFilters.data.targetUserId) {
+        conditions.push(eq(accessModalityAuditLogs.targetUserId, parsedFilters.data.targetUserId));
+      }
       const baseQuery = db.select().from(accessModalityAuditLogs);
       const filtered = conditions.length > 0
         ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
@@ -13595,9 +13610,9 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         ]),
       });
       const { accessModality } = schema.parse(req.body);
-      const target = await storage.getUser(req.params.id);
+      const target: User | undefined = await storage.getUser(req.params.id);
       if (!target) return res.status(404).json({ message: 'User not found' });
-      const previousValue = (target as any).accessModality ?? null;
+      const previousValue = target.accessModality ?? null;
       // Atomic: per-user override + audit insert succeed or fail together.
       await db.transaction(async (tx) => {
         await tx.execute(sql`UPDATE users SET access_modality = ${accessModality} WHERE id = ${req.params.id}`);
@@ -13607,8 +13622,8 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
           adminName: admin.name ?? null,
           adminEmail: admin.email ?? null,
           targetUserId: target.id,
-          targetUserName: (target as any).name ?? null,
-          targetUserEmail: (target as any).email ?? null,
+          targetUserName: target.name ?? null,
+          targetUserEmail: target.email ?? null,
           previousValue,
           newValue: accessModality,
         });
