@@ -25,6 +25,78 @@ interface Section {
   content: { title: string; text: string }[];
 }
 
+const userAccessModalitySection: Section = {
+  id: "access-modality",
+  title: "Modalidade de Acesso",
+  icon: <Sparkles className="h-5 w-5" />,
+  content: [
+    {
+      title: "As 3 Modalidades de Acesso",
+      text: `Independente do modo de interface (Imersiva, Mobile ou Desktop), o Tele<M3D> Pro oferece três **modalidades de acesso** que ajustam o nível de assistência e a complexidade dos painéis exibidos:
+
+**1. Clássica**
+- Experiência minimalista — apenas o essencial.
+- Painéis avançados (toolbox unificada, radiologia avançada) ficam ocultos.
+- Ideal para quem prefere fluxos simples e diretos, ou para usuários iniciantes.
+
+**2. Profissional**
+- Experiência completa, com toolbox integrada e ferramentas de radiologia avançada.
+- Recomendada para o uso diário de médicos, pacientes recorrentes e farmacêuticos que dominam a plataforma.
+
+**3. Assistida**
+- Modo autônomo guiado por voz e visão do assistente, com narrativa contextual em tempo real.
+- A interface é simplificada e o assistente conduz a navegação, ideal para acessibilidade ou situações de mãos ocupadas.
+- É possível sair a qualquer momento clicando em **"Sair do modo assistido"** ou dizendo a frase **"voltar para profissional"**.`
+    },
+    {
+      title: "Como alternar entre modalidades",
+      text: `Você pode trocar a modalidade a qualquer momento, sem precisar reiniciar a sessão:
+
+1. Acesse a tela de **Seleção de Modo** pelo menu do usuário ou pela URL **/mode-selection?force=1**.
+2. Na seção **"Modalidade de Acesso"**, clique no card da modalidade desejada (Clássica, Profissional ou Assistida).
+3. A escolha é salva no seu perfil e aplicada imediatamente em todos os dispositivos onde você estiver logado.
+
+Caso você nunca tenha definido uma modalidade individual, o sistema utiliza o **padrão global** configurado pelo administrador. Sua escolha pessoal sempre prevalece sobre o padrão.`
+    }
+  ]
+};
+
+const adminAccessModalitySection: Section = {
+  id: "a-access-modality",
+  title: "Modalidades de Acesso (Painel Admin)",
+  icon: <Sparkles className="h-5 w-5" />,
+  content: [
+    {
+      title: "As 3 Modalidades disponíveis",
+      text: `O sistema oferece três modalidades de acesso que controlam o nível de assistência e os painéis avançados visíveis para cada usuário:
+
+- **Clássica** — experiência minimalista, sem toolbox unificada nem radiologia avançada. Foco em fluxos essenciais.
+- **Profissional** — experiência completa com toolbox integrada e radiologia avançada. Recomendada para uso diário.
+- **Assistida** — modo autônomo guiado por voz e visão do assistente IAM3D, com narrativa contextual. Pode ser encerrado pelo botão **"Sair do modo assistido"** ou pela frase **"voltar para profissional"**.`
+    },
+    {
+      title: "Definindo o padrão global",
+      text: `Como administrador, você define a modalidade aplicada a usuários que ainda não escolheram uma preferência individual:
+
+1. Acesse o **painel administrativo** e abra a aba **"Modalidades de Acesso"**.
+2. Clique no card da modalidade desejada (Clássica, Profissional ou Assistida) — o card marcado como **"Padrão atual"** é o que será aplicado.
+3. A alteração é persistida imediatamente e passa a valer, na próxima requisição, para todos os usuários que herdam o padrão.
+
+A aba também exibe a **distribuição efetiva de usuários** por modalidade, incluindo a contagem de quantos usuários ainda herdam o padrão global (não definiram preferência própria).`
+    },
+    {
+      title: "Sobrescrever a modalidade de um usuário",
+      text: `A mesma aba permite forçar uma modalidade específica para um usuário individual:
+
+1. Use o filtro **"Filtrar por nome ou email..."** para localizar o usuário.
+2. Na coluna **"Definir"**, escolha a modalidade desejada (ou limpe a sobrescrita para que o usuário volte a herdar o padrão global).
+3. A mudança é aplicada na próxima requisição do usuário.
+
+A preferência individual do próprio usuário (definida em **/mode-selection?force=1**) sempre tem prioridade sobre o padrão global, mas a sobrescrita administrativa pode ser usada para suporte técnico ou para garantir compliance em perfis específicos.`
+    }
+  ]
+};
+
 const visitorSections: Section[] = [
   {
     id: "v-welcome",
@@ -1473,6 +1545,11 @@ Os relatórios são essenciais para controle de estoque, auditoria regulatória 
     ]
   }
 ];
+
+patientSections.push(userAccessModalitySection);
+doctorSections.push(userAccessModalitySection);
+pharmacistSections.push(userAccessModalitySection);
+adminSections.push(adminAccessModalitySection);
 
 function TabContent({ sections, indexLabel }: { sections: Section[]; indexLabel?: string }) {
   return (

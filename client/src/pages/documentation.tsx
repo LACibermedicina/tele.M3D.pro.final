@@ -529,6 +529,33 @@ export default function Documentation() {
           features: ["Verificação CFM automatizada", "Integração Ordem dos Médicos (PT)", "Validação em tempo real", "Status de verificação exibido no perfil"]
         }
       ]
+    },
+    {
+      category: "Modalidade de Acesso",
+      icon: Star,
+      color: "purple",
+      items: [
+        {
+          title: "Modalidade Clássica",
+          description: "Experiência minimalista, apenas o essencial. Painéis avançados (toolbox unificada e radiologia avançada) ficam ocultos. Ideal para fluxos simples e usuários iniciantes.",
+          features: ["Interface enxuta", "Sem toolbox unificada", "Sem radiologia avançada", "Foco em fluxos essenciais"]
+        },
+        {
+          title: "Modalidade Profissional",
+          description: "Experiência completa com toolbox integrada e radiologia avançada. Recomendada para uso diário de médicos, pacientes recorrentes e farmacêuticos experientes.",
+          features: ["Toolbox unificada ativa", "Radiologia avançada ativa", "Todos os painéis disponíveis", "Padrão recomendado"]
+        },
+        {
+          title: "Modalidade Assistida",
+          description: "Modo autônomo guiado por voz e visão da IAM3D, com narrativa contextual em tempo real. Ideal para acessibilidade ou situações de mãos ocupadas.",
+          features: ["Conduzido por voz e visão", "Narrativa contextual ativa", "Saída por botão 'Sair do modo assistido'", "Saída por voz: 'voltar para profissional'"]
+        },
+        {
+          title: "Como alternar e padrão global",
+          description: "Cada usuário pode escolher sua modalidade individual em /mode-selection?force=1. Administradores definem o padrão global na aba 'Modalidades de Acesso' do painel admin e podem sobrescrever a modalidade de usuários específicos.",
+          features: ["Escolha individual em /mode-selection?force=1", "Preferência pessoal prevalece sobre o padrão", "Padrão global definido pelo admin", "Sobrescrita por usuário no painel admin", "Distribuição efetiva visível ao admin"]
+        }
+      ]
     }
   ];
 
@@ -564,7 +591,8 @@ export default function Documentation() {
         "Como exportar dados médicos (FHIR R4 - direito LGPD)",
         "Como funciona a detecção de inatividade",
         "Como avaliar uma consulta (1-5 estrelas + feedback)",
-        "Como usar o botão Consultar Agora"
+        "Como usar o botão Consultar Agora",
+        "Como alternar entre as 3 modalidades de acesso (Clássica / Profissional / Assistida)"
       ]
     },
     {
@@ -586,7 +614,8 @@ export default function Documentation() {
         "Como verificar prescrições na farmácia",
         "Como usar o ambiente windowed Desktop OS (mover/redimensionar/minimizar janelas)",
         "Como verificar CRM junto ao CFM / Ordem dos Médicos",
-        "Como usar o Toolbox — barra de ferramentas contextual"
+        "Como usar o Toolbox — barra de ferramentas contextual",
+        "Como escolher entre as modalidades Clássica, Profissional e Assistida"
       ]
     },
     {
@@ -605,7 +634,8 @@ export default function Documentation() {
         isAdmin ? "Como configurar prompts IA (ECG e Radiologia)" : "Como configurar análise clínica",
         "Como usar a desconexão em massa (usuários/médicos/serviços)",
         "Como personalizar temas por perfil (accent/opacidade)",
-        "Como configurar o ambiente Desktop (wallpaper, sticky notes, opacidade global)"
+        "Como configurar o ambiente Desktop (wallpaper, sticky notes, opacidade global)",
+        "Como definir a Modalidade de Acesso global (Clássica/Profissional/Assistida) e sobrescrever por usuário"
       ]
     },
     {
@@ -616,7 +646,8 @@ export default function Documentation() {
         "Como verificar assinatura digital de prescrições",
         "Como dispensar medicamentos (lote/fabricante/validade)",
         "Como gerar relatórios LGPD da farmácia",
-        "Como usar filtros e busca de prescrições"
+        "Como usar filtros e busca de prescrições",
+        "Como alternar entre as modalidades Clássica, Profissional e Assistida"
       ]
     }
   ];
