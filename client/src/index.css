@@ -936,3 +936,136 @@ html[data-access-modality="classic"] [data-prop39-decoration] {
 html[data-access-modality="classic"] [data-prop39-only] {
   display: none !important;
 }
+
+/* ============================================================
+   Access Modality — Assisted theme
+   Imersivo, alto contraste, áreas de toque maiores, foco em
+   narrativa para usuários idosos ou com baixa visão.
+   ============================================================ */
+html[data-access-modality="assisted"] {
+  --assisted-bg: hsl(222, 47%, 6%);
+  --assisted-surface: hsl(222, 40%, 12%);
+  --assisted-surface-2: hsl(222, 36%, 18%);
+  --assisted-border: hsl(190, 60%, 35%);
+  --assisted-text: hsl(0, 0%, 98%);
+  --assisted-text-muted: hsl(210, 20%, 78%);
+  --assisted-accent: hsl(186, 95%, 55%);
+  --assisted-accent-strong: hsl(186, 100%, 65%);
+  --assisted-warn: hsl(38, 95%, 60%);
+  --assisted-danger: hsl(0, 85%, 65%);
+  --assisted-ok: hsl(150, 70%, 55%);
+  --assisted-font-base: 18px;
+  --assisted-touch-min: 48px;
+
+  font-size: var(--assisted-font-base);
+  color: var(--assisted-text);
+  background: radial-gradient(circle at 20% 0%, hsl(222, 50%, 14%) 0%, var(--assisted-bg) 60%);
+}
+
+/* High-contrast opt-in (toggle in shell) */
+html[data-access-modality="assisted"][data-assisted-contrast="high"] {
+  --assisted-bg: hsl(0, 0%, 0%);
+  --assisted-surface: hsl(0, 0%, 6%);
+  --assisted-surface-2: hsl(0, 0%, 12%);
+  --assisted-border: hsl(60, 100%, 60%);
+  --assisted-text: hsl(0, 0%, 100%);
+  --assisted-text-muted: hsl(60, 100%, 90%);
+  --assisted-accent: hsl(60, 100%, 60%);
+  --assisted-accent-strong: hsl(60, 100%, 75%);
+  --assisted-font-base: 20px;
+  background: var(--assisted-bg);
+}
+
+/* Larger touch targets for top-bar and panel buttons */
+html[data-access-modality="assisted"] [data-assisted-shell] button,
+html[data-access-modality="assisted"] [data-assisted-shell] a[role="button"] {
+  min-height: var(--assisted-touch-min);
+  min-width: var(--assisted-touch-min);
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+}
+
+/* Top bar — taller, bolder, accent border */
+html[data-access-modality="assisted"] [data-assisted-shell="topbar"] {
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+  background: var(--assisted-surface) !important;
+  border-bottom: 2px solid var(--assisted-border) !important;
+  box-shadow: 0 4px 24px hsl(186, 100%, 50%, 0.08);
+}
+html[data-access-modality="assisted"] [data-assisted-shell="topbar"] [data-assisted-title] {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Narrative panel — larger, calmer typography */
+html[data-access-modality="assisted"] [data-assisted-shell="panel"] {
+  background: var(--assisted-surface) !important;
+  border: 2px solid var(--assisted-border) !important;
+  border-radius: 1rem !important;
+  padding: 1.25rem !important;
+}
+html[data-access-modality="assisted"] [data-assisted-shell="panel"] h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--assisted-text);
+}
+html[data-access-modality="assisted"] [data-assisted-shell="panel"] p,
+html[data-access-modality="assisted"] [data-assisted-shell="panel"] textarea {
+  font-size: 1rem !important;
+  line-height: 1.55 !important;
+  color: var(--assisted-text) !important;
+}
+html[data-access-modality="assisted"] [data-assisted-shell="panel"] textarea {
+  background: var(--assisted-surface-2) !important;
+  border: 2px solid var(--assisted-border) !important;
+  color: var(--assisted-text) !important;
+}
+html[data-access-modality="assisted"] [data-assisted-shell="panel"] textarea::placeholder {
+  color: var(--assisted-text-muted) !important;
+  opacity: 0.7;
+}
+
+/* Live dialog rows — readable monospaced-ish for clarity */
+html[data-access-modality="assisted"] [data-assisted-shell] [data-testid="live-transcript"] > div:last-child,
+html[data-access-modality="assisted"] [data-assisted-shell] [data-testid="live-intent"] > div:last-child,
+html[data-access-modality="assisted"] [data-assisted-shell] [data-testid="live-result"] > div:last-child {
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  color: var(--assisted-text) !important;
+}
+
+/* Voice state indicators — listening pulse */
+@keyframes assisted-listening-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(150, 70%, 55%, 0.55); }
+  50% { box-shadow: 0 0 0 12px hsl(150, 70%, 55%, 0); }
+}
+html[data-access-modality="assisted"] [data-assisted-state="listening"] {
+  background: hsl(150, 70%, 22%) !important;
+  color: hsl(150, 90%, 90%) !important;
+  border: 2px solid var(--assisted-ok) !important;
+  animation: assisted-listening-pulse 1.6s ease-in-out infinite;
+}
+html[data-access-modality="assisted"] [data-assisted-state="muted"] {
+  background: hsl(0, 60%, 25%) !important;
+  color: hsl(0, 90%, 92%) !important;
+  border: 2px solid var(--assisted-danger) !important;
+}
+html[data-access-modality="assisted"] [data-assisted-state="speaking"] {
+  background: hsl(186, 95%, 25%) !important;
+  color: hsl(186, 95%, 92%) !important;
+  border: 2px solid var(--assisted-accent) !important;
+}
+html[data-access-modality="assisted"] [data-assisted-state="silent"] {
+  background: hsl(38, 80%, 22%) !important;
+  color: hsl(38, 95%, 90%) !important;
+  border: 2px solid var(--assisted-warn) !important;
+}
+
+/* Focus ring — high-visibility for keyboard users */
+html[data-access-modality="assisted"] :focus-visible {
+  outline: 3px solid var(--assisted-accent-strong) !important;
+  outline-offset: 3px !important;
+  border-radius: 0.5rem;
+}

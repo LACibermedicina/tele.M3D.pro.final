@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAccessModality } from "@/contexts/AccessModalityContext";
 import { IAM3DVoiceAssistant } from "@/components/iam3d/voice-assistant";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings, Send, Sparkles, Mic, MicOff, Volume2, VolumeX, Languages } from "lucide-react";
+import { LogOut, Settings, Send, Sparkles, Mic, MicOff, Volume2, VolumeX, Languages, Contrast } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 const EXIT_PHRASES_PROFESSIONAL = [
@@ -39,6 +39,9 @@ export function AssistedLayout() {
   const [prompt, setPrompt] = useState("");
   const [muted, setMuted] = useState(false);
   const [silentVoice, setSilentVoice] = useState(false);
+  const [highContrast, setHighContrast] = useState<boolean>(() => {
+    try { return localStorage.getItem("tele_m3d_assisted_contrast") === "high"; } catch { return false; }
+  });
   const [liveTranscript, setLiveTranscript] = useState<string>("");
   const [liveIntent, setLiveIntent] = useState<string>("");
   const [liveResult, setLiveResult] = useState<string>("");
@@ -94,6 +97,23 @@ export function AssistedLayout() {
     window.dispatchEvent(new CustomEvent("iam3d-voice-silent", { detail: { silent: silentVoice } }));
   }, [silentVoice]);
 
+  // High-contrast toggle — reflected on documentElement so CSS scoped to
+  // [data-access-modality='assisted'][data-assisted-contrast='high'] activates.
+  useEffect(() => {
+    try {
+      if (highContrast) {
+        document.documentElement.setAttribute("data-assisted-contrast", "high");
+        localStorage.setItem("tele_m3d_assisted_contrast", "high");
+      } else {
+        document.documentElement.removeAttribute("data-assisted-contrast");
+        localStorage.setItem("tele_m3d_assisted_contrast", "normal");
+      }
+    } catch {}
+    return () => {
+      try { document.documentElement.removeAttribute("data-assisted-contrast"); } catch {}
+    };
+  }, [highContrast]);
+
   const handleSubmitPrompt = () => {
     const txt = prompt.trim();
     if (!txt) return;
@@ -114,10 +134,13 @@ export function AssistedLayout() {
   return (
     <>
       {/* Minimal top bar — always present */}
-      <div className="fixed top-0 left-0 right-0 z-[10000] flex items-center justify-between px-4 py-2 bg-black/40 backdrop-blur-md border-b border-white/10">
+      <div
+        data-assisted-shell="topbar"
+        className="fixed top-0 left-0 right-0 z-[10000] flex items-center justify-between px-4 py-2 bg-black/40 backdrop-blur-md border-b border-white/10"
+      >
         <div className="flex items-center gap-2 text-white/90">
           <Sparkles className="w-4 h-4 text-cyan-400" />
-          <span className="text-sm font-semibold">Modalidade Assistida</span>
+          <span data-assisted-title className="text-sm font-semibold">Modalidade Assistida</span>
           {user?.name && (
             <span className="text-xs text-white/60 ml-2">— {user.name.split(" ")[0]}</span>
           )}
@@ -138,11 +161,25 @@ export function AssistedLayout() {
             size="sm"
             variant="ghost"
             className="text-white/80 hover:text-white hover:bg-white/10 h-8 px-2"
+            onClick={() => setHighContrast((v) => !v)}
+            title={highContrast ? "Desativar alto contraste" : "Ativar alto contraste"}
+            aria-pressed={highContrast}
+            data-testid="button-assisted-contrast"
+          >
+            <Contrast className="w-4 h-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-white/80 hover:text-white hover:bg-white/10 h-8 px-2"
             onClick={() => setSilentVoice((v) => !v)}
             title={silentVoice ? "Ativar voz da IA" : "Silenciar voz da IA"}
+            aria-pressed={silentVoice}
+            data-assisted-state={silentVoice ? "silent" : "speaking"}
             data-testid="button-assisted-volume"
           >
             {silentVoice ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            <span className="sr-only">{silentVoice ? "Voz da IA silenciada" : "Voz da IA ativa"}</span>
           </Button>
           <Button
             size="sm"
@@ -150,9 +187,12 @@ export function AssistedLayout() {
             className="text-white/80 hover:text-white hover:bg-white/10 h-8 px-2"
             onClick={() => setMuted((v) => !v)}
             title={muted ? "Reativar microfone" : "Mutar microfone"}
+            aria-pressed={muted}
+            data-assisted-state={muted ? "muted" : "listening"}
             data-testid="button-assisted-mic"
           >
             {muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            <span className="sr-only">{muted ? "Microfone mudo" : "Microfone escutando"}</span>
           </Button>
           <Button
             size="sm"
@@ -182,6 +222,7 @@ export function AssistedLayout() {
 
       {/* Narrative prompt panel — always visible in assisted mode, ephemeral state */}
       <div
+        data-assisted-shell="panel"
         className="fixed top-12 right-4 z-[10001] w-[min(420px,calc(100vw-2rem))] bg-slate-900/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl p-4 space-y-3"
         data-testid="panel-narrative-prompt"
       >
