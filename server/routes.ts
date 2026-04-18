@@ -13663,7 +13663,7 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       // BOM so Excel opens UTF-8 correctly.
       const csv = '\uFEFF' + [header, ...lines].join('\r\n') + '\r\n';
 
-      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const filename = `access-modality-audit-${stamp}.csv`;
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
