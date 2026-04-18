@@ -167,6 +167,7 @@ export function AssistedLayout() {
             data-testid="button-assisted-contrast"
           >
             <Contrast className="w-4 h-4" />
+            <span className="sr-only">{highContrast ? "Alto contraste ativo" : "Alto contraste desligado"}</span>
           </Button>
           <Button
             size="sm"
