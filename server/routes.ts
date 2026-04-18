@@ -24,7 +24,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers, profileMergeAuditLogs, prescriptionShares, labOrders, hospitalReferrals, clinicalAssets, susProntuarios, userNotes, postConsultationItems } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers, profileMergeAuditLogs, prescriptionShares, labOrders, hospitalReferrals, clinicalAssets, susProntuarios, userNotes, postConsultationItems, accessModalityAuditLogs, type AccessModalityAuditLog } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
@@ -13533,17 +13533,16 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       } else {
         await db.execute(sql`INSERT INTO system_settings (setting_key, setting_value, category) VALUES ('access_modality_default', ${value}, 'access_modality')`);
       }
-      // Audit: record the change (best-effort; never block the response on logging)
-      if (previousValue !== value) {
-        try {
-          await db.execute(sql`
-            INSERT INTO access_modality_audit_logs (admin_id, admin_name, admin_email, previous_value, new_value)
-            VALUES (${user.id}, ${user.name ?? null}, ${user.email ?? null}, ${previousValue}, ${value})
-          `);
-        } catch (auditErr) {
-          console.error('Failed to write access-modality audit entry:', auditErr);
-        }
-      }
+      // Audit: every PUT call must produce a traceable entry, including
+      // same-value submissions. If the audit insert fails, the request
+      // fails too — a successful response must always imply a persisted log.
+      await db.insert(accessModalityAuditLogs).values({
+        adminId: user.id,
+        adminName: user.name ?? null,
+        adminEmail: user.email ?? null,
+        previousValue,
+        newValue: value,
+      });
       res.json({ value });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -13560,22 +13559,12 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       const user = req.user!;
       if (user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
       const limit = Math.min(parseInt(String(req.query.limit ?? '10'), 10) || 10, 100);
-      const result = await db.execute(sql`
-        SELECT id, admin_id, admin_name, admin_email, previous_value, new_value, created_at
-        FROM access_modality_audit_logs
-        ORDER BY created_at DESC
-        LIMIT ${limit}
-      `);
-      const rows = (result as any).rows ?? result ?? [];
-      res.json(rows.map((r: any) => ({
-        id: r.id,
-        adminId: r.admin_id,
-        adminName: r.admin_name,
-        adminEmail: r.admin_email,
-        previousValue: r.previous_value,
-        newValue: r.new_value,
-        createdAt: r.created_at,
-      })));
+      const rows: AccessModalityAuditLog[] = await db
+        .select()
+        .from(accessModalityAuditLogs)
+        .orderBy(desc(accessModalityAuditLogs.createdAt))
+        .limit(limit);
+      res.json(rows);
     } catch (error) {
       console.error('Admin get access modality audit error:', error);
       res.status(500).json({ message: 'Failed to load access modality audit log' });
