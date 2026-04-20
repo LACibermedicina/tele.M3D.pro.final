@@ -24,7 +24,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: (reason?: string) => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
   isAuthenticated: boolean;
 }
@@ -112,12 +112,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = async () => {
+  const logout = async (reason?: string) => {
     const cleanupTasks: Promise<unknown>[] = [
       Promise.resolve().then(() => {
         try { disconnectAllMediaServices(); } catch (_) { /* ignore */ }
       }),
-      apiRequest('POST', '/api/auth/logout').catch((err) => {
+      apiRequest('POST', '/api/auth/logout', reason ? { reason } : undefined).catch((err) => {
         console.warn('Server logout error (non-blocking):', err);
       }),
     ];

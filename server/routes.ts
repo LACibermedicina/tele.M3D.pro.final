@@ -10423,7 +10423,13 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
             const reg = digitalSignature.professionalRegistrationId
               ? await db.query.doctorProfessionalRegistrations.findFirst({ where: eq(doctorProfessionalRegistrations.id, digitalSignature.professionalRegistrationId) })
               : await signatureService.resolveRegistrationForCountry(doctor.id, (patient as any).country);
-            if (reg) resolvedReg = { country: reg.country, councilType: reg.councilType, number: reg.number, state: reg.state ?? undefined };
+            if (reg) resolvedReg = {
+              country: reg.country,
+              registrationType: (reg as any).registrationType,
+              registrationNumber: (reg as any).registrationNumber,
+              registrationState: (reg as any).registrationState ?? undefined,
+              isVerified: (reg as any).isVerified ?? undefined,
+            };
           } catch {}
           return {
             signature: digitalSignature.signature,

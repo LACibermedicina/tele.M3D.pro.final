@@ -61,7 +61,12 @@ export default function DoctorOffice() {
     enabled: !!user?.id && historyOpen,
   });
 
-  // Live chronometer + heartbeat ping every 30s while office is open
+  const { data: presenceCfg } = useQuery<Record<string, string>>({
+    queryKey: ['/api/system-settings/public/presence'],
+  });
+  const heartbeatMs = Math.max(5, parseInt(presenceCfg?.doctor_office_heartbeat_seconds || '30', 10)) * 1000;
+
+  // Live chronometer + heartbeat ping while office is open (interval from server settings)
   useEffect(() => {
     if (!isOfficeOpen) return;
     const tick = setInterval(() => setChronoNow(Date.now()), 1000);
@@ -72,9 +77,9 @@ export default function DoctorOffice() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ participantCount: participants.length }),
       }).catch(() => {});
-    }, 30000);
+    }, heartbeatMs);
     return () => { clearInterval(tick); clearInterval(heartbeat); };
-  }, [isOfficeOpen, participants.length]);
+  }, [isOfficeOpen, participants.length, heartbeatMs]);
 
   const elapsedSeconds = (() => {
     if (!officeStatus?.openedAt) return 0;

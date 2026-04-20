@@ -114,7 +114,7 @@ export default function InactivityMonitor() {
         description: "Sua sessão foi encerrada por inatividade. Todos os serviços de áudio e vídeo foram desconectados.",
         variant: "destructive",
       });
-      try { await logoutRef.current(); } catch {}
+      try { await logoutRef.current('inactivity'); } catch {}
       window.location.href = "/";
     }, responseTimeoutRef.current);
   }, [toast]);
