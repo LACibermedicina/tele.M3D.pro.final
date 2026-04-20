@@ -54,8 +54,87 @@ export interface PrescriptionData {
     timestamp: string;
     qrCodeData?: string;
     documentHash?: string;
+    signatureMethod?: 'rsa' | 'ecpf_a1' | 'ecpf_a3';
+    professionalRegistration?: {
+      country: string;
+      registrationType: string;
+      registrationNumber: string;
+      registrationState?: string | null;
+      isVerified?: boolean;
+    } | null;
+    ecpfCertificateInfo?: {
+      subject?: string;
+      issuer?: string;
+      cpf?: string;
+      serialNumber?: string;
+      validFrom?: string;
+      validTo?: string;
+    } | null;
+    govBr?: {
+      subject?: string;
+      name?: string;
+      cpf?: string;
+      sealLevel?: string;
+      authenticatedAt?: string;
+    } | null;
+    signedPdfUrl?: string | null;
   };
   medications?: MedicationWarning[];
+}
+
+function maskCpf(cpf?: string | null) {
+  if (!cpf) return '';
+  const digits = cpf.replace(/\D/g, '');
+  if (digits.length !== 11) return cpf;
+  return `${digits.slice(0, 3)}.***.***-${digits.slice(-2)}`;
+}
+
+export function renderUniversalSignatureBlock(
+  sig: NonNullable<PrescriptionData['digitalSignature']>,
+  doctor: { doctorName: string; doctorCRM: string; doctorCRMState: string; crmVerified?: boolean }
+): string {
+  const method = sig.signatureMethod || 'rsa';
+  const reg = sig.professionalRegistration;
+  const country = (reg?.country || 'BR').toUpperCase();
+  const labelByMethod: Record<string, string> = {
+    rsa: '✓ DOCUMENTO ASSINADO DIGITALMENTE',
+    ecpf_a1: '✓ ASSINADO COM e-CPF ICP-Brasil A1',
+    ecpf_a3: '✓ ASSINADO COM e-CPF ICP-Brasil A3 (Cartão/Token)',
+  };
+  const issuedBy = sig.ecpfCertificateInfo?.issuer || (sig.certificateInfo?.issuer as string) || 'Tele<M3D> Digital Signature Authority';
+  const ts = new Date(sig.timestamp).toLocaleString('pt-BR');
+  const govBrBlock = sig.govBr ? `
+    <div style="margin-top:6px; padding:6px 10px; background:#eff6ff; border-left:3px solid #2563eb; font-size:9pt; color:#1e3a8a; text-align:left;">
+      <strong>Confirmado via gov.br</strong> ${sig.govBr.sealLevel ? `(selo ${sig.govBr.sealLevel.toUpperCase()})` : ''}<br/>
+      Titular: ${sig.govBr.name || sig.govBr.subject || '—'}${sig.govBr.cpf ? ` — CPF ${maskCpf(sig.govBr.cpf)}` : ''}<br/>
+      ${sig.govBr.authenticatedAt ? `Autenticado em: ${new Date(sig.govBr.authenticatedAt).toLocaleString('pt-BR')}` : ''}
+    </div>
+  ` : '';
+  const ecpfBlock = sig.ecpfCertificateInfo ? `
+    <div style="margin-top:6px; padding:6px 10px; background:#ecfdf5; border-left:3px solid #059669; font-size:9pt; color:#064e3b; text-align:left;">
+      <strong>Certificado ICP-Brasil</strong><br/>
+      Titular: ${sig.ecpfCertificateInfo.subject || '—'}${sig.ecpfCertificateInfo.cpf ? ` — CPF ${maskCpf(sig.ecpfCertificateInfo.cpf)}` : ''}<br/>
+      Emissor: ${sig.ecpfCertificateInfo.issuer || '—'}<br/>
+      ${sig.ecpfCertificateInfo.serialNumber ? `Série: ${sig.ecpfCertificateInfo.serialNumber}<br/>` : ''}
+      ${sig.ecpfCertificateInfo.validTo ? `Válido até: ${new Date(sig.ecpfCertificateInfo.validTo).toLocaleDateString('pt-BR')}` : ''}
+    </div>
+  ` : '';
+  const registrationLine = reg
+    ? `${reg.registrationType.toUpperCase()} ${reg.registrationNumber}${reg.registrationState ? `/${reg.registrationState}` : ''} — ${country}${reg.isVerified ? ' ✓ Verificado' : ''}`
+    : `Nº Registro: ${doctor.doctorCRM}/${doctor.doctorCRMState}${doctor.crmVerified ? ' ✓ Registro Verificado' : ''}`;
+
+  return `
+    <div class="digital-signature">
+      ${labelByMethod[method] || labelByMethod.rsa}<br/>
+      Emissor: ${issuedBy}<br/>
+      Timestamp: ${ts}
+    </div>
+    ${ecpfBlock}
+    ${govBrBlock}
+    <div class="signature-line"></div>
+    <div class="signature-name">${doctor.doctorName}</div>
+    <div class="signature-crm">${registrationLine}</div>
+  `;
 }
 
 export class PDFGeneratorService {
@@ -350,16 +429,11 @@ export class PDFGeneratorService {
         <div class="signature-section">
           <div style="flex: 1;"></div>
           <div class="signature-box">
-            ${data.digitalSignature ? `
-              <div class="digital-signature">
-                ✓ RECEITA ASSINADA DIGITALMENTE<br/>
-                Certificado ICP-Brasil A3<br/>
-                Timestamp: ${new Date(data.digitalSignature.timestamp).toLocaleString('pt-BR')}
-              </div>
-            ` : ''}
-            <div class="signature-line"></div>
-            <div class="signature-name">${data.doctorName}</div>
-            <div class="signature-crm">Nº Registro: ${data.doctorCRM}/${data.doctorCRMState}${data.crmVerified ? ' ✓ Registro Verificado' : ''}</div>
+            ${data.digitalSignature ? renderUniversalSignatureBlock(data.digitalSignature, { doctorName: data.doctorName, doctorCRM: data.doctorCRM, doctorCRMState: data.doctorCRMState, crmVerified: data.crmVerified }) : `
+              <div class="signature-line"></div>
+              <div class="signature-name">${data.doctorName}</div>
+              <div class="signature-crm">Nº Registro: ${data.doctorCRM}/${data.doctorCRMState}${data.crmVerified ? ' ✓ Registro Verificado' : ''}</div>
+            `}
           </div>
         </div>
         

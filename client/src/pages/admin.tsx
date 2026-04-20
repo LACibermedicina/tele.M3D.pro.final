@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -593,7 +593,17 @@ export default function AdminPage() {
               </div>
             </TabsTrigger>
           )}
+          <TabsTrigger value="presence-settings" data-testid="tab-presence-settings">
+            <div className="flex items-center space-x-2">
+              <Key className="h-4 w-4" />
+              <span>Tempos de Presença</span>
+            </div>
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="presence-settings" className="space-y-4">
+          <PresenceSettingsPanel />
+        </TabsContent>
 
         {/* Users Tab */}
         <TabsContent value="users" className="space-y-4">
@@ -4317,5 +4327,63 @@ function AccessModalityAuditTrail() {
         </div>
       )}
     </div>
+  );
+}
+
+function PresenceSettingsPanel() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const PRESENCE_KEYS: { key: string; label: string; help: string; min: number; max: number }[] = [
+    { key: "doctor_office_inactivity_minutes", label: "Inatividade do consultório (min)", help: "Tempo sem heartbeat antes do auto-fechamento", min: 1, max: 240 },
+    { key: "doctor_office_warning_minutes", label: "Aviso prévio (min)", help: "Quanto antes do fechamento o médico recebe um aviso", min: 0, max: 60 },
+    { key: "doctor_office_heartbeat_seconds", label: "Intervalo de heartbeat (s)", help: "Frequência do ping enviado pelo navegador do médico", min: 5, max: 300 },
+    { key: "auto_logoff_minutes", label: "Auto-logoff por inatividade (min)", help: "Encerramento automático da sessão do usuário", min: 1, max: 240 },
+    { key: "auto_logoff_warning_seconds", label: "Aviso antes do logoff (s)", help: "Janela do modal de \"Continuar online?\"", min: 30, max: 600 },
+  ];
+  const { data, isLoading } = useQuery<Record<string, string>>({
+    queryKey: ["/api/system-settings/public/presence"],
+  });
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  useEffect(() => { if (data) setDraft({ ...data }); }, [data]);
+  const saveMutation = useMutation({
+    mutationFn: async (entry: { key: string; value: string }) => {
+      const res = await fetch(`/api/system-settings/${entry.key}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settingValue: entry.value, settingType: "number", description: "Presence/auto-logoff timing" }),
+      });
+      if (!res.ok) throw new Error("Falha ao salvar");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Salvo", description: "Configuração atualizada." });
+      queryClient.invalidateQueries({ queryKey: ["/api/system-settings/public/presence"] });
+    },
+    onError: (err: any) => toast({ title: "Erro", description: err?.message || "Falha", variant: "destructive" }),
+  });
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Tempos de Presença</CardTitle>
+        <CardDescription>Ajuste os tempos de inatividade do consultório, heartbeat e auto-logoff.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? <p className="text-sm text-muted-foreground">Carregando…</p> : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {PRESENCE_KEYS.map((cfg) => (
+              <div key={cfg.key} className="space-y-1.5" data-testid={`presence-row-${cfg.key}`}>
+                <Label htmlFor={cfg.key}>{cfg.label}</Label>
+                <div className="flex gap-2">
+                  <Input id={cfg.key} type="number" min={cfg.min} max={cfg.max} value={draft[cfg.key] ?? ""} onChange={(e) => setDraft((d) => ({ ...d, [cfg.key]: e.target.value }))} data-testid={`input-${cfg.key}`} />
+                  <Button onClick={() => saveMutation.mutate({ key: cfg.key, value: draft[cfg.key] || "" })} disabled={saveMutation.isPending} data-testid={`btn-save-${cfg.key}`}>Salvar</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">{cfg.help}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

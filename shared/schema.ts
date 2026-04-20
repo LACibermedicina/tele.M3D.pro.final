@@ -301,6 +301,56 @@ export const digitalSignatures = pgTable("digital_signatures", {
   signedAt: timestamp("signed_at"),
   verificationCount: integer("verification_count").default(0), // How many times verified
   lastVerifiedAt: timestamp("last_verified_at"),
+  // Country-aware professional registration used at signing time
+  professionalRegistrationId: uuid("professional_registration_id"),
+  // ICP-Brasil e-CPF (Software A1 or token A3)
+  signatureMethod: text("signature_method").default("rsa"), // rsa | ecpf_a1 | ecpf_a3
+  ecpfCertificateInfo: jsonb("ecpf_certificate_info"), // Subject DN, issuer, serial, validity, CPF
+  ecpfSignatureBlob: text("ecpf_signature_blob"), // Base64 PKCS#7/CAdES blob when present
+  // gov.br confirmação (autenticação OIDC)
+  govBrSubject: text("gov_br_subject"), // sub claim
+  govBrCpf: text("gov_br_cpf"),
+  govBrName: text("gov_br_name"),
+  govBrSealLevel: text("gov_br_seal_level"), // bronze | prata | ouro
+  govBrAuthenticatedAt: timestamp("gov_br_authenticated_at"),
+  // PDF assinado (PAdES) gerado e armazenado
+  signedPdfUrl: text("signed_pdf_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Doctor office sessions — tracks open/close lifecycle, heartbeat, history
+export const doctorOfficeSessions = pgTable("doctor_office_sessions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  doctorId: uuid("doctor_id").references(() => users.id).notNull(),
+  openedAt: timestamp("opened_at").defaultNow().notNull(),
+  closedAt: timestamp("closed_at"),
+  closeReason: text("close_reason"), // manual | inactivity_auto | server_restart | logout
+  lastHeartbeatAt: timestamp("last_heartbeat_at").defaultNow().notNull(),
+  totalSeconds: integer("total_seconds"), // computed on close
+  channelName: text("channel_name"),
+  participantCount: integer("participant_count").default(0),
+  consultationsHandled: integer("consultations_handled").default(0),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Doctor professional registrations — multiple per doctor, country-aware
+export const doctorProfessionalRegistrations = pgTable("doctor_professional_registrations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  doctorId: uuid("doctor_id").references(() => users.id).notNull(),
+  country: text("country").notNull(), // ISO-3166-1 alpha-2: BR, AR, PY, US, ...
+  registrationType: text("registration_type").notNull().default("medical_license"), // crm | matricula | npi | gmc | etc.
+  registrationNumber: text("registration_number").notNull(),
+  registrationState: text("registration_state"), // SP, RJ ... or province/state where applicable
+  specialty: text("specialty"),
+  issuedAt: timestamp("issued_at"),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").default(true).notNull(),
+  isVerified: boolean("is_verified").default(false).notNull(),
+  verifiedAt: timestamp("verified_at"),
+  verifiedSource: text("verified_source"), // crm_verifier | manual | ministry_of_health | govbr
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -1475,6 +1525,21 @@ export type InsertDoctorSchedule = z.infer<typeof insertDoctorScheduleSchema>;
 
 export type DigitalSignature = typeof digitalSignatures.$inferSelect;
 export type InsertDigitalSignature = z.infer<typeof insertDigitalSignatureSchema>;
+
+export const insertDoctorOfficeSessionSchema = createInsertSchema(doctorOfficeSessions).omit({
+  id: true,
+  createdAt: true,
+});
+export type DoctorOfficeSession = typeof doctorOfficeSessions.$inferSelect;
+export type InsertDoctorOfficeSession = z.infer<typeof insertDoctorOfficeSessionSchema>;
+
+export const insertDoctorProfessionalRegistrationSchema = createInsertSchema(doctorProfessionalRegistrations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type DoctorProfessionalRegistration = typeof doctorProfessionalRegistrations.$inferSelect;
+export type InsertDoctorProfessionalRegistration = z.infer<typeof insertDoctorProfessionalRegistrationSchema>;
 
 export type VideoConsultation = typeof videoConsultations.$inferSelect;
 export type InsertVideoConsultation = z.infer<typeof insertVideoConsultationSchema>;

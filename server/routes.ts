@@ -24,7 +24,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers, profileMergeAuditLogs, prescriptionShares, labOrders, hospitalReferrals, clinicalAssets, susProntuarios, userNotes, postConsultationItems, accessModalityAuditLogs, type AccessModalityAuditLog } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers, profileMergeAuditLogs, prescriptionShares, labOrders, hospitalReferrals, clinicalAssets, susProntuarios, userNotes, postConsultationItems, accessModalityAuditLogs, type AccessModalityAuditLog, doctorOfficeSessions, doctorProfessionalRegistrations, insertDoctorProfessionalRegistrationSchema } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
@@ -9378,14 +9378,46 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         return res.status(403).json({ message: 'Only doctors can open office' });
       }
 
+      const now = new Date();
+      const channelName = `doctor-office-${req.user.id}`;
+
       // Mark doctor as available for immediate consultation
       await db.update(users)
         .set({ 
           isOnline: true, 
           availableForImmediate: true,
-          onlineSince: new Date()
+          onlineSince: now
         })
         .where(eq(users.id, req.user.id));
+
+      // Close any stale open sessions before creating a new one
+      await db.update(doctorOfficeSessions)
+        .set({ closedAt: now, closeReason: 'replaced_by_new_session' })
+        .where(and(
+          eq(doctorOfficeSessions.doctorId, req.user.id),
+          isNull(doctorOfficeSessions.closedAt)
+        ));
+
+      // Create a new session
+      const [session] = await db.insert(doctorOfficeSessions).values({
+        doctorId: req.user.id,
+        openedAt: now,
+        lastHeartbeatAt: now,
+        channelName,
+      }).returning();
+
+      // WhatsApp notification (best-effort)
+      try {
+        const phone = req.user.whatsappNumber || req.user.phone;
+        if (phone) {
+          await whatsAppService.sendDoctorOfficeNotification(phone, 'opened', {
+            doctorName: req.user.name,
+            openedAt: now,
+          });
+        }
+      } catch (waErr) {
+        console.warn('[doctor-office/open] WhatsApp notify failed:', waErr);
+      }
 
       // Check for pending reschedules and auto-schedule them 30 min from now
       let rescheduledCount = 0;
@@ -9480,12 +9512,49 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         return res.status(403).json({ message: 'Only doctors can close office' });
       }
 
+      const closedAt = new Date();
+      const reason = (req.body && typeof req.body.reason === 'string') ? req.body.reason : 'manual';
+
       // Mark doctor as unavailable
       await db.update(users)
         .set({ 
-          availableForImmediate: false
+          availableForImmediate: false,
+          isOnline: false,
         })
         .where(eq(users.id, req.user.id));
+
+      // Close current open session(s)
+      const [openSession] = await db.select()
+        .from(doctorOfficeSessions)
+        .where(and(
+          eq(doctorOfficeSessions.doctorId, req.user.id),
+          isNull(doctorOfficeSessions.closedAt)
+        ))
+        .orderBy(desc(doctorOfficeSessions.openedAt))
+        .limit(1);
+
+      let totalSeconds: number | null = null;
+      if (openSession) {
+        totalSeconds = Math.max(0, Math.floor((closedAt.getTime() - new Date(openSession.openedAt).getTime()) / 1000));
+        await db.update(doctorOfficeSessions)
+          .set({ closedAt, closeReason: reason, totalSeconds })
+          .where(eq(doctorOfficeSessions.id, openSession.id));
+      }
+
+      // WhatsApp notification (best-effort)
+      try {
+        const phone = req.user.whatsappNumber || req.user.phone;
+        if (phone) {
+          const eventType = reason === 'inactivity' ? 'closed_inactivity' : 'closed_manual';
+          await whatsAppService.sendDoctorOfficeNotification(phone, eventType, {
+            doctorName: req.user.name,
+            closedAt,
+            durationSeconds: totalSeconds || undefined,
+          });
+        }
+      } catch (waErr) {
+        console.warn('[doctor-office/close] WhatsApp notify failed:', waErr);
+      }
 
       // Find all open consultations for this doctor (waiting/active)
       const openConsultations = await db.select()
@@ -9612,14 +9681,155 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         return res.status(404).json({ message: 'Doctor not found' });
       }
 
+      const [openSession] = await db.select()
+        .from(doctorOfficeSessions)
+        .where(and(
+          eq(doctorOfficeSessions.doctorId, req.params.doctorId),
+          isNull(doctorOfficeSessions.closedAt)
+        ))
+        .orderBy(desc(doctorOfficeSessions.openedAt))
+        .limit(1);
+
       res.json({
-        isOpen: doctor[0].availableForImmediate && doctor[0].isOnline,
+        isOpen: !!(doctor[0].availableForImmediate && doctor[0].isOnline),
         doctorName: doctor[0].name,
-        channelName: `doctor-office-${req.params.doctorId}`
+        channelName: `doctor-office-${req.params.doctorId}`,
+        currentSessionId: openSession?.id || null,
+        openedAt: openSession?.openedAt || doctor[0].onlineSince || null,
+        lastHeartbeatAt: openSession?.lastHeartbeatAt || null,
       });
     } catch (error) {
       console.error('Get office status error:', error);
       res.status(500).json({ message: 'Failed to get office status' });
+    }
+  });
+
+  // Heartbeat — keeps the session alive and updates participant count
+  app.post('/api/doctor-office/heartbeat', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor') {
+        return res.status(403).json({ message: 'Only doctors can send heartbeat' });
+      }
+      const participantCount = Number.isInteger(req.body?.participantCount) ? req.body.participantCount : 0;
+      const now = new Date();
+      const result = await db.update(doctorOfficeSessions)
+        .set({ lastHeartbeatAt: now, participantCount })
+        .where(and(
+          eq(doctorOfficeSessions.doctorId, req.user.id),
+          isNull(doctorOfficeSessions.closedAt)
+        ))
+        .returning({ id: doctorOfficeSessions.id });
+      res.json({ ok: true, sessionId: result[0]?.id || null, lastHeartbeatAt: now.toISOString() });
+    } catch (error) {
+      console.error('Heartbeat error:', error);
+      res.status(500).json({ message: 'Heartbeat failed' });
+    }
+  });
+
+  // ===== DOCTOR PROFESSIONAL REGISTRATIONS (per-country) =====
+  app.get('/api/doctor-registrations', requireAuth, async (req: any, res) => {
+    try {
+      const doctorId = (req.query.doctorId as string) || req.user.id;
+      if (req.user.role === 'doctor' && doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const rows = await db.select()
+        .from(doctorProfessionalRegistrations)
+        .where(eq(doctorProfessionalRegistrations.doctorId, doctorId))
+        .orderBy(desc(doctorProfessionalRegistrations.createdAt));
+      res.json(rows);
+    } catch (error) {
+      console.error('List registrations error:', error);
+      res.status(500).json({ message: 'Failed to list registrations' });
+    }
+  });
+
+  app.post('/api/doctor-registrations', requireAuth, async (req: any, res) => {
+    try {
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const targetDoctorId = req.user.role === 'admin' && req.body?.doctorId ? req.body.doctorId : req.user.id;
+      const parsed = insertDoctorProfessionalRegistrationSchema.parse({
+        ...req.body,
+        doctorId: targetDoctorId,
+        country: (req.body?.country || '').toUpperCase(),
+      });
+      const [row] = await db.insert(doctorProfessionalRegistrations).values(parsed).returning();
+      res.status(201).json(row);
+    } catch (error: any) {
+      if (error?.issues) {
+        return res.status(400).json({ message: 'Dados inválidos', errors: error.issues });
+      }
+      console.error('Create registration error:', error);
+      res.status(500).json({ message: 'Failed to create registration' });
+    }
+  });
+
+  app.patch('/api/doctor-registrations/:id', requireAuth, async (req: any, res) => {
+    try {
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const [existing] = await db.select().from(doctorProfessionalRegistrations).where(eq(doctorProfessionalRegistrations.id, req.params.id)).limit(1);
+      if (!existing) return res.status(404).json({ message: 'Registration not found' });
+      if (req.user.role === 'doctor' && existing.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const updatable = insertDoctorProfessionalRegistrationSchema.partial().parse(req.body);
+      const [updated] = await db.update(doctorProfessionalRegistrations)
+        .set({ ...updatable, updatedAt: new Date() })
+        .where(eq(doctorProfessionalRegistrations.id, req.params.id))
+        .returning();
+      res.json(updated);
+    } catch (error: any) {
+      if (error?.issues) return res.status(400).json({ message: 'Dados inválidos', errors: error.issues });
+      console.error('Update registration error:', error);
+      res.status(500).json({ message: 'Failed to update registration' });
+    }
+  });
+
+  app.delete('/api/doctor-registrations/:id', requireAuth, async (req: any, res) => {
+    try {
+      if (!['doctor', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const [existing] = await db.select().from(doctorProfessionalRegistrations).where(eq(doctorProfessionalRegistrations.id, req.params.id)).limit(1);
+      if (!existing) return res.status(404).json({ message: 'Registration not found' });
+      if (req.user.role === 'doctor' && existing.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      await db.delete(doctorProfessionalRegistrations).where(eq(doctorProfessionalRegistrations.id, req.params.id));
+      res.json({ ok: true });
+    } catch (error) {
+      console.error('Delete registration error:', error);
+      res.status(500).json({ message: 'Failed to delete registration' });
+    }
+  });
+
+  // Doctor session history (own)
+  app.get('/api/doctor-office/sessions', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const doctorId = (req.query.doctorId as string) || req.user.id;
+      if (req.user.role === 'doctor' && doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+      const limit = Math.min(parseInt((req.query.limit as string) || '50', 10) || 50, 200);
+      const rows = await db.select()
+        .from(doctorOfficeSessions)
+        .where(eq(doctorOfficeSessions.doctorId, doctorId))
+        .orderBy(desc(doctorOfficeSessions.openedAt))
+        .limit(limit);
+      res.json(rows);
+    } catch (error) {
+      console.error('List sessions error:', error);
+      res.status(500).json({ message: 'Failed to list sessions' });
     }
   });
 
@@ -10207,11 +10417,30 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
           month: 'long',
           year: 'numeric'
         }),
-        digitalSignature: digitalSignature ? {
-          signature: digitalSignature.signature,
-          certificateInfo: digitalSignature.certificateInfo,
-          timestamp: digitalSignature.signedAt?.toISOString() || new Date().toISOString()
-        } : undefined
+        digitalSignature: digitalSignature ? await (async () => {
+          let resolvedReg: any = undefined;
+          try {
+            const reg = digitalSignature.professionalRegistrationId
+              ? await db.query.doctorProfessionalRegistrations.findFirst({ where: eq(doctorProfessionalRegistrations.id, digitalSignature.professionalRegistrationId) })
+              : await signatureService.resolveRegistrationForCountry(doctor.id, (patient as any).country);
+            if (reg) resolvedReg = { country: reg.country, councilType: reg.councilType, number: reg.number, state: reg.state ?? undefined };
+          } catch {}
+          return {
+            signature: digitalSignature.signature,
+            certificateInfo: (digitalSignature.certificateInfo as Record<string, unknown>) || {},
+            timestamp: digitalSignature.signedAt?.toISOString() || new Date().toISOString(),
+            signatureMethod: (digitalSignature.signatureMethod as any) || 'rsa',
+            professionalRegistration: resolvedReg,
+            ecpfCertificateInfo: (digitalSignature.ecpfCertificateInfo as any) || undefined,
+            govBr: digitalSignature.govBrSubject ? {
+              subject: digitalSignature.govBrSubject,
+              name: (digitalSignature.govBrSubject as any),
+              cpf: (digitalSignature as any).govBrCpf,
+              sealLevel: (digitalSignature as any).govBrSealLevel,
+              authenticatedAt: (digitalSignature as any).govBrAuthenticatedAt?.toISOString?.() || (digitalSignature as any).govBrAuthenticatedAt,
+            } : undefined,
+          };
+        })() : undefined,
       };
 
       // Generate PDF HTML
@@ -10653,6 +10882,8 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
       const userId = req.user?.id;
       const userRole = req.user?.role;
 
+      const logoutReason = (req.body && (req.body as any).reason) as string | undefined;
+
       if (userId && userRole === 'doctor') {
         try {
           await db.update(users).set({
@@ -10673,6 +10904,37 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
               status: 'completed',
               endTime: new Date(),
             }).where(eq(videoConsultations.id, activeConsultation.id));
+          }
+
+          // Close any open doctor-office session
+          const [openSession] = await db.select()
+            .from(doctorOfficeSessions)
+            .where(and(
+              eq(doctorOfficeSessions.doctorId, userId),
+              isNull(doctorOfficeSessions.closedAt)
+            ))
+            .limit(1);
+          if (openSession) {
+            const closedReason = logoutReason === 'inactivity' ? 'auto_logoff' : 'closed_manual';
+            await db.update(doctorOfficeSessions)
+              .set({ closedAt: new Date(), closeReason: closedReason })
+              .where(eq(doctorOfficeSessions.id, openSession.id));
+          }
+
+          // WhatsApp notify on inactivity-driven auto-logoff
+          if (logoutReason === 'inactivity') {
+            try {
+              const doctorRow = await storage.getUser(userId);
+              const phone = (doctorRow as any)?.whatsappNumber || (doctorRow as any)?.phone;
+              if (phone) {
+                await whatsAppService.sendDoctorOfficeNotification(phone, 'auto_logoff', {
+                  doctorName: (doctorRow as any)?.name || 'Doutor(a)',
+                  occurredAt: new Date(),
+                });
+              }
+            } catch (waErr) {
+              console.warn('[auth/logout] WhatsApp auto_logoff notify failed:', waErr);
+            }
           }
         } catch (cleanupError) {
           console.warn('Doctor session cleanup error (non-blocking):', cleanupError);
@@ -18745,6 +19007,30 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
+  app.get('/api/system-settings/public/presence', async (_req: Request, res: Response) => {
+    const defaults: Record<string, string> = {
+      doctor_office_inactivity_minutes: '10',
+      doctor_office_warning_minutes: '2',
+      doctor_office_heartbeat_seconds: '30',
+      auto_logoff_minutes: '30',
+      auto_logoff_warning_seconds: '180',
+    };
+    try {
+      const keys = Object.keys(defaults);
+      const results: Record<string, string> = {};
+      for (const key of keys) {
+        const setting = await db.select()
+          .from(systemSettings)
+          .where(eq(systemSettings.settingKey, key))
+          .limit(1);
+        results[key] = setting.length > 0 ? setting[0].settingValue : defaults[key];
+      }
+      res.json(results);
+    } catch {
+      res.json(defaults);
+    }
+  });
+
   app.get('/api/system-settings/public/consultation-timeouts', async (_req: Request, res: Response) => {
     try {
       const keys = [
@@ -18813,30 +19099,52 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         }
       }
 
-      const existing = await db.select()
-        .from(systemSettings)
-        .where(eq(systemSettings.settingKey, key))
-        .limit(1);
-      
-      if (existing.length === 0) {
-        return res.status(404).json({ message: 'Setting not found' });
-      }
-      
-      if (!existing[0].isEditable) {
-        return res.status(403).json({ message: 'This setting cannot be edited' });
-      }
+      const PRESENCE_KEYS = new Set([
+        'doctor_office_inactivity_minutes',
+        'doctor_office_warning_minutes',
+        'doctor_office_heartbeat_seconds',
+        'auto_logoff_minutes',
+        'auto_logoff_warning_seconds',
+      ]);
 
       // Validate request body
       const updateSchema = z.object({
         settingValue: z.string(),
         description: z.string().optional(),
+        settingType: z.enum(['string', 'number', 'boolean', 'json']).optional(),
       });
-      
       const validatedData = updateSchema.parse(req.body);
 
+      const existing = await db.select()
+        .from(systemSettings)
+        .where(eq(systemSettings.settingKey, key))
+        .limit(1);
+
+      if (existing.length === 0) {
+        if (!PRESENCE_KEYS.has(key)) {
+          return res.status(404).json({ message: 'Setting not found' });
+        }
+        const inserted = await db.insert(systemSettings).values({
+          settingKey: key,
+          settingValue: validatedData.settingValue,
+          settingType: validatedData.settingType || 'number',
+          description: validatedData.description || 'Presence/auto-logoff timing',
+          category: 'general',
+          isEditable: true,
+          updatedBy: req.user.id,
+        }).returning();
+        return res.json(inserted[0]);
+      }
+
+      if (!existing[0].isEditable) {
+        return res.status(403).json({ message: 'This setting cannot be edited' });
+      }
+
       const updated = await db.update(systemSettings)
-        .set({ 
-          ...validatedData,
+        .set({
+          settingValue: validatedData.settingValue,
+          description: validatedData.description ?? existing[0].description,
+          ...(validatedData.settingType ? { settingType: validatedData.settingType } : {}),
           updatedBy: req.user.id,
           updatedAt: new Date()
         })
@@ -24187,6 +24495,50 @@ ${combinedText.slice(0, 8000)}`;
       res.status(500).json({ message: 'Failed to create study' });
     }
   });
+
+  // ===== Doctor office auto-close cron (60s interval) =====
+  setInterval(async () => {
+    try {
+      const settingRow = await db.select().from(systemSettings)
+        .where(eq(systemSettings.settingKey, 'doctor_office_inactivity_minutes')).limit(1);
+      const minutes = settingRow.length > 0 ? parseInt(settingRow[0].settingValue, 10) || 10 : 10;
+      const cutoff = new Date(Date.now() - minutes * 60 * 1000);
+
+      const stale = await db.select()
+        .from(doctorOfficeSessions)
+        .where(and(
+          isNull(doctorOfficeSessions.closedAt),
+          lt(doctorOfficeSessions.lastHeartbeatAt, cutoff)
+        ));
+
+      for (const s of stale) {
+        const closedAt = new Date();
+        const totalSeconds = Math.max(0, Math.floor((closedAt.getTime() - new Date(s.openedAt).getTime()) / 1000));
+        await db.update(doctorOfficeSessions)
+          .set({ closedAt, closeReason: 'inactivity', totalSeconds })
+          .where(eq(doctorOfficeSessions.id, s.id));
+        await db.update(users)
+          .set({ availableForImmediate: false, isOnline: false })
+          .where(eq(users.id, s.doctorId));
+        try {
+          const [doc] = await db.select().from(users).where(eq(users.id, s.doctorId)).limit(1);
+          const phone = doc?.whatsappNumber || doc?.phone;
+          if (phone && doc) {
+            await whatsAppService.sendDoctorOfficeNotification(phone, 'closed_inactivity', {
+              doctorName: doc.name,
+              closedAt,
+              durationSeconds: totalSeconds,
+            });
+          }
+        } catch (waErr) {
+          console.warn('[auto-close cron] WhatsApp notify failed:', waErr);
+        }
+        console.log(`[auto-close] Closed inactive office session ${s.id} (doctor ${s.doctorId}, ${totalSeconds}s)`);
+      }
+    } catch (err) {
+      console.error('[auto-close cron] error:', err);
+    }
+  }, 60 * 1000);
 
   return httpServer;
 }

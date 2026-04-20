@@ -280,6 +280,42 @@ Sua teleconsulta está agendada. Certifique-se de estar em um local com boa cone
     return await this.sendMessage(to, message);
   }
 
+  async sendDoctorOfficeNotification(
+    to: string,
+    eventType: 'opened' | 'closed_manual' | 'closed_inactivity' | 'auto_logoff',
+    payload: { doctorName: string; openedAt?: Date | string; closedAt?: Date | string; durationSeconds?: number; reason?: string }
+  ): Promise<boolean> {
+    const fmt = (d?: Date | string) => {
+      if (!d) return '';
+      const date = typeof d === 'string' ? new Date(d) : d;
+      return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    };
+    const fmtDur = (s?: number) => {
+      if (!s || s < 0) return '';
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
+      return [h ? `${h}h` : '', m ? `${m}min` : '', `${sec}s`].filter(Boolean).join(' ');
+    };
+    let message = '';
+    switch (eventType) {
+      case 'opened':
+        message = `🏥 Consultório Aberto\n\nDr(a). ${payload.doctorName}, seu consultório virtual foi aberto às ${fmt(payload.openedAt)}.\n\nVocê está disponível para atender pacientes agora.`;
+        break;
+      case 'closed_manual':
+        message = `🏥 Consultório Fechado\n\nDr(a). ${payload.doctorName}, seu consultório foi fechado às ${fmt(payload.closedAt)}.\nTempo aberto: ${fmtDur(payload.durationSeconds)}.`;
+        break;
+      case 'closed_inactivity':
+        message = `⚠️ Consultório Fechado por Inatividade\n\nDr(a). ${payload.doctorName}, detectamos inatividade prolongada e seu consultório foi fechado automaticamente às ${fmt(payload.closedAt)}.\nTempo aberto: ${fmtDur(payload.durationSeconds)}.\n\nReabra quando puder retomar os atendimentos.`;
+        break;
+      case 'auto_logoff':
+        message = `🔒 Sessão Encerrada por Inatividade\n\nDr(a). ${payload.doctorName}, sua sessão foi encerrada automaticamente por inatividade${payload.reason ? ` (${payload.reason})` : ''}.\n\nFaça login novamente para continuar.`;
+        break;
+    }
+    message += '\n\n🏥 Tele<M3D> Pro';
+    return await this.sendMessage(to, message);
+  }
+
   async sendConsultationCompletedNotification(
     to: string,
     doctorName: string,

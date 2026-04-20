@@ -1,10 +1,35 @@
 import { db } from "../db";
-import { digitalKeys, digitalSignatures, signatureVerifications, users, prescriptions } from "../../shared/schema";
+import { digitalKeys, digitalSignatures, signatureVerifications, users, prescriptions, doctorProfessionalRegistrations } from "../../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import crypto from "crypto";
 import QRCode from "qrcode";
 import fs from "fs/promises";
 import path from "path";
+
+export type SignatureMethod = 'rsa' | 'ecpf_a1' | 'ecpf_a3';
+
+export interface ExtendedSignatureOptions {
+  method?: SignatureMethod;
+  professionalRegistrationId?: string;
+  patientCountry?: string;
+  ecpfCertificateInfo?: {
+    subject?: string;
+    issuer?: string;
+    cpf?: string;
+    serialNumber?: string;
+    validFrom?: string;
+    validTo?: string;
+  };
+  ecpfSignatureBlob?: string;
+  govBr?: {
+    subject?: string;
+    name?: string;
+    cpf?: string;
+    sealLevel?: 'bronze' | 'prata' | 'ouro';
+    authenticatedAt?: Date | string;
+  };
+  signedPdfUrl?: string;
+}
 
 export class SignatureService {
   
@@ -202,12 +227,76 @@ export class SignatureService {
       verificationUrl,
       status: 'signed',
       signedAt: new Date(),
+      signatureMethod: 'rsa',
     });
 
     // Update key last used
     await db.update(digitalKeys)
       .set({ lastUsedAt: new Date() })
       .where(eq(digitalKeys.id, keyData[0].id));
+
+    return signatureId;
+  }
+
+  /**
+   * Resolve the best professional registration for a doctor given a patient's country.
+   * Falls back to BR registration when no exact match is found.
+   */
+  async resolveRegistrationForCountry(doctorId: string, patientCountry?: string) {
+    const country = (patientCountry || 'BR').toUpperCase();
+    const rows = await db.select()
+      .from(doctorProfessionalRegistrations)
+      .where(and(
+        eq(doctorProfessionalRegistrations.doctorId, doctorId),
+        eq(doctorProfessionalRegistrations.isActive, true)
+      ));
+    if (rows.length === 0) return null;
+    const exact = rows.find((r) => r.country.toUpperCase() === country);
+    if (exact) return exact;
+    return rows.find((r) => r.country.toUpperCase() === 'BR') || rows[0];
+  }
+
+  /**
+   * Sign a document and persist extended signature metadata
+   * (ICP-Brasil e-CPF A1/A3, gov.br confirmation, registration, signed PDF URL).
+   */
+  async signDocumentExtended(
+    documentType: 'prescription' | 'exam_request' | 'medical_certificate',
+    documentId: string,
+    patientId: string,
+    doctorId: string,
+    documentContent: string,
+    options: ExtendedSignatureOptions = {}
+  ): Promise<string> {
+    // Always issue the cryptographic RSA signature first (acts as primary integrity proof).
+    const signatureId = await this.signDocument(documentType, documentId, patientId, doctorId, documentContent);
+
+    // Resolve registration for the patient's country if not explicitly provided
+    let registrationId = options.professionalRegistrationId;
+    if (!registrationId && options.patientCountry) {
+      const reg = await this.resolveRegistrationForCountry(doctorId, options.patientCountry);
+      if (reg) registrationId = reg.id;
+    }
+
+    // Update with extended metadata
+    const govBrAuthAt = options.govBr?.authenticatedAt
+      ? (options.govBr.authenticatedAt instanceof Date ? options.govBr.authenticatedAt : new Date(options.govBr.authenticatedAt))
+      : undefined;
+
+    await db.update(digitalSignatures)
+      .set({
+        professionalRegistrationId: registrationId || null,
+        signatureMethod: options.method || 'rsa',
+        ecpfCertificateInfo: options.ecpfCertificateInfo || null,
+        ecpfSignatureBlob: options.ecpfSignatureBlob || null,
+        govBrSubject: options.govBr?.subject || null,
+        govBrName: options.govBr?.name || null,
+        govBrCpf: options.govBr?.cpf || null,
+        govBrSealLevel: options.govBr?.sealLevel || null,
+        govBrAuthenticatedAt: govBrAuthAt || null,
+        signedPdfUrl: options.signedPdfUrl || null,
+      })
+      .where(eq(digitalSignatures.id, signatureId));
 
     return signatureId;
   }

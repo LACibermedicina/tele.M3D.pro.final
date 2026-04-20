@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Stethoscope, UserPlus, Copy, Link as LinkIcon, Users, Video, VideoOff, X } from "lucide-react";
+import { Stethoscope, UserPlus, Copy, Link as LinkIcon, Users, Video, VideoOff, X, Clock, History } from "lucide-react";
 import AgoraRTC, { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack } from "agora-rtc-sdk-ng";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
@@ -28,6 +28,8 @@ export default function DoctorOffice() {
   const [externalInviteLink, setExternalInviteLink] = useState("");
   const [specialistEmail, setSpecialistEmail] = useState("");
   const [participants, setParticipants] = useState<any[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [chronoNow, setChronoNow] = useState(Date.now());
   
   // Agora RTC
   const [agoraClient, setAgoraClient] = useState<IAgoraRTCClient | null>(null);
@@ -36,7 +38,7 @@ export default function DoctorOffice() {
   const [isVideoOn, setIsVideoOn] = useState(false);
   const [isAudioOn, setIsAudioOn] = useState(false);
 
-  const { data: officeStatus } = useQuery<{ isOpen: boolean; doctorName: string; channelName: string }>({
+  const { data: officeStatus } = useQuery<{ isOpen: boolean; doctorName: string; channelName: string; openedAt: string | null; currentSessionId: string | null; lastHeartbeatAt: string | null }>({
     queryKey: ['/api/doctor-office/status', user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated');
@@ -47,6 +49,47 @@ export default function DoctorOffice() {
     enabled: !!user?.id,
     refetchInterval: 5000,
   });
+
+  type SessionRow = { id: string; openedAt: string; closedAt: string | null; closeReason: string | null; totalSeconds: number | null; participantCount: number | null };
+  const { data: sessionHistory = [], refetch: refetchHistory } = useQuery<SessionRow[]>({
+    queryKey: ['/api/doctor-office/sessions', user?.id],
+    queryFn: async () => {
+      const res = await fetch('/api/doctor-office/sessions?limit=20', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load history');
+      return res.json();
+    },
+    enabled: !!user?.id && historyOpen,
+  });
+
+  // Live chronometer + heartbeat ping every 30s while office is open
+  useEffect(() => {
+    if (!isOfficeOpen) return;
+    const tick = setInterval(() => setChronoNow(Date.now()), 1000);
+    const heartbeat = setInterval(() => {
+      fetch('/api/doctor-office/heartbeat', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participantCount: participants.length }),
+      }).catch(() => {});
+    }, 30000);
+    return () => { clearInterval(tick); clearInterval(heartbeat); };
+  }, [isOfficeOpen, participants.length]);
+
+  const elapsedSeconds = (() => {
+    if (!officeStatus?.openedAt) return 0;
+    return Math.max(0, Math.floor((chronoNow - new Date(officeStatus.openedAt).getTime()) / 1000));
+  })();
+  const fmtElapsed = (s: number) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  };
+  const fmtDuration = (s: number | null) => {
+    if (s === null || s === undefined) return '—';
+    return fmtElapsed(s);
+  };
 
   useEffect(() => {
     if (officeStatus) {
@@ -177,6 +220,15 @@ export default function DoctorOffice() {
       
       queryClient.invalidateQueries({ queryKey: ['/api/doctor-office/status'] });
     },
+    onError: (err: any) => {
+      console.error('Close office error:', err);
+      const description = err?.message || 'Não foi possível fechar o consultório. Tente novamente.';
+      toast({
+        title: 'Erro ao fechar consultório',
+        description,
+        variant: 'destructive',
+      });
+    },
   });
 
   const generateExternalLink = async () => {
@@ -270,12 +322,23 @@ export default function DoctorOffice() {
             </div>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
+            {isOfficeOpen && officeStatus?.openedAt && (
+              <div data-testid="office-chronometer" className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-mono text-sm">
+                <Clock className="h-4 w-4" />
+                {fmtElapsed(elapsedSeconds)}
+              </div>
+            )}
+            <Button variant="outline" onClick={() => { setHistoryOpen(true); refetchHistory(); }} data-testid="btn-history">
+              <History className="h-4 w-4 mr-2" />
+              Histórico
+            </Button>
             {isOfficeOpen ? (
               <Button 
                 variant="destructive" 
                 onClick={() => closeOfficeMutation.mutate()}
                 disabled={closeOfficeMutation.isPending}
+                data-testid="btn-close-office"
               >
                 <VideoOff className="h-4 w-4 mr-2" />
                 Fechar Consultório
@@ -285,6 +348,7 @@ export default function DoctorOffice() {
                 onClick={() => openOfficeMutation.mutate()}
                 disabled={openOfficeMutation.isPending}
                 className="bg-gradient-to-r from-blue-600 to-purple-600"
+                data-testid="btn-open-office"
               >
                 <Video className="h-4 w-4 mr-2" />
                 Abrir Consultório
@@ -433,6 +497,44 @@ export default function DoctorOffice() {
           </DraggableDashboardPanel>
         )}
       </div>
+
+      {/* Session History Dialog */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Histórico de Sessões do Consultório</DialogTitle>
+            <DialogDescription>Últimas 20 sessões abertas/fechadas</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {sessionHistory.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">Nenhuma sessão registrada ainda.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="text-xs uppercase text-muted-foreground border-b">
+                  <tr>
+                    <th className="text-left py-2">Aberto</th>
+                    <th className="text-left py-2">Fechado</th>
+                    <th className="text-left py-2">Duração</th>
+                    <th className="text-left py-2">Motivo</th>
+                    <th className="text-right py-2">Particip.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sessionHistory.map((s) => (
+                    <tr key={s.id} className="border-b last:border-0" data-testid={`row-session-${s.id}`}>
+                      <td className="py-2">{new Date(s.openedAt).toLocaleString('pt-BR')}</td>
+                      <td className="py-2">{s.closedAt ? new Date(s.closedAt).toLocaleString('pt-BR') : <Badge variant="outline" className="text-emerald-600">Em andamento</Badge>}</td>
+                      <td className="py-2 font-mono">{fmtDuration(s.totalSeconds)}</td>
+                      <td className="py-2 capitalize">{s.closeReason || (s.closedAt ? '—' : '—')}</td>
+                      <td className="py-2 text-right">{s.participantCount ?? 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* External Invite Dialog */}
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>

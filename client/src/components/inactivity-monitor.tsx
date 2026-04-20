@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertTriangle } from "lucide-react";
 
-const RESPONSE_TIMEOUT_MS = 3 * 60 * 1000;
+const DEFAULT_RESPONSE_TIMEOUT_MS = 3 * 60 * 1000;
 const DEFAULT_INACTIVITY_MS = 30 * 60 * 1000;
 const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click"];
 
@@ -63,6 +63,7 @@ export default function InactivityMonitor() {
   const responseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inactivityTimeoutRef = useRef(DEFAULT_INACTIVITY_MS);
+  const responseTimeoutRef = useRef(DEFAULT_RESPONSE_TIMEOUT_MS);
   const showPromptRef = useRef(false);
   const logoutCalledRef = useRef(false);
   const logoutRef = useRef(logout);
@@ -70,14 +71,18 @@ export default function InactivityMonitor() {
 
   useEffect(() => {
     if (!user) return;
-    fetch("/api/system-settings/public/inactivity-timeout")
+    fetch("/api/system-settings/public/presence")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.settingValue) {
-          const minutes = parseInt(data.settingValue, 10);
-          if (minutes > 0) {
-            inactivityTimeoutRef.current = minutes * 60 * 1000;
-          }
+        if (!data) return;
+        const minutes = parseInt(data.auto_logoff_minutes, 10);
+        if (Number.isFinite(minutes) && minutes > 0) {
+          inactivityTimeoutRef.current = minutes * 60 * 1000;
+        }
+        const warningSec = parseInt(data.auto_logoff_warning_seconds, 10);
+        if (Number.isFinite(warningSec) && warningSec > 0) {
+          responseTimeoutRef.current = warningSec * 1000;
+          setCountdown(warningSec);
         }
       })
       .catch(() => {});
@@ -87,7 +92,7 @@ export default function InactivityMonitor() {
     if (responseTimerRef.current) { clearTimeout(responseTimerRef.current); responseTimerRef.current = null; }
     if (countdownIntervalRef.current) { clearInterval(countdownIntervalRef.current); countdownIntervalRef.current = null; }
 
-    setCountdown(180);
+    setCountdown(Math.floor(responseTimeoutRef.current / 1000));
 
     countdownIntervalRef.current = setInterval(() => {
       setCountdown((prev) => {
@@ -111,7 +116,7 @@ export default function InactivityMonitor() {
       });
       try { await logoutRef.current(); } catch {}
       window.location.href = "/";
-    }, RESPONSE_TIMEOUT_MS);
+    }, responseTimeoutRef.current);
   }, [toast]);
 
   const startInactivityTimer = useCallback(() => {
