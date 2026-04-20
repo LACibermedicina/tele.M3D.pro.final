@@ -9392,7 +9392,7 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
 
       // Close any stale open sessions before creating a new one
       await db.update(doctorOfficeSessions)
-        .set({ closedAt: now, closeReason: 'replaced_by_new_session' })
+        .set({ closedAt: now, closeReason: 'auto' })
         .where(and(
           eq(doctorOfficeSessions.doctorId, req.user.id),
           isNull(doctorOfficeSessions.closedAt)
@@ -9546,6 +9546,7 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         const phone = req.user.whatsappNumber || req.user.phone;
         if (phone) {
           const eventType = reason === 'inactivity' ? 'closed_inactivity' : 'closed_manual';
+          // canonical reasons: manual | inactivity | logout | error | auto
           await whatsAppService.sendDoctorOfficeNotification(phone, eventType, {
             doctorName: req.user.name,
             closedAt,
@@ -10921,7 +10922,7 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
             ))
             .limit(1);
           if (openSession) {
-            const closedReason = logoutReason === 'inactivity' ? 'auto_logoff' : 'closed_manual';
+            const closedReason = logoutReason === 'inactivity' ? 'inactivity' : 'logout';
             await db.update(doctorOfficeSessions)
               .set({ closedAt: new Date(), closeReason: closedReason })
               .where(eq(doctorOfficeSessions.id, openSession.id));
@@ -24503,21 +24504,56 @@ ${combinedText.slice(0, 8000)}`;
   });
 
   // ===== Doctor office auto-close cron (60s interval) =====
+  // Closes when (no patient connected) AND heartbeat is stale beyond inactivity window.
+  // Sends a warning notification `warning_minutes` before close (once per session).
+  const warnedSessionIds = new Set<string>();
   setInterval(async () => {
     try {
-      const settingRow = await db.select().from(systemSettings)
-        .where(eq(systemSettings.settingKey, 'doctor_office_inactivity_minutes')).limit(1);
-      const minutes = settingRow.length > 0 ? parseInt(settingRow[0].settingValue, 10) || 10 : 10;
-      const cutoff = new Date(Date.now() - minutes * 60 * 1000);
-
-      const stale = await db.select()
-        .from(doctorOfficeSessions)
-        .where(and(
-          isNull(doctorOfficeSessions.closedAt),
-          lt(doctorOfficeSessions.lastHeartbeatAt, cutoff)
+      const rows = await db.select().from(systemSettings)
+        .where(or(
+          eq(systemSettings.settingKey, 'doctor_office_inactivity_minutes'),
+          eq(systemSettings.settingKey, 'doctor_office_warning_minutes')
         ));
+      const settingsMap: Record<string, string> = {};
+      for (const r of rows) settingsMap[r.settingKey] = r.settingValue;
+      const minutes = parseInt(settingsMap['doctor_office_inactivity_minutes'] || '10', 10) || 10;
+      const warnMinutes = parseInt(settingsMap['doctor_office_warning_minutes'] || '2', 10) || 2;
+      const now = Date.now();
+      const cutoff = new Date(now - minutes * 60 * 1000);
+      const warnCutoff = new Date(now - Math.max(0, minutes - warnMinutes) * 60 * 1000);
 
-      for (const s of stale) {
+      const openSessions = await db.select()
+        .from(doctorOfficeSessions)
+        .where(isNull(doctorOfficeSessions.closedAt));
+
+      for (const s of openSessions) {
+        const lastHb = s.lastHeartbeatAt ? new Date(s.lastHeartbeatAt) : new Date(s.openedAt);
+        const noPatient = (s.participantCount ?? 0) <= 0;
+
+        // Warning phase: stale heartbeat past warning threshold but not yet past close cutoff
+        if (warnMinutes > 0 && noPatient && lastHb < warnCutoff && lastHb >= cutoff && !warnedSessionIds.has(s.id)) {
+          warnedSessionIds.add(s.id);
+          try {
+            const [doc] = await db.select().from(users).where(eq(users.id, s.doctorId)).limit(1);
+            const phone = doc?.whatsappNumber || doc?.phone;
+            if (phone && doc) {
+              await whatsAppService.sendDoctorOfficeNotification(phone, 'closed_inactivity', {
+                doctorName: doc.name,
+                closedAt: new Date(now + warnMinutes * 60 * 1000),
+                durationSeconds: Math.max(0, Math.floor((now - new Date(s.openedAt).getTime()) / 1000)),
+                warning: true,
+                minutesUntilClose: warnMinutes,
+              } as any);
+            }
+          } catch (waErr) {
+            console.warn('[auto-close cron] warning notify failed:', waErr);
+          }
+          continue;
+        }
+
+        // Close only when no patient AND heartbeat is stale beyond inactivity
+        if (!(noPatient && lastHb < cutoff)) continue;
+
         const closedAt = new Date();
         const totalSeconds = Math.max(0, Math.floor((closedAt.getTime() - new Date(s.openedAt).getTime()) / 1000));
         await db.update(doctorOfficeSessions)
@@ -24526,6 +24562,7 @@ ${combinedText.slice(0, 8000)}`;
         await db.update(users)
           .set({ availableForImmediate: false, isOnline: false })
           .where(eq(users.id, s.doctorId));
+        warnedSessionIds.delete(s.id);
         try {
           const [doc] = await db.select().from(users).where(eq(users.id, s.doctorId)).limit(1);
           const phone = doc?.whatsappNumber || doc?.phone;
