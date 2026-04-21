@@ -71,15 +71,16 @@ export default function DoctorOffice() {
     if (!isOfficeOpen) return;
     const tick = setInterval(() => setChronoNow(Date.now()), 1000);
     const heartbeat = setInterval(() => {
+      const remoteCount = agoraClient?.remoteUsers?.length ?? participants.length;
       fetch('/api/doctor-office/heartbeat', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participantCount: participants.length }),
+        body: JSON.stringify({ participantCount: remoteCount }),
       }).catch(() => {});
     }, heartbeatMs);
     return () => { clearInterval(tick); clearInterval(heartbeat); };
-  }, [isOfficeOpen, participants.length, heartbeatMs]);
+  }, [isOfficeOpen, participants.length, heartbeatMs, agoraClient]);
 
   const elapsedSeconds = (() => {
     if (!officeStatus?.openedAt) return 0;
@@ -96,10 +97,40 @@ export default function DoctorOffice() {
     return fmtElapsed(s);
   };
 
-  useEffect(() => {
-    if (officeStatus) {
-      setIsOfficeOpen(officeStatus.isOpen);
+  const cleanupAgora = async () => {
+    if (localVideoTrack) {
+      localVideoTrack.stop();
+      localVideoTrack.close();
     }
+    if (localAudioTrack) {
+      localAudioTrack.stop();
+      localAudioTrack.close();
+    }
+    if (agoraClient) {
+      try { await agoraClient.leave(); } catch {}
+    }
+    document.querySelectorAll('[id^="remote-"]').forEach((el) => el.remove());
+    setLocalVideoTrack(null);
+    setLocalAudioTrack(null);
+    setAgoraClient(null);
+    setIsVideoOn(false);
+    setIsAudioOn(false);
+    setParticipants([]);
+  };
+
+  useEffect(() => {
+    if (!officeStatus) return;
+    // Detect server-side auto-close (e.g., inactivity cron) while we still hold an Agora client
+    if (!officeStatus.isOpen && (isOfficeOpen || agoraClient)) {
+      setIsOfficeOpen(false);
+      cleanupAgora();
+      toast({
+        title: 'Consultório encerrado',
+        description: 'A sessão foi fechada automaticamente por inatividade.',
+      });
+      return;
+    }
+    setIsOfficeOpen(officeStatus.isOpen);
   }, [officeStatus]);
 
   const openOfficeMutation = useMutation({
@@ -169,6 +200,24 @@ export default function DoctorOffice() {
           const playerContainer = document.getElementById(`remote-${remoteUser.uid}`);
           playerContainer?.remove();
         });
+
+        client.on("user-joined", (remoteUser) => {
+          setParticipants((prev) => {
+            if (prev.some((p) => p.uid === remoteUser.uid)) return prev;
+            return [...prev, { uid: remoteUser.uid, name: `Participante ${remoteUser.uid}`, role: 'remoto' }];
+          });
+        });
+
+        client.on("user-left", (remoteUser) => {
+          setParticipants((prev) => prev.filter((p) => p.uid !== remoteUser.uid));
+          const playerContainer = document.getElementById(`remote-${remoteUser.uid}`);
+          playerContainer?.remove();
+        });
+
+        // Initialize from any users already in the channel
+        setParticipants(
+          client.remoteUsers.map((u) => ({ uid: u.uid, name: `Participante ${u.uid}`, role: 'remoto' }))
+        );
         
       } catch (error) {
         console.error('Agora initialization error:', error);
@@ -203,26 +252,7 @@ export default function DoctorOffice() {
         description: "Seu consultório foi fechado.",
       });
       setIsOfficeOpen(false);
-      
-      // Cleanup Agora
-      if (localVideoTrack) {
-        localVideoTrack.stop();
-        localVideoTrack.close();
-      }
-      if (localAudioTrack) {
-        localAudioTrack.stop();
-        localAudioTrack.close();
-      }
-      if (agoraClient) {
-        await agoraClient.leave();
-      }
-      
-      setLocalVideoTrack(null);
-      setLocalAudioTrack(null);
-      setAgoraClient(null);
-      setIsVideoOn(false);
-      setIsAudioOn(false);
-      
+      await cleanupAgora();
       queryClient.invalidateQueries({ queryKey: ['/api/doctor-office/status'] });
     },
     onError: (err: any) => {
