@@ -155,7 +155,12 @@ export default function DoctorOffice() {
         const tokenResponse = await fetch('/api/agora/generate-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ channelName, uid: numericUid }),
+          body: JSON.stringify({
+            channelName,
+            uid: numericUid,
+            displayName: user?.name,
+            participantRole: user?.role || 'doctor',
+          }),
         });
         
         if (!tokenResponse.ok) {
@@ -201,23 +206,48 @@ export default function DoctorOffice() {
           playerContainer?.remove();
         });
 
-        client.on("user-joined", (remoteUser) => {
-          setParticipants((prev) => {
-            if (prev.some((p) => p.uid === remoteUser.uid)) return prev;
-            return [...prev, { uid: remoteUser.uid, name: `Participante ${remoteUser.uid}`, role: 'remoto' }];
-          });
+        // Resolve numeric Agora UIDs to human-friendly names/roles via the
+        // server-side participant directory, then rebuild the list from the
+        // actual remote users currently in the channel.
+        const resolveAndSetParticipants = async () => {
+          const directory: Record<string, { name: string; role: string }> = {};
+          try {
+            const dirRes = await fetch(`/api/agora/participants/${encodeURIComponent(channelName)}`, {
+              credentials: 'include',
+            });
+            if (dirRes.ok) {
+              const data = await dirRes.json();
+              for (const p of (data.participants || [])) {
+                directory[String(p.uid)] = { name: p.name, role: p.role };
+              }
+            }
+          } catch (err) {
+            console.error('Failed to resolve participant directory:', err);
+          }
+          setParticipants(
+            client.remoteUsers.map((u) => {
+              const info = directory[String(u.uid)];
+              return {
+                uid: u.uid,
+                name: info?.name || 'Participante convidado',
+                role: info?.role || 'Convidado',
+              };
+            })
+          );
+        };
+
+        client.on("user-joined", () => {
+          void resolveAndSetParticipants();
         });
 
         client.on("user-left", (remoteUser) => {
-          setParticipants((prev) => prev.filter((p) => p.uid !== remoteUser.uid));
           const playerContainer = document.getElementById(`remote-${remoteUser.uid}`);
           playerContainer?.remove();
+          void resolveAndSetParticipants();
         });
 
         // Initialize from any users already in the channel
-        setParticipants(
-          client.remoteUsers.map((u) => ({ uid: u.uid, name: `Participante ${u.uid}`, role: 'remoto' }))
-        );
+        void resolveAndSetParticipants();
         
       } catch (error) {
         console.error('Agora initialization error:', error);

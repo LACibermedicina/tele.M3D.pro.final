@@ -135,6 +135,51 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
+// In-memory directory mapping an Agora channel -> { uid -> { name, role } }.
+// Populated whenever a participant requests an Agora token, so the doctor's
+// office client can resolve numeric UIDs to human-friendly names/roles.
+type AgoraParticipantInfo = { uid: number; name: string; role: string; updatedAt: number };
+const agoraChannelParticipants = new Map<string, Map<number, AgoraParticipantInfo>>();
+const AGORA_PARTICIPANT_TTL_MS = 4 * 60 * 60 * 1000; // 4h safety expiry
+
+function registerAgoraParticipant(channelName: string, info: { uid: number; name: string; role: string }) {
+  if (!channelName || !Number.isFinite(info.uid)) return;
+  let channel = agoraChannelParticipants.get(channelName);
+  if (!channel) {
+    channel = new Map();
+    agoraChannelParticipants.set(channelName, channel);
+  }
+  channel.set(info.uid, { uid: info.uid, name: info.name, role: info.role, updatedAt: Date.now() });
+}
+
+function getAgoraParticipants(channelName: string): AgoraParticipantInfo[] {
+  const channel = agoraChannelParticipants.get(channelName);
+  if (!channel) return [];
+  const now = Date.now();
+  const result: AgoraParticipantInfo[] = [];
+  Array.from(channel.entries()).forEach(([uid, info]) => {
+    if (now - info.updatedAt > AGORA_PARTICIPANT_TTL_MS) {
+      channel!.delete(uid);
+      return;
+    }
+    result.push(info);
+  });
+  if (channel.size === 0) agoraChannelParticipants.delete(channelName);
+  return result;
+}
+
+function friendlyRoleLabel(role?: string): string {
+  switch ((role || '').toLowerCase()) {
+    case 'doctor': return 'Médico(a)';
+    case 'specialist': return 'Especialista convidado';
+    case 'patient': return 'Paciente';
+    case 'pharmacist': return 'Farmacêutico(a)';
+    case 'researcher': return 'Pesquisador(a)';
+    case 'admin': return 'Administrador(a)';
+    default: return 'Participante';
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
@@ -3461,7 +3506,7 @@ ${clinicalText}`;
         return res.status(401).json({ message: 'Authentication required' });
       }
 
-      const { channelName, uid, role } = req.body;
+      const { channelName, uid, role, displayName, participantRole } = req.body;
 
       if (!channelName) {
         return res.status(400).json({ message: 'Channel name is required' });
@@ -3477,6 +3522,13 @@ ${clinicalText}`;
         expirationTimeInSeconds: 3600 // 1 hour
       });
 
+      // Register this participant so the office host can resolve UID -> name/role.
+      registerAgoraParticipant(channelName, {
+        uid: Number(numericUid),
+        name: (displayName || req.user.name || req.user.username || 'Participante').toString(),
+        role: friendlyRoleLabel(participantRole || req.user.role),
+      });
+
       res.json({
         token,
         appId: getAgoraAppId(),
@@ -3487,6 +3539,25 @@ ${clinicalText}`;
       console.error('Generate Agora token error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate token';
       res.status(500).json({ message: errorMessage });
+    }
+  });
+
+  // Resolve human-friendly names/roles for participants in an Agora channel.
+  app.get('/api/agora/participants/:channelName', async (req: any, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      const channelName = req.params.channelName;
+      const participants = getAgoraParticipants(channelName).map((p) => ({
+        uid: p.uid,
+        name: p.name,
+        role: p.role,
+      }));
+      res.json({ participants });
+    } catch (error) {
+      console.error('Get Agora participants error:', error);
+      res.status(500).json({ message: 'Failed to get participants' });
     }
   });
 
