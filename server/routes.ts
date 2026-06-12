@@ -138,18 +138,18 @@ import fs from 'fs';
 // In-memory directory mapping an Agora channel -> { uid -> { name, role } }.
 // Populated whenever a participant requests an Agora token, so the doctor's
 // office client can resolve numeric UIDs to human-friendly names/roles.
-type AgoraParticipantInfo = { uid: number; name: string; role: string; updatedAt: number };
+type AgoraParticipantInfo = { uid: number; userId: string; name: string; role: string; updatedAt: number };
 const agoraChannelParticipants = new Map<string, Map<number, AgoraParticipantInfo>>();
 const AGORA_PARTICIPANT_TTL_MS = 4 * 60 * 60 * 1000; // 4h safety expiry
 
-function registerAgoraParticipant(channelName: string, info: { uid: number; name: string; role: string }) {
+function registerAgoraParticipant(channelName: string, info: { uid: number; userId: string; name: string; role: string }) {
   if (!channelName || !Number.isFinite(info.uid)) return;
   let channel = agoraChannelParticipants.get(channelName);
   if (!channel) {
     channel = new Map();
     agoraChannelParticipants.set(channelName, channel);
   }
-  channel.set(info.uid, { uid: info.uid, name: info.name, role: info.role, updatedAt: Date.now() });
+  channel.set(info.uid, { uid: info.uid, userId: info.userId, name: info.name, role: info.role, updatedAt: Date.now() });
 }
 
 function getAgoraParticipants(channelName: string): AgoraParticipantInfo[] {
@@ -166,6 +166,16 @@ function getAgoraParticipants(channelName: string): AgoraParticipantInfo[] {
   });
   if (channel.size === 0) agoraChannelParticipants.delete(channelName);
   return result;
+}
+
+// A user may read a channel's participant directory only if they are the office
+// owner (channel `doctor-office-<doctorId>`), an admin, or themselves a current
+// participant of that channel. Prevents arbitrary lookup of room presence/PII.
+function canReadAgoraParticipants(channelName: string, user: { id: string; role?: string }): boolean {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  if (channelName === `doctor-office-${user.id}`) return true;
+  return getAgoraParticipants(channelName).some((p) => p.userId === user.id);
 }
 
 function friendlyRoleLabel(role?: string): string {
@@ -3525,6 +3535,7 @@ ${clinicalText}`;
       // Register this participant so the office host can resolve UID -> name/role.
       registerAgoraParticipant(channelName, {
         uid: Number(numericUid),
+        userId: req.user.id,
         name: (displayName || req.user.name || req.user.username || 'Participante').toString(),
         role: friendlyRoleLabel(participantRole || req.user.role),
       });
@@ -3549,6 +3560,10 @@ ${clinicalText}`;
         return res.status(401).json({ message: 'Authentication required' });
       }
       const channelName = req.params.channelName;
+      if (!canReadAgoraParticipants(channelName, req.user)) {
+        console.warn(`Denied participant-directory access: user ${req.user.id} -> channel ${channelName}`);
+        return res.status(403).json({ message: 'Not authorized to view participants for this channel' });
+      }
       const participants = getAgoraParticipants(channelName).map((p) => ({
         uid: p.uid,
         name: p.name,
