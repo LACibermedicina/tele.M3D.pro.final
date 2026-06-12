@@ -7,6 +7,62 @@ import { whatsAppService } from "./services/whatsapp";
 import { SchedulingService } from "./services/scheduling";
 import { whisperService } from "./services/whisper";
 import { cryptoService } from "./services/crypto";
+import { signatureService, type ExtendedSignatureOptions, type SignatureMethod } from "./services/signature-service";
+import type { SignatureResult } from "./services/crypto";
+import type { DigitalSignature, Patient } from "@shared/schema";
+
+function asCertificateInfo(value: unknown, fallback: Record<string, unknown> = {}): Record<string, unknown> {
+  if (value && typeof value === 'object') return value as Record<string, unknown>;
+  return fallback;
+}
+
+function buildSignatureResultFromRecord(
+  record: DigitalSignature,
+  fallbackCertificateInfo: Record<string, unknown> = {}
+): SignatureResult {
+  const certificateInfo = asCertificateInfo(record.certificateInfo, fallbackCertificateInfo);
+  const algorithm = typeof certificateInfo.algorithm === 'string' ? certificateInfo.algorithm : 'RSA-SHA256';
+  return {
+    signature: record.signature,
+    algorithm,
+    timestamp: record.signedAt?.toISOString() || new Date().toISOString(),
+    certificateInfo,
+    documentHash: record.documentHash,
+  };
+}
+
+function getPatientCountry(patient: Patient | undefined | null): string | undefined {
+  return patient?.documentCountry || undefined;
+}
+
+function extractExtendedSignatureOptions(body: any, patientCountry?: string, defaultMethod?: SignatureMethod): ExtendedSignatureOptions {
+  const allowedMethods: SignatureMethod[] = ['rsa', 'ecpf_a1', 'ecpf_a3'];
+  const rawMethod = body?.signatureMethod || body?.method;
+  const method: SignatureMethod | undefined = allowedMethods.includes(rawMethod) ? rawMethod : defaultMethod;
+  const govBrInput = body?.govBr || body?.govbr;
+  const govBr = govBrInput && typeof govBrInput === 'object' ? {
+    subject: govBrInput.subject || govBrInput.sub,
+    name: govBrInput.name,
+    cpf: govBrInput.cpf,
+    sealLevel: ['bronze', 'prata', 'ouro'].includes(govBrInput.sealLevel) ? govBrInput.sealLevel : undefined,
+    authenticatedAt: govBrInput.authenticatedAt,
+  } : (body?.govBrSubject || body?.govBrCpf ? {
+    subject: body?.govBrSubject,
+    name: body?.govBrName,
+    cpf: body?.govBrCpf,
+    sealLevel: ['bronze', 'prata', 'ouro'].includes(body?.govBrSealLevel) ? body.govBrSealLevel : undefined,
+    authenticatedAt: body?.govBrAuthenticatedAt,
+  } : undefined);
+  return {
+    method,
+    professionalRegistrationId: body?.professionalRegistrationId,
+    patientCountry,
+    ecpfCertificateInfo: body?.ecpfCertificateInfo,
+    ecpfSignatureBlob: body?.ecpfSignatureBlob,
+    govBr,
+    signedPdfUrl: body?.signedPdfUrl,
+  };
+}
 import { clinicalInterviewService } from "./services/clinical-interview";
 import { pdfGeneratorService, PrescriptionData, ExamRequestData, MedicalCertificateData } from "./services/pdf-generator";
 
@@ -3064,7 +3120,7 @@ ${clinicalText}`;
         return res.status(400).json({ message: 'No prescription to sign in this medical record' });
       }
 
-      // Create ICP-Brasil A3 certificate with enhanced compliance
+      // Create ICP-Brasil A3 certificate with enhanced compliance (used for A3 token authentication)
       const certificateInfo = cryptoService.createICPBrasilA3Certificate(
         doctorId,
         doctorName || 'Dr. Médico Demo',
@@ -3076,67 +3132,54 @@ ${clinicalText}`;
       try {
         await cryptoService.authenticateA3Token(pin, certificateInfo.certificateId);
       } catch (error) {
-        return res.status(401).json({ 
-          message: 'Falha na autenticação do token A3. Verifique o PIN.' 
+        return res.status(401).json({
+          message: 'Falha na autenticação do token A3. Verifique o PIN.'
         });
       }
 
-      // Generate secure key pair for signature (production should use HSM or secure key storage)
-      const { privateKey, publicKey } = await cryptoService.generateKeyPair();
+      // Ensure doctor has a registered digital key for signing
+      await signatureService.registerDigitalKey(doctorId);
 
-      // Create digital signature
-      const signatureResult = await cryptoService.signPrescription(
+      // Resolve patient country for registration matching
+      const patientForCountry = await storage.getPatient(medicalRecord.patientId);
+      const patientCountry = getPatientCountry(patientForCountry);
+
+      // Sign via universal signature pipeline (persists e-CPF / gov.br / registration metadata)
+      const extOptions = extractExtendedSignatureOptions(req.body, patientCountry, 'ecpf_a3');
+      const signatureId = await signatureService.signDocumentExtended(
+        'prescription',
+        medicalRecordId,
+        medicalRecord.patientId,
+        doctorId,
         medicalRecord.prescription,
-        privateKey,
-        certificateInfo
+        extOptions
       );
 
-      // Perform advanced electronic verification
-      const verificationResult = await cryptoService.performElectronicVerification(
-        signatureResult.signature,
-        signatureResult.documentHash,
-        signatureResult.certificateInfo
-      );
-
-      // Create digital signature record with enhanced ICP-Brasil A3 information
-      const digitalSignature = await storage.createDigitalSignature({
-        documentType: 'prescription',
-        documentId: medicalRecordId,
-        documentHash: signatureResult.documentHash,
-        patientId: medicalRecord.patientId,
-        doctorId: doctorId,
-        signature: signatureResult.signature,
-        certificateInfo: {
-          ...signatureResult.certificateInfo,
-          publicKey: publicKey, // Store public key for verification
-          timestamp: signatureResult.timestamp,
-          verificationResult,
-          legalCompliance: 'CFM Resolução 1821/2007 - Validade Jurídica Plena'
-        },
-        status: 'signed',
-        signedAt: new Date(),
-      });
+      const digitalSignature = await storage.getDigitalSignature(signatureId);
+      if (!digitalSignature) {
+        return res.status(500).json({ message: 'Failed to read newly created digital signature' });
+      }
 
       // Update medical record with digital signature ID reference
       await storage.updateMedicalRecord(medicalRecordId, {
-        digitalSignature: digitalSignature.id, // Store signature ID instead of raw signature
+        digitalSignature: signatureId, // Store signature ID instead of raw signature
       });
 
       // Generate audit trail
       const auditHash = cryptoService.generateAuditHash(
-        signatureResult,
+        buildSignatureResultFromRecord(digitalSignature, asCertificateInfo(certificateInfo)),
         doctorId,
         medicalRecord.patientId
       );
 
       // Broadcast signature event for real-time updates
-      broadcastToDoctor(actualDoctorId || DEFAULT_DOCTOR_ID, { 
-        type: 'prescription_signed', 
-        data: { 
+      broadcastToDoctor(actualDoctorId || DEFAULT_DOCTOR_ID, {
+        type: 'prescription_signed',
+        data: {
           medicalRecordId,
-          signatureId: digitalSignature.id,
-          auditHash 
-        } 
+          signatureId,
+          auditHash
+        }
       });
 
       res.status(201).json({
@@ -3173,29 +3216,18 @@ ${clinicalText}`;
         return res.status(404).json({ message: 'Digital signature record not found' });
       }
 
-      // Extract stored verification data
-      const certInfo = prescriptionSignature.certificateInfo as any || {};
-      const storedPublicKey = certInfo.publicKey;
-      const storedTimestamp = certInfo.timestamp;
-
-      if (!storedPublicKey || !storedTimestamp) {
-        return res.status(400).json({ message: 'Invalid signature record - missing verification data' });
-      }
-
-      // Verify signature using stored public key and timestamp
-      const isValid = await cryptoService.verifySignature(
-        medicalRecord.prescription || '',
-        prescriptionSignature.signature,
-        storedPublicKey,
-        storedTimestamp
-      );
+      // Verify via the universal signature service (matches the RSA-SHA256 scheme used by the signing pipeline)
+      const verification = await signatureService.verifySignature(prescriptionSignature.id);
+      const certInfo = asCertificateInfo(prescriptionSignature.certificateInfo);
 
       res.json({
-        isValid,
+        isValid: verification.isValid,
         signatureInfo: {
-          algorithm: certInfo.algorithm || 'Unknown',
+          algorithm: typeof certInfo.algorithm === 'string' ? certInfo.algorithm : 'RSA-SHA256',
           signedAt: prescriptionSignature.signedAt,
           certificateInfo: prescriptionSignature.certificateInfo,
+          signatureMethod: prescriptionSignature.signatureMethod,
+          details: verification.details,
           note: 'Demo verification - not production compliant'
         }
       });
@@ -14325,69 +14357,85 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         });
       }
 
-      // Generate cryptographic signature
-      const { privateKey, publicKey } = await cryptoService.generateKeyPair();
+      // Ensure doctor has a registered digital key for signing
+      await signatureService.registerDigitalKey(doctorId);
+
       const documentText = documentContent || `Documento: ${documentId} - Data: ${new Date().toISOString()}`;
-      
-      const signatureResult = await cryptoService.signPrescription(
-        documentText,
-        privateKey,
-        icpCertificateInfo
-      );
 
-      // Perform electronic verification
-      const verificationResult = await cryptoService.performElectronicVerification(
-        signatureResult.signature,
-        signatureResult.documentHash,
-        signatureResult.certificateInfo
-      );
-
-      // For mock documents, create or find digital signature record
-      let digitalSignature;
+      // Determine target document, patient and document type
       const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(documentId);
-      
+      const allowedDocumentTypes = ['prescription', 'exam_request', 'medical_certificate'] as const;
+      type AllowedDocumentType = typeof allowedDocumentTypes[number];
+      const isAllowedDocumentType = (v: unknown): v is AllowedDocumentType =>
+        typeof v === 'string' && (allowedDocumentTypes as readonly string[]).includes(v);
+      const inferDocumentType = (hint: string | undefined): AllowedDocumentType => {
+        const h = (hint || '').toLowerCase();
+        if (h.includes('exam')) return 'exam_request';
+        if (h.includes('certificate') || h.includes('atestado')) return 'medical_certificate';
+        return 'prescription';
+      };
+      const bodyTypeHint = isAllowedDocumentType(req.body?.documentType) ? req.body.documentType : undefined;
+
+      let targetDocumentId = documentId;
+      let patientId: string;
+      let documentType: AllowedDocumentType = bodyTypeHint || inferDocumentType(documentId);
+
       if (isValidUUID) {
-        // Update existing digital signature
-        digitalSignature = await storage.updateDigitalSignature(documentId, {
-          signature: signatureResult.signature,
-          certificateInfo: {
-            ...signatureResult.certificateInfo,
-            publicKey: publicKey,
-            timestamp: signatureResult.timestamp,
-            verificationResult,
-            authenticatedAt: new Date().toISOString()
-          },
-          status: 'signed',
-          signedAt: new Date(),
-        });
+        // The documentId is a UUID - it must reference an existing signature/document context.
+        const existingSig = await storage.getDigitalSignature(documentId);
+        if (!existingSig) {
+          return res.status(404).json({
+            message: 'Assinatura digital não encontrada para o ID informado'
+          });
+        }
+        targetDocumentId = existingSig.documentId;
+        patientId = existingSig.patientId;
+        if (!bodyTypeHint && isAllowedDocumentType(existingSig.documentType)) {
+          documentType = existingSig.documentType;
+        }
       } else {
-        const patients = await storage.getAllPatients();
-        const patientId = patients[0]?.id || '550e8400-e29b-41d4-a716-446655440001';
-        
-        digitalSignature = await storage.createDigitalSignature({
-          documentType: documentId.includes('prescription') ? 'prescription' : 'document',
-          documentId: crypto.randomUUID(),
-          patientId,
-          doctorId,
-          signature: signatureResult.signature,
-          certificateInfo: {
-            ...signatureResult.certificateInfo,
-            publicKey: publicKey,
-            timestamp: signatureResult.timestamp,
-            verificationResult,
-            authenticatedAt: new Date().toISOString()
-          },
-          status: 'signed',
-          signedAt: new Date(),
-        });
+        // Mock document path - require an explicit patientId from the body to avoid
+        // attaching a signature to an unrelated patient.
+        const bodyPatientId = typeof req.body?.patientId === 'string' ? req.body.patientId : undefined;
+        if (!bodyPatientId) {
+          return res.status(400).json({
+            message: 'patientId é obrigatório para assinar documentos não persistidos (mock)'
+          });
+        }
+        patientId = bodyPatientId;
       }
-      
+
+      const patientForCountry = await storage.getPatient(patientId);
+      if (!patientForCountry) {
+        return res.status(404).json({ message: 'Paciente não encontrado' });
+      }
+      const patientCountry = getPatientCountry(patientForCountry);
+
+      // Sign via universal signature pipeline
+      const extOptions = extractExtendedSignatureOptions(req.body, patientCountry, 'ecpf_a3');
+      const signatureId = await signatureService.signDocumentExtended(
+        documentType,
+        targetDocumentId,
+        patientId,
+        doctorId,
+        documentText,
+        extOptions
+      );
+
+      const digitalSignature = await storage.getDigitalSignature(signatureId);
       if (!digitalSignature) {
-        return res.status(500).json({ message: 'Failed to create digital signature' });
+        return res.status(500).json({ message: 'Failed to read newly created digital signature' });
       }
-      
+
+      // Perform electronic verification on the freshly signed document
+      const verificationResult = await cryptoService.performElectronicVerification(
+        digitalSignature.signature,
+        digitalSignature.documentHash,
+        asCertificateInfo(digitalSignature.certificateInfo, asCertificateInfo(icpCertificateInfo))
+      );
+
       broadcastToDoctor(doctorId, { type: 'document_signed', data: digitalSignature });
-      res.json({ 
+      res.json({
         ...digitalSignature,
         message: 'Documento assinado digitalmente com certificado ICP-Brasil A3',
         verificationResult,
@@ -14526,44 +14574,42 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
         });
       }
 
-      // Generate secure key pair for signature
-      const { privateKey, publicKey } = await cryptoService.generateKeyPair();
+      // Ensure doctor has a registered digital key for signing
+      await signatureService.registerDigitalKey(doctorId);
 
-      // Create digital signature
-      const signatureResult = await cryptoService.signPrescription(
+      // Resolve patient country for registration matching
+      const patientForCountry = await storage.getPatient(medicalRecord.patientId);
+      const patientCountry = getPatientCountry(patientForCountry);
+
+      // Sign via universal signature pipeline (persists e-CPF / gov.br / registration metadata)
+      const extOptions = extractExtendedSignatureOptions(req.body, patientCountry, 'ecpf_a3');
+      const signatureId = await signatureService.signDocumentExtended(
+        'prescription',
+        medicalRecordId,
+        medicalRecord.patientId,
+        doctorId,
         medicalRecord.prescription,
-        privateKey,
-        certificateInfo
+        extOptions
       );
 
-      // Perform advanced electronic verification
+      const digitalSignature = await storage.getDigitalSignature(signatureId);
+      if (!digitalSignature) {
+        return res.status(500).json({ message: 'Failed to read newly created digital signature' });
+      }
+
+      // Perform advanced electronic verification on the freshly persisted signature
       const verificationResult = await cryptoService.performElectronicVerification(
-        signatureResult.signature,
-        signatureResult.documentHash,
-        signatureResult.certificateInfo
+        digitalSignature.signature,
+        digitalSignature.documentHash,
+        asCertificateInfo(digitalSignature.certificateInfo, asCertificateInfo(certificateInfo))
       );
-
-      // Create digital signature record with enhanced ICP-Brasil A3 information
-      const digitalSignature = await storage.createDigitalSignature({
-        documentType: 'prescription',
-        documentId: medicalRecordId,
-        documentHash: signatureResult.documentHash,
-        patientId: medicalRecord.patientId,
-        doctorId: doctorId,
-        signature: signatureResult.signature,
-        certificateInfo: {
-          ...signatureResult.certificateInfo,
-          publicKey: publicKey,
-          timestamp: signatureResult.timestamp,
-          verificationResult,
-          legalCompliance: 'CFM Resolução 1821/2007 - Validade Jurídica Plena'
-        },
-        status: 'signed',
-        signedAt: new Date(),
-      });
 
       // Generate comprehensive audit hash
-      const auditHash = cryptoService.generateAuditHash(signatureResult, doctorId, medicalRecord.patientId);
+      const auditHash = cryptoService.generateAuditHash(
+        buildSignatureResultFromRecord(digitalSignature, asCertificateInfo(certificateInfo)),
+        doctorId,
+        medicalRecord.patientId
+      );
 
       res.json({
         digitalSignature,
@@ -17732,47 +17778,42 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         serialNumber: `CERT-${Date.now()}`
       };
 
-      // Generate key pair and signature
-      const { privateKey, publicKey } = await cryptoService.generateKeyPair();
-      const signatureResult = await cryptoService.signPrescription(
-        JSON.stringify(prescriptionContent),
-        privateKey,
-        certificateInfo
+      // Ensure doctor has a registered digital key for signing
+      await signatureService.registerDigitalKey(req.user.id);
+
+      // Resolve patient country for registration matching
+      const patientForCountry = await storage.getPatient(prescriptionData.patientId);
+      const patientCountry = getPatientCountry(patientForCountry);
+
+      const documentText = JSON.stringify(prescriptionContent);
+
+      // Sign via universal signature pipeline (persists e-CPF / gov.br / registration metadata)
+      const extOptions = extractExtendedSignatureOptions(req.body, patientCountry, 'ecpf_a3');
+      const signatureId = await signatureService.signDocumentExtended(
+        'prescription',
+        id,
+        prescriptionData.patientId,
+        req.user.id,
+        documentText,
+        extOptions
       );
 
-      // Verify signature immediately
-      const verificationResult = await cryptoService.verifySignature(
-        JSON.stringify(prescriptionContent),
-        signatureResult.signature,
-        publicKey
-      );
+      const digitalSignature = await storage.getDigitalSignature(signatureId);
+      if (!digitalSignature) {
+        return res.status(500).json({ message: 'Failed to read newly created digital signature' });
+      }
 
-      // Create digital signature record
-      const digitalSignature = await storage.createDigitalSignature({
-        documentType: 'prescription',
-        documentId: id,
-        patientId: prescriptionData.patientId,
-        doctorId: req.user.id,
-        signature: signatureResult.signature,
-        documentHash: signatureResult.documentHash,
-        certificateInfo: {
-          ...certificateInfo,
-          algorithm: 'RSA-SHA256',
-          keySize: 2048,
-          publicKey: publicKey
-        },
-        status: 'signed',
-        signedAt: new Date(),
-      });
+      // Verify signature immediately using the universal signature service
+      const verificationResult = await signatureService.verifySignature(signatureId);
 
       // Update prescription with digital signature ID
       await db.update(prescriptions)
-        .set({ digitalSignatureId: digitalSignature.id })
+        .set({ digitalSignatureId: signatureId })
         .where(eq(prescriptions.id, id));
 
       // Generate audit hash
       const auditHash = cryptoService.generateAuditHash(
-        signatureResult,
+        buildSignatureResultFromRecord(digitalSignature, asCertificateInfo(certificateInfo)),
         req.user.id,
         prescriptionData.patientId
       );
@@ -17784,7 +17825,7 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         auditHash,
         verificationResult,
         message: 'Prescrição assinada digitalmente com certificado ICP-Brasil A3',
-        qrCodeData: `verify:${id}:${digitalSignature.id}`
+        qrCodeData: `verify:${id}:${signatureId}`
       });
     } catch (error) {
       console.error('Sign prescription error:', error);
@@ -17819,52 +17860,15 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         return res.status(404).json({ message: 'Digital signature not found' });
       }
 
-      const publicKey = signature.certificateInfo?.publicKey || '';
-      const signatureTimestamp = signature.certificateInfo?.timestamp || signature.signedAt?.toISOString() || '';
-      
-      let isValid = false;
-      
-      if (publicKey && signatureTimestamp) {
-        try {
-          const documentHash = signature.documentHash;
-          const signableContent = `${documentHash}|${signatureTimestamp}`;
-          
-          isValid = crypto
-            .createVerify('sha256')
-            .update(signableContent, 'utf8')
-            .verify({
-              key: publicKey,
-              padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
-              saltLength: 32
-            }, signature.signature, 'base64');
-        } catch (verifyErr) {
-          try {
-            isValid = crypto
-              .createVerify('RSA-SHA256')
-              .update(signature.documentHash)
-              .verify(publicKey, signature.signature, 'hex');
-          } catch {
-            isValid = false;
-          }
-        }
-      }
+      // Verify via the universal signature service (records verification automatically)
+      const universalVerification = await signatureService.verifySignature(signature.id, undefined, 'platform_verification');
+      const isValid = universalVerification.isValid;
 
       const verificationResult = await cryptoService.performElectronicVerification(
         signature.signature,
         signature.documentHash,
-        signature.certificateInfo || {}
+        asCertificateInfo(signature.certificateInfo)
       );
-
-      try {
-        await db.insert(signatureVerifications).values({
-          signatureId: signature.id,
-          verificationMethod: 'platform_verification',
-          isValid,
-          validationDetails: { verificationResult, verifiedAt: new Date().toISOString() },
-        });
-      } catch (verLogErr) {
-        console.log('Could not log verification:', verLogErr);
-      }
 
       const doctor = await db.select({
         name: users.name,
@@ -17886,12 +17890,15 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         },
         doctor: doctor[0] || null,
         prescriptionNumber: prescriptionData.prescriptionNumber,
-        certificateInfo: {
-          certificateType: signature.certificateInfo?.certificateType || 'ICP-Brasil A3',
-          complianceLevel: signature.certificateInfo?.complianceLevel || 'ICP-Brasil A3',
-          algorithm: signature.certificateInfo?.algorithm || 'RSA-PSS + SHA-256',
-          legalValidity: 'Validade jurídica plena conforme MP 2.200-2/2001',
-        },
+        certificateInfo: (() => {
+          const ci = asCertificateInfo(signature.certificateInfo);
+          return {
+            certificateType: typeof ci.certificateType === 'string' ? ci.certificateType : 'ICP-Brasil A3',
+            complianceLevel: typeof ci.complianceLevel === 'string' ? ci.complianceLevel : 'ICP-Brasil A3',
+            algorithm: typeof ci.algorithm === 'string' ? ci.algorithm : 'RSA-PSS + SHA-256',
+            legalValidity: 'Validade jurídica plena conforme MP 2.200-2/2001',
+          };
+        })(),
         message: isValid
           ? 'Assinatura digital válida - Documento íntegro e autêntico'
           : 'Assinatura digital não pôde ser verificada criptograficamente',
