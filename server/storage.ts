@@ -246,6 +246,7 @@ export interface IStorage {
   // Clinical Assets
   createClinicalAsset(asset: InsertClinicalAsset): Promise<ClinicalAsset>;
   getClinicalAsset(id: string): Promise<ClinicalAsset | undefined>;
+  getClinicalAssetByFileUrl(fileUrl: string): Promise<ClinicalAsset | undefined>;
   getClinicalAssetsByPatient(patientId: string): Promise<ClinicalAsset[]>;
   getClinicalAssetsByType(patientId: string, assetType: string): Promise<ClinicalAsset[]>;
   updateClinicalAsset(id: string, asset: Partial<InsertClinicalAsset>): Promise<ClinicalAsset | undefined>;
@@ -1901,6 +1902,11 @@ export class DatabaseStorage implements IStorage {
 
   async getClinicalAsset(id: string): Promise<ClinicalAsset | undefined> {
     const [asset] = await db.select().from(clinicalAssets).where(eq(clinicalAssets.id, id));
+    return asset || undefined;
+  }
+
+  async getClinicalAssetByFileUrl(fileUrl: string): Promise<ClinicalAsset | undefined> {
+    const [asset] = await db.select().from(clinicalAssets).where(eq(clinicalAssets.fileUrl, fileUrl));
     return asset || undefined;
   }
 

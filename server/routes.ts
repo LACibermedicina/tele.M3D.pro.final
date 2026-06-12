@@ -199,7 +199,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   if (!fs.existsSync(uploadsPublicDir)) {
     fs.mkdirSync(uploadsPublicDir, { recursive: true });
   }
-  app.use('/uploads', express.default.static(uploadsPublicDir));
+  // Only serve non-sensitive upload subdirectories as public static.
+  // Clinical assets are intentionally excluded — they are PHI and must pass
+  // through an authenticated API route instead of being world-readable.
+  const profilesPublicDir = path.join(uploadsPublicDir, 'profiles');
+  const referencesPublicDir = path.join(uploadsPublicDir, 'references');
+  if (!fs.existsSync(profilesPublicDir)) fs.mkdirSync(profilesPublicDir, { recursive: true });
+  if (!fs.existsSync(referencesPublicDir)) fs.mkdirSync(referencesPublicDir, { recursive: true });
+  app.use('/uploads/profiles', express.default.static(profilesPublicDir));
+  app.use('/uploads/references', express.default.static(referencesPublicDir));
   
   // Migrate database schema for new features
   await migrateOnDutyColumns();
@@ -216,6 +224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migrateSusProntuariosTable();
   await migratePatientFriendlyColumns();
   await migrateUserNotesTable();
+  await migrateClinicalAssetsToPrivate();
   await migrateUserUsageFields();
   await initStripeSync();
   
@@ -309,7 +318,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Configure Multer for clinical asset uploads (exams, images)
-  const clinicalAssetsDir = path.join(process.cwd(), 'client', 'public', 'uploads', 'clinical-assets');
+  // Store in a private directory outside the public web root so files are never
+  // directly fetchable without going through the authenticated API route below.
+  const clinicalAssetsDir = path.join(process.cwd(), 'private-uploads', 'clinical-assets');
   if (!fs.existsSync(clinicalAssetsDir)) {
     fs.mkdirSync(clinicalAssetsDir, { recursive: true });
   }
@@ -7038,6 +7049,53 @@ Responda em português brasileiro, de forma estruturada e concisa, com linguagem
     return requireAuth(req, res, next);
   };
 
+  // Authenticated handler for legacy clinical asset URLs (/uploads/clinical-assets/:filename).
+  // This intercepts requests that use the old public URL pattern so they go through
+  // a full auth + ownership check rather than being served anonymously by static middleware.
+  // Files are served from private-uploads/clinical-assets first (post-migration) with a
+  // fallback to the old public directory (pre-migration, for in-flight files).
+  app.get('/uploads/clinical-assets/:filename', requireAuth, async (req: any, res) => {
+    try {
+      const { filename } = req.params;
+      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return res.status(400).json({ message: 'Invalid filename' });
+      }
+
+      // Look up the asset — try both the new and old fileUrl formats
+      const newUrl = `/api/clinical-assets/file/${filename}`;
+      const oldUrl = `/uploads/clinical-assets/${filename}`;
+      let asset = await storage.getClinicalAssetByFileUrl(newUrl);
+      if (!asset) asset = await storage.getClinicalAssetByFileUrl(oldUrl);
+
+      if (!asset) {
+        return res.status(404).json({ message: 'Asset not found' });
+      }
+
+      const userPatient = await storage.getPatientByUserId(req.user!.id);
+      const isPatient = userPatient && userPatient.id === asset.patientId;
+      const isAdmin = req.user!.role === 'admin';
+      const isDoctor = req.user!.role === 'doctor';
+
+      if (!isPatient && !isDoctor && !isAdmin) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      // Prefer the migrated private location; fall back to the legacy public location
+      const privatePath = path.join(process.cwd(), 'private-uploads', 'clinical-assets', filename);
+      const legacyPath = path.join(process.cwd(), 'client', 'public', 'uploads', 'clinical-assets', filename);
+      const filePath = fs.existsSync(privatePath) ? privatePath : legacyPath;
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'File not found' });
+      }
+
+      res.sendFile(filePath);
+    } catch (error) {
+      console.error('Legacy clinical asset serve error:', error);
+      res.status(500).json({ message: 'Failed to serve file' });
+    }
+  });
+
   // Middleware to require specific roles
   const requireRole = (roles: string[]) => {
     return (req: any, res: any, next: any) => {
@@ -13173,6 +13231,46 @@ Forneça um resumo em JSON com:
     }
   });
 
+  // Authenticated clinical asset file serving — must be registered before /:patientId
+  // so that the literal segment "file" does not match the :patientId parameter.
+  app.get('/api/clinical-assets/file/:filename', requireAuth, async (req: any, res) => {
+    try {
+      const { filename } = req.params;
+
+      // Prevent path traversal
+      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return res.status(400).json({ message: 'Invalid filename' });
+      }
+
+      const fileUrl = `/api/clinical-assets/file/${filename}`;
+      const asset = await storage.getClinicalAssetByFileUrl(fileUrl);
+
+      if (!asset) {
+        return res.status(404).json({ message: 'Asset not found' });
+      }
+
+      // Authorization: the requesting user must be the patient, a doctor, or an admin
+      const userPatient = await storage.getPatientByUserId(req.user!.id);
+      const isPatient = userPatient && userPatient.id === asset.patientId;
+      const isAdmin = req.user!.role === 'admin';
+      const isDoctor = req.user!.role === 'doctor';
+
+      if (!isPatient && !isDoctor && !isAdmin) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+
+      const filePath = path.join(process.cwd(), 'private-uploads', 'clinical-assets', filename);
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'File not found' });
+      }
+
+      res.sendFile(filePath);
+    } catch (error) {
+      console.error('Clinical asset file serve error:', error);
+      res.status(500).json({ message: 'Failed to serve file' });
+    }
+  });
+
   // Clinical Assets by patient
   app.get('/api/clinical-assets/:patientId', requireAuth, async (req, res) => {
     try {
@@ -13237,7 +13335,7 @@ Forneça um resumo em JSON com:
         return res.status(403).json({ message: 'Not authorized' });
       }
 
-      const fileUrl = `/uploads/clinical-assets/${req.file.filename}`;
+      const fileUrl = `/api/clinical-assets/file/${req.file.filename}`;
       const filePath = req.file.path;
 
       // AI Analysis based on file type
@@ -25712,5 +25810,39 @@ async function migrateUserNotesTable() {
     console.log('✓ User notes table migrated successfully');
   } catch (error) {
     console.error('Failed to migrate user notes table:', error);
+  }
+}
+
+async function migrateClinicalAssetsToPrivate() {
+  try {
+    const publicClinicalDir = path.join(process.cwd(), 'client', 'public', 'uploads', 'clinical-assets');
+    const privateClinicalDir = path.join(process.cwd(), 'private-uploads', 'clinical-assets');
+
+    if (!fs.existsSync(privateClinicalDir)) {
+      fs.mkdirSync(privateClinicalDir, { recursive: true });
+    }
+
+    // Move any files that are still in the public directory to the private directory
+    if (fs.existsSync(publicClinicalDir)) {
+      const files = fs.readdirSync(publicClinicalDir);
+      for (const filename of files) {
+        const srcPath = path.join(publicClinicalDir, filename);
+        const destPath = path.join(privateClinicalDir, filename);
+        if (fs.statSync(srcPath).isFile() && !fs.existsSync(destPath)) {
+          fs.renameSync(srcPath, destPath);
+        }
+      }
+    }
+
+    // Update any DB records that still use the old public URL format
+    await db.execute(sql`
+      UPDATE clinical_assets
+      SET file_url = CONCAT('/api/clinical-assets/file/', SUBSTRING(file_url FROM LENGTH('/uploads/clinical-assets/') + 1))
+      WHERE file_url LIKE '/uploads/clinical-assets/%'
+    `);
+
+    console.log('✓ Clinical assets migrated to private storage');
+  } catch (error) {
+    console.error('Failed to migrate clinical assets to private storage:', error);
   }
 }
