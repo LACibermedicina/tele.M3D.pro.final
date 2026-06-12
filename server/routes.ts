@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
+import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { geminiService } from "./services/gemini";
 import { whatsAppService } from "./services/whatsapp";
@@ -10704,9 +10705,9 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         }
       }
       
-      // Validate role
-      if (!['doctor', 'admin', 'patient', 'researcher'].includes(role)) {
-        return res.status(400).json({ message: 'Perfil de usuário inválido. Escolha entre: médico, administrador, paciente ou pesquisador.' });
+      // Validate role — admin accounts cannot be self-registered; they must be created by an existing admin
+      if (!['doctor', 'patient', 'researcher'].includes(role)) {
+        return res.status(400).json({ message: 'Perfil de usuário inválido. Escolha entre: médico, paciente ou pesquisador.' });
       }
       
       // Check if username already exists
@@ -10742,8 +10743,7 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         }
       }
       
-      // Hash password (in production, use bcrypt)
-      const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+      const hashedPassword = await bcrypt.hash(password, 12);
       
       // Prepare profile picture URL if avatar was uploaded
       const profilePictureUrl = avatarFile ? `/uploads/profiles/${avatarFile.filename}` : undefined;
@@ -10921,10 +10921,20 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         return res.status(403).json({ message: reason });
       }
 
-      // Verify password (in production, use bcrypt.compare)
-      const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
-      // Handle both hashed and plain text passwords for development migration
-      const isValidPassword = user.password === hashedPassword || user.password === password;
+      // Verify password — transparent migration from legacy SHA-256 to bcrypt
+      let isValidPassword = false;
+      const isBcryptHash = user.password.startsWith('$2');
+      if (isBcryptHash) {
+        isValidPassword = await bcrypt.compare(password, user.password);
+      } else {
+        // Legacy SHA-256 path: verify once, then immediately re-hash with bcrypt and persist
+        const sha256Hash = crypto.createHash('sha256').update(password).digest('hex');
+        if (user.password === sha256Hash) {
+          isValidPassword = true;
+          const upgradedHash = await bcrypt.hash(password, 12);
+          await storage.updateUser(user.id, { password: upgradedHash });
+        }
+      }
       if (!isValidPassword) {
         return res.status(401).json({ message: 'Usuário ou senha incorretos. Verifique suas credenciais e tente novamente.' });
       }
@@ -25432,12 +25442,11 @@ async function initializeDefaultDoctor() {
     
     if (!existingDoctor) {
       console.log('Creating default doctor user...');
-      // Hash the default password using the same method as login
-      const hashedPassword = crypto.createHash('sha256').update('doctor123').digest('hex');
+      const hashedPassword = await bcrypt.hash('doctor123', 12);
       
       const newDoctor = await storage.createUser({
         username: 'doctor',
-        password: hashedPassword, // Properly hashed password
+        password: hashedPassword,
         role: 'doctor',
         name: 'Dr. Sistema MedIA',
         email: 'medico@media.med.br',
@@ -25450,8 +25459,6 @@ async function initializeDefaultDoctor() {
       return newDoctor.id;
     } else {
       console.log('Default doctor already exists with ID:', existingDoctor.id);
-      
-      // Password migration handled in login endpoint for simplicity
       
       return existingDoctor.id;
     }
