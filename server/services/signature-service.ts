@@ -253,6 +253,8 @@ export class SignatureService {
     if (rows.length === 0) return null;
     const exact = rows.find((r) => r.country.toUpperCase() === country);
     if (exact) return exact;
+    const flagged = rows.find((r) => r.isDefault);
+    if (flagged) return flagged;
     return rows.find((r) => r.country.toUpperCase() === 'BR') || rows[0];
   }
 

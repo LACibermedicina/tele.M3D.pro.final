@@ -599,10 +599,20 @@ export default function AdminPage() {
               <span>Tempos de Presença</span>
             </div>
           </TabsTrigger>
+          <TabsTrigger value="doctor-registrations" data-testid="tab-doctor-registrations">
+            <div className="flex items-center space-x-2">
+              <ShieldCheck className="h-4 w-4" />
+              <span>Registros Profissionais</span>
+            </div>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="presence-settings" className="space-y-4">
           <PresenceSettingsPanel />
+        </TabsContent>
+
+        <TabsContent value="doctor-registrations" className="space-y-4">
+          <DoctorRegistrationsPanel />
         </TabsContent>
 
         {/* Users Tab */}
@@ -4384,6 +4394,393 @@ function PresenceSettingsPanel() {
           </div>
         )}
       </CardContent>
+    </Card>
+  );
+}
+
+interface DoctorRegistration {
+  id: string;
+  doctorId: string;
+  country: string;
+  registrationType: string;
+  registrationNumber: string;
+  registrationState?: string | null;
+  specialty?: string | null;
+  issuedAt?: string | null;
+  expiresAt?: string | null;
+  isActive: boolean;
+  isDefault: boolean;
+  isVerified: boolean;
+  verifiedSource?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+type RegistrationFormState = {
+  country: string;
+  registrationType: string;
+  registrationNumber: string;
+  registrationState: string;
+  specialty: string;
+  notes: string;
+  isActive: boolean;
+  isDefault: boolean;
+};
+
+const REGISTRATION_TYPES: { value: string; label: string }[] = [
+  { value: 'medical_license', label: 'Registro médico (genérico)' },
+  { value: 'crm', label: 'CRM (Brasil)' },
+  { value: 'matricula', label: 'Matrícula' },
+  { value: 'npi', label: 'NPI (EUA)' },
+  { value: 'gmc', label: 'GMC (Reino Unido)' },
+  { value: 'cedula', label: 'Cédula profissional' },
+];
+
+const COUNTRY_OPTIONS: { value: string; label: string }[] = [
+  { value: 'BR', label: 'Brasil (BR)' },
+  { value: 'PT', label: 'Portugal (PT)' },
+  { value: 'AR', label: 'Argentina (AR)' },
+  { value: 'PY', label: 'Paraguai (PY)' },
+  { value: 'UY', label: 'Uruguai (UY)' },
+  { value: 'US', label: 'Estados Unidos (US)' },
+  { value: 'GB', label: 'Reino Unido (GB)' },
+  { value: 'ES', label: 'Espanha (ES)' },
+];
+
+const emptyRegistrationForm: RegistrationFormState = {
+  country: 'BR',
+  registrationType: 'crm',
+  registrationNumber: '',
+  registrationState: '',
+  specialty: '',
+  notes: '',
+  isActive: true,
+  isDefault: false,
+};
+
+function DoctorRegistrationsPanel() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<DoctorRegistration | null>(null);
+  const [form, setForm] = useState<RegistrationFormState>(emptyRegistrationForm);
+
+  const { data: adminUsers = [] } = useQuery<AdminUser[]>({
+    queryKey: ['/api/admin/users'],
+  });
+  const doctors = (adminUsers as AdminUser[]).filter((u) => u.role === 'doctor');
+
+  const { data: registrations = [], isLoading } = useQuery<DoctorRegistration[]>({
+    queryKey: ['/api/doctor-registrations', selectedDoctorId],
+    enabled: !!selectedDoctorId,
+    queryFn: async () => {
+      const res = await fetch(`/api/doctor-registrations?doctorId=${encodeURIComponent(selectedDoctorId)}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Falha ao carregar registros');
+      return res.json();
+    },
+  });
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ['/api/doctor-registrations', selectedDoctorId] });
+
+  const createMutation = useMutation({
+    mutationFn: (payload: any) => apiRequest('POST', '/api/doctor-registrations', payload),
+    onSuccess: () => {
+      toast({ title: 'Registro criado', description: 'Registro profissional adicionado.' });
+      invalidate();
+      setDialogOpen(false);
+    },
+    onError: (err: any) => toast(formatErrorForToast(err)),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: any }) =>
+      apiRequest('PATCH', `/api/doctor-registrations/${id}`, payload),
+    onSuccess: () => {
+      toast({ title: 'Registro atualizado', description: 'Alterações salvas.' });
+      invalidate();
+      setDialogOpen(false);
+    },
+    onError: (err: any) => toast(formatErrorForToast(err)),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/doctor-registrations/${id}`),
+    onSuccess: () => {
+      toast({ title: 'Registro removido', description: 'Registro profissional excluído.' });
+      invalidate();
+    },
+    onError: (err: any) => toast(formatErrorForToast(err)),
+  });
+
+  const toggleDefaultMutation = useMutation({
+    mutationFn: ({ id, isDefault }: { id: string; isDefault: boolean }) =>
+      apiRequest('PATCH', `/api/doctor-registrations/${id}`, { isDefault }),
+    onSuccess: () => invalidate(),
+    onError: (err: any) => toast(formatErrorForToast(err)),
+  });
+
+  const openCreate = () => {
+    setEditing(null);
+    setForm(emptyRegistrationForm);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (reg: DoctorRegistration) => {
+    setEditing(reg);
+    setForm({
+      country: reg.country,
+      registrationType: reg.registrationType,
+      registrationNumber: reg.registrationNumber,
+      registrationState: reg.registrationState || '',
+      specialty: reg.specialty || '',
+      notes: reg.notes || '',
+      isActive: reg.isActive,
+      isDefault: reg.isDefault,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = () => {
+    if (!selectedDoctorId) {
+      toast({ title: 'Selecione um médico', variant: 'destructive' });
+      return;
+    }
+    if (!form.registrationNumber.trim()) {
+      toast({ title: 'Número obrigatório', description: 'Informe o número do registro.', variant: 'destructive' });
+      return;
+    }
+    const payload: any = {
+      doctorId: selectedDoctorId,
+      country: form.country,
+      registrationType: form.registrationType,
+      registrationNumber: form.registrationNumber.trim(),
+      registrationState: form.registrationState.trim() || null,
+      specialty: form.specialty.trim() || null,
+      notes: form.notes.trim() || null,
+      isActive: form.isActive,
+      isDefault: form.isDefault,
+    };
+    if (editing) {
+      updateMutation.mutate({ id: editing.id, payload });
+    } else {
+      createMutation.mutate(payload);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Registros Profissionais</CardTitle>
+        <CardDescription>
+          Gerencie os registros (CRM, conselhos estrangeiros) de cada médico por país. O registro marcado como padrão é usado
+          como fallback nas assinaturas quando não há correspondência exata com o país do paciente.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-1.5 w-full md:max-w-sm">
+            <Label htmlFor="reg-doctor-select">Médico</Label>
+            <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
+              <SelectTrigger id="reg-doctor-select" data-testid="select-registration-doctor">
+                <SelectValue placeholder="Selecione um médico" />
+              </SelectTrigger>
+              <SelectContent>
+                {doctors.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name} {d.medicalLicense ? `· ${d.medicalLicense}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={openCreate} disabled={!selectedDoctorId} data-testid="btn-add-registration">
+            <Plus className="h-4 w-4 mr-2" /> Adicionar registro
+          </Button>
+        </div>
+
+        {!selectedDoctorId ? (
+          <p className="text-sm text-muted-foreground">Selecione um médico para ver e gerenciar seus registros.</p>
+        ) : isLoading ? (
+          <p className="text-sm text-muted-foreground">Carregando…</p>
+        ) : (registrations as DoctorRegistration[]).length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum registro cadastrado para este médico.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>País</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Número</TableHead>
+                <TableHead>UF/Região</TableHead>
+                <TableHead>Especialidade</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Padrão</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(registrations as DoctorRegistration[]).map((reg) => (
+                <TableRow key={reg.id} data-testid={`row-registration-${reg.id}`}>
+                  <TableCell className="font-medium">{reg.country}</TableCell>
+                  <TableCell>
+                    {REGISTRATION_TYPES.find((t) => t.value === reg.registrationType)?.label || reg.registrationType}
+                  </TableCell>
+                  <TableCell>{reg.registrationNumber}</TableCell>
+                  <TableCell>{reg.registrationState || '—'}</TableCell>
+                  <TableCell>{reg.specialty || '—'}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <Badge variant={reg.isActive ? 'default' : 'secondary'}>
+                        {reg.isActive ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                      {reg.isVerified && <Badge variant="outline">Verificado</Badge>}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={reg.isDefault}
+                      onCheckedChange={(checked) => toggleDefaultMutation.mutate({ id: reg.id, isDefault: checked })}
+                      disabled={toggleDefaultMutation.isPending}
+                      data-testid={`switch-default-${reg.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(reg)} data-testid={`btn-edit-registration-${reg.id}`}>
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          if (confirm('Remover este registro profissional?')) deleteMutation.mutate(reg.id);
+                        }}
+                        disabled={deleteMutation.isPending}
+                        data-testid={`btn-delete-registration-${reg.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent data-testid="dialog-registration-form">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Editar registro' : 'Novo registro profissional'}</DialogTitle>
+            <DialogDescription>
+              Preencha os dados do registro. País e tipo determinam como o registro é usado nas assinaturas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>País</Label>
+                <Select value={form.country} onValueChange={(v) => setForm((f) => ({ ...f, country: v }))}>
+                  <SelectTrigger data-testid="select-registration-country">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRY_OPTIONS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tipo de registro</Label>
+                <Select value={form.registrationType} onValueChange={(v) => setForm((f) => ({ ...f, registrationType: v }))}>
+                  <SelectTrigger data-testid="select-registration-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REGISTRATION_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="reg-number">Número</Label>
+                <Input
+                  id="reg-number"
+                  value={form.registrationNumber}
+                  onChange={(e) => setForm((f) => ({ ...f, registrationNumber: e.target.value }))}
+                  data-testid="input-registration-number"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="reg-state">UF / Região</Label>
+                <Input
+                  id="reg-state"
+                  value={form.registrationState}
+                  onChange={(e) => setForm((f) => ({ ...f, registrationState: e.target.value }))}
+                  data-testid="input-registration-state"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="reg-specialty">Especialidade</Label>
+              <Input
+                id="reg-specialty"
+                value={form.specialty}
+                onChange={(e) => setForm((f) => ({ ...f, specialty: e.target.value }))}
+                data-testid="input-registration-specialty"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="reg-notes">Observações</Label>
+              <Textarea
+                id="reg-notes"
+                value={form.notes}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                data-testid="input-registration-notes"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={form.isActive}
+                  onCheckedChange={(checked) => setForm((f) => ({ ...f, isActive: checked }))}
+                  data-testid="switch-registration-active"
+                />
+                <Label>Ativo</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={form.isDefault}
+                  onCheckedChange={(checked) => setForm((f) => ({ ...f, isDefault: checked }))}
+                  data-testid="switch-registration-default"
+                />
+                <Label>Padrão (fallback)</Label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} data-testid="btn-cancel-registration">
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={createMutation.isPending || updateMutation.isPending}
+              data-testid="btn-save-registration"
+            >
+              {editing ? 'Salvar' : 'Criar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

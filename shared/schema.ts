@@ -347,6 +347,7 @@ export const doctorProfessionalRegistrations = pgTable("doctor_professional_regi
   issuedAt: timestamp("issued_at"),
   expiresAt: timestamp("expires_at"),
   isActive: boolean("is_active").default(true).notNull(),
+  isDefault: boolean("is_default").default(false).notNull(), // fallback registration used by resolveRegistrationForCountry when no country match
   isVerified: boolean("is_verified").default(false).notNull(),
   verifiedAt: timestamp("verified_at"),
   verifiedSource: text("verified_source"), // crm_verifier | manual | ministry_of_health | govbr

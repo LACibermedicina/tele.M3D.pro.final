@@ -9791,6 +9791,12 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         doctorId: targetDoctorId,
         country: (req.body?.country || '').toUpperCase(),
       });
+      // Only one default registration per doctor: clear existing defaults first.
+      if (parsed.isDefault) {
+        await db.update(doctorProfessionalRegistrations)
+          .set({ isDefault: false })
+          .where(eq(doctorProfessionalRegistrations.doctorId, targetDoctorId));
+      }
       const [row] = await db.insert(doctorProfessionalRegistrations).values(parsed).returning();
       res.status(201).json(row);
     } catch (error: any) {
@@ -9813,6 +9819,15 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         return res.status(403).json({ message: 'Forbidden' });
       }
       const updatable = insertDoctorProfessionalRegistrationSchema.partial().parse(req.body);
+      // Only one default registration per doctor: clear other defaults first.
+      if (updatable.isDefault) {
+        await db.update(doctorProfessionalRegistrations)
+          .set({ isDefault: false })
+          .where(and(
+            eq(doctorProfessionalRegistrations.doctorId, existing.doctorId),
+            ne(doctorProfessionalRegistrations.id, req.params.id),
+          ));
+      }
       const [updated] = await db.update(doctorProfessionalRegistrations)
         .set({ ...updatable, updatedAt: new Date() })
         .where(eq(doctorProfessionalRegistrations.id, req.params.id))
