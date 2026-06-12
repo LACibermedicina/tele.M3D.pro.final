@@ -1,0 +1,1 @@
+- [esbuild/vite security coupling](esbuild-vite-security-coupling.md) — clearing the esbuild HIGH advisory (needs 0.28.1) forces a vite 7 + plugin-react 5 + @types/node 20.19 upgrade; vite 5.4 pins esbuild <0.22.
