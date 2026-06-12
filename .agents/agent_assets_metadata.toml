@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "T3K5fUJIOlNfNjtOzlS4O"
+uri = "file://attached_assets/generated_videos/medical_platform_overview.mp4"
+type = "video"
+title = "Medical Platform — Animated Overview"
