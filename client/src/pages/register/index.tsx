@@ -167,7 +167,7 @@ export default function RegisterSelect() {
         <div className="text-center mt-10">
           <p className="text-muted-foreground">
             Já tem uma conta?{" "}
-            <Link href="/" className="text-primary hover:underline font-semibold">
+            <Link href="/login" className="text-primary hover:underline font-semibold">
               Fazer login
             </Link>
           </p>

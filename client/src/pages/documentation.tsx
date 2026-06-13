@@ -97,9 +97,9 @@ const docLabels = {
   installLinkDesc: "Script e guia de instalação",
   resourcesLink: "Recursos",
   resourcesLinkDesc: "Conheça os recursos da plataforma",
-  altDashboard: "Tela do dashboard clínico do Tele<M3D>",
-  altVideo: "Exemplo de consulta por vídeo na plataforma Tele<M3D>",
-  altRecords: "Tela de prontuários digitais do Tele<M3D>"
+  altDashboard: "Profissional de saúde utilizando tecnologia médica moderna em ambiente hospitalar",
+  altVideo: "Médico e paciente em teleconsulta por videoconferência",
+  altRecords: "Profissional acessando prontuários eletrônicos em sistema de saúde digital"
 };
 
 export default function Documentation() {
