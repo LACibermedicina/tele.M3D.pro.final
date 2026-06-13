@@ -85,7 +85,7 @@ async function generateWithJSON(prompt: string): Promise<any> {
 async function generateWithJSONOpenAI(prompt: string): Promise<any> {
   const client = getOpenAIFallback();
   const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5-mini",
     messages: [{ role: "user", content: prompt }],
     response_format: { type: "json_object" },
   });
@@ -118,7 +118,7 @@ async function generateTextOpenAI(prompt: string, systemInstruction?: string): P
   }
   messages.push({ role: "user", content: prompt });
   const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5-mini",
     messages,
   });
   return response.choices[0].message.content || '';
@@ -974,7 +974,7 @@ Formato: texto corrido, máximo 300 palavras.
       try {
         const openai = getOpenAIFallback();
         const response = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+          model: 'gpt-5-mini',
           messages: [
             { role: 'system', content: prompt },
             { role: 'user', content: [
@@ -1309,7 +1309,7 @@ Formato: texto corrido, máximo 300 palavras.
     try {
       const openai = getOpenAIFallback();
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini',
         messages: [
           { role: 'system', content: prompt },
           {
