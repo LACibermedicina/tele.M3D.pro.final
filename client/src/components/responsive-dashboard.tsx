@@ -20,6 +20,7 @@ import { DesktopVisitorDashboard } from "@/components/desktop/desktop-visitor-da
 import { DesktopResearcherDashboard } from "@/components/desktop/desktop-researcher-dashboard";
 
 import { ImmersiveLayout } from "@/components/immersive/immersive-layout";
+import { ImmersiveLanding } from "@/components/immersive-landing";
 
 import Dashboard from "@/pages/dashboard";
 import { IAM3DVoiceAssistant } from "@/components/iam3d/voice-assistant";
@@ -42,6 +43,11 @@ export function ResponsiveDashboard() {
 
   if (user && !hasChosenMode) {
     return null;
+  }
+
+  // Logged-out visitors get the clean, immersive arrival page.
+  if (!user) {
+    return <ImmersiveLanding />;
   }
 
   if (user && viewMode === 'immersive') {
