@@ -68,6 +68,11 @@ export function MobileVisitorDashboard({ onOpenIAM3D }: MobileVisitorDashboardPr
               Já tenho conta
             </Button>
           </Link>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2 text-sm">
+            <Link href="/documentation" className="text-blue-700 dark:text-blue-300 underline underline-offset-4" data-testid="link-documentation">Documentação</Link>
+            <Link href="/manual" className="text-blue-700 dark:text-blue-300 underline underline-offset-4" data-testid="link-manual">Manual</Link>
+            <Link href="/faq" className="text-blue-700 dark:text-blue-300 underline underline-offset-4" data-testid="link-faq">FAQ</Link>
+          </div>
         </CardContent>
       </Card>
       </DraggableDashboardPanel>

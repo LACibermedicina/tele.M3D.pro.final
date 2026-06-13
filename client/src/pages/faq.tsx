@@ -675,11 +675,9 @@ export default function FAQ() {
                             <Badge variant="secondary" className="text-xs">{item.category}</Badge>
                           </div>
                           <h3 className="font-medium text-sm">{item.question}</h3>
-                          {isExpanded && (
-                            <p className="text-sm text-muted-foreground mt-3 leading-relaxed whitespace-pre-line">
-                              {item.answer}
-                            </p>
-                          )}
+                          <p className={`text-sm text-muted-foreground mt-3 leading-relaxed whitespace-pre-line ${isExpanded ? '' : 'hidden'}`}>
+                            {item.answer}
+                          </p>
                         </div>
                       </div>
                       {isExpanded ? (

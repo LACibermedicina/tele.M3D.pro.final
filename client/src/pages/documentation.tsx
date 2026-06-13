@@ -95,9 +95,11 @@ const docLabels = {
   faqLinkDesc: "Perguntas frequentes",
   installLink: "Instalação",
   installLinkDesc: "Script e guia de instalação",
-  altDashboard: "Dashboard",
-  altVideo: "Videochamada",
-  altRecords: "Prontuários"
+  resourcesLink: "Recursos",
+  resourcesLinkDesc: "Conheça os recursos da plataforma",
+  altDashboard: "Tela do dashboard clínico do Tele<M3D>",
+  altVideo: "Exemplo de consulta por vídeo na plataforma Tele<M3D>",
+  altRecords: "Tela de prontuários digitais do Tele<M3D>"
 };
 
 export default function Documentation() {
@@ -951,12 +953,12 @@ export default function Documentation() {
                 </CardContent>
               </Card>
             </Link>
-            <Link href="/installation">
+            <Link href={isAdmin ? "/installation" : "/features"}>
               <Card className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1 bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-950/30 dark:to-teal-950/30 border-green-200 dark:border-green-800">
                 <CardContent className="p-6 text-center">
                   <Settings className="w-10 h-10 mx-auto mb-3 text-green-600" />
-                  <h3 className="font-bold text-green-900 dark:text-green-100 mb-1">{lb.installLink}</h3>
-                  <p className="text-sm text-green-700 dark:text-green-300">{lb.installLinkDesc}</p>
+                  <h3 className="font-bold text-green-900 dark:text-green-100 mb-1">{isAdmin ? lb.installLink : lb.resourcesLink}</h3>
+                  <p className="text-sm text-green-700 dark:text-green-300">{isAdmin ? lb.installLinkDesc : lb.resourcesLinkDesc}</p>
                 </CardContent>
               </Card>
             </Link>

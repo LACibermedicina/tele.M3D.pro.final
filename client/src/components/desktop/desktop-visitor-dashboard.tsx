@@ -143,6 +143,11 @@ export function DesktopVisitorDashboard() {
                     </Button>
                   </Link>
                 </div>
+                <div className="flex flex-wrap gap-x-6 gap-y-2 mt-5 text-sm">
+                  <Link href="/documentation" className="text-blue-100 hover:text-white underline underline-offset-4" data-testid="link-documentation">Documentação</Link>
+                  <Link href="/manual" className="text-blue-100 hover:text-white underline underline-offset-4" data-testid="link-manual">Manual do Usuário</Link>
+                  <Link href="/faq" className="text-blue-100 hover:text-white underline underline-offset-4" data-testid="link-faq">Perguntas Frequentes</Link>
+                </div>
               </div>
               <div className="text-center">
                 <div className="bg-white/10 rounded-2xl p-8">

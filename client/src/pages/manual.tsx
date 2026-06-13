@@ -1763,23 +1763,26 @@ export default function Manual() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="visitors">
+          {/* forceMount keeps every audience panel in the DOM so crawlers can
+              index patient/doctor/admin/pharmacist guidance, not just visitors.
+              Radix hides inactive panels via the `hidden` attribute. */}
+          <TabsContent value="visitors" forceMount>
             <TabContent sections={mergedVisitors} indexLabel={lb.index} />
           </TabsContent>
 
-          <TabsContent value="patients">
+          <TabsContent value="patients" forceMount>
             <TabContent sections={mergedPatients} indexLabel={lb.index} />
           </TabsContent>
 
-          <TabsContent value="doctors">
+          <TabsContent value="doctors" forceMount>
             <TabContent sections={mergedDoctors} indexLabel={lb.index} />
           </TabsContent>
 
-          <TabsContent value="admins">
+          <TabsContent value="admins" forceMount>
             <TabContent sections={mergedAdmins} indexLabel={lb.index} />
           </TabsContent>
 
-          <TabsContent value="pharmacists">
+          <TabsContent value="pharmacists" forceMount>
             <TabContent sections={mergedPharmacists} indexLabel={lb.index} />
           </TabsContent>
         </Tabs>

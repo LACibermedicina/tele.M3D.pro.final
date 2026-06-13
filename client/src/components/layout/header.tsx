@@ -677,6 +677,24 @@ export default function Header() {
             </button>
           </form>
           <div className="flex items-center space-x-2">
+            <Link href="/documentation">
+              <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 text-xs">
+                <BookOpen className="h-3.5 w-3.5 mr-1" />
+                Documentação
+              </Button>
+            </Link>
+            <Link href="/manual">
+              <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 text-xs">
+                <FileText className="h-3.5 w-3.5 mr-1" />
+                Manual
+              </Button>
+            </Link>
+            <Link href="/faq">
+              <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 text-xs">
+                <HelpCircle className="h-3.5 w-3.5 mr-1" />
+                FAQ
+              </Button>
+            </Link>
             <Link href="/login">
               <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 text-xs">
                 <LogIn className="h-3.5 w-3.5 mr-1" />
@@ -1159,6 +1177,30 @@ export default function Header() {
                             <Shield className="h-4 w-4" />
                           </div>
                           <span className="font-medium text-sm">Sobre o Sistema</span>
+                        </div>
+                      </Link>
+                      <Link href="/documentation" onClick={() => setIsMobileMenuOpen(false)}>
+                        <div className="flex items-center space-x-3 p-2.5 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/5">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted shrink-0">
+                            <BookOpen className="h-4 w-4" />
+                          </div>
+                          <span className="font-medium text-sm">Documentação</span>
+                        </div>
+                      </Link>
+                      <Link href="/manual" onClick={() => setIsMobileMenuOpen(false)}>
+                        <div className="flex items-center space-x-3 p-2.5 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/5">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted shrink-0">
+                            <FileText className="h-4 w-4" />
+                          </div>
+                          <span className="font-medium text-sm">Manual do Usuário</span>
+                        </div>
+                      </Link>
+                      <Link href="/faq" onClick={() => setIsMobileMenuOpen(false)}>
+                        <div className="flex items-center space-x-3 p-2.5 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/5">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted shrink-0">
+                            <HelpCircle className="h-4 w-4" />
+                          </div>
+                          <span className="font-medium text-sm">Perguntas Frequentes</span>
                         </div>
                       </Link>
                       <div 
