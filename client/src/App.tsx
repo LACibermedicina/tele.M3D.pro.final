@@ -1,5 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { queryClient } from "./lib/queryClient";
@@ -17,65 +17,69 @@ import { disconnectAllMediaServices } from "@/components/inactivity-monitor";
 import { NavigationProvider } from "@/contexts/NavigationContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Seo } from "@/components/seo";
-import Dashboard from "@/pages/dashboard";
-import Patients from "@/pages/patients";
-import PatientProfile from "@/pages/patient-profile";
-import Profile from "@/pages/profile";
-import Schedule from "@/pages/schedule";
-import WhatsApp from "@/pages/whatsapp";
-import MedicalRecords from "@/pages/medical-records";
-import PatientRecords from "@/pages/patient-records";
-import Prescriptions from "@/pages/prescriptions";
-import Analytics from "@/pages/analytics";
-import AdminPage from "@/pages/admin";
-import AdminPaymentsPage from "@/pages/admin-payments";
-import Login from "@/pages/login";
-import PatientJoin from "@/pages/patient-join";
-import VideoConsultation from "@/pages/video-consultation";
-import NotFound from "@/pages/not-found";
-import Features from "@/pages/features";
-import Documentation from "@/pages/documentation";
-import RegisterSelect from "@/pages/register/index";
-import PatientRegister from "@/pages/register/patient";
-import DoctorRegister from "@/pages/register/doctor";
-import AdminRegister from "@/pages/register/admin";
-import PharmacistRegister from "@/pages/register/pharmacist";
-import PharmacyDashboard from "@/pages/pharmacy";
-import PharmacyReportsPage from "@/pages/pharmacy-reports";
-import PatientAgenda from "@/pages/patient-agenda";
-import MedicalAssistant from "@/pages/medical-assistant";
-import MedicalReferences from "@/pages/medical-references";
-import ConsultationRequest from "@/pages/consultation-request";
-import MyConsultations from "@/pages/my-consultations";
-import ConsultationSession from "@/pages/consultation-session";
-import ClinicalDashboard from "@/pages/clinical-dashboard";
-import DoctorAvailability from "@/pages/doctor-availability";
-import DoctorReferrals from "@/pages/doctor-referrals";
-import ImmediateConsultation from "@/pages/immediate-consultation";
-import DoctorChat from "@/pages/doctor-chat";
-import DoctorNotesPage from "@/pages/doctor-notes";
-import MedicalTeams from "@/pages/medical-teams";
-import TeamRoom from "@/pages/team-room";
-import MedicalCafe from "@/pages/medical-cafe";
-import DoctorOffice from "@/pages/doctor-office";
-import CoffeeRoom from "@/pages/coffee-room";
-import InterConsultationRequest from "@/pages/inter-consultation-request";
-import PatientVideoConsultation from "@/pages/patient-video-consultation";
-import EpidemiologicalReports from "@/pages/epidemiological-reports";
-import IncompleteConsultations from "@/pages/incomplete-consultations";
-import PostConsultationReview from "@/pages/post-consultation-review";
-import DiagnosticReview from "@/pages/diagnostic-review";
-import WalletPage from "@/pages/wallet";
-import ConsultationAccess from "@/pages/consultation-access";
-import Manual from "@/pages/manual";
-import FAQ from "@/pages/faq";
-import Installation from "@/pages/installation";
-import Broker from "@/pages/broker";
-import ClinicsPage from "@/pages/clinics";
-import Reports from "@/pages/reports";
-import FHIRDashboard from "@/pages/fhir-dashboard";
-import NftManagement from "@/pages/nft-management";
-import CreditsPage from "@/pages/credits";
+// Route pages are lazy-loaded so they are code-split into their own chunks
+// instead of bloating the main entry bundle (keeps initial JS under Google's
+// 2 MB rendering cap). desktop-window-layer.tsx lazy-loads the same modules,
+// so Rollup can now move them out of the main chunk.
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const Patients = lazy(() => import("@/pages/patients"));
+const PatientProfile = lazy(() => import("@/pages/patient-profile"));
+const Profile = lazy(() => import("@/pages/profile"));
+const Schedule = lazy(() => import("@/pages/schedule"));
+const WhatsApp = lazy(() => import("@/pages/whatsapp"));
+const MedicalRecords = lazy(() => import("@/pages/medical-records"));
+const PatientRecords = lazy(() => import("@/pages/patient-records"));
+const Prescriptions = lazy(() => import("@/pages/prescriptions"));
+const Analytics = lazy(() => import("@/pages/analytics"));
+const AdminPage = lazy(() => import("@/pages/admin"));
+const AdminPaymentsPage = lazy(() => import("@/pages/admin-payments"));
+const Login = lazy(() => import("@/pages/login"));
+const PatientJoin = lazy(() => import("@/pages/patient-join"));
+const VideoConsultation = lazy(() => import("@/pages/video-consultation"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+const Features = lazy(() => import("@/pages/features"));
+const Documentation = lazy(() => import("@/pages/documentation"));
+const RegisterSelect = lazy(() => import("@/pages/register/index"));
+const PatientRegister = lazy(() => import("@/pages/register/patient"));
+const DoctorRegister = lazy(() => import("@/pages/register/doctor"));
+const AdminRegister = lazy(() => import("@/pages/register/admin"));
+const PharmacistRegister = lazy(() => import("@/pages/register/pharmacist"));
+const PharmacyDashboard = lazy(() => import("@/pages/pharmacy"));
+const PharmacyReportsPage = lazy(() => import("@/pages/pharmacy-reports"));
+const PatientAgenda = lazy(() => import("@/pages/patient-agenda"));
+const MedicalAssistant = lazy(() => import("@/pages/medical-assistant"));
+const MedicalReferences = lazy(() => import("@/pages/medical-references"));
+const ConsultationRequest = lazy(() => import("@/pages/consultation-request"));
+const MyConsultations = lazy(() => import("@/pages/my-consultations"));
+const ConsultationSession = lazy(() => import("@/pages/consultation-session"));
+const ClinicalDashboard = lazy(() => import("@/pages/clinical-dashboard"));
+const DoctorAvailability = lazy(() => import("@/pages/doctor-availability"));
+const DoctorReferrals = lazy(() => import("@/pages/doctor-referrals"));
+const ImmediateConsultation = lazy(() => import("@/pages/immediate-consultation"));
+const DoctorChat = lazy(() => import("@/pages/doctor-chat"));
+const DoctorNotesPage = lazy(() => import("@/pages/doctor-notes"));
+const MedicalTeams = lazy(() => import("@/pages/medical-teams"));
+const TeamRoom = lazy(() => import("@/pages/team-room"));
+const MedicalCafe = lazy(() => import("@/pages/medical-cafe"));
+const DoctorOffice = lazy(() => import("@/pages/doctor-office"));
+const CoffeeRoom = lazy(() => import("@/pages/coffee-room"));
+const InterConsultationRequest = lazy(() => import("@/pages/inter-consultation-request"));
+const PatientVideoConsultation = lazy(() => import("@/pages/patient-video-consultation"));
+const EpidemiologicalReports = lazy(() => import("@/pages/epidemiological-reports"));
+const IncompleteConsultations = lazy(() => import("@/pages/incomplete-consultations"));
+const PostConsultationReview = lazy(() => import("@/pages/post-consultation-review"));
+const DiagnosticReview = lazy(() => import("@/pages/diagnostic-review"));
+const WalletPage = lazy(() => import("@/pages/wallet"));
+const ConsultationAccess = lazy(() => import("@/pages/consultation-access"));
+const Manual = lazy(() => import("@/pages/manual"));
+const FAQ = lazy(() => import("@/pages/faq"));
+const Installation = lazy(() => import("@/pages/installation"));
+const Broker = lazy(() => import("@/pages/broker"));
+const ClinicsPage = lazy(() => import("@/pages/clinics"));
+const Reports = lazy(() => import("@/pages/reports"));
+const FHIRDashboard = lazy(() => import("@/pages/fhir-dashboard"));
+const NftManagement = lazy(() => import("@/pages/nft-management"));
+const CreditsPage = lazy(() => import("@/pages/credits"));
 import UrgentAlertOverlay from "@/components/notifications/urgent-alert-overlay";
 import Header from "@/components/layout/header";
 import FloatingChatbot from "@/components/ui/floating-chatbot";
@@ -94,10 +98,10 @@ import DesktopWindowLayer, { isWindowedRoute } from "@/components/layout/desktop
 import { ViewModeProvider, useViewMode } from "@/contexts/ViewModeContext";
 import { AccessModalityProvider, useAccessModality } from "@/contexts/AccessModalityContext";
 import { AssistedLayout } from "@/components/assisted/assisted-layout";
-import ModeSelection from "@/pages/mode-selection";
 import { ImmersiveFloatingChat } from "@/components/immersive/immersive-floating-chat";
 
-import { ResponsiveDashboard } from "@/components/responsive-dashboard";
+const ModeSelection = lazy(() => import("@/pages/mode-selection"));
+const ResponsiveDashboard = lazy(() => import("@/components/responsive-dashboard").then(m => ({ default: m.ResponsiveDashboard })));
 
 import { useGlobalShortcuts, useCommandEvents, useApplicationShortcuts } from "@/hooks/use-shortcuts";
 
@@ -179,6 +183,7 @@ function Router() {
       />
 
       {!isDesktopWindowed && <div data-page-content={!isInVideoConsultation ? "" : undefined}>
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" /></div>}>
       <Switch>
         {/* Public routes */}
         <Route path="/login">
@@ -582,6 +587,7 @@ function Router() {
           <NotFound />
         </Route>
       </Switch>
+      </Suspense>
       </div>}
       
       <footer className={`desktop-glass-footer ${isDesktopWindowed || isImmersiveMode ? "hidden" : ""}`}>
