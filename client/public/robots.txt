@@ -48,4 +48,4 @@ Disallow: /reports
 Disallow: /installation
 Disallow: /mode-selection
 
-Sitemap: https://app.example.com/sitemap.xml
+Sitemap: https://tele.m3d.pro/sitemap.xml

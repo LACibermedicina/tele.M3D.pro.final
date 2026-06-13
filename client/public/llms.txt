@@ -4,13 +4,13 @@
 
 ## Public Pages
 
-- [Home](https://app.example.com/): Landing page with platform overview and quick access.
-- [Features](https://app.example.com/features): Detailed feature list covering AI diagnostics, video consultations, pharmacy integration, and more.
-- [Documentation](https://app.example.com/documentation): Technical and user documentation for all roles.
-- [Manual](https://app.example.com/manual): Step-by-step operational manual for healthcare professionals.
-- [FAQ](https://app.example.com/faq): Frequently asked questions about the platform.
-- [Register](https://app.example.com/register): Account registration for patients, doctors, pharmacists, and admins.
-- [Login](https://app.example.com/login): Secure login for all user roles.
+- [Home](https://tele.m3d.pro/): Landing page with platform overview and quick access.
+- [Features](https://tele.m3d.pro/features): Detailed feature list covering AI diagnostics, video consultations, pharmacy integration, and more.
+- [Documentation](https://tele.m3d.pro/documentation): Technical and user documentation for all roles.
+- [Manual](https://tele.m3d.pro/manual): Step-by-step operational manual for healthcare professionals.
+- [FAQ](https://tele.m3d.pro/faq): Frequently asked questions about the platform.
+- [Register](https://tele.m3d.pro/register): Account registration for patients, doctors, pharmacists, and admins.
+- [Login](https://tele.m3d.pro/login): Secure login for all user roles.
 
 ## Platform Summary
 
