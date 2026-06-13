@@ -98,7 +98,8 @@ export default function PatientJoin() {
       setIsJoining(true);
       setError(null);
 
-      // Generate patient WebSocket token
+      // Generate patient WebSocket token — pass the original signed URL token so
+      // the server can verify the caller actually received the join link.
       const tokenResponse = await fetch('/api/auth/patient-join-token', {
         method: 'POST',
         headers: {
@@ -108,6 +109,7 @@ export default function PatientJoin() {
           consultationId: joinData.consultationId,
           patientId: joinData.patientId,
           patientName: joinData.patientName,
+          joinToken: params?.token,
         }),
       });
 

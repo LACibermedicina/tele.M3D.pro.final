@@ -3422,6 +3422,9 @@ ${clinicalText}`;
   // Create a new video consultation session
   app.post('/api/video-consultations', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const doctorId = req.user?.id || req.body.doctorId || actualDoctorId || DEFAULT_DOCTOR_ID;
       const data = { ...req.body, doctorId };
       const validatedData = insertVideoConsultationSchema.parse(data);
@@ -3438,9 +3441,23 @@ ${clinicalText}`;
   });
 
   // Get video consultations by appointment (specific route before /:id)
-  app.get('/api/video-consultations/appointment/:appointmentId', async (req, res) => {
+  app.get('/api/video-consultations/appointment/:appointmentId', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const consultations = await storage.getVideoConsultationsByAppointment(req.params.appointmentId);
+      // Filter to only consultations the caller is authorized to view.
+      if (req.user.role !== 'admin' && req.user.role !== 'doctor') {
+        // Patients: only return their own consultations
+        const callerPatient = await storage.getPatientByUserId(req.user.id).catch(() => null);
+        const filtered = consultations.filter((c: any) => callerPatient && c.patientId === callerPatient.id);
+        return res.json(filtered);
+      } else if (req.user.role === 'doctor') {
+        // Doctors: only return consultations they own
+        const filtered = consultations.filter((c: any) => c.doctorId === req.user.id);
+        return res.json(filtered);
+      }
       res.json(consultations);
     } catch (error) {
       console.error('Get consultations by appointment error:', error);
@@ -3449,8 +3466,14 @@ ${clinicalText}`;
   });
 
   // Get active video consultations for a doctor (specific route before /:id)
-  app.get('/api/video-consultations/active/:doctorId', async (req, res) => {
+  app.get('/api/video-consultations/active/:doctorId', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      if (req.user.role !== 'admin' && req.user.id !== req.params.doctorId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
       const consultations = await storage.getActiveVideoConsultations(req.params.doctorId);
 
       const patientIds = [...new Set(consultations.map((vc: any) => vc.patientId).filter(Boolean))];
@@ -3478,7 +3501,13 @@ ${clinicalText}`;
 
   app.post('/api/video-consultations/close-all-active', async (req: any, res) => {
     try {
-      const doctorId = req.user?.id || actualDoctorId || DEFAULT_DOCTOR_ID;
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      const doctorId = req.user.id;
       const activeConsultations = await storage.getActiveVideoConsultations(doctorId);
       
       if (activeConsultations.length === 0) {
@@ -3536,6 +3565,41 @@ ${clinicalText}`;
 
       const rawUidHash = Math.abs(req.user.id.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0));
       const numericUid = uid || ((rawUidHash % 9999) + 1);
+
+      // Authorization: verify caller is allowed to join the requested channel.
+      // Doctor-office channels are restricted to the owning doctor and admins.
+      // Consultation channels (consultation-<uuid>) require the caller to be the
+      // assigned doctor or the assigned patient of that consultation.
+      const officeMatch = channelName.match(/^doctor-office-(.+)$/);
+      if (officeMatch) {
+        const ownerId = officeMatch[1];
+        if (req.user.role !== 'admin' && req.user.id !== ownerId) {
+          return res.status(403).json({ message: 'Not authorized to join this channel' });
+        }
+      } else {
+        // For any other channel (e.g. consultation channels) require admin or
+        // confirmed membership (doctor or patient) of the matching consultation.
+        if (req.user.role !== 'admin') {
+          let authorized = false;
+          try {
+            const consultMatch = channelName.match(/^consultation-(.+)$/);
+            if (consultMatch) {
+              const consult = await storage.getVideoConsultation(consultMatch[1]);
+              if (consult) {
+                if (consult.doctorId === req.user.id) {
+                  authorized = true;
+                } else if (consult.patientId) {
+                  const patient = await storage.getPatient(consult.patientId);
+                  if (patient?.userId === req.user.id) authorized = true;
+                }
+              }
+            }
+          } catch {}
+          if (!authorized) {
+            return res.status(403).json({ message: 'Not authorized to join this channel' });
+          }
+        }
+      }
 
       const token = generateAgoraToken({
         channelName,
@@ -3601,6 +3665,33 @@ ${clinicalText}`;
         return res.status(400).json({ message: 'Channel name and role are required' });
       }
 
+      // Verify caller is authorized to join the requested consultation channel.
+      if (req.user.role !== 'admin') {
+        let authorized = false;
+        try {
+          const consultMatch = channelName.match(/^consultation-(.+)$/);
+          if (consultMatch) {
+            const consult = await storage.getVideoConsultation(consultMatch[1]);
+            if (consult) {
+              if (consult.doctorId === req.user.id) {
+                authorized = true;
+              } else if (consult.patientId) {
+                const patient = await storage.getPatient(consult.patientId);
+                if (patient?.userId === req.user.id) authorized = true;
+              }
+            }
+          }
+          // Also allow doctor-office channels for their owner
+          const officeMatch = channelName.match(/^doctor-office-(.+)$/);
+          if (officeMatch && officeMatch[1] === req.user.id) {
+            authorized = true;
+          }
+        } catch {}
+        if (!authorized) {
+          return res.status(403).json({ message: 'Not authorized to join this channel' });
+        }
+      }
+
       const rawHash = Math.abs(req.user.id.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0));
       const uid = (rawHash % 9999) + 1;
 
@@ -3626,7 +3717,13 @@ ${clinicalText}`;
   // Get all incomplete consultations for the current doctor
   app.get('/api/video-consultations/incomplete', async (req: any, res) => {
     try {
-      const doctorId = req.user?.id || actualDoctorId || DEFAULT_DOCTOR_ID;
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      const doctorId = req.user.id;
       const incompleteVCs = await db.select()
         .from(videoConsultations)
         .where(and(
@@ -3663,6 +3760,18 @@ ${clinicalText}`;
   // Get video consultation history for a specific patient
   app.get('/api/video-consultations/patient-history/:patientId', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      // Patients can only see their own history; doctors and admins can see any patient.
+      if (req.user.role === 'patient') {
+        const patient = await storage.getPatientByUserId(req.user.id);
+        if (!patient || patient.id !== req.params.patientId) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+      } else if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
       const history = await db.select()
         .from(videoConsultations)
         .where(eq(videoConsultations.patientId, req.params.patientId))
@@ -3678,13 +3787,22 @@ ${clinicalText}`;
   // Request inter-consultation with a specialist
   app.post('/api/video-consultations/:id/request-interconsult', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas médicos podem solicitar interconsultas' });
+      }
       const { specialistId, message, patientId } = req.body;
       const consultation = await storage.getVideoConsultation(req.params.id);
       if (!consultation) {
         return res.status(404).json({ message: 'Consultation not found' });
       }
+      if (req.user.role !== 'admin' && consultation.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
 
-      const doctorId = req.user?.id || actualDoctorId || DEFAULT_DOCTOR_ID;
+      const doctorId = req.user.id;
       let patientName = 'Paciente';
       if (patientId) {
         try {
@@ -3743,13 +3861,22 @@ ${clinicalText}`;
   // Notify offline doctors about interconsultation need
   app.post('/api/video-consultations/:id/notify-offline-doctors', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
       const { doctorIds, message, patientId } = req.body;
       const consultation = await storage.getVideoConsultation(req.params.id);
       if (!consultation) {
         return res.status(404).json({ message: 'Consultation not found' });
       }
+      if (req.user.role !== 'admin' && consultation.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
 
-      const doctorId = req.user?.id || actualDoctorId || DEFAULT_DOCTOR_ID;
+      const doctorId = req.user.id;
       let patientName = 'Paciente';
       if (patientId) {
         try {
@@ -3844,11 +3971,21 @@ ${clinicalText}`;
   });
 
   // Get video consultation by ID (generic route - must come after specific routes)
-  app.get('/api/video-consultations/:id', async (req, res) => {
+  app.get('/api/video-consultations/:id', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const consultation = await storage.getVideoConsultation(req.params.id);
       if (!consultation) {
         return res.status(404).json({ message: 'Video consultation not found' });
+      }
+      // Verify caller is authorized to view this consultation.
+      if (req.user.role !== 'admin' && consultation.doctorId !== req.user.id) {
+        const patient = consultation.patientId ? await storage.getPatient(consultation.patientId).catch(() => null) : null;
+        if (!patient || patient.userId !== req.user.id) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
       }
       res.json(consultation);
     } catch (error) {
@@ -3858,8 +3995,21 @@ ${clinicalText}`;
   });
 
   // Update video consultation status and details
-  app.patch('/api/video-consultations/:id', async (req, res) => {
+  app.patch('/api/video-consultations/:id', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      const existingForPatch = await storage.getVideoConsultation(req.params.id);
+      if (!existingForPatch) {
+        return res.status(404).json({ message: 'Video consultation not found' });
+      }
+      if (req.user.role !== 'admin' && existingForPatch.doctorId !== req.user.id) {
+        const patientForPatch = existingForPatch.patientId ? await storage.getPatient(existingForPatch.patientId).catch(() => null) : null;
+        if (!patientForPatch || patientForPatch.userId !== req.user.id) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+      }
       const { status, startedAt, endedAt, duration, recordingUrl, audioRecordingUrl, connectionLogs } = req.body;
       
       const updateData: any = {};
@@ -3888,8 +4038,21 @@ ${clinicalText}`;
   });
 
   // Start video consultation (updates status to active)
-  app.post('/api/video-consultations/:id/start', async (req, res) => {
+  app.post('/api/video-consultations/:id/start', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas médicos podem iniciar consultas' });
+      }
+      const existingForStart = await storage.getVideoConsultation(req.params.id);
+      if (!existingForStart) {
+        return res.status(404).json({ message: 'Video consultation not found' });
+      }
+      if (req.user.role !== 'admin' && existingForStart.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
       const consultation = await storage.updateVideoConsultation(req.params.id, {
         status: 'active',
         startedAt: new Date()
@@ -4061,6 +4224,24 @@ ${clinicalSummary}`;
   // End video consultation (doctor ends the consultation)
   app.post('/api/video-consultations/:id/end', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      const consultForEnd = await storage.getVideoConsultation(req.params.id);
+      if (!consultForEnd) {
+        return res.status(404).json({ message: 'Consulta não encontrada' });
+      }
+      // Only the owning doctor, the patient of this consultation, or admins may call /end.
+      if (req.user.role !== 'admin' && consultForEnd.doctorId !== req.user.id) {
+        const patientForEnd = consultForEnd.patientId ? await storage.getPatient(consultForEnd.patientId).catch(() => null) : null;
+        if (!patientForEnd || patientForEnd.userId !== req.user.id) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+        // Patients can only trigger a leave-style end (status 'ended'), not completed/incomplete.
+        if (req.body.completionStatus && req.body.completionStatus !== 'ended') {
+          return res.status(403).json({ message: 'Apenas médicos podem definir o status de conclusão' });
+        }
+      }
       const { duration, meetingNotes, completionStatus, endReason } = req.body;
       
       const finalStatus = completionStatus === 'completed' ? 'completed' : 
@@ -4396,6 +4577,10 @@ ${clinicalSummary}`;
       if (!existing) {
         return res.status(404).json({ message: 'Consulta não encontrada' });
       }
+      // Doctors can only complete their own consultations.
+      if (req.user.role !== 'admin' && existing.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
 
       const updatedNotes = existing.meetingNotes 
         ? `${existing.meetingNotes}\n\n--- Conclusão posterior ---\n${notes || 'Consulta concluída pelo médico.'}`
@@ -4512,6 +4697,15 @@ ${clinicalData}`;
         return res.status(403).json({ message: 'Apenas médicos podem reativar consultas' });
       }
 
+      const existingForReactivate = await storage.getVideoConsultation(req.params.id);
+      if (!existingForReactivate) {
+        return res.status(404).json({ message: 'Consulta não encontrada' });
+      }
+      // Doctors can only reactivate their own consultations.
+      if (req.user.role !== 'admin' && existingForReactivate.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
       const consultation = await storage.updateVideoConsultation(req.params.id, {
         status: 'waiting',
         endedAt: null as any,
@@ -4562,11 +4756,21 @@ ${clinicalData}`;
   // Patient leaves consultation (doesn't end it, just leaves the video)
   app.post('/api/video-consultations/:id/leave', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const consultationId = req.params.id;
       const consultation = await db.select().from(videoConsultations).where(eq(videoConsultations.id, consultationId)).limit(1);
       
       if (!consultation.length) {
         return res.status(404).json({ message: 'Consulta não encontrada' });
+      }
+      // Only participants of the consultation or admins can signal a leave.
+      if (req.user.role !== 'admin' && consultation[0].doctorId !== req.user.id) {
+        const leavePatient = consultation[0].patientId ? await storage.getPatient(consultation[0].patientId).catch(() => null) : null;
+        if (!leavePatient || leavePatient.userId !== req.user.id) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
       }
 
       // Notify doctor that patient left
@@ -4603,6 +4807,9 @@ ${clinicalData}`;
       if (!doctorUser) {
         return res.status(401).json({ message: 'Autenticação necessária' });
       }
+      if (doctorUser.role !== 'doctor' && doctorUser.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas médicos podem convidar especialistas' });
+      }
 
       if (!specialistId) {
         return res.status(400).json({ message: 'specialistId é obrigatório' });
@@ -4611,6 +4818,10 @@ ${clinicalData}`;
       const consultation = await db.select().from(videoConsultations).where(eq(videoConsultations.id, consultationId)).limit(1);
       if (!consultation.length) {
         return res.status(404).json({ message: 'Consulta não encontrada' });
+      }
+      // Only the owning doctor or admins can invite specialists to their consultation.
+      if (doctorUser.role !== 'admin' && consultation[0].doctorId !== doctorUser.id) {
+        return res.status(403).json({ message: 'Access denied' });
       }
 
       const specialist = await db.select().from(users).where(eq(users.id, specialistId)).limit(1);
@@ -4655,8 +4866,14 @@ ${clinicalData}`;
   });
 
   // Upload and transcribe consultation audio
-  app.post('/api/video-consultations/:id/transcribe', async (req, res) => {
+  app.post('/api/video-consultations/:id/transcribe', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas médicos podem transcrever consultas' });
+      }
       const consultationId = req.params.id;
       const { audioData, patientName } = req.body;
       
@@ -4668,6 +4885,10 @@ ${clinicalData}`;
       const consultation = await storage.getVideoConsultation(consultationId);
       if (!consultation) {
         return res.status(404).json({ message: 'Video consultation not found' });
+      }
+      // Doctors can only transcribe their own consultations.
+      if (req.user.role !== 'admin' && consultation.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
       }
 
       // Update transcription status to processing
@@ -4758,11 +4979,20 @@ ${clinicalData}`;
   });
 
   // Get transcription status
-  app.get('/api/video-consultations/:id/transcription-status', async (req, res) => {
+  app.get('/api/video-consultations/:id/transcription-status', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const consultation = await storage.getVideoConsultation(req.params.id);
       if (!consultation) {
         return res.status(404).json({ message: 'Video consultation not found' });
+      }
+      if (req.user.role !== 'admin' && consultation.doctorId !== req.user.id) {
+        const tsPatient = consultation.patientId ? await storage.getPatient(consultation.patientId).catch(() => null) : null;
+        if (!tsPatient || tsPatient.userId !== req.user.id) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
       }
 
       res.json({
@@ -4777,8 +5007,21 @@ ${clinicalData}`;
   });
 
   // Get consultation notes
-  app.get('/api/video-consultations/:id/notes', async (req, res) => {
+  app.get('/api/video-consultations/:id/notes', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      const notesConsult = await storage.getVideoConsultation(req.params.id);
+      if (!notesConsult) {
+        return res.status(404).json({ message: 'Video consultation not found' });
+      }
+      if (req.user.role !== 'admin' && notesConsult.doctorId !== req.user.id) {
+        const notesPatient = notesConsult.patientId ? await storage.getPatient(notesConsult.patientId).catch(() => null) : null;
+        if (!notesPatient || notesPatient.userId !== req.user.id) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+      }
       const notes = await storage.getConsultationNotes(req.params.id);
       res.json(notes);
     } catch (error) {
@@ -4792,6 +5035,18 @@ ${clinicalData}`;
     try {
       if (!req.user) {
         return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      // Verify the caller is a participant of this consultation.
+      const noteConsult = await storage.getVideoConsultation(req.params.id);
+      if (!noteConsult) {
+        return res.status(404).json({ message: 'Consultation not found' });
+      }
+      if (req.user.role !== 'admin' && noteConsult.doctorId !== req.user.id) {
+        const notePatient = noteConsult.patientId ? await storage.getPatient(noteConsult.patientId).catch(() => null) : null;
+        if (!notePatient || notePatient.userId !== req.user.id) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
       }
 
       const { type, content, metadata } = req.body;
@@ -5049,8 +5304,21 @@ Responda em português brasileiro, de forma estruturada e concisa, com linguagem
   });
 
   // Get consultation recordings
-  app.get('/api/video-consultations/:id/recordings', async (req, res) => {
+  app.get('/api/video-consultations/:id/recordings', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      const recConsult = await storage.getVideoConsultation(req.params.id);
+      if (!recConsult) {
+        return res.status(404).json({ message: 'Video consultation not found' });
+      }
+      if (req.user.role !== 'admin' && recConsult.doctorId !== req.user.id) {
+        const recPatient = recConsult.patientId ? await storage.getPatient(recConsult.patientId).catch(() => null) : null;
+        if (!recPatient || recPatient.userId !== req.user.id) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+      }
       const recordings = await storage.getConsultationRecordings(req.params.id);
       res.json(recordings);
     } catch (error) {
@@ -5060,8 +5328,21 @@ Responda em português brasileiro, de forma estruturada e concisa, com linguagem
   });
 
   // Create consultation recording
-  app.post('/api/video-consultations/:id/recordings', async (req, res) => {
+  app.post('/api/video-consultations/:id/recordings', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      const recCreateConsult = await storage.getVideoConsultation(req.params.id);
+      if (!recCreateConsult) {
+        return res.status(404).json({ message: 'Video consultation not found' });
+      }
+      if (req.user.role !== 'admin' && recCreateConsult.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
       const { segmentUrl, startTime, endTime, duration, segmentType, fileSize } = req.body;
       const validatedData = insertConsultationRecordingSchema.parse({
         consultationId: req.params.id,
@@ -14473,9 +14754,9 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
   });
 
   // Generate patient join token for video consultation (public endpoint with validation)
-  app.post('/api/auth/patient-join-token', async (req, res) => {
+  app.post('/api/auth/patient-join-token', async (req: any, res) => {
     try {
-      const { consultationId, patientId, patientName } = req.body;
+      const { consultationId, patientId, patientName, joinToken } = req.body;
       
       // Validate required fields
       if (!consultationId || !patientId) {
@@ -14492,12 +14773,58 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
       if (consultation.patientId !== patientId) {
         return res.status(403).json({ message: 'Patient not authorized for this consultation' });
       }
-      
-      // Require SESSION_SECRET
+
+      // Authorization: the caller must prove identity by one of these means:
+      //   1. Authenticated as admin
+      //   2. Authenticated as the doctor who owns this consultation
+      //   3. Authenticated as the patient (their userId matches the patient record)
+      //   4. Unauthenticated caller provides a valid signed joinToken for this consultation
+      //      (the token was issued by this server via an earlier patient-join-token call
+      //      and delivered to the patient via email/WhatsApp — not guessable from IDs alone)
       const jwtSecret = process.env.SESSION_SECRET;
       if (!jwtSecret) {
         console.error('SESSION_SECRET not configured - cannot generate patient token');
         return res.status(500).json({ message: 'Server configuration error' });
+      }
+
+      if (req.user) {
+        // Authenticated path
+        if (req.user.role === 'admin') {
+          // Admin: allowed unrestricted
+        } else if (req.user.role === 'doctor') {
+          // Doctor: must own this consultation
+          if (consultation.doctorId !== req.user.id) {
+            return res.status(403).json({ message: 'Access denied' });
+          }
+        } else {
+          // Patient or other role: must be the patient of this consultation
+          const callerPatient = await storage.getPatientByUserId(req.user.id).catch(() => null);
+          if (!callerPatient || callerPatient.id !== patientId) {
+            return res.status(403).json({ message: 'Access denied' });
+          }
+        }
+      } else {
+        // Unauthenticated path: require a valid server-signed joinToken that
+        // proves the caller was the original recipient of the join link.
+        if (!joinToken) {
+          return res.status(401).json({ message: 'Authentication required' });
+        }
+        try {
+          const tokenPayload = jwt.verify(joinToken, jwtSecret, {
+            issuer: 'healthcare-system',
+            audience: 'websocket',
+            algorithms: ['HS256']
+          }) as any;
+          if (
+            tokenPayload.type !== 'patient_auth' ||
+            tokenPayload.consultationId !== consultationId ||
+            tokenPayload.patientId !== patientId
+          ) {
+            return res.status(403).json({ message: 'Invalid join token for this consultation' });
+          }
+        } catch {
+          return res.status(401).json({ message: 'Invalid or expired join token' });
+        }
       }
       
       // Generate patient JWT token for WebSocket authentication
