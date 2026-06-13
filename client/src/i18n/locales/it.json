@@ -119,5 +119,29 @@
   "footer": {
     "copyright": "© 2024 Tele<M3D> - Sistema di Telemedicina",
     "all_rights_reserved": "Tutti i diritti riservati"
+  },
+  "landing": {
+    "subtitle": "Telemedicina con intelligenza artificiale",
+    "enter_title": "Accedi",
+    "enter_desc": "Accedi con nome utente e password",
+    "more_info_title": "Maggiori informazioni",
+    "more_info_desc": "Scopri la piattaforma",
+    "back": "Indietro",
+    "features_title": "Funzionalità",
+    "features_desc": "Funzionalità della piattaforma",
+    "docs_title": "Documentazione",
+    "docs_desc": "Guide e riferimento tecnico",
+    "faq_title": "Domande Frequenti",
+    "faq_desc": "Risposte alle domande comuni",
+    "no_account": "Non hai un account?",
+    "create_account": "Crea account",
+    "username": "Nome utente",
+    "username_placeholder": "Inserisci il tuo nome utente",
+    "password": "Password",
+    "password_placeholder": "Inserisci la tua password",
+    "login_button": "Accedi",
+    "logging_in": "Accesso in corso...",
+    "username_required": "Inserisci il tuo nome utente",
+    "password_required": "Inserisci la tua password"
   }
 }

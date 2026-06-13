@@ -114,5 +114,29 @@
   "footer": {
     "copyright": "© 2024 Tele<M3D> - Telemedizin System",
     "all_rights_reserved": "Alle Rechte vorbehalten"
+  },
+  "landing": {
+    "subtitle": "Telemedizin mit künstlicher Intelligenz",
+    "enter_title": "Anmelden",
+    "enter_desc": "Mit Benutzername und Passwort anmelden",
+    "more_info_title": "Mehr Informationen",
+    "more_info_desc": "Entdecken Sie die Plattform",
+    "back": "Zurück",
+    "features_title": "Funktionen",
+    "features_desc": "Funktionen der Plattform",
+    "docs_title": "Dokumentation",
+    "docs_desc": "Anleitungen und technische Referenz",
+    "faq_title": "Häufig gestellte Fragen",
+    "faq_desc": "Antworten auf häufige Fragen",
+    "no_account": "Noch kein Konto?",
+    "create_account": "Konto erstellen",
+    "username": "Benutzername",
+    "username_placeholder": "Benutzernamen eingeben",
+    "password": "Passwort",
+    "password_placeholder": "Passwort eingeben",
+    "login_button": "Anmelden",
+    "logging_in": "Anmeldung...",
+    "username_required": "Benutzernamen eingeben",
+    "password_required": "Passwort eingeben"
   }
 }

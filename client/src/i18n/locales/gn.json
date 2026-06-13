@@ -114,5 +114,29 @@
   "footer": {
     "copyright": "© 2024 Tele<M3D> - Pohã Ñana Sistema",
     "all_rights_reserved": "Opaichagua derecho oñongatu"
+  },
+  "landing": {
+    "subtitle": "Telemedicina inteligencia artificial reheve",
+    "enter_title": "Eike",
+    "enter_desc": "Eike nde puruhára ha ñe'ẽñemi reheve",
+    "more_info_title": "Marandu hetave",
+    "more_info_desc": "Eikuaa pe plataforma",
+    "back": "Jevy",
+    "features_title": "Mba'ekuaa",
+    "features_desc": "Plataforma mba'ekuaa",
+    "docs_title": "Kuatiakuaa",
+    "docs_desc": "Mbo'esyry ha tekorepy",
+    "faq_title": "Porandu Jepi",
+    "faq_desc": "Porandu jepi mbohovái",
+    "no_account": "Nderehói cuenta?",
+    "create_account": "Ejapo cuenta",
+    "username": "Puruhára réra",
+    "username_placeholder": "Emoinge nde puruhára",
+    "password": "Ñe'ẽñemi",
+    "password_placeholder": "Emoinge nde ñe'ẽñemi",
+    "login_button": "Eike",
+    "logging_in": "Eikehína...",
+    "username_required": "Emoinge nde puruhára",
+    "password_required": "Emoinge nde ñe'ẽñemi"
   }
 }

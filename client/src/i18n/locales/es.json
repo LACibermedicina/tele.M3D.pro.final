@@ -76,13 +76,20 @@
   "dashboard": {
     "title": "Panel de Control",
     "today_appointments": "Citas de Hoy",
+    "whatsapp_messages": "Mensajes WhatsApp",
+    "ai_scheduling": "Programación IA",
+    "secure_records": "Registros Seguros",
     "recent_messages": "Mensajes Recientes",
     "system_status": "Estado del Sistema",
-    "support_system": "Sistema de Soporte",
     "quick_actions": "Acciones Rápidas",
     "new_appointment": "Nueva Cita",
     "emergency": "Emergencia",
-    "digital_prescription": "Receta Digital"
+    "digital_prescription": "Receta Digital",
+    "ai_medical": "IA Médica",
+    "status_active": "Activa",
+    "status_online": "En línea",
+    "database": "Base de Datos",
+    "status_connected": "Conectado"
   },
   "patients": {
     "title": "Gestión de Pacientes",
@@ -211,24 +218,6 @@
     "generate_link": "Generar Enlace",
     "link_copied": "¡Enlace copiado!",
     "link_copied_desc": "El enlace ha sido copiado al portapapeles."
-  },
-  "dashboard": {
-    "title": "Panel de Control",
-    "today_appointments": "Citas de Hoy",
-    "whatsapp_messages": "Mensajes WhatsApp",
-    "ai_scheduling": "Programación IA",
-    "secure_records": "Registros Seguros",
-    "recent_messages": "Mensajes Recientes",
-    "system_status": "Estado del Sistema",
-    "quick_actions": "Acciones Rápidas",
-    "new_appointment": "Nueva Cita",
-    "emergency": "Emergencia",
-    "digital_prescription": "Receta Digital",
-    "ai_medical": "IA Médica",
-    "status_active": "Activa",
-    "status_online": "En línea",
-    "database": "Base de Datos",
-    "status_connected": "Conectado"
   },
   "footer": {
     "copyright": "© 2024 Tele<M3D> - Sistema de Tele<M3D>icina",
@@ -505,5 +494,29 @@
     "gastroenterologia": "Gastroenterología",
     "pneumologia": "Neumología",
     "outra": "Otra"
+  },
+  "landing": {
+    "subtitle": "Telemedicina con inteligencia artificial",
+    "enter_title": "Entrar",
+    "enter_desc": "Accede con tu usuario y contraseña",
+    "more_info_title": "Más información",
+    "more_info_desc": "Conoce la plataforma",
+    "back": "Volver",
+    "features_title": "Recursos",
+    "features_desc": "Funcionalidades de la plataforma",
+    "docs_title": "Documentación",
+    "docs_desc": "Guías y referencia técnica",
+    "faq_title": "Preguntas Frecuentes",
+    "faq_desc": "Dudas comunes respondidas",
+    "no_account": "¿No tienes cuenta?",
+    "create_account": "Crear cuenta",
+    "username": "Nombre de usuario",
+    "username_placeholder": "Ingresa tu nombre de usuario",
+    "password": "Contraseña",
+    "password_placeholder": "Ingresa tu contraseña",
+    "login_button": "Entrar",
+    "logging_in": "Entrando...",
+    "username_required": "Ingresa tu usuario",
+    "password_required": "Ingresa tu contraseña"
   }
 }

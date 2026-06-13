@@ -33,39 +33,41 @@ import telemedLogo from "@/assets/logo-fundo.png";
 
 type LandingView = "home" | "login" | "info";
 
-const loginSchema = z.object({
-  username: z.string().min(1, "Informe seu usuário"),
-  password: z.string().min(1, "Informe sua senha"),
-});
+const createLoginSchema = (t: (key: string) => string) =>
+  z.object({
+    username: z.string().min(1, t("landing.username_required")),
+    password: z.string().min(1, t("landing.password_required")),
+  });
 
-type LoginFormValues = z.infer<typeof loginSchema>;
+type LoginFormValues = z.infer<ReturnType<typeof createLoginSchema>>;
 
 const infoLinks = [
   {
     href: "/features",
     icon: Sparkles,
-    title: "Recursos",
-    description: "Funcionalidades da plataforma",
+    titleKey: "landing.features_title",
+    descriptionKey: "landing.features_desc",
     testId: "link-info-features",
   },
   {
     href: "/documentation",
     icon: BookOpen,
-    title: "Documentação",
-    description: "Guias e referência técnica",
+    titleKey: "landing.docs_title",
+    descriptionKey: "landing.docs_desc",
     testId: "link-info-documentation",
   },
   {
     href: "/faq",
     icon: HelpCircle,
-    title: "Perguntas Frequentes",
-    description: "Dúvidas comuns respondidas",
+    titleKey: "landing.faq_title",
+    descriptionKey: "landing.faq_desc",
     testId: "link-info-faq",
   },
 ] as const;
 
 export function ImmersiveLanding() {
   const { t } = useTranslation();
+  const loginSchema = createLoginSchema(t);
   const { login } = useAuth();
   const { toast } = useToast();
   const [view, setView] = useState<LandingView>("home");
@@ -135,7 +137,7 @@ export function ImmersiveLanding() {
               Tele&lt;M3D&gt;
             </h1>
             <p className="mt-2 text-sm text-white/70">
-              Telemedicina com inteligência artificial
+              {t("landing.subtitle")}
             </p>
           </div>
 
@@ -154,10 +156,10 @@ export function ImmersiveLanding() {
                   </span>
                   <span className="flex-1">
                     <span className="block font-semibold text-slate-900">
-                      Entrar
+                      {t("landing.enter_title")}
                     </span>
                     <span className="block text-sm text-slate-500">
-                      Acesse com seu usuário e senha
+                      {t("landing.enter_desc")}
                     </span>
                   </span>
                   <ChevronRight className="h-5 w-5 text-slate-400 transition group-hover:translate-x-0.5" />
@@ -174,10 +176,10 @@ export function ImmersiveLanding() {
                   </span>
                   <span className="flex-1">
                     <span className="block font-semibold text-white">
-                      Mais informações
+                      {t("landing.more_info_title")}
                     </span>
                     <span className="block text-sm text-white/60">
-                      Conheça a plataforma
+                      {t("landing.more_info_desc")}
                     </span>
                   </span>
                   <ChevronRight className="h-5 w-5 text-white/50 transition group-hover:translate-x-0.5" />
@@ -194,7 +196,7 @@ export function ImmersiveLanding() {
                   data-testid="button-back-from-login"
                 >
                   <ArrowLeft className="mr-1 h-4 w-4" />
-                  Voltar
+                  {t("landing.back")}
                 </button>
                 <Form {...form}>
                   <form
@@ -207,12 +209,12 @@ export function ImmersiveLanding() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-white/90">
-                            {t("ui.username")}
+                            {t("landing.username")}
                           </FormLabel>
                           <FormControl>
                             <Input
                               {...field}
-                              placeholder={t("ui.username_placeholder")}
+                              placeholder={t("landing.username_placeholder")}
                               autoComplete="username"
                               className="border-white/25 bg-white/95 text-slate-900 placeholder:text-slate-400"
                               data-testid="input-landing-username"
@@ -228,13 +230,13 @@ export function ImmersiveLanding() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-white/90">
-                            {t("ui.password")}
+                            {t("landing.password")}
                           </FormLabel>
                           <FormControl>
                             <Input
                               {...field}
                               type="password"
-                              placeholder={t("ui.password_placeholder")}
+                              placeholder={t("landing.password_placeholder")}
                               autoComplete="current-password"
                               className="border-white/25 bg-white/95 text-slate-900 placeholder:text-slate-400"
                               data-testid="input-landing-password"
@@ -253,10 +255,10 @@ export function ImmersiveLanding() {
                       {isSubmitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {t("ui.logging_in")}
+                          {t("landing.logging_in")}
                         </>
                       ) : (
-                        t("ui.login_button")
+                        t("landing.login_button")
                       )}
                     </Button>
                   </form>
@@ -273,7 +275,7 @@ export function ImmersiveLanding() {
                   data-testid="button-back-from-info"
                 >
                   <ArrowLeft className="mr-1 h-4 w-4" />
-                  Voltar
+                  {t("landing.back")}
                 </button>
                 <div className="space-y-3">
                   {infoLinks.map((item) => {
@@ -290,10 +292,10 @@ export function ImmersiveLanding() {
                         </span>
                         <span className="flex-1">
                           <span className="block font-semibold text-white">
-                            {item.title}
+                            {t(item.titleKey)}
                           </span>
                           <span className="block text-sm text-white/60">
-                            {item.description}
+                            {t(item.descriptionKey)}
                           </span>
                         </span>
                         <ChevronRight className="h-5 w-5 text-white/50 transition group-hover:translate-x-0.5" />
@@ -308,13 +310,13 @@ export function ImmersiveLanding() {
           {/* Discreet create-account link */}
           {view !== "login" && (
             <p className="mt-6 text-center text-sm text-white/60">
-              Não tem conta?{" "}
+              {t("landing.no_account")}{" "}
               <Link
                 href="/register"
                 className="text-white underline underline-offset-4 transition hover:text-white/80"
                 data-testid="link-create-account"
               >
-                Criar conta
+                {t("landing.create_account")}
               </Link>
             </p>
           )}

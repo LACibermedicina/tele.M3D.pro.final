@@ -114,5 +114,29 @@
   "footer": {
     "copyright": "© 2024 Tele<M3D> - 远程医疗系统",
     "all_rights_reserved": "保留所有权利"
+  },
+  "landing": {
+    "subtitle": "人工智能赋能的远程医疗",
+    "enter_title": "登录",
+    "enter_desc": "使用您的用户名和密码登录",
+    "more_info_title": "更多信息",
+    "more_info_desc": "了解平台",
+    "back": "返回",
+    "features_title": "功能",
+    "features_desc": "平台功能",
+    "docs_title": "文档",
+    "docs_desc": "指南和技术参考",
+    "faq_title": "常见问题",
+    "faq_desc": "常见问题解答",
+    "no_account": "还没有账户？",
+    "create_account": "创建账户",
+    "username": "用户名",
+    "username_placeholder": "请输入用户名",
+    "password": "密码",
+    "password_placeholder": "请输入密码",
+    "login_button": "登录",
+    "logging_in": "登录中...",
+    "username_required": "请输入用户名",
+    "password_required": "请输入密码"
   }
 }

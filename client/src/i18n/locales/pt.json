@@ -495,5 +495,29 @@
     "gastroenterologia": "Gastroenterologia",
     "pneumologia": "Pneumologia",
     "outra": "Outra"
+  },
+  "landing": {
+    "subtitle": "Telemedicina com inteligência artificial",
+    "enter_title": "Entrar",
+    "enter_desc": "Acesse com seu usuário e senha",
+    "more_info_title": "Mais informações",
+    "more_info_desc": "Conheça a plataforma",
+    "back": "Voltar",
+    "features_title": "Recursos",
+    "features_desc": "Funcionalidades da plataforma",
+    "docs_title": "Documentação",
+    "docs_desc": "Guias e referência técnica",
+    "faq_title": "Perguntas Frequentes",
+    "faq_desc": "Dúvidas comuns respondidas",
+    "no_account": "Não tem conta?",
+    "create_account": "Criar conta",
+    "username": "Nome de usuário",
+    "username_placeholder": "Digite seu usuário",
+    "password": "Senha",
+    "password_placeholder": "Digite sua senha",
+    "login_button": "Entrar",
+    "logging_in": "Entrando...",
+    "username_required": "Informe seu usuário",
+    "password_required": "Informe sua senha"
   }
 }

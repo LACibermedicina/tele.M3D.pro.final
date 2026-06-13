@@ -495,5 +495,29 @@
     "gastroenterologia": "Gastroenterology",
     "pneumologia": "Pulmonology",
     "outra": "Other"
+  },
+  "landing": {
+    "subtitle": "Telemedicine powered by artificial intelligence",
+    "enter_title": "Sign in",
+    "enter_desc": "Access with your username and password",
+    "more_info_title": "More information",
+    "more_info_desc": "Discover the platform",
+    "back": "Back",
+    "features_title": "Features",
+    "features_desc": "Platform capabilities",
+    "docs_title": "Documentation",
+    "docs_desc": "Guides and technical reference",
+    "faq_title": "Frequently Asked Questions",
+    "faq_desc": "Common questions answered",
+    "no_account": "Don't have an account?",
+    "create_account": "Create account",
+    "username": "Username",
+    "username_placeholder": "Enter your username",
+    "password": "Password",
+    "password_placeholder": "Enter your password",
+    "login_button": "Login",
+    "logging_in": "Logging in...",
+    "username_required": "Enter your username",
+    "password_required": "Enter your password"
   }
 }
