@@ -9,6 +9,7 @@
 ## Public-route intent notes
 - `/login` and `/register*` are public entry routes and may be indexed when they support acquisition or onboarding.
 - `/acesso*` and `/join/:token` are public utility/access routes and should remain crawl-controlled and non-indexed.
+- `/immediate-consultation` functions as a public waiting-room / immediate-access utility route and should remain crawl-controlled and non-indexed unless it is intentionally repositioned as a marketing landing page.
 
 ## Out of scope
 - Authenticated dashboard and application routes after login
