@@ -5,6 +5,7 @@ import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
+import { injectSeoIntoHtml } from "./publicRouteSeo";
 
 const viteLogger = createLogger();
 
@@ -58,7 +59,9 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
-      const page = await vite.transformIndexHtml(url, template);
+      const rawPage = await vite.transformIndexHtml(url, template);
+      const pathname = req.originalUrl.split("?")[0];
+      const page = injectSeoIntoHtml(rawPage, pathname);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);

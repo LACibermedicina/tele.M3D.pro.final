@@ -1,10 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
+import fs from "fs";
 import path from "path";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { WebhookHandlers } from "./webhookHandlers";
 import { setupMcpServer } from "./mcp";
+import { injectSeoIntoHtml, isNoIndexPath } from "./publicRouteSeo";
 
 const SPA_ROUTE_PATTERNS: RegExp[] = [
   /^\/$/,
@@ -98,6 +100,13 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
+  if (isNoIndexPath(req.path)) {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  }
+  next();
+});
+
+app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
@@ -153,21 +162,43 @@ app.use((req, res, next) => {
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
+    const distPath = path.resolve(import.meta.dirname, "public");
+    const indexPath = path.resolve(distPath, "index.html");
+
+    if (!fs.existsSync(distPath)) {
+      throw new Error(
+        `Could not find the build directory: ${distPath}, make sure to build the client first`,
+      );
+    }
+
+    // Cache the base HTML at startup so reads are cheap
+    let baseHtml: string = fs.readFileSync(indexPath, "utf-8");
+
     // In production, intercept unknown SPA routes before the static catch-all
     // so crawlers receive a genuine HTTP 404 instead of a soft-404 200.
-    const distPath = path.resolve(import.meta.dirname, "public");
     app.use("*", (req, res, next) => {
-      const pathname = req.path;
+      const pathname = req.originalUrl.split("?")[0];
       // Let actual static files through (JS, CSS, images, etc.)
       if (path.extname(pathname)) return next();
-      // Let known SPA routes through to serve index.html with 200
+      // Let known SPA routes through to serve SEO-injected index.html with 200
       if (isKnownSpaRoute(pathname)) return next();
       // Unknown route: serve the React shell with HTTP 404 so the browser
       // shows the NotFound page while crawlers see the correct status.
-      res.status(404).sendFile(path.resolve(distPath, "index.html"));
+      res.status(404).set({ "Content-Type": "text/html" }).send(
+        injectSeoIntoHtml(baseHtml, pathname),
+      );
     });
 
-    serveStatic(app);
+    // Serve static assets (JS, CSS, images, etc.)
+    app.use(express.static(distPath));
+
+    // For all remaining SPA HTML routes, inject route-specific SEO and send
+    app.use("*", (req, res) => {
+      const pathname = req.originalUrl.split("?")[0];
+      res.status(200).set({ "Content-Type": "text/html" }).send(
+        injectSeoIntoHtml(baseHtml, pathname),
+      );
+    });
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
