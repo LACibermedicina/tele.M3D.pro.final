@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 const SITE_NAME = "Tele<M3D>";
-const DEFAULT_IMAGE = "/favicon-512x512.png";
+const DEFAULT_IMAGE = "/social-preview.png";
 const FALLBACK_ORIGIN = "https://tele.m3d.pro";
 
 function getOrigin(): string {
@@ -79,7 +79,7 @@ export function useSeo({
     upsertMeta("property", "og:image", imageUrl);
     upsertMeta("property", "og:site_name", SITE_NAME);
 
-    upsertMeta("name", "twitter:card", "summary");
+    upsertMeta("name", "twitter:card", "summary_large_image");
     upsertMeta("name", "twitter:title", title);
     upsertMeta("name", "twitter:description", description);
     upsertMeta("name", "twitter:image", imageUrl);
