@@ -1,9 +1,69 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
+import path from "path";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { WebhookHandlers } from "./webhookHandlers";
 import { setupMcpServer } from "./mcp";
+
+const SPA_ROUTE_PATTERNS: RegExp[] = [
+  /^\/$/,
+  /^\/login$/,
+  /^\/register(\/.*)?$/,
+  /^\/features$/,
+  /^\/documentation$/,
+  /^\/manual$/,
+  /^\/faq$/,
+  /^\/acesso(\/.*)?$/,
+  /^\/join\/.+$/,
+  /^\/immediate-consultation$/,
+  /^\/mode-selection$/,
+  /^\/dashboard$/,
+  /^\/profile$/,
+  /^\/patients(\/.*)?$/,
+  /^\/schedule$/,
+  /^\/whatsapp$/,
+  /^\/records$/,
+  /^\/prescriptions$/,
+  /^\/analytics$/,
+  /^\/admin(\/.*)?$/,
+  /^\/reports$/,
+  /^\/consultation(\/.*)?$/,
+  /^\/patient\/video\/.+$/,
+  /^\/patient-agenda$/,
+  /^\/consultation-request$/,
+  /^\/my-consultations$/,
+  /^\/consultation-session\/.+$/,
+  /^\/post-consultation-review$/,
+  /^\/diagnostic-review$/,
+  /^\/wallet$/,
+  /^\/clinical-dashboard$/,
+  /^\/assistant$/,
+  /^\/medical-references$/,
+  /^\/doctor-availability$/,
+  /^\/doctor-referrals$/,
+  /^\/doctor-notes$/,
+  /^\/doctor-chat$/,
+  /^\/medical-teams$/,
+  /^\/team-room\/.+$/,
+  /^\/medical-cafe$/,
+  /^\/doctor-office$/,
+  /^\/coffee-room$/,
+  /^\/inter-consultation$/,
+  /^\/epidemiological-reports$/,
+  /^\/incomplete-consultations$/,
+  /^\/nft-management$/,
+  /^\/pharmacy(\/.*)?$/,
+  /^\/broker$/,
+  /^\/credits$/,
+  /^\/clinics$/,
+  /^\/fhir-dashboard$/,
+  /^\/installation$/,
+];
+
+function isKnownSpaRoute(pathname: string): boolean {
+  return SPA_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
+}
 
 const app = express();
 
@@ -93,6 +153,20 @@ app.use((req, res, next) => {
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
+    // In production, intercept unknown SPA routes before the static catch-all
+    // so crawlers receive a genuine HTTP 404 instead of a soft-404 200.
+    const distPath = path.resolve(import.meta.dirname, "public");
+    app.use("*", (req, res, next) => {
+      const pathname = req.path;
+      // Let actual static files through (JS, CSS, images, etc.)
+      if (path.extname(pathname)) return next();
+      // Let known SPA routes through to serve index.html with 200
+      if (isKnownSpaRoute(pathname)) return next();
+      // Unknown route: serve the React shell with HTTP 404 so the browser
+      // shows the NotFound page while crawlers see the correct status.
+      res.status(404).sendFile(path.resolve(distPath, "index.html"));
+    });
+
     serveStatic(app);
   }
 

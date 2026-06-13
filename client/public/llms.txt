@@ -1,0 +1,39 @@
+# IAM3D – Medical Practice Management Platform
+
+> An AI-enhanced medical practice management platform for doctors, patients, pharmacists, and researchers. Built for the Brazilian healthcare market with HL7 FHIR R4 compliance, multi-clinic support, and real-time video consultations.
+
+## Public Pages
+
+- [Home](https://app.example.com/): Landing page with platform overview and quick access.
+- [Features](https://app.example.com/features): Detailed feature list covering AI diagnostics, video consultations, pharmacy integration, and more.
+- [Documentation](https://app.example.com/documentation): Technical and user documentation for all roles.
+- [Manual](https://app.example.com/manual): Step-by-step operational manual for healthcare professionals.
+- [FAQ](https://app.example.com/faq): Frequently asked questions about the platform.
+- [Register](https://app.example.com/register): Account registration for patients, doctors, pharmacists, and admins.
+- [Login](https://app.example.com/login): Secure login for all user roles.
+
+## Platform Summary
+
+IAM3D is a comprehensive digital health platform designed to modernize clinical operations in Brazil. Key capabilities include:
+
+- AI-powered symptom triage following Manchester Protocol / WHO ETAT guidelines
+- Real-time video consultations via Agora with transcription and AI diagnostic assistance
+- Structured digital medical records (PMD v1.0) compliant with CFM/LGPD/RGPD
+- HL7 FHIR R4 compliant patient data export (JSON and PDF)
+- Multi-clinic management with shared patient records and revenue sharing
+- Integrated pharmacy module with prescription verification and dispensing
+- AI-generated SOAP notes, prescriptions, referrals, and post-consultation reports
+- Drug interaction analysis with RxNorm/OpenFDA/ANVISA database integration
+- ECG and radiology AI analysis with triple-verification pipelines
+- Unified payment checkout supporting Stripe, PayPal, and PagBank
+- WhatsApp-based intelligent messaging for healthcare providers
+- CRM and professional license verification via CFM and Ordem dos Médicos APIs
+- Digital signature verification via ICP-Brasil A3
+
+## Intended Audience
+
+Healthcare professionals (doctors, pharmacists, clinic administrators), patients seeking digital health services, and medical researchers in Brazil and Portuguese-speaking markets.
+
+## Legal & Compliance
+
+This platform processes sensitive health information under Brazilian LGPD and European RGPD frameworks. Medical AI outputs follow OMS, Ministério da Saúde/Brasil, DSM-5, and DSM-5-TR guidelines.
