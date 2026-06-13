@@ -165,6 +165,12 @@ export const PAGE_SEO = {
     path: "/join",
     noIndex: true,
   },
+  immediateConsultation: {
+    title: "Sala de Espera — Consulta Imediata - Tele<M3D>",
+    description: "Sala de espera virtual para consulta imediata. Acesso por link de atendimento.",
+    path: "/immediate-consultation",
+    noIndex: true,
+  },
 } satisfies Record<string, SeoOptions>;
 
 export function Seo({ page }: { page: keyof typeof PAGE_SEO }) {

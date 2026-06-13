@@ -459,6 +459,7 @@ function Router() {
         </Route>
         
         <Route path="/immediate-consultation">
+          <Seo page="immediateConsultation" />
           <Header />
           <ImmediateConsultation />
         </Route>

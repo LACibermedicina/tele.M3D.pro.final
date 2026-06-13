@@ -484,6 +484,15 @@ const ROUTE_SEO_MAP: Array<{ pattern: RegExp; seo: RouteSeo }> = [
     },
   },
   {
+    pattern: /^\/immediate-consultation$/,
+    seo: {
+      title: "Sala de Espera \u2014 Consulta Imediata - Tele<M3D>",
+      description: "Sala de espera virtual para consulta imediata. Acesso por link de atendimento.",
+      canonicalPath: "/immediate-consultation",
+      noIndex: true,
+    },
+  },
+  {
     pattern: /^\/acesso(\/.*)?$/,
     seo: {
       title: "Acesso \u00e0 Consulta - Tele<M3D>",
@@ -586,5 +595,9 @@ export function injectSeoIntoHtml(html: string, pathname: string): string {
 }
 
 export function isNoIndexPath(pathname: string): boolean {
-  return /^\/acesso(\/.*)?$/.test(pathname) || /^\/join\/.+$/.test(pathname);
+  return (
+    /^\/immediate-consultation$/.test(pathname) ||
+    /^\/acesso(\/.*)?$/.test(pathname) ||
+    /^\/join\/.+$/.test(pathname)
+  );
 }
