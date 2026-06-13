@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { disconnectAllMediaServices } from "@/components/inactivity-monitor";
 import { NavigationProvider } from "@/contexts/NavigationContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { Seo } from "@/components/seo";
 import Dashboard from "@/pages/dashboard";
 import Patients from "@/pages/patients";
 import PatientProfile from "@/pages/patient-profile";
@@ -181,46 +182,56 @@ function Router() {
       <Switch>
         {/* Public routes */}
         <Route path="/login">
+          <Seo page="login" />
           <Header />
           <Login />
         </Route>
         <Route path="/acesso/:code">
+          <Seo page="acesso" />
           <Header />
           <ConsultationAccess />
         </Route>
         <Route path="/acesso">
+          <Seo page="acesso" />
           <Header />
           <ConsultationAccess />
         </Route>
         <Route path="/join/:token">
+          <Seo page="join" />
           <Header />
           <PatientJoin />
         </Route>
         
         {/* Registration routes - public */}
         <Route path="/register">
+          <Seo page="register" />
           <Header />
           <RegisterSelect />
         </Route>
         <Route path="/register/patient">
+          <Seo page="registerPatient" />
           <Header />
           <PatientRegister />
         </Route>
         <Route path="/register/doctor">
+          <Seo page="registerDoctor" />
           <Header />
           <DoctorRegister />
         </Route>
         <Route path="/register/admin">
+          <Seo page="registerAdmin" />
           <Header />
           <AdminRegister />
         </Route>
         <Route path="/register/pharmacist">
+          <Seo page="registerPharmacist" />
           <Header />
           <PharmacistRegister />
         </Route>
         
         {/* Features page - public */}
         <Route path="/features">
+          <Seo page="features" />
           <Header />
           <Features />
         </Route>
@@ -234,14 +245,17 @@ function Router() {
 
         {/* Documentation page - public */}
         <Route path="/documentation">
+          <Seo page="documentation" />
           <Header />
           <Documentation />
         </Route>
         <Route path="/manual">
+          <Seo page="manual" />
           <Header />
           <Manual />
         </Route>
         <Route path="/faq">
+          <Seo page="faq" />
           <Header />
           <FAQ />
         </Route>
@@ -254,6 +268,7 @@ function Router() {
         
         {/* Public homepage - accessible to all including visitors */}
         <Route path="/">
+          <Seo page="home" />
           <Header />
           <ResponsiveDashboard />
         </Route>

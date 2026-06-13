@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { upsertJsonLd, removeJsonLd } from "@/components/seo";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import PageWrapper from "@/components/layout/page-wrapper";
@@ -553,6 +554,22 @@ export default function FAQ() {
   const translatedCategories = useMemo(() =>
     [...new Set(translatedFaq.map(f => f.category))],
   [translatedFaq]);
+
+  useEffect(() => {
+    upsertJsonLd("faq-jsonld", {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faqData.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer,
+        },
+      })),
+    });
+    return () => removeJsonLd("faq-jsonld");
+  }, []);
 
   const toggleItem = (index: number) => {
     setExpandedItems(prev => {
