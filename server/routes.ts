@@ -20865,7 +20865,7 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
     }
   });
 
-  app.post("/paypal/order", async (req, res) => {
+  app.post("/paypal/order", requireAuth, async (req, res) => {
     await createPaypalOrder(req, res);
   });
 
@@ -20874,19 +20874,30 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
   });
 
   // Custom endpoint for purchasing TMC credits via PayPal
-  app.post('/api/credits/purchase', async (req: any, res) => {
+  app.post('/api/credits/purchase', requireAuth, async (req: any, res) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-
       const { paypalOrderId } = req.body;
 
       if (!paypalOrderId) {
         return res.status(400).json({ message: 'PayPal order ID is required' });
       }
 
-      // CRITICAL: Verify the PayPal order server-side before issuing credits
+      // Verify the order was created by this application for this authenticated user
+      const [paypalOrderRecord] = await db.select().from(paypalOrders)
+        .where(and(
+          eq(paypalOrders.paypalOrderId, paypalOrderId),
+          eq(paypalOrders.userId, req.user.id)
+        ));
+
+      if (!paypalOrderRecord) {
+        return res.status(403).json({ message: 'Order not found or does not belong to this account' });
+      }
+
+      if (paypalOrderRecord.status === 'completed') {
+        return res.status(400).json({ message: 'This payment has already been processed' });
+      }
+
+      // Server-side verification with PayPal — never trust client-supplied status
       const { body: orderBody } = await (async () => {
         const { OrdersController, Client, Environment } = await import("@paypal/paypal-server-sdk");
         const useProduction = process.env.PAYPAL_ENV === 'production';
@@ -20903,7 +20914,6 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
 
       const orderData = JSON.parse(String(orderBody));
       
-      // Validate order status is COMPLETED
       if (orderData.status !== 'COMPLETED') {
         return res.status(400).json({ 
           message: 'Payment not completed',
@@ -20911,25 +20921,21 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         });
       }
 
-      // Extract payment amount from PayPal order
-      const purchaseUnit = orderData.purchase_units[0];
-      const paidAmount = parseFloat(purchaseUnit.amount.value);
-      const currency = purchaseUnit.amount.currency_code;
+      // Derive credits from the stored package, not from the raw PayPal amount
+      const [pkg] = await db.select().from(tmcCreditPackages)
+        .where(eq(tmcCreditPackages.id, paypalOrderRecord.packageId));
 
-      // Calculate credits based on payment (server-side, NOT from client)
-      // Credit pricing: $1 = 10 credits, $5 = 60 credits, $10 = 150 credits, $20 = 350 credits
-      let creditsToAdd = 0;
-      if (paidAmount >= 20) {
-        creditsToAdd = Math.floor((paidAmount / 20) * 350);
-      } else if (paidAmount >= 10) {
-        creditsToAdd = Math.floor((paidAmount / 10) * 150);
-      } else if (paidAmount >= 5) {
-        creditsToAdd = Math.floor((paidAmount / 5) * 60);
-      } else {
-        creditsToAdd = Math.floor(paidAmount * 10);
+      if (!pkg) {
+        return res.status(400).json({ message: 'Credit package not found for this order' });
       }
 
-      // Check if order was already processed to prevent double-spending
+      const creditsToAdd = (pkg.credits || 0) + (pkg.bonusCredits || 0);
+
+      if (creditsToAdd <= 0) {
+        return res.status(400).json({ message: 'Invalid credit amount for this package' });
+      }
+
+      // Check if order was already processed (idempotency guard)
       const existingTransaction = await db.select()
         .from(tmcTransactions)
         .where(sql`metadata->>'paypalOrderId' = ${paypalOrderId}`)
@@ -20942,7 +20948,9 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         });
       }
       
-      // Add credits to user
+      const paidAmount = parseFloat(paypalOrderRecord.amount);
+      const currency = paypalOrderRecord.currency || 'USD';
+
       const newBalance = await tmcCreditsService.creditUser(
         req.user.id,
         creditsToAdd,
@@ -20957,13 +20965,16 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         }
       );
 
-      // Add to cashbox revenue
       await tmcCreditsService.addCashboxRevenue(
         creditsToAdd,
         `PayPal purchase - ${paidAmount} ${currency}`,
         undefined,
         req.user.id
       );
+
+      await db.update(paypalOrders)
+        .set({ status: 'completed' })
+        .where(eq(paypalOrders.paypalOrderId, paypalOrderId));
 
       console.log(`✅ Credits purchased: ${creditsToAdd} credits for ${paidAmount} ${currency} (Order: ${paypalOrderId})`);
 
@@ -21063,6 +21074,44 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         return res.status(400).json({ message: 'Order ID is required' });
       }
 
+      // Verify the order was created by this application for this authenticated user
+      const [paypalOrderRecord] = await db.select().from(paypalOrders)
+        .where(and(
+          eq(paypalOrders.paypalOrderId, orderID),
+          eq(paypalOrders.userId, req.user.id)
+        ));
+
+      if (!paypalOrderRecord) {
+        return res.status(403).json({ message: 'Order not found or does not belong to this account' });
+      }
+
+      if (paypalOrderRecord.status === 'completed') {
+        return res.status(400).json({ message: 'Este pagamento já foi processado' });
+      }
+
+      // Resolve credits from the stored package only — no raw-amount fallback
+      const [pkg] = await db.select().from(tmcCreditPackages)
+        .where(eq(tmcCreditPackages.id, paypalOrderRecord.packageId));
+
+      if (!pkg) {
+        return res.status(400).json({ message: 'Credit package not found for this order' });
+      }
+
+      const creditsToAdd = (pkg.credits || 0) + (pkg.bonusCredits || 0);
+      if (creditsToAdd <= 0) {
+        return res.status(400).json({ message: 'Invalid credit amount for this package' });
+      }
+
+      // Idempotency guard
+      const existingTransaction = await db.select()
+        .from(tmcTransactions)
+        .where(sql`metadata->>'paypalOrderId' = ${orderID}`)
+        .limit(1);
+
+      if (existingTransaction.length > 0) {
+        return res.status(400).json({ message: 'Este pagamento já foi processado' });
+      }
+
       const { OrdersController, Client, Environment } = await import("@paypal/paypal-server-sdk");
       const useProduction = process.env.PAYPAL_ENV === 'production';
       const client = new Client({
@@ -21081,39 +21130,8 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         return res.status(400).json({ message: 'Pagamento não foi completado', status: captureData.status });
       }
 
-      const existingTransaction = await db.select()
-        .from(tmcTransactions)
-        .where(sql`metadata->>'paypalOrderId' = ${orderID}`)
-        .limit(1);
-
-      if (existingTransaction.length > 0) {
-        return res.status(400).json({ message: 'Este pagamento já foi processado' });
-      }
-
-      const [paypalOrder] = await db.select().from(paypalOrders)
-        .where(eq(paypalOrders.paypalOrderId, orderID));
-
-      let creditsToAdd = 0;
-      if (paypalOrder?.packageId) {
-        const [pkg] = await db.select().from(tmcCreditPackages)
-          .where(eq(tmcCreditPackages.id, paypalOrder.packageId));
-        if (pkg) {
-          creditsToAdd = (pkg.credits || 0) + (pkg.bonusCredits || 0);
-        }
-      }
-      
-      if (creditsToAdd === 0) {
-        const purchaseUnit = captureData.purchase_units?.[0];
-        const paidAmount = parseFloat(purchaseUnit?.amount?.value || '0');
-        if (paidAmount >= 20) creditsToAdd = Math.floor((paidAmount / 20) * 350);
-        else if (paidAmount >= 10) creditsToAdd = Math.floor((paidAmount / 10) * 150);
-        else if (paidAmount >= 5) creditsToAdd = Math.floor((paidAmount / 5) * 60);
-        else creditsToAdd = Math.floor(paidAmount * 10);
-      }
-
-      const purchaseUnit = captureData.purchase_units?.[0];
-      const paidAmount = parseFloat(purchaseUnit?.amount?.value || '0');
-      const currency = purchaseUnit?.amount?.currency_code || 'USD';
+      const paidAmount = parseFloat(paypalOrderRecord.amount);
+      const currency = paypalOrderRecord.currency || 'USD';
 
       const newBalance = await tmcCreditsService.creditUser(
         req.user.id,
@@ -21456,11 +21474,6 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
         return res.status(200).json({ received: true });
       }
 
-      const chargeStatus = notification?.charges?.[0]?.status;
-      let newStatus = 'pending';
-      if (chargeStatus === 'PAID') newStatus = 'completed';
-      else if (chargeStatus === 'DECLINED' || chargeStatus === 'CANCELED') newStatus = 'failed';
-
       let txnResult;
       if (pagbankOrderId) {
         txnResult = await db.select().from(paymentTransactions)
@@ -21472,37 +21485,71 @@ Responda com: [{ análise do medicamento 1 }, { análise do medicamento 2 }, ...
       }
       const [txn] = txnResult || [];
 
-      if (txn && txn.status !== 'completed' && newStatus === 'completed') {
-        const creditsToAdd = txn.creditsAmount;
+      if (!txn) {
+        return res.status(200).json({ received: true });
+      }
 
-        const newBalance = await tmcCreditsService.creditUser(
-          txn.userId,
-          creditsToAdd,
-          'pagbank_purchase',
-          {
-            functionUsed: 'credit_purchase',
-            paidAmount: parseFloat(txn.amount),
-            currency: 'BRL',
-            pagbankOrderId: pagbankOrderId || txn.providerOrderId,
-          }
-        );
+      if (txn.status !== 'completed') {
+        const pagbankToken = process.env.PAGBANK_TOKEN;
+        const pagbankBaseUrl = process.env.PAGBANK_SANDBOX === 'true'
+          ? 'https://sandbox.api.pagseguro.com'
+          : 'https://api.pagseguro.com';
 
-        await tmcCreditsService.addCashboxRevenue(
-          creditsToAdd,
-          `PagBank purchase - ${txn.amount} BRL`,
-          undefined,
-          txn.userId
-        );
+        if (!pagbankToken) {
+          console.error('PagBank webhook: PAGBANK_TOKEN not configured, cannot verify payment authenticity');
+          return res.status(200).json({ received: true });
+        }
 
-        await db.update(paymentTransactions)
-          .set({ status: 'completed', completedAt: new Date(), updatedAt: new Date() })
-          .where(eq(paymentTransactions.id, txn.id));
+        const orderIdToFetch = pagbankOrderId || txn.providerOrderId;
+        if (!orderIdToFetch) {
+          console.error('PagBank webhook: no order ID available for server-side verification');
+          return res.status(200).json({ received: true });
+        }
 
-        console.log(`✅ PagBank credits: ${creditsToAdd} credits for ${txn.amount} BRL (Order: ${pagbankOrderId || txn.providerOrderId})`);
-      } else if (txn && newStatus === 'failed') {
-        await db.update(paymentTransactions)
-          .set({ status: 'failed', errorMessage: chargeStatus, updatedAt: new Date() })
-          .where(eq(paymentTransactions.id, txn.id));
+        const verifyResp = await fetch(`${pagbankBaseUrl}/orders/${orderIdToFetch}`, {
+          headers: { 'Authorization': `Bearer ${pagbankToken}` },
+        });
+
+        if (!verifyResp.ok) {
+          console.error(`PagBank webhook: server-side verification failed (HTTP ${verifyResp.status}) for order ${orderIdToFetch}`);
+          return res.status(200).json({ received: true });
+        }
+
+        const verifiedOrder = await verifyResp.json() as any;
+        const verifiedChargeStatus = verifiedOrder?.charges?.[0]?.status;
+
+        if (verifiedChargeStatus === 'PAID') {
+          const creditsToAdd = txn.creditsAmount;
+
+          const newBalance = await tmcCreditsService.creditUser(
+            txn.userId,
+            creditsToAdd,
+            'pagbank_purchase',
+            {
+              functionUsed: 'credit_purchase',
+              paidAmount: parseFloat(txn.amount),
+              currency: 'BRL',
+              pagbankOrderId: orderIdToFetch,
+            }
+          );
+
+          await tmcCreditsService.addCashboxRevenue(
+            creditsToAdd,
+            `PagBank purchase - ${txn.amount} BRL`,
+            undefined,
+            txn.userId
+          );
+
+          await db.update(paymentTransactions)
+            .set({ status: 'completed', completedAt: new Date(), updatedAt: new Date() })
+            .where(eq(paymentTransactions.id, txn.id));
+
+          console.log(`✅ PagBank credits: ${creditsToAdd} credits for ${txn.amount} BRL (Order: ${orderIdToFetch})`);
+        } else if (verifiedChargeStatus === 'DECLINED' || verifiedChargeStatus === 'CANCELED') {
+          await db.update(paymentTransactions)
+            .set({ status: 'failed', errorMessage: verifiedChargeStatus, updatedAt: new Date() })
+            .where(eq(paymentTransactions.id, txn.id));
+        }
       }
 
       res.status(200).json({ received: true });
