@@ -3159,107 +3159,7 @@ ${clinicalText}`;
     }
   });
 
-  // Digital signature routes moved after requireAuth definition
-
-  // ICP-Brasil A3 Digital Signature API moved after requireAuth definition
-  app.post('/api/medical-records/:id/sign-prescription', async (req, res) => {
-    try {
-      const medicalRecordId = req.params.id;
-      const { pin, doctorName, crm, crmState } = req.body;
-      
-      // Use authenticated doctor ID or fallback to default for demo
-      const doctorId = actualDoctorId || DEFAULT_DOCTOR_ID;
-
-      // Validate required ICP-Brasil A3 authentication data
-      if (!pin || pin.length < 6) {
-        return res.status(400).json({ 
-          message: 'PIN do token A3 é obrigatório (mínimo 6 dígitos)' 
-        });
-      }
-
-      // Get medical record with prescription
-      const medicalRecord = await storage.getMedicalRecord(medicalRecordId);
-      if (!medicalRecord) {
-        return res.status(404).json({ message: 'Medical record not found' });
-      }
-
-      if (!medicalRecord.prescription) {
-        return res.status(400).json({ message: 'No prescription to sign in this medical record' });
-      }
-
-      // Create ICP-Brasil A3 certificate with enhanced compliance (used for A3 token authentication)
-      const certificateInfo = cryptoService.createICPBrasilA3Certificate(
-        doctorId,
-        doctorName || 'Dr. Médico Demo',
-        crm || '123456',
-        crmState || 'SP'
-      );
-
-      // Simulate A3 token authentication
-      try {
-        await cryptoService.authenticateA3Token(pin, certificateInfo.certificateId);
-      } catch (error) {
-        return res.status(401).json({
-          message: 'Falha na autenticação do token A3. Verifique o PIN.'
-        });
-      }
-
-      // Ensure doctor has a registered digital key for signing
-      await signatureService.registerDigitalKey(doctorId);
-
-      // Resolve patient country for registration matching
-      const patientForCountry = await storage.getPatient(medicalRecord.patientId);
-      const patientCountry = getPatientCountry(patientForCountry);
-
-      // Sign via universal signature pipeline (persists e-CPF / gov.br / registration metadata)
-      const extOptions = extractExtendedSignatureOptions(req.body, patientCountry, 'ecpf_a3');
-      const signatureId = await signatureService.signDocumentExtended(
-        'prescription',
-        medicalRecordId,
-        medicalRecord.patientId,
-        doctorId,
-        medicalRecord.prescription,
-        extOptions
-      );
-
-      const digitalSignature = await storage.getDigitalSignature(signatureId);
-      if (!digitalSignature) {
-        return res.status(500).json({ message: 'Failed to read newly created digital signature' });
-      }
-
-      // Update medical record with digital signature ID reference
-      await storage.updateMedicalRecord(medicalRecordId, {
-        digitalSignature: signatureId, // Store signature ID instead of raw signature
-      });
-
-      // Generate audit trail
-      const auditHash = cryptoService.generateAuditHash(
-        buildSignatureResultFromRecord(digitalSignature, asCertificateInfo(certificateInfo)),
-        doctorId,
-        medicalRecord.patientId
-      );
-
-      // Broadcast signature event for real-time updates
-      broadcastToDoctor(actualDoctorId || DEFAULT_DOCTOR_ID, {
-        type: 'prescription_signed',
-        data: {
-          medicalRecordId,
-          signatureId,
-          auditHash
-        }
-      });
-
-      res.status(201).json({
-        signature: digitalSignature,
-        auditHash,
-        note: 'Demo implementation - not production compliant'
-      });
-
-    } catch (error) {
-      console.error('Prescription signing error:', error);
-      res.status(500).json({ message: 'Failed to sign prescription' });
-    }
-  });
+  // ICP-Brasil A3 Digital Signature API — authenticated route registered below after requireAuth definition
 
   // Verify prescription signature
   app.get('/api/medical-records/:id/verify-signature', async (req, res) => {
@@ -15072,9 +14972,14 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
     try {
       const medicalRecordId = req.params.id;
       const { pin, doctorName, crm, crmState } = req.body;
-      
-      // Use authenticated doctor ID or fallback to default for demo
-      const doctorId = actualDoctorId || DEFAULT_DOCTOR_ID;
+
+      // Only doctors may sign prescriptions
+      if (req.user!.role !== 'doctor') {
+        return res.status(403).json({ message: 'Apenas médicos podem assinar prescrições' });
+      }
+
+      // Use the authenticated session's doctor ID — never a client-supplied or global default
+      const doctorId = req.user!.id;
 
       // Validate required ICP-Brasil A3 authentication data
       if (!pin || pin.length < 6) {
