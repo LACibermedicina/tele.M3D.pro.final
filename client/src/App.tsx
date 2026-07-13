@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import InactivityMonitor from "@/components/inactivity-monitor";
 import PostLoadEffects from "@/components/post-load-effects";
+import AutoTranslate from "@/components/auto-translate";
 import { MinimizedPanelsProvider } from "@/contexts/MinimizedPanelsContext";
 import MinimizedPanelDock from "@/components/layout/minimized-panel-dock";
 import UnifiedToolbox from "@/components/layout/unified-toolbox";
@@ -666,6 +667,7 @@ function App() {
                     <DesktopWindowManagerProvider>
                       <TooltipProvider>
                         <Toaster />
+                        <AutoTranslate />
                         <InactivityMonitor />
                         <ForceDisconnectGuard />
                         <PostLoadEffects />

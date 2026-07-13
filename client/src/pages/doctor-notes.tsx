@@ -553,10 +553,10 @@ function NoteListItem({
     >
       <div className="flex items-start gap-1">
         <div className="flex-1 min-w-0">
-          <p className={`text-sm font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
+          <p className={`text-sm font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`} data-no-translate>
             {note.title || "Sem título"}
           </p>
-          <p className="text-xs text-muted-foreground truncate mt-0.5">
+          <p className="text-xs text-muted-foreground truncate mt-0.5" data-no-translate>
             {getPreview(note.content)}
           </p>
           <p className="text-[10px] text-muted-foreground/60 mt-1">

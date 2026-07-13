@@ -274,7 +274,7 @@ export default function PatientAgenda() {
                               {note.title}
                             </h3>
                           )}
-                          <p className="text-gray-700 whitespace-pre-wrap">{note.content}</p>
+                          <p className="text-gray-700 whitespace-pre-wrap" data-no-translate>{note.content}</p>
                           <div className="flex items-center gap-2 mt-3">
                             <Badge variant="outline" className="text-xs">
                               {format(new Date(note.createdAt), "HH:mm", { locale: ptBR })}

@@ -566,7 +566,7 @@ export default function WhatsApp() {
                                 <span className="text-xs font-medium text-muted-foreground">Paciente</span>
                               </div>
                             )}
-                            <p className="text-sm" data-testid={`message-text-${message.id}`}>
+                            <p className="text-sm" data-no-translate data-testid={`message-text-${message.id}`}>
                               {message.message}
                             </p>
                             <p className={`text-xs mt-1 ${

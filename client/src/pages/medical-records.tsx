@@ -346,7 +346,7 @@ export default function MedicalRecords() {
             </div>
           </div>
         ) : (
-          <p className="text-sm whitespace-pre-wrap">{value || '—'}</p>
+          <p className="text-sm whitespace-pre-wrap" data-no-translate>{value || '—'}</p>
         )}
       </div>
     );

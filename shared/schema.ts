@@ -2212,6 +2212,25 @@ export const insertUserNoteSchema = createInsertSchema(userNotes).omit({ id: tru
 export type InsertUserNote = z.infer<typeof insertUserNoteSchema>;
 export type UserNote = typeof userNotes.$inferSelect;
 
+// UI translation cache — persistent store of AI-translated interface text
+// segments (Brazilian Portuguese source → target language), keyed by
+// SHA-256 hash of the source text + target language so repeated page loads
+// never re-hit the AI providers.
+export const uiTranslations = pgTable("ui_translations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  sourceHash: text("source_hash").notNull(),
+  targetLang: text("target_lang").notNull(),
+  sourceText: text("source_text").notNull(),
+  translatedText: text("translated_text").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  hashLangUnique: uniqueIndex("ui_translations_hash_lang_unique").on(table.sourceHash, table.targetLang),
+}));
+
+export const insertUiTranslationSchema = createInsertSchema(uiTranslations).omit({ id: true, createdAt: true });
+export type InsertUiTranslation = z.infer<typeof insertUiTranslationSchema>;
+export type UiTranslation = typeof uiTranslations.$inferSelect;
+
 // TMC system types
 export interface TmcBalance {
   userId: string;

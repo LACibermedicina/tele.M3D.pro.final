@@ -10714,6 +10714,55 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
     }
   });
 
+  // Batch UI segment translation (auto page translation engine).
+  // Public (landing/login pages need it) but strictly rate-limited and
+  // size-capped so it cannot be abused for AI cost/DoS.
+  const translateRateBuckets = new Map<string, { count: number; resetAt: number }>();
+  const TRANSLATE_RATE_LIMIT = 30; // requests per minute per IP
+  app.post('/api/ai/translate-batch', async (req, res) => {
+    try {
+      const now = Date.now();
+      const ip = req.ip || req.socket.remoteAddress || 'unknown';
+      const bucket = translateRateBuckets.get(ip);
+      if (!bucket || now > bucket.resetAt) {
+        translateRateBuckets.set(ip, { count: 1, resetAt: now + 60_000 });
+      } else if (++bucket.count > TRANSLATE_RATE_LIMIT) {
+        return res.status(429).json({ error: 'Too many translation requests' });
+      }
+      if (translateRateBuckets.size > 10000) {
+        translateRateBuckets.forEach((v, k) => {
+          if (now > v.resetAt) translateRateBuckets.delete(k);
+        });
+      }
+
+      const { segments, targetLang } = req.body;
+      const validLangs = ['en', 'es', 'fr', 'de', 'it', 'zh', 'gn'];
+      if (typeof targetLang !== 'string' || !validLangs.includes(targetLang)) {
+        return res.status(400).json({ error: 'Unsupported target language' });
+      }
+      if (!Array.isArray(segments) || segments.length === 0 || segments.length > 100) {
+        return res.status(400).json({ error: 'segments must be an array of 1-100 strings' });
+      }
+      let totalChars = 0;
+      for (const s of segments) {
+        if (typeof s !== 'string' || s.length === 0 || s.length > 600) {
+          return res.status(400).json({ error: 'Each segment must be a string of 1-600 characters' });
+        }
+        totalChars += s.length;
+      }
+      if (totalChars > 15000) {
+        return res.status(400).json({ error: 'Batch too large' });
+      }
+
+      const { translateSegments } = await import('./services/translation-service');
+      const translations = await translateSegments(segments, targetLang);
+      res.json({ translations });
+    } catch (error: any) {
+      console.error('Batch translation endpoint error:', error);
+      res.status(500).json({ error: 'Translation failed' });
+    }
+  });
+
   // ===== AI ANALYSIS ENDPOINTS =====
   
   // Simplified symptom analysis endpoint

@@ -418,8 +418,8 @@ export default function DoctorChat() {
                                 : 'bg-muted'
                             }`}
                           >
-                            <p className="text-sm font-semibold mb-1">{msg.senderName}</p>
-                            <p className="text-sm">{msg.content}</p>
+                            <p className="text-sm font-semibold mb-1" data-no-translate>{msg.senderName}</p>
+                            <p className="text-sm" data-no-translate>{msg.content}</p>
                             <p className="text-xs opacity-70 mt-1">
                               {format(new Date(msg.timestamp), 'HH:mm')}
                             </p>

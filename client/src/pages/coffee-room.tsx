@@ -320,7 +320,7 @@ export default function CoffeeRoom() {
                                 {msg.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
-                            <p className="text-sm bg-muted px-3 py-2 rounded-lg">{msg.text}</p>
+                            <p className="text-sm bg-muted px-3 py-2 rounded-lg" data-no-translate>{msg.text}</p>
                           </div>
                         ))
                       )}

@@ -607,7 +607,7 @@ export default function IncompleteConsultations() {
                               <BookOpen className="h-4 w-4 text-purple-500" />
                               Transcrição
                             </h4>
-                            <div className="bg-muted/50 p-3 rounded-lg text-sm whitespace-pre-wrap">
+                            <div className="bg-muted/50 p-3 rounded-lg text-sm whitespace-pre-wrap" data-no-translate>
                               {transcriptions.map((t) => t.content).join("\n")}
                             </div>
                           </div>
