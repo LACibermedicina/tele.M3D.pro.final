@@ -5,3 +5,5 @@ server/public
 vite.config.ts.*
 *.tar.gz
 .db-config
+# Installer-persisted secrets (managed via /instalar)
+.installer/
