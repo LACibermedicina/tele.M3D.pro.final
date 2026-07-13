@@ -2,3 +2,4 @@
 - [Architect tool budget block](architect-budget-block.md) — in this repo the code_review architect's base context (~53k) exceeds its fixed ~49k prompt budget, so it errors regardless of how small your input is; don't burn attempts.
 - [AI auto-translate layer](ai-auto-translate-layer.md) — new clinical UI must carry data-no-translate (PHI never sent to AI); never skip via [translate="no"]; first visit ~10s is normal, cache repeats ~50ms.
 - [Replit OpenAI proxy validation](replit-openai-proxy-validation.md) — the AI-integrations proxy returns 405 on GET /models even with valid creds; only 401/403 means broken auth.
+- [GitHub backup snapshot model](github-backup-snapshot.md) — remote main is a snapshot chain, NOT local history (183MB PDF blocks any history push); update via commit-tree parented on remote tip.

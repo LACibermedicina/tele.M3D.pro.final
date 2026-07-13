@@ -3,12 +3,12 @@ set -euo pipefail
 
 #===============================================================================
 #  Tele<M3D> Pro v3.5 — Instalador para Servidor Externo
-#  Repositório: https://github.com/LACibermedicina/tele.M3D.pro
+#  Repositório: https://github.com/LACibermedicina/tele.M3D.pro.final
 #
 #  Uso:
-#    curl -fsSL https://raw.githubusercontent.com/LACibermedicina/tele.M3D.pro/main/install.sh | bash
+#    curl -fsSL https://raw.githubusercontent.com/LACibermedicina/tele.M3D.pro.final/main/install.sh | bash
 #    ou
-#    wget -qO- https://raw.githubusercontent.com/LACibermedicina/tele.M3D.pro/main/install.sh | bash
+#    wget -qO- https://raw.githubusercontent.com/LACibermedicina/tele.M3D.pro.final/main/install.sh | bash
 #
 #  Requisitos: Ubuntu 20.04+ / Debian 11+ (ou derivados)
 #  Instala: Node.js 20, PostgreSQL 16, Nginx, Certbot, PM2
@@ -33,7 +33,7 @@ set -euo pipefail
 #    - Multilíngue (PT, EN, ES, FR, DE, IT, ZH, GN)
 #===============================================================================
 
-REPO_URL="https://github.com/LACibermedicina/tele.M3D.pro.git"
+REPO_URL="https://github.com/LACibermedicina/tele.M3D.pro.final.git"
 APP_DIR="/opt/telemed3"
 APP_USER="telemed3"
 NODE_VERSION="20"

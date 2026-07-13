@@ -219,8 +219,8 @@ npm run dev`} />
                     <Badge variant="outline">1</Badge>
                     Clonar e Instalar
                   </h3>
-                  <CodeBlock title="Terminal" code={`git clone https://github.com/LACibermedicina/tele.M3D.pro.git
-cd tele.M3D.pro
+                  <CodeBlock title="Terminal" code={`git clone https://github.com/LACibermedicina/tele.M3D.pro.final.git
+cd tele.M3D.pro.final
 
 npm install`} />
                 </div>
@@ -458,7 +458,7 @@ echo "============================================"`} />
                   <p className="text-sm text-green-700 dark:text-green-300 mb-3">
                     Copie e execute o comando abaixo no terminal do seu servidor Ubuntu/Debian como root. O script instala tudo automaticamente: Node.js, PostgreSQL, Nginx, SSL, PM2 e a aplicação completa com todos os módulos.
                   </p>
-                  <CodeBlock title="Executar no servidor (como root)" code={`curl -fsSL https://raw.githubusercontent.com/LACibermedicina/tele.M3D.pro/main/install.sh | sudo bash`} />
+                  <CodeBlock title="Executar no servidor (como root)" code={`curl -fsSL https://raw.githubusercontent.com/LACibermedicina/tele.M3D.pro.final/main/install.sh | sudo bash`} />
                   <p className="text-xs text-green-600 dark:text-green-400 mt-2">
                     O script clona o repositório do GitHub, configura o banco de dados, compila a aplicação e inicia o serviço com PM2. Inclui todos os módulos: farmácia, PMD, assinatura digital, pagamentos (PayPal/Stripe/PIX), ` + (isAdmin ? 'triagem IA, IAM3D' : 'triagem automatizada, assistente de voz') + `, equipes médicas, avaliação de consultas e suporte multilíngue.
                   </p>

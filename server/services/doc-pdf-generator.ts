@@ -1122,8 +1122,8 @@ PHARMACY_ENABLED=true
 PMD_AUDIT_ENABLED=true</div>
 
 <h3>13.3 Instalação Rápida</h3>
-<div class="code">git clone https://github.com/LACibermedicina/tele.M3D.pro.git
-cd tele.M3D.pro
+<div class="code">git clone https://github.com/LACibermedicina/tele.M3D.pro.final.git
+cd tele.M3D.pro.final
 npm install
 npm run dev</div>
 
@@ -1238,7 +1238,7 @@ npm run dev</div>
 
 <div class="footer">
   <p>Tele&lt;M3D&gt; Pro v3.0 — Documentação Gerada em ${today}</p>
-  <p>Cybermedicina Ltda. — github.com/LACibermedicina/tele.M3D.pro</p>
+  <p>Cybermedicina Ltda. — github.com/LACibermedicina/tele.M3D.pro.final</p>
 </div>
 
 <div class="no-print" style="text-align:center;margin-top:40px;padding:20px">
