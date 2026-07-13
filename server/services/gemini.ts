@@ -8,6 +8,13 @@ import { getECGConfig, getRadiologyConfig, buildECGPrompt, buildRadiologyPrompt,
 let genAI: GoogleGenerativeAI | null = null;
 let openaiClient: OpenAI | null = null;
 
+// Called by the /instalar installer after credentials change so the cached
+// clients are rebuilt from the new environment on next use.
+export function resetGeminiClients(): void {
+  genAI = null;
+  openaiClient = null;
+}
+
 function getGeminiClient(): GoogleGenerativeAI {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY environment variable is not configured.');

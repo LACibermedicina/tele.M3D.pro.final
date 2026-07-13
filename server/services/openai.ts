@@ -4,6 +4,12 @@ import OpenAI from "openai";
 // Lazy initialization to prevent crashes when API key is missing
 let openai: OpenAI | null = null;
 
+// Called by the /instalar installer after credentials change so the cached
+// client is rebuilt from the new environment on next use.
+export function resetOpenAIClient(): void {
+  openai = null;
+}
+
 function getOpenAIClient(): OpenAI {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY environment variable is not configured. Please add it to your deployment configuration.');

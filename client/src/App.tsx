@@ -75,6 +75,7 @@ const ConsultationAccess = lazy(() => import("@/pages/consultation-access"));
 const Manual = lazy(() => import("@/pages/manual"));
 const FAQ = lazy(() => import("@/pages/faq"));
 const Installation = lazy(() => import("@/pages/installation"));
+const Instalar = lazy(() => import("@/pages/instalar"));
 const Broker = lazy(() => import("@/pages/broker"));
 const ClinicsPage = lazy(() => import("@/pages/clinics"));
 const Reports = lazy(() => import("@/pages/reports"));
@@ -270,6 +271,11 @@ function Router() {
             <Header />
             <Installation />
           </ProtectedRoute>
+        </Route>
+        {/* Installer/diagnostics — public route; the page itself requires
+            admin login once the system is installed (server-enforced). */}
+        <Route path="/instalar">
+          <Instalar />
         </Route>
         
         {/* Public homepage - accessible to all including visitors */}

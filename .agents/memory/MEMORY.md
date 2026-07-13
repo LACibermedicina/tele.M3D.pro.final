@@ -1,3 +1,4 @@
 - [esbuild/vite security coupling](esbuild-vite-security-coupling.md) — clearing the esbuild HIGH advisory (needs 0.28.1) forces a vite 7 + plugin-react 5 + @types/node 20.19 upgrade; vite 5.4 pins esbuild <0.22.
 - [Architect tool budget block](architect-budget-block.md) — in this repo the code_review architect's base context (~53k) exceeds its fixed ~49k prompt budget, so it errors regardless of how small your input is; don't burn attempts.
 - [AI auto-translate layer](ai-auto-translate-layer.md) — new clinical UI must carry data-no-translate (PHI never sent to AI); never skip via [translate="no"]; first visit ~10s is normal, cache repeats ~50ms.
+- [Replit OpenAI proxy validation](replit-openai-proxy-validation.md) — the AI-integrations proxy returns 405 on GET /models even with valid creds; only 401/403 means broken auth.

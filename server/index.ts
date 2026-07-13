@@ -1,3 +1,7 @@
+// Must be the very first import: loads installer-persisted secrets into
+// process.env (env vars keep priority) before any module reads credentials
+// at import time (e.g. ./paypal via ./routes).
+import "./installerEnv";
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import fs from "fs";
@@ -61,6 +65,7 @@ const SPA_ROUTE_PATTERNS: RegExp[] = [
   /^\/clinics$/,
   /^\/fhir-dashboard$/,
   /^\/installation$/,
+  /^\/instalar$/,
 ];
 
 function isKnownSpaRoute(pathname: string): boolean {

@@ -1,9 +1,14 @@
 import AgoraToken from 'agora-token';
 const { RtcTokenBuilder, RtcRole } = AgoraToken;
 
-const AGORA_APP_ID = process.env.AGORA_APP_ID || '';
-const AGORA_APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE || '';
-
+// Read at call time so credentials configured at runtime (via /instalar)
+// take effect without a server restart.
+function getAgoraCredentials(): { appId: string; appCertificate: string } {
+  return {
+    appId: process.env.AGORA_APP_ID || '',
+    appCertificate: process.env.AGORA_APP_CERTIFICATE || '',
+  };
+}
 
 export interface AgoraTokenConfig {
   channelName: string;
@@ -14,8 +19,9 @@ export interface AgoraTokenConfig {
 
 export function generateAgoraToken(config: AgoraTokenConfig): string {
   const { channelName, uid, role, expirationTimeInSeconds = 3600 } = config;
-  
-  if (!AGORA_APP_ID || !AGORA_APP_CERTIFICATE) {
+  const { appId, appCertificate } = getAgoraCredentials();
+
+  if (!appId || !appCertificate) {
     throw new Error('Agora credentials not configured. Please set AGORA_APP_ID and AGORA_APP_CERTIFICATE.');
   }
 
@@ -25,8 +31,8 @@ export function generateAgoraToken(config: AgoraTokenConfig): string {
   const agoraRole = role === 'publisher' ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
 
   const token = RtcTokenBuilder.buildTokenWithUid(
-    AGORA_APP_ID,
-    AGORA_APP_CERTIFICATE,
+    appId,
+    appCertificate,
     channelName,
     uid,
     agoraRole,
@@ -38,5 +44,5 @@ export function generateAgoraToken(config: AgoraTokenConfig): string {
 }
 
 export function getAgoraAppId(): string {
-  return AGORA_APP_ID;
+  return getAgoraCredentials().appId;
 }

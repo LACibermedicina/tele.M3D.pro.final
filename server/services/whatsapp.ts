@@ -51,6 +51,14 @@ export class WhatsAppService {
     this.adminPhoneNumberId = '';
   }
 
+  // Called by the /instalar installer after credentials change so the
+  // service picks up the new environment without a server restart.
+  reloadFromEnv() {
+    this.accessToken = process.env.WHATSAPP_ACCESS_TOKEN || '';
+    this.phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+    this.webhookVerifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || '';
+  }
+
   setAdminSenderNumber(phoneNumberId: string) {
     this.adminPhoneNumberId = phoneNumberId;
   }

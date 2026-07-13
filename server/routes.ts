@@ -89,6 +89,7 @@ import { z } from "zod";
 import { db } from "./db";
 import { eq, desc, sql, and, or, isNotNull, isNull, inArray, gte, lte, lt, ne, ilike, type SQL } from "drizzle-orm";
 import { generateAgoraToken, getAgoraAppId } from "./agora";
+import { registerInstallerRoutes } from "./installer";
 
 // TMC Credit System Validation Schemas
 const tmcTransferSchema = z.object({
@@ -383,7 +384,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   });
-  
+
+  // Installer & diagnostics page (/instalar) API. Registered after the global
+  // JWT-cookie middleware so req.user is available for admin gating.
+  registerInstallerRoutes(app, {
+    runBootRoutines: async (report) => {
+      const routines: Array<[string, () => Promise<unknown>]> = [
+        ['Colunas de plantão', migrateOnDutyColumns],
+        ['Tabelas de equipes médicas', migrateMedicalTeamsTables],
+        ['Tabela de interconsultas', migrateInterConsultationsTable],
+        ['Tabelas de farmácia', migratePharmacyTables],
+        ['Colunas PMD', migratePMDColumns],
+        ['Bloqueios médico-paciente', migrateDoctorPatientBlocks],
+        ['Transações de pagamento', migratePaymentTransactions],
+        ['Tabelas de clínicas', migrateClinicTables],
+        ['Campos de desativação de usuário', migrateUserDeactivationFields],
+        ['Tabelas FHIR', migrateFhirTables],
+        ['Colunas de pós-consulta', migratePostConsultationEditColumns],
+        ['Tabela de prontuários SUS', migrateSusProntuariosTable],
+        ['Colunas de resumo do paciente', migratePatientFriendlyColumns],
+        ['Tabela de notas do usuário', migrateUserNotesTable],
+        ['Ativos clínicos privados', migrateClinicalAssetsToPrivate],
+        ['Campos de uso do usuário', migrateUserUsageFields],
+        ['Configurações padrão do sistema', initializeDefaultSystemSettings],
+        ['Pacotes de créditos e custos', initializeCreditPackagesAndCosts],
+      ];
+      for (const [name, fn] of routines) {
+        try {
+          await fn();
+          report(name, true);
+        } catch (error: any) {
+          report(name, false, error?.message || 'falhou');
+        }
+      }
+    },
+  });
+
   // WebSocket server for real-time updates with authentication
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
