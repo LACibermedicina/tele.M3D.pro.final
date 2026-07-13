@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAccessModality } from "@/contexts/AccessModalityContext";
 import { IAM3DVoiceAssistant } from "@/components/iam3d/voice-assistant";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings, Send, Sparkles, Mic, MicOff, Volume2, VolumeX, Languages, Contrast } from "lucide-react";
+import { LogOut, Settings, Send, Sparkles, Mic, MicOff, Volume2, VolumeX, Contrast } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import LanguageSelector from "@/components/ui/language-selector";
 
 const EXIT_PHRASES_PROFESSIONAL = [
   "voltar para profissional",
@@ -32,7 +32,6 @@ const EXIT_PHRASES_CLASSIC = [
 export function AssistedLayout() {
   const { user, logout } = useAuth();
   const { setModality } = useAccessModality();
-  const { i18n } = useTranslation();
   const [, setLocation] = useLocation();
 
   const [voiceOpen] = useState(true);
@@ -124,13 +123,6 @@ export function AssistedLayout() {
     setPrompt("");
   };
 
-  const cycleLanguage = () => {
-    const order = ["pt", "en", "es"];
-    const idx = order.indexOf(i18n.language?.split("-")[0] || "pt");
-    const next = order[(idx + 1) % order.length];
-    void i18n.changeLanguage(next);
-  };
-
   return (
     <>
       {/* Minimal top bar — always present */}
@@ -146,17 +138,12 @@ export function AssistedLayout() {
           )}
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-white/80 hover:text-white hover:bg-white/10 h-8 px-2"
-            onClick={cycleLanguage}
-            title="Alternar idioma"
-            data-testid="button-assisted-language"
-          >
-            <Languages className="w-4 h-4 mr-1" />
-            <span className="text-xs uppercase">{(i18n.language || "pt").split("-")[0]}</span>
-          </Button>
+          <div data-testid="button-assisted-language">
+            <LanguageSelector
+              triggerClassName="h-8 w-8 text-white/80 hover:text-white hover:bg-white/10"
+              contentClassName="z-[10002]"
+            />
+          </div>
           <Button
             size="sm"
             variant="ghost"

@@ -8,8 +8,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { supportedLanguages } from '@/i18n/config';
+import { cn } from '@/lib/utils';
 
-export default function LanguageSelector() {
+interface LanguageSelectorProps {
+  triggerClassName?: string;
+  contentClassName?: string;
+}
+
+export default function LanguageSelector({ triggerClassName, contentClassName }: LanguageSelectorProps = {}) {
   const { i18n, t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -33,7 +39,7 @@ export default function LanguageSelector() {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="w-10 h-10 flex items-center justify-center hover:bg-accent hover:text-accent-foreground"
+          className={cn("w-10 h-10 flex items-center justify-center hover:bg-accent hover:text-accent-foreground", triggerClassName)}
           data-testid="language-selector-trigger"
         >
           <span className="text-xl" role="img" aria-label={`${currentLanguage.name} flag`}>
@@ -42,7 +48,7 @@ export default function LanguageSelector() {
         </Button>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className={cn("w-48", contentClassName)}>
         {Object.entries(supportedLanguages).map(([code, language]) => (
           <DropdownMenuItem
             key={code}

@@ -626,7 +626,7 @@ export default function Header() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const topLoginBar = !user && !isMobileView ? (
+  const topLoginBar = !user ? (
     <div className="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-700 shadow-lg" data-testid="top-login-bar">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-12">
@@ -643,7 +643,7 @@ export default function Header() {
             </Link>
             <span className="text-white/80 text-sm font-medium hidden sm:inline">Tele&lt;M3D&gt;</span>
           </div>
-          <form onSubmit={handleQuickLogin} className="flex items-center space-x-2 bg-white/5 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/10">
+          <form onSubmit={handleQuickLogin} className="hidden md:flex items-center space-x-2 bg-white/5 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/10">
             <input
               type="text"
               value={loginEmail}
@@ -677,19 +677,19 @@ export default function Header() {
             </button>
           </form>
           <div className="flex items-center space-x-2">
-            <Link href="/documentation">
+            <Link href="/documentation" className="hidden md:inline-flex">
               <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 text-xs">
                 <BookOpen className="h-3.5 w-3.5 mr-1" />
                 Documentação
               </Button>
             </Link>
-            <Link href="/manual">
+            <Link href="/manual" className="hidden md:inline-flex">
               <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 text-xs">
                 <FileText className="h-3.5 w-3.5 mr-1" />
                 Manual
               </Button>
             </Link>
-            <Link href="/faq">
+            <Link href="/faq" className="hidden md:inline-flex">
               <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/10 text-xs">
                 <HelpCircle className="h-3.5 w-3.5 mr-1" />
                 FAQ

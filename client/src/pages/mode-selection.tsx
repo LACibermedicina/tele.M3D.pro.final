@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Smartphone, Tablet, Monitor, BookOpen, Star, Sparkles, Briefcase, Minimize2 } from "lucide-react";
+import LanguageSelector from "@/components/ui/language-selector";
 import { useAccessModality, AccessModality } from "@/contexts/AccessModalityContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -77,7 +78,10 @@ export default function ModeSelection() {
   if (hasChosenMode && !allowRevisit) return null;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
+    <div className="relative min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
+      <div className="absolute top-4 right-4 z-10">
+        <LanguageSelector />
+      </div>
       <div className="w-full max-w-3xl space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-2xl md:text-3xl font-bold">

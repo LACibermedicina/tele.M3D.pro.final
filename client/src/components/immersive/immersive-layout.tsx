@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import LanguageSelector from "@/components/ui/language-selector";
 
 interface ChatMessage {
   id: string;
@@ -351,6 +352,7 @@ export function ImmersiveLayout() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <LanguageSelector triggerClassName="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10" />
           <Button
             variant="ghost"
             size="icon"
