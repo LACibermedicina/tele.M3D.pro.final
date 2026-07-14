@@ -115,8 +115,9 @@ export function ImmersiveLanding() {
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/80 via-slate-950/60 to-slate-900/85" />
       </div>
 
-      {/* Language selector */}
-      <div className="absolute top-4 right-4 z-10">
+      {/* Language selector — z-20 keeps it above the full-screen content
+          container below (relative z-10), which would otherwise intercept clicks */}
+      <div className="absolute top-4 right-4 z-20">
         <LanguageSelector />
       </div>
 
