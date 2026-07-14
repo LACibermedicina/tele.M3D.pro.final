@@ -793,6 +793,7 @@ export default function Header() {
             </TooltipProvider>
           )}
           <div className="w-8 border-t border-white/20 my-1" />
+          <LanguageSelector triggerClassName="w-10 h-10 rounded-xl text-white/70 hover:text-white hover:bg-white/10" />
           {user && (
             <TooltipProvider>
               <Tooltip>
@@ -879,6 +880,7 @@ export default function Header() {
                   <div className="h-8 w-px bg-slate-600/50 shrink-0" />
 
                   <div className="flex items-center gap-2 shrink-0">
+                    <LanguageSelector triggerClassName="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10" />
                     {user.role !== 'visitor' && creditData !== undefined && (
                       <Link href="/wallet">
                         <Badge className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-2 py-0.5 text-[10px] font-semibold hover:from-amber-600 hover:to-orange-600 transition-all flex items-center gap-1">
@@ -983,6 +985,7 @@ export default function Header() {
               <InlineQuickActions userRole={user.role} />
               <InlineTrayIcons />
               <div className="h-6 w-px bg-white/20 mx-1" />
+              <LanguageSelector triggerClassName="w-7 h-7 rounded-lg text-white/70 hover:text-white hover:bg-white/10" />
               <Link href="/profile">
                 <Avatar className="w-7 h-7 cursor-pointer">
                   <AvatarFallback className="text-white font-semibold text-[9px]" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
