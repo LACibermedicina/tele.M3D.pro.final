@@ -48,7 +48,7 @@ export default function LanguageSelector({ triggerClassName, contentClassName }:
         </Button>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className={cn("w-48", contentClassName)}>
+      <DropdownMenuContent align="end" className={cn("w-48 z-[10050]", contentClassName)}>
         {Object.entries(supportedLanguages).map(([code, language]) => (
           <DropdownMenuItem
             key={code}

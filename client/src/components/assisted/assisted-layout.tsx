@@ -141,7 +141,6 @@ export function AssistedLayout() {
           <div data-testid="button-assisted-language">
             <LanguageSelector
               triggerClassName="h-8 w-8 text-white/80 hover:text-white hover:bg-white/10"
-              contentClassName="z-[10002]"
             />
           </div>
           <Button
