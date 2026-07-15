@@ -97,6 +97,7 @@ import { VoiceAssistantOverlay } from "@/components/voice-assistant-overlay";
 import DesktopBackground from "@/components/layout/desktop-background";
 import { DesktopWindowManagerProvider } from "@/contexts/DesktopWindowManagerContext";
 import DesktopWindowLayer, { isWindowedRoute } from "@/components/layout/desktop-window-layer";
+import { FullscreenPageClose } from "@/components/layout/header-quick-controls";
 import { ViewModeProvider, useViewMode } from "@/contexts/ViewModeContext";
 import { AccessModalityProvider, useAccessModality } from "@/contexts/AccessModalityContext";
 import { AssistedLayout } from "@/components/assisted/assisted-layout";
@@ -185,6 +186,7 @@ function Router() {
       />
 
       {!isDesktopWindowed && <div data-page-content={!isInVideoConsultation ? "" : undefined}>
+      {!isInVideoConsultation && !isImmersiveMode && <FullscreenPageClose />}
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" /></div>}>
       <Switch>
         {/* Public routes */}

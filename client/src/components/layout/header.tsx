@@ -24,8 +24,7 @@ import { useVoiceAssistant } from "@/contexts/VoiceAssistantContext";
 import { useLayoutSettings } from "@/contexts/LayoutSettingsContext";
 import DockableNavBar from "@/components/layout/dockable-nav-bar";
 import { InlineTrayIcons } from "@/components/layout/minimized-panel-dock";
-import { InlineTrayAnalysisButtons } from "@/components/ui/draggable-widget-buttons";
-import { InlineQuickActions } from "@/components/quick-actions-bar";
+import { OfficeToggleButton, PatientShortcutIcons } from "@/components/layout/header-quick-controls";
 import { useDesktopWindowManager, type DesktopWindow as DWin } from "@/contexts/DesktopWindowManagerContext";
 
 function DesktopTaskbarWindows() {
@@ -794,13 +793,7 @@ export default function Header() {
           <div className="w-8 border-t border-white/20 my-1" />
           <TooltipProvider>
             <div className="w-full flex flex-col items-center gap-0.5">
-              <InlineTrayAnalysisButtons userRole={user.role} />
-            </div>
-            <div className="w-6 border-t border-white/10 my-0.5" />
-            <div className="w-full flex flex-col items-center gap-0.5">
-              <InlineQuickActions userRole={user.role} />
-            </div>
-            <div className="w-full flex flex-col items-center gap-0.5">
+              <PatientShortcutIcons tooltipSide={tooltipSide} triggerClassName="w-10 h-10 rounded-xl" />
               <InlineTrayIcons />
             </div>
           </TooltipProvider>
@@ -822,6 +815,7 @@ export default function Header() {
             </TooltipProvider>
           )}
           <div className="w-8 border-t border-white/20 my-1" />
+          <OfficeToggleButton tooltipSide={tooltipSide} triggerClassName="w-10 h-10 rounded-xl" />
           <LanguageSelector triggerClassName="w-10 h-10 rounded-xl text-white/70 hover:text-white hover:bg-white/10" />
           {user && (
             <TooltipProvider>
@@ -899,9 +893,7 @@ export default function Header() {
 
                   <div className="flex-1 flex items-center gap-1.5 overflow-x-auto px-1 scrollbar-none">
                     <TooltipProvider>
-                      <InlineTrayAnalysisButtons userRole={user.role} />
-                      <div className="h-6 w-px bg-slate-600/40 shrink-0" />
-                      <InlineQuickActions userRole={user.role} />
+                      <PatientShortcutIcons tooltipSide="top" triggerClassName="w-8 h-8 rounded-lg" />
                       <InlineTrayIcons />
                     </TooltipProvider>
                   </div>
@@ -909,6 +901,7 @@ export default function Header() {
                   <div className="h-8 w-px bg-slate-600/50 shrink-0" />
 
                   <div className="flex items-center gap-2 shrink-0">
+                    <OfficeToggleButton tooltipSide="top" triggerClassName="w-8 h-8 rounded-lg" />
                     <LanguageSelector triggerClassName="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10" />
                     {user.role !== 'visitor' && creditData !== undefined && (
                       <Link href="/wallet">
@@ -940,6 +933,20 @@ export default function Header() {
                         <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive"><LogOut className="mr-2 h-4 w-4" />{t("auth.logout")}</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={handleLogout}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                            data-testid="button-logout-direct-bottom"
+                          >
+                            <LogOut className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top"><p>Sair</p></TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
               </div>
@@ -1009,11 +1016,10 @@ export default function Header() {
           {user && (
             <>
               <div className="h-6 w-px bg-white/20 mx-1" />
-              <InlineTrayAnalysisButtons userRole={user.role} />
-              <div className="h-6 w-px bg-white/20 mx-0.5" />
-              <InlineQuickActions userRole={user.role} />
+              <PatientShortcutIcons tooltipSide="bottom" triggerClassName="w-7 h-7 rounded-lg" iconClassName="h-3.5 w-3.5" />
               <InlineTrayIcons />
               <div className="h-6 w-px bg-white/20 mx-1" />
+              <OfficeToggleButton tooltipSide="bottom" triggerClassName="w-7 h-7 rounded-lg" iconClassName="h-3.5 w-3.5" />
               <LanguageSelector triggerClassName="w-7 h-7 rounded-lg text-white/70 hover:text-white hover:bg-white/10" />
               <Link href="/profile">
                 <Avatar className="w-7 h-7 cursor-pointer">
@@ -1470,12 +1476,12 @@ export default function Header() {
           </TooltipProvider>
 
           {user && (
-            <div className="hidden md:flex items-center gap-1 mx-2">
+            <div className="flex items-center gap-1 mx-1 md:mx-2">
               <TooltipProvider>
-                <InlineTrayAnalysisButtons userRole={user.role} />
-                <div className="h-6 w-px bg-slate-600/30 mx-0.5" />
-                <InlineQuickActions userRole={user.role} />
-                <InlineTrayIcons />
+                <PatientShortcutIcons tooltipSide="bottom" />
+                <div className="hidden md:flex items-center gap-1">
+                  <InlineTrayIcons />
+                </div>
               </TooltipProvider>
             </div>
           )}
@@ -1665,6 +1671,8 @@ export default function Header() {
             
             <LanguageSelector />
 
+            {user && <OfficeToggleButton tooltipSide="bottom" />}
+
             {hasDecided && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1772,11 +1780,11 @@ export default function Header() {
                       variant="ghost"
                       size="sm"
                       onClick={handleLogout}
-                      className="hidden md:flex items-center gap-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-2 py-1 h-8 rounded-lg transition-colors"
+                      className="flex items-center gap-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-2 py-1 h-8 rounded-lg transition-colors"
                       data-testid="button-header-logout-direct"
                     >
                       <LogOut className="w-3.5 h-3.5" />
-                      <span className="text-xs font-medium">Sair</span>
+                      <span className="hidden md:inline text-xs font-medium">Sair</span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Encerrar sessão</TooltipContent>
