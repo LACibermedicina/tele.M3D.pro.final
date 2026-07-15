@@ -117,8 +117,10 @@ export default function ConsultationSession() {
     },
   });
 
-  // Generate Agora token
-  const { data: agoraConfig } = useQuery<{
+  // Generate Agora token. The server resolves any identifier (session id,
+  // consultation-request id, appointment id) to the canonical room, so the
+  // video can connect even when no collaborative session record exists.
+  const { data: agoraConfig, isLoading: isTokenLoading } = useQuery<{
     token: string;
     appId: string;
     channelName: string;
@@ -259,7 +261,7 @@ export default function ConsultationSession() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  if (isLoading) {
+  if (isLoading || (!session && isTokenLoading)) {
     return (
       <div className="min-h-screen bg-background p-4">
         <Skeleton className="h-96 w-full" />
@@ -267,7 +269,9 @@ export default function ConsultationSession() {
     );
   }
 
-  if (!session) {
+  // Only give up when neither a session record nor a video room could be
+  // resolved for this identifier.
+  if (!session && !agoraConfig) {
     return (
       <div className="min-h-screen bg-background p-4">
         <Card>
@@ -280,7 +284,7 @@ export default function ConsultationSession() {
   }
 
   const isDoctor = user?.role === 'doctor';
-  const invitedSpecialists = session.invitedSpecialists || [];
+  const invitedSpecialists = session?.invitedSpecialists || [];
 
   return (
     <div className="min-h-screen bg-background">

@@ -18,6 +18,8 @@ interface UpcomingAppointment {
   doctorName?: string;
   scheduledDate?: string;
   status: string;
+  videoConsultationId?: string | null;
+  session?: { id: string } | null;
 }
 
 interface PendingPrescription {
@@ -223,8 +225,14 @@ export function MobileModePatient() {
                           : ""}
                       </p>
                     </div>
-                    {apt.status === "in_progress" && (
-                      <Link href={`/consultation-session/${apt.id}`}>
+                    {(apt.videoConsultationId || apt.status === "in_progress") && (
+                      <Link
+                        href={
+                          apt.videoConsultationId
+                            ? `/patient/video/${apt.videoConsultationId}`
+                            : `/consultation-session/${apt.session?.id || apt.id}`
+                        }
+                      >
                         <Button size="sm" className="h-7 text-xs">
                           Entrar
                         </Button>

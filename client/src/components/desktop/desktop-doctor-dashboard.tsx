@@ -123,7 +123,7 @@ export function DesktopDoctorDashboard() {
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Acesso Rápido</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <Link href="/doctor-office">
+            <Link href="/doctor-office?autoOpen=1">
               <Button
                 className="w-full h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
                 data-testid="button-open-office"

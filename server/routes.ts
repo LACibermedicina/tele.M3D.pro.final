@@ -81,7 +81,7 @@ import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./payp
 import creditsRouter from "./routes/credits";
 import signaturesRouter from "./routes/signatures";
 import medicalTeamsRouter from "./routes/medical-teams";
-import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers, profileMergeAuditLogs, prescriptionShares, labOrders, hospitalReferrals, clinicalAssets, susProntuarios, userNotes, postConsultationItems, accessModalityAuditLogs, type AccessModalityAuditLog, doctorOfficeSessions, doctorProfessionalRegistrations, insertDoctorProfessionalRegistrationSchema } from "@shared/schema";
+import { insertPatientSchema, insertAppointmentSchema, insertWhatsappMessageSchema, insertMedicalRecordSchema, insertVideoConsultationSchema, insertConsultationNoteSchema, insertConsultationRecordingSchema, insertPrescriptionShareSchema, insertCollaboratorSchema, insertLabOrderSchema, insertCollaboratorApiKeySchema, insertMedicationSchema, insertPrescriptionSchema, insertPrescriptionItemSchema, insertPrescriptionTemplateSchema, insertConsultationRequestSchema, insertMedicalTeamSchema, insertMedicalTeamMemberSchema, User, DEFAULT_DOCTOR_ID, examResults, patients, medications, prescriptions, prescriptionItems, prescriptionTemplates, drugInteractions, users, appointments, tmcTransactions, whatsappMessages, medicalRecords, systemSettings, chatbotReferences, chatbotConversations, medicalTeams, medicalTeamMembers, pendingNotifications, videoConsultations, consultationNotes, consultationRequests, diagnosticInferences, consultationAccessTokens, walletAuditLog, dynamicNfts, nftOwnership, brokerOrders, brokerTrades, tm3dSupply, externalWallets, withdrawalRequests, tmcConfig, cashbox, cashboxTransactions, tmcCreditPackages, paypalOrders, interConsultations, pharmacyDispensing, pharmacyReports, digitalSignatures, digitalKeys, signatureVerifications, doctorPatientBlocks, paymentTransactions, clinics, clinicMembers, clinicPatientBindings, clinicConsultationLogs, fhirPatients, fhirObservations, creditTransfers, profileMergeAuditLogs, prescriptionShares, labOrders, hospitalReferrals, clinicalAssets, susProntuarios, userNotes, postConsultationItems, accessModalityAuditLogs, type AccessModalityAuditLog, doctorOfficeSessions, doctorProfessionalRegistrations, insertDoctorProfessionalRegistrationSchema, consultationSessions } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey, getStripeSync } from "./stripeClient";
 import { creditService } from "./services/credit-service";
 import { searchExternalMedications } from "./services/medication-search";
@@ -289,6 +289,72 @@ async function resolveVideoChannelAccess(
         }
         return { authorized: true, canonicalChannel: (session as any).id };
       }
+    }
+  } catch {}
+
+  // Consultation-request ids — mobile dashboards link "Entrar" with the raw
+  // request id. Resolve to the live room for the doctor/patient pair.
+  try {
+    const request = await storage.getConsultationRequest(candidateId);
+    if (request) {
+      let authorized = isAdmin || request.selectedDoctorId === user.id;
+      if (!authorized) {
+        const patient = await storage.getPatientByUserId(user.id);
+        if (patient && patient.id === request.patientId) authorized = true;
+      }
+      if (!authorized) return deny;
+      if (request.selectedDoctorId) {
+        const vcs = await db.select()
+          .from(videoConsultations)
+          .where(and(
+            eq(videoConsultations.doctorId, request.selectedDoctorId),
+            eq(videoConsultations.patientId, request.patientId),
+            inArray(videoConsultations.status, ['waiting', 'active']),
+          ))
+          .orderBy(desc(videoConsultations.createdAt))
+          .limit(1);
+        if (vcs.length > 0) {
+          return { authorized: true, canonicalChannel: vcs[0].agoraChannelName || vcs[0].id };
+        }
+      }
+      // Converge on the collaborative session for this request when one exists
+      // (consultation_sessions.consultationId stores the request id).
+      try {
+        const sess = await db.select({ id: consultationSessions.id })
+          .from(consultationSessions)
+          .where(eq(consultationSessions.consultationId, request.id))
+          .orderBy(desc(consultationSessions.createdAt))
+          .limit(1);
+        if (sess.length > 0) {
+          return { authorized: true, canonicalChannel: sess[0].id };
+        }
+      } catch {}
+      // Deterministic fallback: both sides passing the request id meet here.
+      return { authorized: true, canonicalChannel: `consultation-request-${request.id}` };
+    }
+  } catch {}
+
+  // Appointment ids — the doctor's mobile agenda links "Entrar" with the
+  // appointment id; map it to the video consultation created for it.
+  try {
+    const vcsByAppt = await db.select()
+      .from(videoConsultations)
+      .where(eq(videoConsultations.appointmentId, candidateId))
+      .orderBy(desc(videoConsultations.createdAt))
+      .limit(1);
+    if (vcsByAppt.length > 0) {
+      const consult = vcsByAppt[0];
+      let authorized = isAdmin || consult.doctorId === user.id;
+      if (!authorized && consult.patientId) {
+        try {
+          const patient = await storage.getPatient(consult.patientId);
+          if (patient?.userId === user.id) authorized = true;
+        } catch {}
+      }
+      if (!authorized) return deny;
+      const isLive = consult.status === 'waiting' || consult.status === 'active';
+      const canonicalChannel = (isLive && consult.agoraChannelName) ? consult.agoraChannelName : consult.id;
+      return { authorized: true, canonicalChannel };
     }
   } catch {}
 
@@ -13512,8 +13578,21 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
 
   app.get('/api/consultation-sessions/:id', requireAuth, async (req, res) => {
     try {
-      const session = await storage.getConsultationSession(req.params.id);
-      
+      let session = await storage.getConsultationSession(req.params.id);
+
+      // Fallback: mobile links pass the consultation-request id — find the
+      // collaborative session created for that request.
+      if (!session) {
+        try {
+          const byRequest = await db.select()
+            .from(consultationSessions)
+            .where(eq(consultationSessions.consultationId, req.params.id))
+            .orderBy(desc(consultationSessions.createdAt))
+            .limit(1);
+          if (byRequest.length > 0) session = byRequest[0] as any;
+        } catch {}
+      }
+
       if (!session) {
         return res.status(404).json({ message: 'Consultation session not found' });
       }

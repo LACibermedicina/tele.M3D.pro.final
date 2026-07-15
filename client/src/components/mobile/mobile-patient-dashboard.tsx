@@ -223,8 +223,14 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
                         : appointment.date || ""}
                     </p>
                   </div>
-                  {appointment.status === 'in_progress' && (
-                    <Link href={`/consultation-session/${appointment.id}`}>
+                  {(appointment.videoConsultationId || appointment.status === 'in_progress') && (
+                    <Link
+                      href={
+                        appointment.videoConsultationId
+                          ? `/patient/video/${appointment.videoConsultationId}`
+                          : `/consultation-session/${appointment.session?.id || appointment.id}`
+                      }
+                    >
                       <Button size="sm" className="h-7 text-xs" data-testid={`button-join-${appointment.id}`}>
                         Entrar
                       </Button>

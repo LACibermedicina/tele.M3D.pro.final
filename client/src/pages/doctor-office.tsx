@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -298,6 +298,19 @@ export default function DoctorOffice() {
       });
     },
   });
+
+  // One-click "Abrir Consultório" from the dashboard: arriving with
+  // ?autoOpen=1 opens the office and joins the video room immediately.
+  const autoOpenTriggered = useRef(false);
+  useEffect(() => {
+    if (autoOpenTriggered.current) return;
+    if (user?.role !== 'doctor') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('autoOpen') !== '1') return;
+    autoOpenTriggered.current = true;
+    window.history.replaceState({}, '', window.location.pathname);
+    openOfficeMutation.mutate();
+  }, [user?.role]);
 
   const closeOfficeMutation = useMutation({
     mutationFn: () => apiRequest('POST', '/api/doctor-office/close', {}),
