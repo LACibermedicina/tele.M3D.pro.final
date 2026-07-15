@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useAccessModality } from '@/contexts/AccessModalityContext';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -299,7 +298,6 @@ export default function FHIRDashboard() {
   const { toast } = useToast();
   const { i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState('patients');
-  const { isClassic: isClassicModality } = useAccessModality();
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingPatient, setEditingPatient] = useState<{ id: string; given: string; family: string; gender: string; birthDate: string; phone: string; email: string } | null>(null);
@@ -647,7 +645,7 @@ export default function FHIRDashboard() {
                     { key: 'observations', icon: FileText, label: 'Exames' },
                     { key: 'history', icon: ClipboardList, label: 'Histórico Clínico' },
                     { key: 'ecg', icon: Heart, label: 'ECG' },
-                    ...(isClassicModality ? [] : [{ key: 'radiology', icon: Scan, label: 'Radiologia' }]),
+                    { key: 'radiology', icon: Scan, label: 'Radiologia' },
                     { key: 'export', icon: Download, label: 'Exportar' },
                   ].map(item => (
                     <button
@@ -976,7 +974,7 @@ export default function FHIRDashboard() {
               </DraggableDashboardPanel>
             )}
 
-            {activeTab === 'radiology' && !isClassicModality && (
+            {activeTab === 'radiology' && (
               <DraggableDashboardPanel id="fhir-radiology" label="Análise Radiológica" icon="scan" dashboardKey="fhir">
               <RadiologyEngineTab
                 radImage={radImage}

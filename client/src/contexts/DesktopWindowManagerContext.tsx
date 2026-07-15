@@ -18,6 +18,7 @@ export interface DesktopWindow {
 interface DesktopWindowManagerContextType {
   windows: DesktopWindow[];
   openWindow: (win: Omit<DesktopWindow, "state" | "zIndex" | "position" | "size"> & Partial<Pick<DesktopWindow, "position" | "size">>) => void;
+  toggleWindow: (win: Omit<DesktopWindow, "state" | "zIndex" | "position" | "size"> & Partial<Pick<DesktopWindow, "position" | "size">>) => void;
   seedClosedWindow: (win: Omit<DesktopWindow, "state" | "zIndex" | "position" | "size"> & Partial<Pick<DesktopWindow, "position" | "size">>) => void;
   closeWindow: (id: string) => void;
   minimizeWindow: (id: string) => void;
@@ -139,6 +140,20 @@ export function DesktopWindowManagerProvider({ children }: { children: ReactNode
     setActiveWindowId(id);
   }, []);
 
+  const windowsRef = useRef(windows);
+  windowsRef.current = windows;
+  const activeIdRef = useRef(activeWindowId);
+  activeIdRef.current = activeWindowId;
+
+  const toggleWindow = useCallback((win: Omit<DesktopWindow, "state" | "zIndex" | "position" | "size"> & Partial<Pick<DesktopWindow, "position" | "size">>) => {
+    const existing = windowsRef.current.find(w => w.id === win.id);
+    if (existing && existing.state === "open" && activeIdRef.current === win.id) {
+      minimizeWindow(win.id);
+      return;
+    }
+    openWindow(win);
+  }, [minimizeWindow, openWindow]);
+
   const toggleMaximize = useCallback((id: string) => {
     setWindows(prev => prev.map(w =>
       w.id === id ? { ...w, maximized: !w.maximized } : w
@@ -162,6 +177,7 @@ export function DesktopWindowManagerProvider({ children }: { children: ReactNode
       value={{
         windows,
         openWindow,
+        toggleWindow,
         seedClosedWindow,
         closeWindow,
         minimizeWindow,

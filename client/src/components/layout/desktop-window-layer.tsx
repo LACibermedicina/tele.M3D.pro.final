@@ -144,7 +144,7 @@ function isExcludedPath(path: string): boolean {
 }
 
 export function useDesktopNavigation() {
-  const { openWindow, isDesktopMode } = useDesktopWindowManager();
+  const { toggleWindow, isDesktopMode } = useDesktopWindowManager();
   const { user } = useAuth();
 
   return {
@@ -154,7 +154,7 @@ export function useDesktopNavigation() {
 
       const staticRoute = WINDOW_ROUTES.find(r => r.path === path);
       if (staticRoute) {
-        openWindow({
+        toggleWindow({
           id: `win-${path}`,
           title: staticRoute.title,
           icon: staticRoute.icon,
@@ -165,7 +165,7 @@ export function useDesktopNavigation() {
 
       const paramRoute = PARAM_ROUTES.find(r => r.pattern.test(path));
       if (paramRoute) {
-        openWindow({
+        toggleWindow({
           id: `win-${path}`,
           title: paramRoute.getTitle(path),
           icon: paramRoute.icon,

@@ -1,4 +1,5 @@
 import { type ReactNode, useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useDraggable } from "@/hooks/use-draggable";
 import { useMinimizedPanels } from "@/contexts/MinimizedPanelsContext";
 import PanelWindowControls from "@/components/dashboard/panel-window-controls";
@@ -136,7 +137,7 @@ export default function DraggableDashboardPanel({
   const useAbsolutePos = position.x >= 0 && position.y >= 0;
   const Icon = getPanelIcon(icon);
 
-  return (
+  const panel = (
     <div
       className={`relative group transition-shadow duration-200 ${isDragging ? "shadow-2xl z-50 opacity-90" : ""} desktop-glass-panel ${className} flex flex-col`}
       data-panel-id={id}
@@ -145,7 +146,7 @@ export default function DraggableDashboardPanel({
         position: "fixed",
         left: position.x,
         top: position.y,
-        zIndex: isDragging ? 9999 : 30,
+        zIndex: isDragging ? 9999 : 9000,
         width: "auto",
         minWidth: 280,
         maxWidth: "90vw",
@@ -173,4 +174,9 @@ export default function DraggableDashboardPanel({
       {children}
     </div>
   );
+
+  if (useAbsolutePos && typeof document !== "undefined") {
+    return createPortal(panel, document.body);
+  }
+  return panel;
 }

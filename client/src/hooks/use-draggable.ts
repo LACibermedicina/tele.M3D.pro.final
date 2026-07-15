@@ -31,6 +31,12 @@ export function useDraggable({
       if (stored) {
         const parsed = JSON.parse(stored);
         if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+          if (parsed.x >= 0 && parsed.y >= 0 && typeof window !== 'undefined') {
+            return {
+              x: Math.min(Math.max(0, parsed.x), Math.max(0, window.innerWidth - 120)),
+              y: Math.min(Math.max(0, parsed.y), Math.max(0, window.innerHeight - 80)),
+            };
+          }
           return parsed;
         }
       }

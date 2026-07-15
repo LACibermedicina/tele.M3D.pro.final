@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useDesktopNavigation } from "@/components/layout/desktop-window-layer";
 import { useTranslation } from "react-i18next";
@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/use-admin";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines, ChevronDown, CalendarX2, CreditCard, Coins, HeartPulse } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines, ChevronDown, CalendarX2, CreditCard, Coins, HeartPulse, X } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { formatErrorForToast } from "@/lib/error-handler";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -29,7 +29,7 @@ import { InlineQuickActions } from "@/components/quick-actions-bar";
 import { useDesktopWindowManager, type DesktopWindow as DWin } from "@/contexts/DesktopWindowManagerContext";
 
 function DesktopTaskbarWindows() {
-  const { windows, restoreWindow, openWindow, focusWindow } = useDesktopWindowManager();
+  const { windows, restoreWindow, openWindow, focusWindow, minimizeWindow, closeWindow, activeWindowId } = useDesktopWindowManager();
 
   const closedWindows = windows.filter((w: DWin) => w.state === "closed");
   const minimizedWindows = windows.filter((w: DWin) => w.state === "minimized");
@@ -42,17 +42,31 @@ function DesktopTaskbarWindows() {
       <TooltipProvider>
         {openWindows.map((w: DWin) => {
           const WinIcon = w.icon;
+          const isActiveWin = activeWindowId === w.id;
           return (
             <Tooltip key={w.id}>
               <TooltipTrigger asChild>
-                <button
-                  onClick={() => focusWindow(w.id)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-sky-500/20 border border-sky-400/30 text-sky-300 hover:bg-sky-500/30 transition-all shrink-0"
-                >
-                  <WinIcon className="w-3.5 h-3.5" />
-                </button>
+                <div className="relative group/wtab shrink-0">
+                  <button
+                    onClick={() => (isActiveWin ? minimizeWindow(w.id) : focusWindow(w.id))}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all ${
+                      isActiveWin
+                        ? "bg-sky-500/35 border-sky-400/60 text-sky-200"
+                        : "bg-sky-500/20 border-sky-400/30 text-sky-300 hover:bg-sky-500/30"
+                    }`}
+                  >
+                    <WinIcon className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); closeWindow(w.id); }}
+                    className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-slate-700 text-white/80 hidden group-hover/wtab:flex items-center justify-center hover:bg-red-500 hover:text-white z-10"
+                    aria-label={`Fechar ${w.title}`}
+                  >
+                    <X className="w-2 h-2" />
+                  </button>
+                </div>
               </TooltipTrigger>
-              <TooltipContent side="top"><p>{w.title}</p></TooltipContent>
+              <TooltipContent side="top"><p>{w.title}{isActiveWin ? " (clique para minimizar)" : ""}</p></TooltipContent>
             </Tooltip>
           );
         })}
@@ -61,12 +75,21 @@ function DesktopTaskbarWindows() {
           return (
             <Tooltip key={w.id}>
               <TooltipTrigger asChild>
-                <button
-                  onClick={() => restoreWindow(w.id)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.12] border border-white/15 text-white/50 hover:bg-white/20 hover:text-white/70 transition-all shrink-0"
-                >
-                  <WinIcon className="w-3.5 h-3.5" />
-                </button>
+                <div className="relative group/wtab shrink-0">
+                  <button
+                    onClick={() => restoreWindow(w.id)}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.12] border border-white/15 text-white/50 hover:bg-white/20 hover:text-white/70 transition-all"
+                  >
+                    <WinIcon className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); closeWindow(w.id); }}
+                    className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-slate-700 text-white/80 hidden group-hover/wtab:flex items-center justify-center hover:bg-red-500 hover:text-white z-10"
+                    aria-label={`Fechar ${w.title}`}
+                  >
+                    <X className="w-2 h-2" />
+                  </button>
+                </div>
               </TooltipTrigger>
               <TooltipContent side="top"><p>{w.title} (minimizado)</p></TooltipContent>
             </Tooltip>
@@ -96,6 +119,7 @@ function DesktopTaskbarWindows() {
 export default function Header() {
   const [location, rawNavigate] = useLocation();
   const { navigateToWindow, isDesktopMode: isDesktopNav } = useDesktopNavigation();
+  const { windows: managedWindows } = useDesktopWindowManager();
   const navigate = useCallback((path: string) => {
     if (isDesktopNav && navigateToWindow(path)) return;
     rawNavigate(path);
@@ -599,6 +623,11 @@ export default function Header() {
 
   const allNavItems = navGroups.flatMap(g => g.items);
 
+  const openWindowRoutes = useMemo(
+    () => new Set(managedWindows.filter(w => w.state === "open").map(w => w.route)),
+    [managedWindows]
+  );
+
   const filteredGroups = navGroups.map(group => ({
     ...group,
     items: group.items.filter(item => {
@@ -735,7 +764,7 @@ export default function Header() {
               <div key={group.category} className="w-full flex flex-col items-center gap-0.5">
                 {groupIdx > 0 && <div className="w-6 border-t border-white/10 my-0.5" />}
                 {group.items.map((item) => {
-                  const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                  const isActive = location === item.path || (location === "/" && item.path === "/dashboard") || openWindowRoutes.has(item.path);
                   const IconComponent = item.icon;
                   const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
                   return (
@@ -946,7 +975,7 @@ export default function Header() {
             <nav className="flex items-center gap-0.5 flex-wrap">
               {filteredGroups.map((group) =>
                 group.items.map((item) => {
-                  const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                  const isActive = location === item.path || (location === "/" && item.path === "/dashboard") || openWindowRoutes.has(item.path);
                   const IconComponent = item.icon;
                   const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
                   return (
@@ -1100,7 +1129,7 @@ export default function Header() {
                       {groupIdx > 0 && <div className="my-2 border-t border-border/50" />}
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-1 mt-1">{group.label}</p>
                       {group.items.map((item) => {
-                        const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                        const isActive = location === item.path || (location === "/" && item.path === "/dashboard") || openWindowRoutes.has(item.path);
                         const mobileBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
                         return (
                           <Link
@@ -1331,7 +1360,7 @@ export default function Header() {
 
                 if (group.items.length === 1) {
                   const item = group.items[0];
-                  const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                  const isActive = location === item.path || (location === "/" && item.path === "/dashboard") || openWindowRoutes.has(item.path);
                   const IconComponent = item.icon;
                   return (
                     <div key={group.category} className="flex items-center">
@@ -1412,7 +1441,7 @@ export default function Header() {
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         {group.items.map((item) => {
-                          const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                          const isActive = location === item.path || (location === "/" && item.path === "/dashboard") || openWindowRoutes.has(item.path);
                           const IconComponent = item.icon;
                           const hasBadge = item.path === '/post-consultation-review' && pendingPostCount > 0;
                           return (
@@ -1925,7 +1954,7 @@ export default function Header() {
                   <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold px-2 mb-0.5 mt-1">{group.label}</p>
                 )}
                 {group.items.map((item) => {
-                  const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+                  const isActive = location === item.path || (location === "/" && item.path === "/dashboard") || openWindowRoutes.has(item.path);
                   const IconComponent = item.icon;
                   return sidebarCollapsed ? (
                     <Tooltip key={item.path}>
@@ -2014,7 +2043,7 @@ export default function Header() {
         >
           <nav className="flex items-center justify-around px-1 py-1.5">
             {filteredGroups.flatMap(g => g.items).slice(0, 5).map((item) => {
-              const isActive = location === item.path || (location === "/" && item.path === "/dashboard");
+              const isActive = location === item.path || (location === "/" && item.path === "/dashboard") || openWindowRoutes.has(item.path);
               const IconComponent = item.icon;
               return (
                 <Link key={item.path} href={item.path}>
