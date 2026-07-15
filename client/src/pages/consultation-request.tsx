@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Brain, 
@@ -28,7 +29,11 @@ import {
   CalendarCheck,
   ChevronRight,
   Search,
-  LayoutGrid
+  LayoutGrid,
+  Users,
+  Video,
+  LogOut,
+  Siren
 } from "lucide-react";
 import { useLocation } from "wouter";
 import PageWrapper from "@/components/layout/page-wrapper";
@@ -72,7 +77,20 @@ interface TriageAnalysis {
   protocolsApplied?: string[];
 }
 
-type FlowMode = 'choose' | 'browse' | 'triage';
+type FlowMode = 'choose' | 'browse' | 'triage' | 'waiting';
+
+interface WaitingRoomStatus {
+  inQueue: boolean;
+  status?: 'waiting' | 'admitted';
+  requestId?: string;
+  requestedUrgent?: boolean;
+  urgencyLevel?: string;
+  position?: number;
+  totalWaiting?: number;
+  consultationId?: string;
+  doctorName?: string;
+  joinedAt?: string;
+}
 type TriageStep = 'input' | 'analysis' | 'select' | 'confirmed';
 type BrowseStep = 'specialties' | 'doctors' | 'confirm';
 
@@ -92,6 +110,86 @@ export default function ConsultationRequest() {
   const [browseStep, setBrowseStep] = useState<BrowseStep>('specialties');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
   const [browseDoctorId, setBrowseDoctorId] = useState<string | null>(null);
+
+  // General waiting room (fila geral / urgência)
+  const [joinDialog, setJoinDialog] = useState<null | 'general' | 'urgent'>(null);
+  const [waitingSymptoms, setWaitingSymptoms] = useState("");
+  const admittedToastShown = useRef(false);
+  const autoSwitchedToWaiting = useRef(false);
+
+  const waitingStatusQuery = useQuery<WaitingRoomStatus>({
+    queryKey: ['/api/waiting-room/status'],
+    enabled: !!user && user.role === 'patient',
+    refetchInterval: 4000,
+  });
+  const waitingStatus = waitingStatusQuery.data;
+
+  // If the patient is already in the queue when opening the page, jump
+  // straight to the waiting view (once).
+  useEffect(() => {
+    if (autoSwitchedToWaiting.current) return;
+    if (waitingStatus?.inQueue && flowMode === 'choose') {
+      autoSwitchedToWaiting.current = true;
+      setFlowMode('waiting');
+    }
+  }, [waitingStatus?.inQueue, flowMode]);
+
+  // Toast once when the doctor admits the patient.
+  useEffect(() => {
+    if (waitingStatus?.status === 'admitted' && !admittedToastShown.current) {
+      admittedToastShown.current = true;
+      toast({
+        title: 'Você foi chamado(a)!',
+        description: `Dr(a). ${waitingStatus.doctorName || ''} está pronto(a) para atendê-lo(a). Entre na sala.`,
+      });
+    }
+    if (waitingStatus?.status === 'waiting') {
+      admittedToastShown.current = false;
+    }
+  }, [waitingStatus?.status, waitingStatus?.doctorName, toast]);
+
+  const joinQueueMutation = useMutation({
+    mutationFn: async (data: { urgent: boolean; symptoms?: string }) => {
+      const res = await apiRequest('POST', '/api/waiting-room/join', data);
+      return await res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/waiting-room/status'] });
+      setJoinDialog(null);
+      setWaitingSymptoms("");
+      setFlowMode('waiting');
+      toast({
+        title: variables.urgent ? 'Você entrou na fila de urgência' : 'Você entrou na sala de espera',
+        description: 'O primeiro médico disponível irá chamá-lo(a). Mantenha esta tela aberta.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao entrar na sala de espera',
+        description: error?.message || 'Tente novamente em alguns instantes.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const leaveQueueMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/waiting-room/leave');
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/waiting-room/status'] });
+      setFlowMode('choose');
+      toast({ title: 'Você saiu da sala de espera' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao sair da fila',
+        description: error?.message || 'Tente novamente.',
+        variant: 'destructive',
+      });
+    },
+  });
 
   const switchFlowMode = (mode: FlowMode) => {
     setSymptoms("");
@@ -373,8 +471,203 @@ export default function ConsultationRequest() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card
+              className="border-2 cursor-pointer transition-all hover:border-emerald-500 hover:shadow-lg group"
+              onClick={() => setJoinDialog('general')}
+              data-testid="card-waiting-room"
+            >
+              <CardContent className="p-6 text-center space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto group-hover:bg-emerald-500/20 transition-colors">
+                  <Users className="w-8 h-8 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold mb-1">Entrar na Sala de Espera</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Seja atendido pelo primeiro médico disponível, sem escolher especialidade
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-1 text-emerald-600 text-sm font-medium">
+                  <Clock className="w-4 h-4" />
+                  <span>Entrar na fila geral</span>
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              className="border-2 cursor-pointer transition-all hover:border-red-500 hover:shadow-lg group"
+              onClick={() => setJoinDialog('urgent')}
+              data-testid="card-urgent-queue"
+            >
+              <CardContent className="p-6 text-center space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto group-hover:bg-red-500/20 transition-colors">
+                  <Siren className="w-8 h-8 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold mb-1">Atendimento de Urgência</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Fila priorizada para casos urgentes — atendimento pelo próximo médico disponível
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-1 text-red-600 text-sm font-medium">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>Entrar na fila de urgência</span>
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
+
+        {flowMode === 'waiting' && (
+          <div className="max-w-2xl mx-auto">
+            {waitingStatus?.inQueue ? (
+              waitingStatus.status === 'admitted' ? (
+                <Card className="border-2 border-emerald-500/60" data-testid="card-admitted">
+                  <CardContent className="p-8 text-center space-y-5">
+                    <div className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto animate-pulse">
+                      <Video className="w-10 h-10 text-emerald-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold mb-1">Você foi chamado(a)!</h3>
+                      <p className="text-muted-foreground" data-no-translate>
+                        Dr(a). {waitingStatus.doctorName || 'Médico(a)'} está pronto(a) para atendê-lo(a) no consultório virtual.
+                      </p>
+                    </div>
+                    <Button
+                      size="lg"
+                      className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700"
+                      onClick={() => navigate(`/patient/video/${waitingStatus.consultationId}`)}
+                      data-testid="btn-enter-room"
+                    >
+                      <Video className="w-5 h-5 mr-2" />
+                      Entrar na Sala de Vídeo
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className={`border-2 ${waitingStatus.requestedUrgent ? 'border-red-500/50' : 'border-emerald-500/40'}`} data-testid="card-waiting-status">
+                  <CardContent className="p-8 text-center space-y-5">
+                    <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto ${waitingStatus.requestedUrgent ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
+                      {waitingStatus.requestedUrgent
+                        ? <Siren className="w-10 h-10 text-red-600 animate-pulse" />
+                        : <Clock className="w-10 h-10 text-emerald-600 animate-pulse" />}
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-center gap-2">
+                        <h3 className="text-xl font-bold">
+                          {waitingStatus.requestedUrgent ? 'Na fila de urgência' : 'Na sala de espera'}
+                        </h3>
+                        {waitingStatus.urgencyLevel && <TriageBadge level={waitingStatus.urgencyLevel} size="sm" />}
+                      </div>
+                      <p className="text-muted-foreground">
+                        Você será notificado(a) assim que um médico chamar você. Mantenha esta tela aberta.
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center gap-6">
+                      <div className="text-center">
+                        <p className="text-3xl font-bold text-primary" data-testid="text-queue-position">
+                          {waitingStatus.position ?? '—'}º
+                        </p>
+                        <p className="text-xs text-muted-foreground">sua posição</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-3xl font-bold">{waitingStatus.totalWaiting ?? '—'}</p>
+                        <p className="text-xs text-muted-foreground">na fila</p>
+                      </div>
+                    </div>
+                    {waitingStatus.joinedAt && (
+                      <p className="text-xs text-muted-foreground">
+                        Entrou na fila às {new Date(waitingStatus.joinedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
+                    <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                      {!waitingStatus.requestedUrgent && (
+                        <Button
+                          variant="outline"
+                          className="border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          onClick={() => joinQueueMutation.mutate({ urgent: true })}
+                          disabled={joinQueueMutation.isPending}
+                          data-testid="btn-upgrade-urgent"
+                        >
+                          <Siren className="w-4 h-4 mr-2" />
+                          Mudar para urgência
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        onClick={() => leaveQueueMutation.mutate()}
+                        disabled={leaveQueueMutation.isPending}
+                        data-testid="btn-leave-queue"
+                      >
+                        {leaveQueueMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LogOut className="w-4 h-4 mr-2" />}
+                        Sair da fila
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center space-y-4">
+                  {waitingStatusQuery.isLoading ? (
+                    <Loader2 className="w-8 h-8 mx-auto animate-spin text-muted-foreground" />
+                  ) : (
+                    <>
+                      <p className="text-muted-foreground">Você não está mais na fila de espera.</p>
+                      <Button variant="outline" onClick={() => setFlowMode('choose')} data-testid="btn-back-choose">
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Voltar às opções
+                      </Button>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        <Dialog open={joinDialog !== null} onOpenChange={(open) => { if (!open) setJoinDialog(null); }}>
+          <DialogContent data-testid="dialog-join-queue">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {joinDialog === 'urgent'
+                  ? <><Siren className="w-5 h-5 text-red-600" /> Atendimento de Urgência</>
+                  : <><Users className="w-5 h-5 text-emerald-600" /> Sala de Espera Geral</>}
+              </DialogTitle>
+              <DialogDescription>
+                {joinDialog === 'urgent'
+                  ? 'Você entrará na fila priorizada e será atendido(a) pelo próximo médico disponível. Em emergências graves, ligue 192 (SAMU).'
+                  : 'Você será atendido(a) pelo primeiro médico disponível, por ordem de chegada.'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="waiting-symptoms">Descreva brevemente o motivo (opcional)</Label>
+              <Textarea
+                id="waiting-symptoms"
+                placeholder="Ex.: dor de cabeça forte desde ontem..."
+                value={waitingSymptoms}
+                onChange={(e) => setWaitingSymptoms(e.target.value)}
+                rows={3}
+                data-no-translate
+                data-testid="input-waiting-symptoms"
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setJoinDialog(null)}>Cancelar</Button>
+              <Button
+                onClick={() => joinQueueMutation.mutate({ urgent: joinDialog === 'urgent', symptoms: waitingSymptoms || undefined })}
+                disabled={joinQueueMutation.isPending}
+                className={joinDialog === 'urgent' ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'}
+                data-testid="btn-confirm-join"
+              >
+                {joinQueueMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {joinDialog === 'urgent' ? 'Entrar na fila de urgência' : 'Entrar na sala de espera'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {flowMode === 'browse' && (
           <>

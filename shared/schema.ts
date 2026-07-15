@@ -817,6 +817,8 @@ export const consultationRequests = pgTable("consultation_requests", {
   urgencyLevel: text("urgency_level").notNull().default("standard"), // emergency, very_urgent, urgent, standard, non_urgent
   recommendedDoctors: jsonb("recommended_doctors"), // Array of suggested doctor IDs with reasoning
   selectedDoctorId: uuid("selected_doctor_id").references(() => users.id),
+  queueType: text("queue_type").notNull().default("directed"), // directed (patient picked doctor/specialty flow) | general (waiting room, first available doctor)
+  requestedUrgent: boolean("requested_urgent").default(false), // patient explicitly joined the urgency queue
   status: text("status").notNull().default("pending"), // pending, accepted, rejected, scheduled, cancelled
   whatsappNotificationSent: boolean("whatsapp_notification_sent").default(false),
   acceptedAt: timestamp("accepted_at"),

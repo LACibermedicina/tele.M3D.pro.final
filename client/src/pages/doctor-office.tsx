@@ -62,12 +62,30 @@ export default function DoctorOffice() {
     enabled: !!user?.id && historyOpen,
   });
 
-  type PendingRequest = { id: string; patientName: string; symptoms: string; urgencyLevel: string; createdAt: string };
+  type PendingRequest = {
+    id: string;
+    patientName: string;
+    symptoms: string;
+    urgencyLevel: string;
+    queueType: 'directed' | 'general';
+    requestedUrgent: boolean;
+    directedToMe: boolean;
+    waitingMinutes: number;
+    createdAt: string;
+  };
   const { data: pendingRequests = [] } = useQuery<PendingRequest[]>({
     queryKey: ['/api/doctor-office/pending-requests'],
     enabled: user?.role === 'doctor',
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
+
+  const fmtWaiting = (minutes: number) => {
+    if (minutes < 1) return 'agora';
+    if (minutes < 60) return `${minutes} min`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m > 0 ? `${h}h ${m}min` : `${h}h`;
+  };
 
   const admitMutation = useMutation({
     mutationFn: async (requestId: string) => {
@@ -488,13 +506,26 @@ export default function DoctorOffice() {
                   </p>
                 )}
                 {pendingRequests.map((r) => (
-                  <div key={r.id} className="flex items-start justify-between gap-4 p-3 rounded-lg border bg-muted/40" data-testid={`row-urgent-${r.id}`}>
+                  <div
+                    key={r.id}
+                    className={`flex items-start justify-between gap-4 p-3 rounded-lg border ${r.requestedUrgent ? 'border-red-300 dark:border-red-800 bg-red-50/60 dark:bg-red-950/20' : 'bg-muted/40'}`}
+                    data-testid={`row-urgent-${r.id}`}
+                  >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium" data-no-translate>{r.patientName}</span>
                         <TriageBadge level={r.urgencyLevel} size="sm" />
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(r.createdAt).toLocaleString('pt-BR')}
+                        {r.queueType === 'general' && (
+                          <Badge variant="outline" className={r.requestedUrgent ? 'border-red-400 text-red-600' : 'border-emerald-400 text-emerald-600'}>
+                            {r.requestedUrgent ? 'Urgência' : 'Fila Geral'}
+                          </Badge>
+                        )}
+                        {r.directedToMe && (
+                          <Badge variant="outline" className="border-blue-400 text-blue-600">Para você</Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          aguardando {fmtWaiting(r.waitingMinutes)}
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-2" data-no-translate>{r.symptoms}</p>

@@ -407,6 +407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migrateUserNotesTable();
   await migrateClinicalAssetsToPrivate();
   await migrateUserUsageFields();
+  await migrateWaitingRoomColumns();
   await initStripeSync();
   
   // Initialize default doctor if not exists and get the actual ID
@@ -10593,13 +10594,24 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
   });
 
   // Pending consultation requests visible to doctors for direct office admission.
+  // Includes requests directed to this doctor AND general waiting-room requests
+  // (no doctor selected), ordered by urgency then arrival time.
   app.get('/api/doctor-office/pending-requests', requireAuth, async (req: any, res) => {
     try {
       if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Acesso restrito a médicos.' });
       }
-      const pending = await storage.getPendingConsultationRequests();
+      const pending = await db.select().from(consultationRequests)
+        .where(and(
+          eq(consultationRequests.status, 'pending'),
+          or(
+            isNull(consultationRequests.selectedDoctorId),
+            eq(consultationRequests.selectedDoctorId, req.user.id),
+          ),
+        ))
+        .orderBy(consultationRequests.createdAt);
       const urgencyRank: Record<string, number> = { emergency: 0, very_urgent: 1, urgent: 2, standard: 3, non_urgent: 4 };
+      const now = Date.now();
       const enriched = await Promise.all(pending.map(async (r) => {
         let patientName = 'Paciente';
         try {
@@ -10611,10 +10623,19 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
           patientName,
           symptoms: r.symptoms,
           urgencyLevel: r.urgencyLevel,
+          queueType: (r as any).queueType || 'directed',
+          requestedUrgent: Boolean((r as any).requestedUrgent),
+          directedToMe: r.selectedDoctorId === req.user.id,
+          waitingMinutes: Math.max(0, Math.floor((now - new Date(r.createdAt).getTime()) / 60000)),
           createdAt: r.createdAt,
         };
       }));
-      enriched.sort((a, b) => (urgencyRank[a.urgencyLevel] ?? 9) - (urgencyRank[b.urgencyLevel] ?? 9));
+      enriched.sort((a, b) => {
+        const ra = urgencyRank[a.urgencyLevel] ?? 9;
+        const rb = urgencyRank[b.urgencyLevel] ?? 9;
+        if (ra !== rb) return ra - rb;
+        return new Date(a.createdAt as any).getTime() - new Date(b.createdAt as any).getTime();
+      });
       res.json(enriched);
     } catch (error) {
       console.error('Pending office requests error:', error);
@@ -10730,6 +10751,185 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
     } catch (error: any) {
       console.error('Admit to office error:', error);
       res.status(500).json({ message: error.message || 'Falha ao admitir paciente no consultório' });
+    }
+  });
+
+  // ---- General waiting room (fila geral / urgência) ----
+  // Patient joins the general waiting room to be seen by the first available
+  // doctor, without picking a specialty. `urgent: true` joins the prioritized
+  // urgency queue.
+  app.post('/api/waiting-room/join', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      let patient = await storage.getPatientByUserId(userId);
+      if (!patient) {
+        const userRecord = await storage.getUser(userId);
+        if (!userRecord || userRecord.role !== 'patient') {
+          return res.status(403).json({ message: 'Apenas pacientes podem entrar na sala de espera.' });
+        }
+        try {
+          patient = await storage.createPatient({
+            userId,
+            name: userRecord.name,
+            email: userRecord.email || null,
+            phone: userRecord.phone || 'não informado',
+            healthStatus: 'a_determinar',
+          });
+        } catch (createErr) {
+          console.error('Failed to auto-create patient record:', createErr);
+          return res.status(400).json({ message: 'Complete seu cadastro de paciente antes de entrar na sala de espera.' });
+        }
+      }
+
+      const urgent = Boolean(req.body?.urgent);
+      const symptomsInput = typeof req.body?.symptoms === 'string' ? req.body.symptoms.trim() : '';
+      const symptoms = symptomsInput
+        || (urgent ? 'Paciente entrou na fila de urgência (sala de espera geral).' : 'Paciente entrou na sala de espera geral.');
+
+      // Idempotent: if the patient already has a pending general-queue request,
+      // reuse it (upgrading urgency if requested) instead of creating a duplicate.
+      const existing = await db.select().from(consultationRequests)
+        .where(and(
+          eq(consultationRequests.patientId, patient.id),
+          eq(consultationRequests.queueType, 'general'),
+          eq(consultationRequests.status, 'pending'),
+        ))
+        .orderBy(desc(consultationRequests.createdAt))
+        .limit(1);
+
+      let request;
+      if (existing.length > 0) {
+        request = existing[0];
+        if (urgent && !(request as any).requestedUrgent) {
+          const [updated] = await db.update(consultationRequests)
+            .set({ requestedUrgent: true, urgencyLevel: 'very_urgent', updatedAt: new Date() })
+            .where(eq(consultationRequests.id, request.id))
+            .returning();
+          if (updated) request = updated;
+        }
+      } else {
+        const [inserted] = await db.insert(consultationRequests)
+          .values({
+            patientId: patient.id,
+            symptoms,
+            urgencyLevel: urgent ? 'very_urgent' : 'standard',
+            queueType: 'general',
+            requestedUrgent: urgent,
+            status: 'pending',
+          })
+          .returning();
+        request = inserted;
+      }
+
+      res.json({ success: true, request, alreadyInQueue: existing.length > 0 });
+    } catch (error: any) {
+      console.error('Waiting room join error:', error);
+      res.status(500).json({ message: error.message || 'Falha ao entrar na sala de espera' });
+    }
+  });
+
+  // Patient's live queue status: position while pending, or the room to join
+  // once a doctor has admitted them.
+  app.get('/api/waiting-room/status', requireAuth, async (req: any, res) => {
+    try {
+      const patient = await storage.getPatientByUserId(req.user.id);
+      if (!patient) return res.json({ inQueue: false });
+
+      const mine = await db.select().from(consultationRequests)
+        .where(and(
+          eq(consultationRequests.patientId, patient.id),
+          eq(consultationRequests.queueType, 'general'),
+          inArray(consultationRequests.status, ['pending', 'accepted']),
+        ))
+        .orderBy(desc(consultationRequests.createdAt))
+        .limit(1);
+      if (mine.length === 0) return res.json({ inQueue: false });
+      const request = mine[0];
+
+      if (request.status === 'accepted' && request.selectedDoctorId) {
+        // Admitted: point the patient at the live room for this doctor pair.
+        const vcs = await db.select()
+          .from(videoConsultations)
+          .where(and(
+            eq(videoConsultations.patientId, patient.id),
+            eq(videoConsultations.doctorId, request.selectedDoctorId),
+            inArray(videoConsultations.status, ['waiting', 'active']),
+          ))
+          .orderBy(desc(videoConsultations.createdAt))
+          .limit(1);
+        if (vcs.length === 0) {
+          // Stale acceptance (consultation already ended) — not in queue anymore.
+          return res.json({ inQueue: false });
+        }
+        let doctorName = 'Médico(a)';
+        try {
+          const doc = await storage.getUser(request.selectedDoctorId);
+          if (doc?.name) doctorName = doc.name;
+        } catch {}
+        return res.json({
+          inQueue: true,
+          status: 'admitted',
+          requestId: request.id,
+          requestedUrgent: Boolean((request as any).requestedUrgent),
+          urgencyLevel: request.urgencyLevel,
+          consultationId: vcs[0].id,
+          doctorName,
+          joinedAt: request.createdAt,
+        });
+      }
+
+      // Still waiting: compute position in the general queue (urgency first,
+      // then arrival order) — same ordering doctors see.
+      const urgencyRank: Record<string, number> = { emergency: 0, very_urgent: 1, urgent: 2, standard: 3, non_urgent: 4 };
+      const queue = await db.select({
+        id: consultationRequests.id,
+        urgencyLevel: consultationRequests.urgencyLevel,
+        createdAt: consultationRequests.createdAt,
+      }).from(consultationRequests)
+        .where(and(
+          eq(consultationRequests.queueType, 'general'),
+          eq(consultationRequests.status, 'pending'),
+        ));
+      queue.sort((a, b) => {
+        const ra = urgencyRank[a.urgencyLevel] ?? 9;
+        const rb = urgencyRank[b.urgencyLevel] ?? 9;
+        if (ra !== rb) return ra - rb;
+        return new Date(a.createdAt as any).getTime() - new Date(b.createdAt as any).getTime();
+      });
+      const position = queue.findIndex((q) => q.id === request.id) + 1;
+
+      res.json({
+        inQueue: true,
+        status: 'waiting',
+        requestId: request.id,
+        requestedUrgent: Boolean((request as any).requestedUrgent),
+        urgencyLevel: request.urgencyLevel,
+        position: position > 0 ? position : queue.length,
+        totalWaiting: queue.length,
+        joinedAt: request.createdAt,
+      });
+    } catch (error) {
+      console.error('Waiting room status error:', error);
+      res.status(500).json({ message: 'Falha ao consultar status da fila' });
+    }
+  });
+
+  // Patient leaves the general waiting room (cancels pending queue entry).
+  app.post('/api/waiting-room/leave', requireAuth, async (req: any, res) => {
+    try {
+      const patient = await storage.getPatientByUserId(req.user.id);
+      if (!patient) return res.json({ success: true });
+      await db.update(consultationRequests)
+        .set({ status: 'cancelled', updatedAt: new Date() })
+        .where(and(
+          eq(consultationRequests.patientId, patient.id),
+          eq(consultationRequests.queueType, 'general'),
+          eq(consultationRequests.status, 'pending'),
+        ));
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Waiting room leave error:', error);
+      res.status(500).json({ message: 'Falha ao sair da sala de espera' });
     }
   });
 
@@ -25537,6 +25737,22 @@ async function migrateOnDutyColumns() {
     console.log('✓ On-duty columns migrated successfully');
   } catch (error) {
     console.error('Failed to migrate on-duty columns:', error);
+  }
+}
+
+async function migrateWaitingRoomColumns() {
+  try {
+    await db.execute(sql`
+      ALTER TABLE consultation_requests
+      ADD COLUMN IF NOT EXISTS queue_type TEXT NOT NULL DEFAULT 'directed'
+    `);
+    await db.execute(sql`
+      ALTER TABLE consultation_requests
+      ADD COLUMN IF NOT EXISTS requested_urgent BOOLEAN DEFAULT false
+    `);
+    console.log('✓ Waiting room columns migrated successfully');
+  } catch (error) {
+    console.error('Failed to migrate waiting room columns:', error);
   }
 }
 

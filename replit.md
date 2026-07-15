@@ -49,6 +49,7 @@ The application is built with an Express.js backend and a React frontend, utiliz
 - **Consultation Notification System:** Real-time room presence detection, urgency request panel for doctors, and WhatsApp notifications.
 - **Clinical History Access Control:** Patient-facing records show AI-generated summaries; doctor access is role-scoped.
 - **SUS Prontuário:** SUS-standard prontuário generation with full clinical sections and SOAP compliance verification.
+- **General Waiting Room (Sala de Espera Geral / Urgência):** Patients join a doctor-agnostic queue (`consultation_requests.queue_type='general'`, `requested_urgent`) via `/api/waiting-room/join|status|leave` (join is idempotent, urgent→`very_urgent`, status polls position or admitted room). Doctors see general + directed pending requests in the doctor-office "Pacientes Aguardando" panel (queue/urgency badges, wait time) sorted by urgency rank then arrival; admitting atomically claims the request and routes both parties into the canonical `doctor-office-<doctorId>` channel.
 
 ## External Dependencies
 - **Database:** PostgreSQL (Neon)
