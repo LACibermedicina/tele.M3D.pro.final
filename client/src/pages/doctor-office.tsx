@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Stethoscope, UserPlus, Copy, Link as LinkIcon, Users, Video, VideoOff, X, Clock, History } from "lucide-react";
+import { Stethoscope, UserPlus, Copy, Link as LinkIcon, Users, Video, VideoOff, X, Clock, History, AlertTriangle, UserCheck } from "lucide-react";
+import { TriageBadge } from "@/components/triage/triage-badge";
 import AgoraRTC, { IAgoraRTCClient, ICameraVideoTrack, IMicrophoneAudioTrack } from "agora-rtc-sdk-ng";
 import PageWrapper from "@/components/layout/page-wrapper";
 import origamiHeroImage from "@assets/image_1759773239051.png";
@@ -59,6 +60,30 @@ export default function DoctorOffice() {
       return res.json();
     },
     enabled: !!user?.id && historyOpen,
+  });
+
+  type PendingRequest = { id: string; patientName: string; symptoms: string; urgencyLevel: string; createdAt: string };
+  const { data: pendingRequests = [] } = useQuery<PendingRequest[]>({
+    queryKey: ['/api/doctor-office/pending-requests'],
+    enabled: user?.role === 'doctor',
+    refetchInterval: 10000,
+  });
+
+  const admitMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      const res = await apiRequest('POST', `/api/doctor-office/admit/${requestId}`);
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: 'Paciente admitido',
+        description: `${data.patientName || 'Paciente'} foi chamado(a) para o consultório.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/doctor-office/pending-requests'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Erro ao admitir paciente', description: error.message, variant: 'destructive' });
+    },
   });
 
   const { data: presenceCfg } = useQuery<Record<string, string>>({
@@ -421,6 +446,62 @@ export default function DoctorOffice() {
             )}
           </div>
         </div>
+
+        {/* Urgent patients awaiting admission */}
+        <DraggableDashboardPanel id="office-urgencies" label="Pacientes Aguardando" icon="users" dashboardKey="doctor-office">
+        <Card className="backdrop-blur-xl bg-white/80 dark:bg-black/40 border-white/20 mb-6" data-testid="panel-urgent-requests">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Pacientes Aguardando Atendimento
+              {pendingRequests.length > 0 && (
+                <Badge variant="destructive" data-testid="badge-pending-count">{pendingRequests.length}</Badge>
+              )}
+            </CardTitle>
+            <CardDescription>
+              Solicitações pendentes de consulta — admita o paciente para atendê-lo agora no consultório
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {pendingRequests.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum paciente aguardando no momento.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {!isOfficeOpen && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Abra o consultório para poder admitir pacientes.
+                  </p>
+                )}
+                {pendingRequests.map((r) => (
+                  <div key={r.id} className="flex items-start justify-between gap-4 p-3 rounded-lg border bg-muted/40" data-testid={`row-urgent-${r.id}`}>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium" data-no-translate>{r.patientName}</span>
+                        <TriageBadge level={r.urgencyLevel} size="sm" />
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(r.createdAt).toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2" data-no-translate>{r.symptoms}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => admitMutation.mutate(r.id)}
+                      disabled={admitMutation.isPending || !isOfficeOpen}
+                      data-testid={`btn-admit-${r.id}`}
+                    >
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      Admitir
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        </DraggableDashboardPanel>
 
         {isOfficeOpen ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

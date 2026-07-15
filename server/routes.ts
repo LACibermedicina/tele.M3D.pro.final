@@ -192,6 +192,111 @@ function friendlyRoleLabel(role?: string): string {
   }
 }
 
+// Resolve a requested video channel name to its canonical Agora channel and
+// decide whether the caller may join it. Accepts raw videoConsultation UUIDs,
+// `consultation-<id>` prefixed channels, consultation_session ids and
+// `doctor-office-<doctorId>` channels. The returned canonical channel is what
+// the client must actually join — the server is the single source of truth so
+// doctor and patient always land in the same room, even when a consultation
+// was routed into a doctor's open office (agora_channel_name remap).
+async function resolveVideoChannelAccess(
+  channelName: string,
+  user: { id: string; role?: string },
+): Promise<{ authorized: boolean; canonicalChannel: string }> {
+  const deny = { authorized: false, canonicalChannel: channelName };
+  if (!channelName || !user) return deny;
+  const isAdmin = user.role === 'admin';
+
+  // Doctor-office channels: owner, admin, or a patient holding a waiting/active
+  // consultation with that doctor that was explicitly routed to the office room.
+  const officeMatch = channelName.match(/^doctor-office-(.+)$/);
+  if (officeMatch) {
+    const ownerId = officeMatch[1];
+    if (isAdmin || user.id === ownerId) {
+      return { authorized: true, canonicalChannel: channelName };
+    }
+    try {
+      const patient = await storage.getPatientByUserId(user.id);
+      if (patient) {
+        const admitted = await db.select({ id: videoConsultations.id })
+          .from(videoConsultations)
+          .where(and(
+            eq(videoConsultations.patientId, patient.id),
+            eq(videoConsultations.doctorId, ownerId),
+            eq(videoConsultations.agoraChannelName, channelName),
+            inArray(videoConsultations.status, ['waiting', 'active']),
+          ))
+          .limit(1);
+        if (admitted.length > 0) {
+          return { authorized: true, canonicalChannel: channelName };
+        }
+      }
+    } catch {}
+    return deny;
+  }
+
+  // Everything else: resolve as a video consultation (raw id or
+  // `consultation-<id>`), then as a collaborative consultation session id.
+  const consultMatch = channelName.match(/^consultation-(.+)$/);
+  const candidateId = consultMatch ? consultMatch[1] : channelName;
+
+  try {
+    const consult = await storage.getVideoConsultation(candidateId);
+    if (consult) {
+      let authorized = isAdmin || consult.doctorId === user.id;
+      if (!authorized && consult.patientId) {
+        try {
+          const patient = await storage.getPatient(consult.patientId);
+          if (patient?.userId === user.id) authorized = true;
+        } catch {}
+      }
+      if (!authorized) return deny;
+      const isLive = consult.status === 'waiting' || consult.status === 'active';
+      const canonicalChannel = (isLive && consult.agoraChannelName) ? consult.agoraChannelName : consult.id;
+      return { authorized: true, canonicalChannel };
+    }
+  } catch {}
+
+  try {
+    const session = await storage.getConsultationSession(candidateId);
+    if (session) {
+      const request = await storage.getConsultationRequest((session as any).consultationId);
+      if (request) {
+        const invited: any = (session as any).invitedSpecialists || [];
+        let authorized = isAdmin
+          || request.selectedDoctorId === user.id
+          || (Array.isArray(invited) && invited.includes(user.id));
+        if (!authorized) {
+          const patient = await storage.getPatientByUserId(user.id);
+          if (patient && patient.id === request.patientId) authorized = true;
+        }
+        if (!authorized) return deny;
+        // Prefer the live video-consultation room for this doctor/patient pair
+        // so participants entering via the session page meet the other side.
+        if (request.selectedDoctorId) {
+          const vcs = await db.select()
+            .from(videoConsultations)
+            .where(and(
+              eq(videoConsultations.doctorId, request.selectedDoctorId),
+              eq(videoConsultations.patientId, request.patientId),
+              inArray(videoConsultations.status, ['waiting', 'active']),
+            ))
+            .orderBy(desc(videoConsultations.createdAt))
+            .limit(1);
+          if (vcs.length > 0) {
+            return { authorized: true, canonicalChannel: vcs[0].agoraChannelName || vcs[0].id };
+          }
+        }
+        return { authorized: true, canonicalChannel: (session as any).id };
+      }
+    }
+  } catch {}
+
+  // Unknown channel: only admins may join arbitrary channels.
+  if (isAdmin) return { authorized: true, canonicalChannel: channelName };
+  return deny;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
@@ -3502,50 +3607,24 @@ ${clinicalText}`;
       const rawUidHash = Math.abs(req.user.id.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0));
       const numericUid = uid || ((rawUidHash % 9999) + 1);
 
-      // Authorization: verify caller is allowed to join the requested channel.
-      // Doctor-office channels are restricted to the owning doctor and admins.
-      // Consultation channels (consultation-<uuid>) require the caller to be the
-      // assigned doctor or the assigned patient of that consultation.
-      const officeMatch = channelName.match(/^doctor-office-(.+)$/);
-      if (officeMatch) {
-        const ownerId = officeMatch[1];
-        if (req.user.role !== 'admin' && req.user.id !== ownerId) {
-          return res.status(403).json({ message: 'Not authorized to join this channel' });
-        }
-      } else {
-        // For any other channel (e.g. consultation channels) require admin or
-        // confirmed membership (doctor or patient) of the matching consultation.
-        if (req.user.role !== 'admin') {
-          let authorized = false;
-          try {
-            const consultMatch = channelName.match(/^consultation-(.+)$/);
-            if (consultMatch) {
-              const consult = await storage.getVideoConsultation(consultMatch[1]);
-              if (consult) {
-                if (consult.doctorId === req.user.id) {
-                  authorized = true;
-                } else if (consult.patientId) {
-                  const patient = await storage.getPatient(consult.patientId);
-                  if (patient?.userId === req.user.id) authorized = true;
-                }
-              }
-            }
-          } catch {}
-          if (!authorized) {
-            return res.status(403).json({ message: 'Not authorized to join this channel' });
-          }
-        }
+      // Authorization + canonical room resolution: the server decides which
+      // Agora channel the caller must join (single source of truth), so doctor
+      // and patient always meet in the same room.
+      const access = await resolveVideoChannelAccess(channelName, req.user);
+      if (!access.authorized) {
+        return res.status(403).json({ message: 'Not authorized to join this channel' });
       }
+      const canonicalChannel = access.canonicalChannel;
 
       const token = generateAgoraToken({
-        channelName,
+        channelName: canonicalChannel,
         uid: numericUid,
         role: (role as 'publisher' | 'subscriber') || 'publisher',
         expirationTimeInSeconds: 3600 // 1 hour
       });
 
       // Register this participant so the office host can resolve UID -> name/role.
-      registerAgoraParticipant(channelName, {
+      registerAgoraParticipant(canonicalChannel, {
         uid: Number(numericUid),
         userId: req.user.id,
         name: (displayName || req.user.name || req.user.username || 'Participante').toString(),
@@ -3555,7 +3634,7 @@ ${clinicalText}`;
       res.json({
         token,
         appId: getAgoraAppId(),
-        channelName,
+        channelName: canonicalChannel,
         uid: numericUid
       });
     } catch (error) {
@@ -3601,47 +3680,38 @@ ${clinicalText}`;
         return res.status(400).json({ message: 'Channel name and role are required' });
       }
 
-      // Verify caller is authorized to join the requested consultation channel.
-      if (req.user.role !== 'admin') {
-        let authorized = false;
-        try {
-          const consultMatch = channelName.match(/^consultation-(.+)$/);
-          if (consultMatch) {
-            const consult = await storage.getVideoConsultation(consultMatch[1]);
-            if (consult) {
-              if (consult.doctorId === req.user.id) {
-                authorized = true;
-              } else if (consult.patientId) {
-                const patient = await storage.getPatient(consult.patientId);
-                if (patient?.userId === req.user.id) authorized = true;
-              }
-            }
-          }
-          // Also allow doctor-office channels for their owner
-          const officeMatch = channelName.match(/^doctor-office-(.+)$/);
-          if (officeMatch && officeMatch[1] === req.user.id) {
-            authorized = true;
-          }
-        } catch {}
-        if (!authorized) {
-          return res.status(403).json({ message: 'Not authorized to join this channel' });
-        }
+      // Authorization + canonical room resolution: accepts raw consultation
+      // UUIDs, `consultation-<id>`, session ids and office channels. Clients
+      // must join the channelName returned here (server-side room unification).
+      const access = await resolveVideoChannelAccess(channelName, req.user);
+      if (!access.authorized) {
+        return res.status(403).json({ message: 'Not authorized to join this channel' });
       }
+      const canonicalChannel = access.canonicalChannel;
 
       const rawHash = Math.abs(req.user.id.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0));
       const uid = (rawHash % 9999) + 1;
 
       const token = generateAgoraToken({
-        channelName,
+        channelName: canonicalChannel,
         uid,
         role: role as 'publisher' | 'subscriber',
         expirationTimeInSeconds: 3600 // 1 hour
       });
 
+      // Register this participant so office/consultation hosts can resolve
+      // numeric UIDs to human-friendly names in the participants directory.
+      registerAgoraParticipant(canonicalChannel, {
+        uid,
+        userId: req.user.id,
+        name: (req.user.name || req.user.username || 'Participante').toString(),
+        role: friendlyRoleLabel(req.user.role),
+      });
+
       res.json({
         token,
         appId: getAgoraAppId(),
-        channelName,
+        channelName: canonicalChannel,
         uid
       });
     } catch (error) {
@@ -10340,12 +10410,19 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         )
         .limit(1);
 
+      const officeChannel = `doctor-office-${doctorId}`;
+
       if (existingConsultation.length > 0) {
+        // Route the existing consultation into the doctor's office room so the
+        // patient joins the channel where the doctor actually is.
+        await db.update(videoConsultations)
+          .set({ agoraChannelName: officeChannel })
+          .where(eq(videoConsultations.id, existingConsultation[0].id));
         return res.json({
           message: 'Joined office successfully',
           consultationId: existingConsultation[0].id,
           appointmentId: existingConsultation[0].appointmentId,
-          channelName: existingConsultation[0].id
+          channelName: officeChannel
         });
       }
 
@@ -10370,8 +10447,9 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         })
         .returning();
       const consultation = consultationInsert;
+      // Walk-in consultations happen inside the doctor's office room.
       await db.update(videoConsultations)
-        .set({ agoraChannelName: consultationInsert[0].id })
+        .set({ agoraChannelName: officeChannel })
         .where(eq(videoConsultations.id, consultationInsert[0].id));
 
       // Notify doctor via WebSocket
@@ -10436,6 +10514,147 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
     } catch (error: any) {
       console.error('Join office error:', error);
       res.status(500).json({ message: error.message || 'Falha ao entrar no consultório' });
+    }
+  });
+
+  // Pending consultation requests visible to doctors for direct office admission.
+  app.get('/api/doctor-office/pending-requests', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso restrito a médicos.' });
+      }
+      const pending = await storage.getPendingConsultationRequests();
+      const urgencyRank: Record<string, number> = { emergency: 0, very_urgent: 1, urgent: 2, standard: 3, non_urgent: 4 };
+      const enriched = await Promise.all(pending.map(async (r) => {
+        let patientName = 'Paciente';
+        try {
+          const p = await storage.getPatient(r.patientId);
+          if (p?.name) patientName = p.name;
+        } catch {}
+        return {
+          id: r.id,
+          patientName,
+          symptoms: r.symptoms,
+          urgencyLevel: r.urgencyLevel,
+          createdAt: r.createdAt,
+        };
+      }));
+      enriched.sort((a, b) => (urgencyRank[a.urgencyLevel] ?? 9) - (urgencyRank[b.urgencyLevel] ?? 9));
+      res.json(enriched);
+    } catch (error) {
+      console.error('Pending office requests error:', error);
+      res.status(500).json({ message: 'Falha ao buscar solicitações pendentes' });
+    }
+  });
+
+  // Doctor admits an urgent consultation request directly into their open office room.
+  app.post('/api/doctor-office/admit/:requestId', requireAuth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas médicos podem admitir pacientes.' });
+      }
+      const doctorId = req.user.id;
+      const doctorName = req.user.name || 'Médico(a)';
+
+      const request = await storage.getConsultationRequest(req.params.requestId);
+      if (!request) {
+        return res.status(404).json({ message: 'Solicitação não encontrada.' });
+      }
+
+      // Accept the request atomically if still pending; otherwise only the
+      // doctor who accepted it may admit the patient.
+      if (request.status === 'pending') {
+        const accepted = await db.update(consultationRequests)
+          .set({ status: 'accepted', selectedDoctorId: doctorId, acceptedAt: new Date() })
+          .where(and(
+            eq(consultationRequests.id, req.params.requestId),
+            eq(consultationRequests.status, 'pending')
+          ))
+          .returning();
+        if (accepted.length === 0) {
+          return res.status(409).json({ message: 'Esta solicitação já foi aceita por outro médico.' });
+        }
+      } else if (request.status === 'accepted') {
+        if (request.selectedDoctorId !== doctorId && req.user.role !== 'admin') {
+          return res.status(403).json({ message: 'Esta solicitação foi aceita por outro médico.' });
+        }
+      } else {
+        return res.status(400).json({ message: 'Esta solicitação não está mais disponível.' });
+      }
+
+      const patientRec = await storage.getPatient(request.patientId);
+      if (!patientRec) {
+        return res.status(404).json({ message: 'Paciente não encontrado.' });
+      }
+
+      const officeChannel = `doctor-office-${doctorId}`;
+
+      // Find or create the video consultation for this doctor/patient pair and
+      // route it into the office room.
+      const existing = await db.select()
+        .from(videoConsultations)
+        .where(and(
+          eq(videoConsultations.patientId, request.patientId),
+          eq(videoConsultations.doctorId, doctorId),
+          inArray(videoConsultations.status, ['waiting', 'active'])
+        ))
+        .orderBy(desc(videoConsultations.createdAt))
+        .limit(1);
+
+      let consultationId: string;
+      if (existing.length > 0) {
+        consultationId = existing[0].id;
+        await db.update(videoConsultations)
+          .set({ agoraChannelName: officeChannel })
+          .where(eq(videoConsultations.id, consultationId));
+      } else {
+        const inserted = await db.insert(videoConsultations)
+          .values({ patientId: request.patientId, doctorId, status: 'waiting', agoraChannelName: officeChannel })
+          .returning();
+        consultationId = inserted[0].id;
+      }
+
+      // Notify the patient with a direct link to the unified room.
+      if (patientRec.userId) {
+        const actionUrl = `/patient/video/${consultationId}`;
+        broadcastToUser(patientRec.userId, {
+          type: 'consultation_ready',
+          data: {
+            consultationId,
+            doctorName,
+            title: 'Atendimento Imediato',
+            message: `Dr(a). ${doctorName} está chamando você para atendimento no consultório virtual.`,
+            priority: 'high',
+            actionUrl,
+          }
+        });
+        try {
+          await db.insert(pendingNotifications).values({
+            userId: patientRec.userId,
+            type: 'consultation_ready',
+            title: 'Atendimento Imediato',
+            message: `Dr(a). ${doctorName} está chamando você para atendimento imediato no consultório virtual. Entre na sala de vídeo.`,
+            priority: 'high',
+            actionUrl,
+            senderId: doctorId,
+            delivered: false,
+            read: false,
+            metadata: { requestId: req.params.requestId, consultationId },
+          });
+        } catch (e) {
+          console.error('Failed to store admit notification:', e);
+        }
+      }
+
+      res.json({
+        success: true,
+        consultationId,
+        channelName: officeChannel,
+        patientName: patientRec.name,
+      });
+    } catch (error: any) {
+      console.error('Admit to office error:', error);
+      res.status(500).json({ message: error.message || 'Falha ao admitir paciente no consultório' });
     }
   });
 
@@ -12728,6 +12947,42 @@ Valores possíveis para aiTriageLevel: "emergency", "very_urgent", "urgent", "st
         console.error('Failed to auto-create consultation on accept:', e);
       }
 
+      // Notify the patient with a direct link to the unified video room so
+      // both sides land in the same channel (vc.id resolved server-side).
+      if (consultationId) {
+        try {
+          const patientRec = await storage.getPatient(request.patientId);
+          if (patientRec?.userId) {
+            const actionUrl = `/patient/video/${consultationId}`;
+            broadcastToUser(patientRec.userId, {
+              type: 'consultation_ready',
+              data: {
+                consultationId,
+                doctorName,
+                title: 'Consulta Aceita',
+                message: `Dr(a). ${doctorName} aceitou sua solicitação. Entre na sala de vídeo.`,
+                priority: 'high',
+                actionUrl,
+              }
+            });
+            await db.insert(pendingNotifications).values({
+              userId: patientRec.userId,
+              type: 'consultation_ready',
+              title: 'Consulta Aceita',
+              message: `Dr(a). ${doctorName} aceitou sua solicitação de consulta. Entre na sala de vídeo para ser atendido(a).`,
+              priority: 'high',
+              actionUrl,
+              senderId: doctorId,
+              delivered: false,
+              read: false,
+              metadata: { requestId: req.params.id, consultationId },
+            });
+          }
+        } catch (notifyErr) {
+          console.error('Failed to notify patient about accepted consultation:', notifyErr);
+        }
+      }
+
       const recommendedDoctorIds: string[] = (request as any).recommendedDoctors || [];
       const otherDoctorIds = recommendedDoctorIds.filter(id => id !== doctorId);
 
@@ -13699,6 +13954,24 @@ Retorne apenas o JSON válido.`;
             }
           }
 
+          // Attach the live video consultation for this doctor/patient pair so
+          // the patient's "Entrar na Sala" button leads to the unified room.
+          let videoConsultationId: string | null = null;
+          if (request.status === 'accepted' && request.selectedDoctorId) {
+            try {
+              const vcs = await db.select({ id: videoConsultations.id })
+                .from(videoConsultations)
+                .where(and(
+                  eq(videoConsultations.doctorId, request.selectedDoctorId),
+                  eq(videoConsultations.patientId, patient.id),
+                  inArray(videoConsultations.status, ['waiting', 'active'])
+                ))
+                .orderBy(desc(videoConsultations.createdAt))
+                .limit(1);
+              if (vcs.length > 0) videoConsultationId = vcs[0].id;
+            } catch {}
+          }
+
           // Get doctor info if assigned
           let doctor = null;
           if (request.selectedDoctorId) {
@@ -13714,6 +13987,7 @@ Retorne apenas o JSON válido.`;
             ...sanitizedRequest,
             clinicalPresentation: undefined,
             session: session ? { id: session.id, clinicalNotes: (session as any).clinicalNotes ? '[registrado]' : null } : null,
+            videoConsultationId,
             doctor: doctor ? { id: doctor.id, name: doctor.name, specialty: (doctor as any).specialization } : null
           };
         })

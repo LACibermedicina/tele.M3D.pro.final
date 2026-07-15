@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Calendar, Users, FileText, Link2, Copy, CheckCircle, Loader2, RotateCcw } from "lucide-react";
+import { Calendar, Users, FileText, Link2, Copy, CheckCircle, Loader2, RotateCcw, Stethoscope } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -122,7 +122,17 @@ export function DesktopDoctorDashboard() {
         <DraggableDashboardPanel id="dd-quick-actions" label="Acesso Rápido" icon="zap" dashboardKey="desktop-doctor">
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Acesso Rápido</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <Link href="/doctor-office">
+              <Button
+                className="w-full h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                data-testid="button-open-office"
+              >
+                <Stethoscope className="w-6 h-6" />
+                <span className="font-medium">Abrir Consultório</span>
+              </Button>
+            </Link>
+
             <Link href="/schedule">
               <Button
                 className="w-full h-24 flex flex-col items-center justify-center gap-2 bg-medical-primary hover:bg-medical-primary/90"

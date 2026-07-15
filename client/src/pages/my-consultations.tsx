@@ -75,6 +75,7 @@ interface ConsultationRequest {
     id: string;
     clinicalNotes?: string;
   };
+  videoConsultationId?: string | null;
 }
 
 interface VideoHistoryItem {
@@ -386,10 +387,14 @@ export default function MyConsultations() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {consultation.status === 'accepted' && consultation.session && (
+            {consultation.status === 'accepted' && (consultation.videoConsultationId || consultation.session) && (
               <Button 
                 size="sm" 
-                onClick={() => navigate(`/consultation-session/${consultation.session?.id}`)}
+                onClick={() => navigate(
+                  consultation.videoConsultationId
+                    ? `/patient/video/${consultation.videoConsultationId}`
+                    : `/consultation-session/${consultation.session?.id}`
+                )}
                 data-testid="button-join-session"
               >
                 <Video className="w-4 h-4 mr-2" />

@@ -126,10 +126,11 @@ export default function ConsultationSession() {
   }>({
     queryKey: ['agora-token', sessionId],
     queryFn: async () => {
-      return await apiRequest('POST', '/api/video-consultations/agora-token', {
+      const response = await apiRequest('POST', '/api/video-consultations/agora-token', {
         channelName: sessionId,
         role: 'publisher',
-      }) as any;
+      });
+      return await response.json();
     },
     enabled: !!sessionId,
   });

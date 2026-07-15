@@ -3,4 +3,5 @@
 - [AI auto-translate layer](ai-auto-translate-layer.md) — new clinical UI must carry data-no-translate (PHI never sent to AI); never skip via [translate="no"]; first visit ~10s is normal, cache repeats ~50ms.
 - [Replit OpenAI proxy validation](replit-openai-proxy-validation.md) — the AI-integrations proxy returns 405 on GET /models even with valid creds; only 401/403 means broken auth.
 - [GitHub backup snapshot model](github-backup-snapshot.md) — remote main is a snapshot chain, NOT local history (183MB PDF blocks any history push); update via commit-tree parented on remote tip.
+- [Video channel unification](video-channel-unification.md) — Agora token routes return the canonical channel (clients must join it); consultation_sessions.consultationId actually stores the requestId.
 - [Full-screen overlays vs Radix portals](overlay-zindex-portals.md) — fixed overlays go up to z-[10002]; default z-50 portal menus paint behind them, so portal content needs a higher z (LanguageSelector uses z-[10050]).
