@@ -121,6 +121,9 @@ export default function ConsultationRequest() {
     queryKey: ['/api/waiting-room/status'],
     enabled: !!user && user.role === 'patient',
     refetchInterval: 4000,
+    // Keep polling while the tab is in the background: this poll doubles as
+    // the presence heartbeat that keeps the patient in the general queue.
+    refetchIntervalInBackground: true,
   });
   const waitingStatus = waitingStatusQuery.data;
 

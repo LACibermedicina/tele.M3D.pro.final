@@ -71,6 +71,7 @@ export default function DoctorOffice() {
     requestedUrgent: boolean;
     directedToMe: boolean;
     waitingMinutes: number;
+    lastSeenSecondsAgo: number | null;
     createdAt: string;
   };
   const { data: pendingRequests = [] } = useQuery<PendingRequest[]>({
@@ -85,6 +86,15 @@ export default function DoctorOffice() {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
     return m > 0 ? `${h}h ${m}min` : `${h}h`;
+  };
+
+  const fmtLastSeen = (seconds: number | null) => {
+    if (seconds === null) return null;
+    if (seconds < 60) return 'agora mesmo';
+    const m = Math.floor(seconds / 60);
+    if (m < 60) return `há ${m} min`;
+    const h = Math.floor(m / 60);
+    return `há ${h}h`;
   };
 
   const admitMutation = useMutation({
@@ -527,6 +537,15 @@ export default function DoctorOffice() {
                           <Clock className="h-3 w-3" />
                           aguardando {fmtWaiting(r.waitingMinutes)}
                         </span>
+                        {r.queueType === 'general' && fmtLastSeen(r.lastSeenSecondsAgo) && (
+                          <span
+                            className={`text-xs inline-flex items-center gap-1 ${(r.lastSeenSecondsAgo ?? 0) < 120 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}
+                            data-testid={`text-last-seen-${r.id}`}
+                          >
+                            <span className={`inline-block h-1.5 w-1.5 rounded-full ${(r.lastSeenSecondsAgo ?? 0) < 120 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                            presença confirmada {fmtLastSeen(r.lastSeenSecondsAgo)}
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-2" data-no-translate>{r.symptoms}</p>
                     </div>

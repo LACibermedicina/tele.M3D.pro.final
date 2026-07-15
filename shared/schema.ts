@@ -819,6 +819,7 @@ export const consultationRequests = pgTable("consultation_requests", {
   selectedDoctorId: uuid("selected_doctor_id").references(() => users.id),
   queueType: text("queue_type").notNull().default("directed"), // directed (patient picked doctor/specialty flow) | general (waiting room, first available doctor)
   requestedUrgent: boolean("requested_urgent").default(false), // patient explicitly joined the urgency queue
+  lastSeenAt: timestamp("last_seen_at"), // presence heartbeat for general-queue entries (patient's waiting screen polling)
   status: text("status").notNull().default("pending"), // pending, accepted, rejected, scheduled, cancelled
   whatsappNotificationSent: boolean("whatsapp_notification_sent").default(false),
   acceptedAt: timestamp("accepted_at"),

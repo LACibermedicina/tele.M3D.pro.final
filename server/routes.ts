@@ -10596,11 +10596,30 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
   // Pending consultation requests visible to doctors for direct office admission.
   // Includes requests directed to this doctor AND general waiting-room requests
   // (no doctor selected), ordered by urgency then arrival time.
+  // General-queue presence: entries whose waiting screen stopped sending
+  // heartbeats (patient closed the page) are expired so doctors don't call
+  // patients who already left.
+  const WAITING_ROOM_PRESENCE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+  const expireStaleGeneralQueueEntries = async () => {
+    const cutoff = new Date(Date.now() - WAITING_ROOM_PRESENCE_TIMEOUT_MS);
+    await db.update(consultationRequests)
+      .set({ status: 'cancelled', rejectionReason: 'expired_no_presence', updatedAt: new Date() })
+      .where(and(
+        eq(consultationRequests.queueType, 'general'),
+        eq(consultationRequests.status, 'pending'),
+        or(
+          lt(consultationRequests.lastSeenAt, cutoff),
+          and(isNull(consultationRequests.lastSeenAt), lt(consultationRequests.createdAt, cutoff)),
+        ),
+      ));
+  };
+
   app.get('/api/doctor-office/pending-requests', requireAuth, async (req: any, res) => {
     try {
       if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Acesso restrito a médicos.' });
       }
+      try { await expireStaleGeneralQueueEntries(); } catch (e) { console.error('Failed to expire stale queue entries:', e); }
       const pending = await db.select().from(consultationRequests)
         .where(and(
           eq(consultationRequests.status, 'pending'),
@@ -10627,6 +10646,9 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
           requestedUrgent: Boolean((r as any).requestedUrgent),
           directedToMe: r.selectedDoctorId === req.user.id,
           waitingMinutes: Math.max(0, Math.floor((now - new Date(r.createdAt).getTime()) / 60000)),
+          lastSeenSecondsAgo: (r as any).lastSeenAt
+            ? Math.max(0, Math.floor((now - new Date((r as any).lastSeenAt).getTime()) / 1000))
+            : null,
           createdAt: r.createdAt,
         };
       }));
@@ -10800,13 +10822,16 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
       let request;
       if (existing.length > 0) {
         request = existing[0];
-        if (urgent && !(request as any).requestedUrgent) {
-          const [updated] = await db.update(consultationRequests)
-            .set({ requestedUrgent: true, urgencyLevel: 'very_urgent', updatedAt: new Date() })
-            .where(eq(consultationRequests.id, request.id))
-            .returning();
-          if (updated) request = updated;
-        }
+        const upgrade = urgent && !(request as any).requestedUrgent;
+        const [updated] = await db.update(consultationRequests)
+          .set({
+            lastSeenAt: new Date(),
+            updatedAt: new Date(),
+            ...(upgrade ? { requestedUrgent: true, urgencyLevel: 'very_urgent' } : {}),
+          })
+          .where(eq(consultationRequests.id, request.id))
+          .returning();
+        if (updated) request = updated;
       } else {
         const [inserted] = await db.insert(consultationRequests)
           .values({
@@ -10816,6 +10841,7 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
             queueType: 'general',
             requestedUrgent: urgent,
             status: 'pending',
+            lastSeenAt: new Date(),
           })
           .returning();
         request = inserted;
@@ -10845,6 +10871,18 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         .limit(1);
       if (mine.length === 0) return res.json({ inQueue: false });
       const request = mine[0];
+
+      // The waiting screen polls this endpoint while open, so each poll on a
+      // pending entry doubles as a presence heartbeat.
+      if (request.status === 'pending') {
+        try {
+          await db.update(consultationRequests)
+            .set({ lastSeenAt: new Date() })
+            .where(eq(consultationRequests.id, request.id));
+        } catch (e) {
+          console.error('Failed to record waiting-room heartbeat:', e);
+        }
+      }
 
       if (request.status === 'accepted' && request.selectedDoctorId) {
         // Admitted: point the patient at the live room for this doctor pair.
