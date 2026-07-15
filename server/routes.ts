@@ -10251,10 +10251,12 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
       if (req.user.role !== 'doctor') {
         return res.status(403).json({ message: 'Only doctors can send heartbeat' });
       }
-      const participantCount = Number.isInteger(req.body?.participantCount) ? req.body.participantCount : 0;
+      const hasParticipantCount = Number.isInteger(req.body?.participantCount);
       const now = new Date();
       const result = await db.update(doctorOfficeSessions)
-        .set({ lastHeartbeatAt: now, participantCount })
+        .set(hasParticipantCount
+          ? { lastHeartbeatAt: now, participantCount: req.body.participantCount }
+          : { lastHeartbeatAt: now })
         .where(and(
           eq(doctorOfficeSessions.doctorId, req.user.id),
           isNull(doctorOfficeSessions.closedAt)

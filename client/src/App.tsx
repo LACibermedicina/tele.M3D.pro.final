@@ -97,7 +97,7 @@ import { VoiceAssistantOverlay } from "@/components/voice-assistant-overlay";
 import DesktopBackground from "@/components/layout/desktop-background";
 import { DesktopWindowManagerProvider } from "@/contexts/DesktopWindowManagerContext";
 import DesktopWindowLayer, { isWindowedRoute } from "@/components/layout/desktop-window-layer";
-import { FullscreenPageClose } from "@/components/layout/header-quick-controls";
+import { FullscreenPageClose, GlobalOfficeHeartbeat } from "@/components/layout/header-quick-controls";
 import { ViewModeProvider, useViewMode } from "@/contexts/ViewModeContext";
 import { AccessModalityProvider, useAccessModality } from "@/contexts/AccessModalityContext";
 import { AssistedLayout } from "@/components/assisted/assisted-layout";
@@ -155,6 +155,7 @@ function Router() {
   if (isAssistedMode) {
     return (
       <div data-modality="assisted" className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white">
+        <GlobalOfficeHeartbeat />
         <AssistedLayout />
       </div>
     );
@@ -175,6 +176,7 @@ function Router() {
     <>
     <DesktopBackground />
     <DesktopWindowLayer />
+    {user && <GlobalOfficeHeartbeat />}
     {isDesktopWindowed && <Header />}
     <div className={`min-h-screen transition-all duration-300 ${sidebarMargin} ${bottomPadding} relative z-[1] md:bg-transparent bg-background desktop-env-root`}>
       {user && <UrgentAlertOverlay />}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +17,49 @@ interface OfficeStatus {
   currentSessionId?: string | null;
   openedAt?: string | null;
   lastHeartbeatAt?: string | null;
+}
+
+/**
+ * Mounted once globally (App.tsx). While the doctor's office is open, sends a
+ * lightweight heartbeat so the session doesn't auto-close from inactivity when
+ * the office was opened via the bar toggle without visiting the office page.
+ * It intentionally omits participantCount so it never overwrites the real
+ * count reported by the doctor-office page.
+ */
+export function GlobalOfficeHeartbeat() {
+  const { user } = useAuth();
+  const isDoctor = user?.role === "doctor";
+
+  const { data: officeStatus } = useQuery<OfficeStatus>({
+    queryKey: ["/api/doctor-office/status", user?.id],
+    enabled: !!user?.id && isDoctor,
+    refetchInterval: 15000,
+  });
+
+  const { data: presenceCfg } = useQuery<Record<string, string>>({
+    queryKey: ["/api/system-settings/public/presence"],
+    enabled: !!user?.id && isDoctor,
+  });
+  const heartbeatMs = Math.max(5, parseInt(presenceCfg?.doctor_office_heartbeat_seconds || "30", 10)) * 1000;
+
+  const isOpen = !!officeStatus?.isOpen;
+
+  useEffect(() => {
+    if (!isDoctor || !isOpen) return;
+    const send = () => {
+      fetch("/api/doctor-office/heartbeat", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }).catch(() => {});
+    };
+    send();
+    const interval = setInterval(send, heartbeatMs);
+    return () => clearInterval(interval);
+  }, [isDoctor, isOpen, heartbeatMs]);
+
+  return null;
 }
 
 export function OfficeToggleButton({
