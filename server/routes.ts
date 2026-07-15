@@ -207,6 +207,15 @@ async function resolveVideoChannelAccess(
   if (!channelName || !user) return deny;
   const isAdmin = user.role === 'admin';
 
+  // Shared coffee-room (Cafeteria Virtual): a fixed social channel for
+  // doctors. Not tied to any consultation, so authorize by role only.
+  if (channelName === 'coffee-room-telemed') {
+    if (isAdmin || user.role === 'doctor') {
+      return { authorized: true, canonicalChannel: channelName };
+    }
+    return deny;
+  }
+
   // Doctor-office channels: owner, admin, or a patient holding a waiting/active
   // consultation with that doctor that was explicitly routed to the office room.
   const officeMatch = channelName.match(/^doctor-office-(.+)$/);
