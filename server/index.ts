@@ -189,18 +189,36 @@ app.use((req, res, next) => {
       if (isKnownSpaRoute(pathname)) return next();
       // Unknown route: serve the React shell with HTTP 404 so the browser
       // shows the NotFound page while crawlers see the correct status.
-      res.status(404).set({ "Content-Type": "text/html" }).send(
+      res.status(404).set({
+        "Content-Type": "text/html",
+        "Cache-Control": "no-cache, must-revalidate",
+      }).send(
         injectSeoIntoHtml(baseHtml, pathname),
       );
     });
 
     // Serve static assets (JS, CSS, images, etc.)
-    app.use(express.static(distPath));
+    // Hashed build artifacts (e.g. admin-4k91B4Cj.js) are immutable and can be
+    // cached long-term; HTML must always be revalidated so browsers pick up
+    // new deployments instead of importing stale, now-deleted chunks.
+    app.use(express.static(distPath, {
+      index: false,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith(".html")) {
+          res.setHeader("Cache-Control", "no-cache, must-revalidate");
+        } else if (/-[A-Za-z0-9_-]{8,}\.(js|mjs|css)$/.test(filePath)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      },
+    }));
 
     // For all remaining SPA HTML routes, inject route-specific SEO and send
     app.use("*", (req, res) => {
       const pathname = req.originalUrl.split("?")[0];
-      res.status(200).set({ "Content-Type": "text/html" }).send(
+      res.status(200).set({
+        "Content-Type": "text/html",
+        "Cache-Control": "no-cache, must-revalidate",
+      }).send(
         injectSeoIntoHtml(baseHtml, pathname),
       );
     });

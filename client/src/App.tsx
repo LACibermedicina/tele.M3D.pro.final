@@ -630,19 +630,35 @@ function Router() {
 }
 
 import { Component, ErrorInfo, ReactNode } from "react";
+import { isStaleChunkError, reloadOnStaleChunk } from "@/lib/stale-chunk";
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null; reloading: boolean }> {
   constructor(props: { children: ReactNode }) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, reloading: false };
   }
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("React Error Boundary caught:", error, info.componentStack);
+    // Stale chunk after a new deployment: reload once to fetch fresh assets
+    if (isStaleChunkError(error)) {
+      const reloaded = reloadOnStaleChunk();
+      if (reloaded) this.setState({ reloading: true });
+    }
   }
   render() {
+    if (this.state.hasError && this.state.reloading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+          <div className="text-center max-w-md space-y-4">
+            <h2 className="text-xl font-bold text-gray-700">Atualizando aplicação…</h2>
+            <p className="text-sm text-gray-600">Uma nova versão foi publicada. A página será recarregada automaticamente.</p>
+          </div>
+        </div>
+      );
+    }
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
