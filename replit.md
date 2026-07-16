@@ -41,6 +41,7 @@ The application is built with an Express.js backend and a React frontend, utiliz
 - **Post-Consultation Diagnostic Classification:** AI extracts syndromic diagnostic hypotheses with CID-10/11 and DSM-5/TR codes.
 - **Unified Payment Checkout:** Supports PayPal, Stripe, and PagBank.
 - **Inactivity Detection & Auto-Logout:** Configurable timeout with session management and Agora disconnection.
+- **Stale-Deploy Recovery (Safari hardening):** `client/src/lib/stale-chunk.ts` auto-recovers from "Importing a module script failed" after deploys: stale-chunk errors (vite:preloadError + ErrorBoundary) trigger a single cache-busting reload (`?__v=` param, 60s sessionStorage guard); a proactive version guard compares the client's hashed main-bundle path against `GET /api/version` (served no-store from `server/index.ts`; "dev" in development) on load, `pageshow persisted` (Safari BFCache) and visibilitychange, reloading before broken imports. Production HTML is served `no-cache, must-revalidate`; hashed assets `immutable`.
 - **Admin Controls:** Mass user/service disconnection, user deactivation/activation.
 - **Patient Data Export:** HL7 FHIR R4 compliant export (JSON/PDF) with de-identification.
 - **Pharmacy Integration:** Module with pharmacist role, prescription verification, and dispensing.

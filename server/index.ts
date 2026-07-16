@@ -146,6 +146,31 @@ app.use((req, res, next) => {
 
   const server = await registerRoutes(app);
 
+  // Lightweight build-version endpoint so old tabs (Safari BFCache, cached
+  // HTML) can detect a new deployment and reload before stale chunk imports
+  // fail. The version is the hashed main script path from the built index.html.
+  let cachedBuildVersion: string | null = null;
+  const getBuildVersion = (): string => {
+    if (cachedBuildVersion) return cachedBuildVersion;
+    try {
+      const html = fs.readFileSync(
+        path.resolve(import.meta.dirname, "public", "index.html"),
+        "utf-8",
+      );
+      const match = html.match(/\/assets\/index-[A-Za-z0-9_-]+\.js/);
+      cachedBuildVersion = match ? match[0] : "unknown";
+    } catch {
+      cachedBuildVersion = "unknown";
+    }
+    return cachedBuildVersion;
+  };
+  app.get("/api/version", (_req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.json({
+      version: app.get("env") === "development" ? "dev" : getBuildVersion(),
+    });
+  });
+
   // Add API protection middleware before error handler and Vite setup
   app.use('/api/*', (req, res, next) => {
     // This ensures API routes are never intercepted by catch-all
