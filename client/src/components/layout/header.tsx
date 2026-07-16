@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/use-admin";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines, ChevronDown, CalendarX2, CreditCard, Coins, HeartPulse, X } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Users, CalendarClock, MessageCircle, FileText, ClipboardList, BrainCircuit, BookOpenCheck, BarChart3, Shield, Ambulance, Menu, Command, LogIn, UserPlus, Loader2, BookOpen, Stethoscope, Coffee, Zap, Video, StickyNote, Pill, Activity, HelpCircle, Terminal, AlertCircle, Microscope, Wallet, FileBarChart, Gem, TrendingUp, AudioLines, ChevronDown, CalendarX2, CreditCard, Coins, HeartPulse, X, Search } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { formatErrorForToast } from "@/lib/error-handler";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -27,7 +27,7 @@ import { InlineTrayIcons } from "@/components/layout/minimized-panel-dock";
 import { OfficeToggleButton, PatientShortcutIcons } from "@/components/layout/header-quick-controls";
 import { useDesktopWindowManager, type DesktopWindow as DWin } from "@/contexts/DesktopWindowManagerContext";
 
-function DesktopTaskbarWindows() {
+function DesktopTaskbarWindows({ vertical = false, tooltipSide = "top" }: { vertical?: boolean; tooltipSide?: "top" | "bottom" | "left" | "right" } = {}) {
   const { windows, restoreWindow, openWindow, focusWindow, minimizeWindow, closeWindow, activeWindowId } = useDesktopWindowManager();
 
   const closedWindows = windows.filter((w: DWin) => w.state === "closed");
@@ -37,7 +37,9 @@ function DesktopTaskbarWindows() {
   if (closedWindows.length === 0 && minimizedWindows.length === 0 && openWindows.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1 shrink-0 overflow-x-auto scrollbar-none max-w-[300px]">
+    <div className={vertical
+      ? "flex flex-col items-center gap-1 shrink-0 overflow-y-auto scrollbar-none max-h-[240px]"
+      : "flex items-center gap-1 shrink-0 overflow-x-auto scrollbar-none max-w-[300px]"}>
       <TooltipProvider>
         {openWindows.map((w: DWin) => {
           const WinIcon = w.icon;
@@ -65,7 +67,7 @@ function DesktopTaskbarWindows() {
                   </button>
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="top"><p>{w.title}{isActiveWin ? " (clique para minimizar)" : ""}</p></TooltipContent>
+              <TooltipContent side={tooltipSide}><p>{w.title}{isActiveWin ? " (clique para minimizar)" : ""}</p></TooltipContent>
             </Tooltip>
           );
         })}
@@ -90,7 +92,7 @@ function DesktopTaskbarWindows() {
                   </button>
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="top"><p>{w.title} (minimizado)</p></TooltipContent>
+              <TooltipContent side={tooltipSide}><p>{w.title} (minimizado)</p></TooltipContent>
             </Tooltip>
           );
         })}
@@ -106,7 +108,7 @@ function DesktopTaskbarWindows() {
                   <WinIcon className="w-3.5 h-3.5" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="top"><p>{w.title} (fechado)</p></TooltipContent>
+              <TooltipContent side={tooltipSide}><p>{w.title} (fechado)</p></TooltipContent>
             </Tooltip>
           );
         })}
@@ -279,6 +281,12 @@ export default function Header() {
       });
 
       if (response.ok) {
+        // Fresh login: reset the nav bar to the default bottom dock,
+        // ignoring any stale stored position (Task #130).
+        try {
+          localStorage.setItem('nav_dock_mode', 'bottom');
+          localStorage.removeItem('nav_floating_position');
+        } catch {}
         window.location.href = '/dashboard';
       }
     } catch (error: any) {
@@ -525,6 +533,122 @@ export default function Header() {
   const currency = getCurrencyForLang(currentLang);
   const creditBalance = creditData?.balance ?? 0;
   const convertedValue = (creditBalance * currency.rate).toFixed(currency.code === 'PYG' ? 0 : 2);
+
+  // Standardized control cluster shared by every bar variant (bottom, left,
+  // right, floating). Renders: search, voice assistant, credits, notifications,
+  // office toggle, language, avatar menu and direct logout — always in the
+  // same order, styled for the dark bars (Task #130).
+  const renderBarControls = (opts: {
+    tooltipSide: 'top' | 'bottom' | 'left' | 'right';
+    popoverSide: 'top' | 'bottom' | 'left' | 'right';
+    vertical?: boolean;
+    compact?: boolean;
+  }) => {
+    if (!user) return null;
+    const { tooltipSide, popoverSide, vertical, compact } = opts;
+    const btnSize = vertical ? 'w-10 h-10 rounded-xl' : compact ? 'w-7 h-7 rounded-lg' : 'w-8 h-8 rounded-lg';
+    const iconSize = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
+    return (
+      <TooltipProvider>
+        <div className={`flex items-center ${vertical ? 'flex-col gap-0.5 w-full' : compact ? 'gap-0.5 shrink-0' : 'gap-1.5 shrink-0'}`}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => { setCommandPaletteTab('search'); setIsCommandPaletteOpen(true); }}
+                className={`${btnSize} flex items-center justify-center text-white/60 hover:text-sky-400 hover:bg-sky-500/10 transition-all`}
+                data-testid="button-bar-search"
+              >
+                <Search className={iconSize} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={tooltipSide}><p>Busca Contextual (⌘K)</p></TooltipContent>
+          </Tooltip>
+          {hasDecided && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setVoiceMode(!voiceMode)}
+                  className={`relative ${btnSize} flex items-center justify-center transition-all duration-300 ${
+                    voiceMode
+                      ? "bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
+                      : "text-white/50 hover:text-white hover:bg-white/10"
+                  }`}
+                  data-testid="button-bar-voice"
+                >
+                  <AudioLines className={iconSize} />
+                  {voiceMode && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side={tooltipSide}>
+                <p>{voiceMode ? (isAdmin ? "Desativar IAM3D" : "Desativar Assistente") : (isAdmin ? "Ativar IAM3D" : "Ativar Assistente")}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {user.role !== 'visitor' && creditData !== undefined && (
+            vertical ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/wallet">
+                    <div className={`${btnSize} flex flex-col items-center justify-center cursor-pointer text-amber-400 hover:bg-amber-500/10 transition-all`} data-testid="badge-credit-balance">
+                      <Coins className="h-4 w-4" />
+                      <span className="text-[8px] font-semibold leading-none mt-0.5">{creditBalance > 999 ? '999+' : creditBalance}</span>
+                    </div>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side={tooltipSide}><p>{creditBalance} TMC ({currency.symbol}{convertedValue})</p></TooltipContent>
+              </Tooltip>
+            ) : (
+              <Link href="/wallet">
+                <Badge className={`cursor-pointer bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-2 py-0.5 ${compact ? 'text-[9px]' : 'text-[10px]'} font-semibold hover:from-amber-600 hover:to-orange-600 transition-all flex items-center gap-1`} data-testid="badge-credit-balance">
+                  <Coins className="w-3 h-3" />
+                  <span>{creditBalance} TMC</span>
+                </Badge>
+              </Link>
+            )
+          )}
+          <NotificationCenter side={popoverSide} light triggerClassName={`${btnSize} p-0 hover:bg-white/10`} />
+          <OfficeToggleButton tooltipSide={tooltipSide} triggerClassName={btnSize} iconClassName={iconSize} />
+          <LanguageSelector triggerClassName={`${btnSize} text-white/70 hover:text-white hover:bg-white/10`} />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className={`${btnSize} flex items-center justify-center hover:bg-white/10 transition-colors`} data-testid="button-user-menu">
+                <Avatar className={compact ? 'w-6 h-6' : 'w-8 h-8'}>
+                  <AvatarFallback className={`text-white font-semibold ${compact ? 'text-[9px]' : 'text-[10px]'}`} style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
+                    {getUserInitials(user.name)}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side={popoverSide} className="w-56 z-[10050]">
+              <DropdownMenuLabel>
+                <p className="font-semibold">{user.name}</p>
+                <p className="text-xs text-muted-foreground font-normal">{getRoleDisplay(user.role)}</p>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/profile')}><User className="mr-2 h-4 w-4" />{t("auth.profile")}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/profile')}><Settings className="mr-2 h-4 w-4" />{t("auth.settings")}</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive"><LogOut className="mr-2 h-4 w-4" />{t("auth.logout")}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleLogout}
+                className={`${btnSize} flex items-center justify-center text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-all`}
+                data-testid="button-logout-direct"
+              >
+                <LogOut className={iconSize} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={tooltipSide}><p>Sair</p></TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
+    );
+  };
 
   const navGroups = [
     {
@@ -795,56 +919,11 @@ export default function Header() {
             <div className="w-full flex flex-col items-center gap-0.5">
               <PatientShortcutIcons tooltipSide={tooltipSide} triggerClassName="w-10 h-10 rounded-xl" />
               <InlineTrayIcons />
+              <DesktopTaskbarWindows vertical tooltipSide={tooltipSide} />
             </div>
           </TooltipProvider>
-          {user && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => { setCommandPaletteTab('search'); setIsCommandPaletteOpen(true); }}
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white/50 hover:text-sky-400 hover:bg-sky-500/10 transition-all"
-                  >
-                    <i className="fas fa-search text-sm" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side={tooltipSide}>
-                  <p>Busca Contextual</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
           <div className="w-8 border-t border-white/20 my-1" />
-          <OfficeToggleButton tooltipSide={tooltipSide} triggerClassName="w-10 h-10 rounded-xl" />
-          <LanguageSelector triggerClassName="w-10 h-10 rounded-xl text-white/70 hover:text-white hover:bg-white/10" />
-          {user && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link href="/profile">
-                    <Avatar className="w-8 h-8 cursor-pointer">
-                      <AvatarFallback className="text-white font-semibold text-[10px]" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
-                        {getUserInitials(user.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side={tooltipSide}>
-                  <p>{user.name}</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button onClick={handleLogout} className="w-10 h-10 rounded-xl flex items-center justify-center text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                    <LogOut className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side={tooltipSide}>
-                  <p>Sair</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+          {renderBarControls({ tooltipSide, popoverSide: tooltipSide, vertical: true })}
         </div>
         <CommandPalette 
           isOpen={isCommandPaletteOpen} 
@@ -900,54 +979,7 @@ export default function Header() {
 
                   <div className="h-8 w-px bg-slate-600/50 shrink-0" />
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <OfficeToggleButton tooltipSide="top" triggerClassName="w-8 h-8 rounded-lg" />
-                    <LanguageSelector triggerClassName="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10" />
-                    {user.role !== 'visitor' && creditData !== undefined && (
-                      <Link href="/wallet">
-                        <Badge className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-2 py-0.5 text-[10px] font-semibold hover:from-amber-600 hover:to-orange-600 transition-all flex items-center gap-1">
-                          <Coins className="w-3 h-3" />
-                          <span>{creditBalance} TMC</span>
-                        </Badge>
-                      </Link>
-                    )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-white/10 transition-colors" data-testid="button-user-menu">
-                          <Avatar className="w-8 h-8">
-                            <AvatarFallback className="text-white font-semibold text-[10px]" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
-                              {getUserInitials(user.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" side="top" className="w-56">
-                        <DropdownMenuLabel>
-                          <p className="font-semibold">{user.name}</p>
-                          <p className="text-xs text-muted-foreground font-normal">{getRoleDisplay(user.role)}</p>
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => navigate('/profile')}><User className="mr-2 h-4 w-4" />{t("auth.profile")}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate('/profile')}><Settings className="mr-2 h-4 w-4" />{t("auth.settings")}</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive"><LogOut className="mr-2 h-4 w-4" />{t("auth.logout")}</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={handleLogout}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                            data-testid="button-logout-direct-bottom"
-                          >
-                            <LogOut className="h-4 w-4" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top"><p>Sair</p></TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                  {renderBarControls({ tooltipSide: 'top', popoverSide: 'top' })}
                 </div>
               </div>
             </header>
@@ -1018,19 +1050,9 @@ export default function Header() {
               <div className="h-6 w-px bg-white/20 mx-1" />
               <PatientShortcutIcons tooltipSide="bottom" triggerClassName="w-7 h-7 rounded-lg" iconClassName="h-3.5 w-3.5" />
               <InlineTrayIcons />
+              <DesktopTaskbarWindows tooltipSide="bottom" />
               <div className="h-6 w-px bg-white/20 mx-1" />
-              <OfficeToggleButton tooltipSide="bottom" triggerClassName="w-7 h-7 rounded-lg" iconClassName="h-3.5 w-3.5" />
-              <LanguageSelector triggerClassName="w-7 h-7 rounded-lg text-white/70 hover:text-white hover:bg-white/10" />
-              <Link href="/profile">
-                <Avatar className="w-7 h-7 cursor-pointer">
-                  <AvatarFallback className="text-white font-semibold text-[9px]" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
-                    {getUserInitials(user.name)}
-                  </AvatarFallback>
-                </Avatar>
-              </Link>
-              <button onClick={handleLogout} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/50 hover:text-red-400 transition-all">
-                <LogOut className="h-3.5 w-3.5" />
-              </button>
+              {renderBarControls({ tooltipSide: 'bottom', popoverSide: 'bottom', compact: true })}
             </>
           )}
         </div>
@@ -1669,6 +1691,25 @@ export default function Header() {
               </form>
             )}
             
+            {user && <DesktopTaskbarWindows tooltipSide="bottom" />}
+
+            {user && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setCommandPaletteTab('search'); setIsCommandPaletteOpen(true); }}
+                    className={`hover:bg-primary/10 transition-colors duration-300 ${getIconColor()}`}
+                    data-testid="button-top-search"
+                  >
+                    <Search className="h-5 w-5" style={{ filter: getIconFilter() }} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom"><p>Busca Contextual (⌘K)</p></TooltipContent>
+              </Tooltip>
+            )}
+
             <LanguageSelector />
 
             {user && <OfficeToggleButton tooltipSide="bottom" />}
@@ -1701,7 +1742,7 @@ export default function Header() {
                 {user.role !== 'visitor' && creditData !== undefined && (
                   <Link href="/wallet">
                     <Badge
-                      className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-2.5 py-1 text-xs font-semibold hover:from-amber-600 hover:to-orange-600 transition-all hidden sm:flex items-center gap-1.5"
+                      className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 px-2.5 py-1 text-xs font-semibold hover:from-amber-600 hover:to-orange-600 transition-all flex items-center gap-1.5"
                       data-testid="badge-credit-balance"
                     >
                       <Coins className="w-3.5 h-3.5" />

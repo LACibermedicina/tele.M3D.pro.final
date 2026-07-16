@@ -156,24 +156,32 @@ export default function DesktopWindowComponent({ windowData, children }: Desktop
           <Icon className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--role-icon-color, #38bdf8)" }} />
           <span className="text-xs font-medium text-white/80 truncate">{windowData.title}</span>
         </div>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1.5 shrink-0 group/wctrl pl-2">
           <button
-            className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/10 transition-colors text-white/80 hover:text-white"
+            aria-label="Minimizar"
+            title="Minimizar"
+            className="w-3.5 h-3.5 rounded-full bg-[#febc2e] border border-black/25 flex items-center justify-center transition-all hover:brightness-110 shadow-sm"
             onClick={(e) => { e.stopPropagation(); minimizeWindow(windowData.id); }}
           >
-            <Minus className="w-3 h-3" />
+            <Minus className="w-2.5 h-2.5 text-black/70 opacity-0 group-hover/wctrl:opacity-100 transition-opacity" strokeWidth={3} />
           </button>
           <button
-            className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/10 transition-colors text-white/80 hover:text-white"
+            aria-label={isMax ? "Restaurar" : "Maximizar"}
+            title={isMax ? "Restaurar" : "Maximizar"}
+            className="w-3.5 h-3.5 rounded-full bg-[#28c840] border border-black/25 flex items-center justify-center transition-all hover:brightness-110 shadow-sm"
             onClick={(e) => { e.stopPropagation(); toggleMaximize(windowData.id); }}
           >
-            {isMax ? <Square className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+            {isMax
+              ? <Square className="w-2 h-2 text-black/70 opacity-0 group-hover/wctrl:opacity-100 transition-opacity" strokeWidth={3} />
+              : <Maximize2 className="w-2 h-2 text-black/70 opacity-0 group-hover/wctrl:opacity-100 transition-opacity" strokeWidth={3} />}
           </button>
           <button
-            className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/10 transition-colors text-white/80 hover:text-white"
+            aria-label="Fechar"
+            title="Fechar"
+            className="w-3.5 h-3.5 rounded-full bg-[#ff5f57] border border-black/25 flex items-center justify-center transition-all hover:brightness-110 shadow-sm"
             onClick={(e) => { e.stopPropagation(); closeWindow(windowData.id); }}
           >
-            <X className="w-3 h-3" />
+            <X className="w-2.5 h-2.5 text-black/70 opacity-0 group-hover/wctrl:opacity-100 transition-opacity" strokeWidth={3} />
           </button>
         </div>
       </div>
@@ -184,10 +192,11 @@ export default function DesktopWindowComponent({ windowData, children }: Desktop
 
       {!isMax && (
         <div
-          className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-10"
+          className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize z-10 opacity-70 hover:opacity-100 transition-opacity"
           onMouseDown={handleResizeStart}
+          title="Redimensionar"
           style={{
-            background: "linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.15) 50%)",
+            background: "linear-gradient(135deg, transparent 55%, rgba(255,255,255,0.45) 55%)",
             borderRadius: "0 0 12px 0",
           }}
         />

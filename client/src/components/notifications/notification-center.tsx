@@ -15,9 +15,15 @@ import { useLocation } from 'wouter';
 
 interface NotificationCenterProps {
   isScrolled?: boolean;
+  /** Side where the popover opens relative to the trigger (for docked bars). */
+  side?: 'top' | 'bottom' | 'left' | 'right';
+  align?: 'start' | 'center' | 'end';
+  /** Force white icons for dark bars regardless of scroll/theme. */
+  light?: boolean;
+  triggerClassName?: string;
 }
 
-export default function NotificationCenter({ isScrolled = false }: NotificationCenterProps) {
+export default function NotificationCenter({ isScrolled = false, side, align = 'end', light = false, triggerClassName = '' }: NotificationCenterProps) {
   const { notifications, activeNotifications, historyNotifications, unreadCount, isConnected, markAsRead, markAllAsRead, clearNotification, clearAllNotifications } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -445,29 +451,23 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
     </div>
   );
 
+  const iconColorClass = light
+    ? 'text-white/80 hover:text-white'
+    : isScrolled ? 'text-white' : 'text-indigo-950 dark:text-white';
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button 
           variant="ghost" 
           size="sm" 
-          className={`relative hover:bg-primary/10 transition-colors duration-300 ${
-            isScrolled ? 'text-white' : 'text-indigo-950 dark:text-white'
-          }`}
+          className={`relative hover:bg-primary/10 transition-colors duration-300 ${iconColorClass} ${triggerClassName}`}
           data-testid="button-notification-center"
         >
           {unreadCount > 0 ? (
-            <BellRing className={`h-5 w-5 transition-colors duration-300 ${
-              isScrolled 
-                ? 'text-white' 
-                : 'text-indigo-950 dark:text-white'
-            }`} />
+            <BellRing className={`h-5 w-5 transition-colors duration-300 ${iconColorClass}`} />
           ) : (
-            <Bell className={`h-5 w-5 transition-colors duration-300 ${
-              isScrolled 
-                ? 'text-white' 
-                : 'text-indigo-950 dark:text-white'
-            }`} />
+            <Bell className={`h-5 w-5 transition-colors duration-300 ${iconColorClass}`} />
           )}
           
           <div className={`absolute -top-1 -right-1 h-3 w-3 rounded-full ${
@@ -486,8 +486,10 @@ export default function NotificationCenter({ isScrolled = false }: NotificationC
       </PopoverTrigger>
       
       <PopoverContent 
-        className="w-96 p-0" 
-        align="end"
+        className="w-96 max-w-[95vw] p-0 z-[10050]" 
+        align={align}
+        side={side}
+        collisionPadding={8}
         data-testid="popover-notifications"
       >
         <div className="border-b p-4">

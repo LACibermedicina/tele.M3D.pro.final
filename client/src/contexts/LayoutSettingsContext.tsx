@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -62,7 +62,7 @@ const LayoutSettingsContext = createContext<LayoutSettings>({
 });
 
 export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [navDockMode, setNavDockModeState] = useState<NavDockMode>(() => {
@@ -90,6 +90,25 @@ export function LayoutSettingsProvider({ children }: { children: ReactNode }) {
     setNavDockModeState(mode);
     try { localStorage.setItem('nav_dock_mode', mode); } catch {}
   };
+
+  // On a fresh login (transition from logged-out to logged-in within this
+  // app session), reset the nav bar to the default bottom dock, ignoring any
+  // stale stored position. The user can still move/dock it afterwards.
+  const prevUserIdRef = useRef<string | number | null | undefined>(undefined);
+  useEffect(() => {
+    if (authLoading) return;
+    const currentId = (user as any)?.id ?? null;
+    const prevId = prevUserIdRef.current;
+    if (prevId === null && currentId !== null) {
+      setNavDockModeState(LAYOUT_DEFAULTS.navDockMode);
+      setNavFloatingPositionState(LAYOUT_DEFAULTS.navFloatingPosition);
+      try {
+        localStorage.setItem('nav_dock_mode', LAYOUT_DEFAULTS.navDockMode);
+        localStorage.removeItem('nav_floating_position');
+      } catch {}
+    }
+    prevUserIdRef.current = currentId;
+  }, [user, authLoading]);
 
   const setNavFloatingPosition = (pos: { x: number; y: number }) => {
     setNavFloatingPositionState(pos);
