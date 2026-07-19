@@ -400,6 +400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await migratePaymentTransactions();
   await migrateClinicTables();
   await migrateUserDeactivationFields();
+  await ensureRootSuperuser();
   await migrateFhirTables();
   await migratePostConsultationEditColumns();
   await migrateSusProntuariosTable();
@@ -11563,10 +11564,13 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         }
       }
       
-      // Validate role — admin accounts cannot be self-registered; they must be created by an existing admin
-      if (!['doctor', 'patient', 'researcher'].includes(role)) {
-        return res.status(400).json({ message: 'Perfil de usuário inválido. Escolha entre: médico, paciente ou pesquisador.' });
+      // Validate role — admin accounts can be requested via self-registration but
+      // are created deactivated and must be approved by the root superuser (or
+      // another active admin) before first login.
+      if (!['doctor', 'patient', 'researcher', 'admin'].includes(role)) {
+        return res.status(400).json({ message: 'Perfil de usuário inválido. Escolha entre: médico, paciente, pesquisador ou administrador.' });
       }
+      const adminPendingApproval = role === 'admin';
       
       // Check if username already exists
       const existingUser = await storage.getUserByUsername(username);
@@ -11643,6 +11647,10 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
           digitalCertificate: role === 'doctor' ? `cert-${Date.now()}` : undefined,
           profilePicture: profilePictureUrl,
           superiorDoctorId: validReferrerId,
+          isBlocked: adminPendingApproval ? true : undefined,
+          deactivationReason: adminPendingApproval
+            ? 'Conta de administrador aguardando aprovação do superusuário root.'
+            : undefined,
         }).returning();
         
         if (role === 'patient') {
@@ -11685,6 +11693,17 @@ Paciente: ${patient?.name}, ${patient?.dateOfBirth ? `Nascimento: ${patient.date
         }
       }
       
+      // Admin accounts are created deactivated: no session is issued until the
+      // root superuser (or another active admin) approves/unblocks the account.
+      if (adminPendingApproval) {
+        const { password: _pendingPw, ...pendingUserWithoutPassword } = newUser;
+        return res.status(201).json({
+          user: pendingUserWithoutPassword,
+          pendingApproval: true,
+          message: `Cadastro recebido, ${newUser.name}! Contas de Administrador precisam ser aprovadas pelo superusuário root antes do primeiro acesso. Aguarde a ativação da sua conta.`
+        });
+      }
+
       // Generate JWT token
       const jwtSecret = process.env.SESSION_SECRET;
       if (!jwtSecret) {
@@ -26056,6 +26075,55 @@ async function migrateUserDeactivationFields() {
     console.log('✓ User deactivation/protection fields migrated successfully');
   } catch (error) {
     console.error('Failed to migrate user deactivation fields:', error);
+  }
+}
+
+const ROOT_SUPERUSER_EMAIL = 'lucasmedicina86@icloud.com';
+
+// Idempotent seed: guarantees the 'root' superuser exists with the admin role,
+// protection against deactivation, and full platform access. The password is
+// only set on first creation — never overwritten on redeploys, so the owner
+// can change it later without it being silently reverted.
+async function ensureRootSuperuser() {
+  try {
+    const [existingRoot] = await db.select().from(users)
+      .where(eq(users.username, 'root')).limit(1);
+
+    const [emailOwner] = await db.select({ id: users.id, username: users.username }).from(users)
+      .where(sql`LOWER(email) = LOWER(${ROOT_SUPERUSER_EMAIL})`).limit(1);
+
+    if (!existingRoot) {
+      const hashedPassword = await bcrypt.hash('arcano', 12);
+      await db.insert(users).values({
+        username: 'root',
+        password: hashedPassword,
+        role: 'admin',
+        name: 'Superusuário Root',
+        email: emailOwner ? null : ROOT_SUPERUSER_EMAIL,
+        isProtected: true,
+      });
+      console.log('✓ Root superuser created (username: root, role: admin, protected)');
+      if (emailOwner) {
+        console.warn(`⚠ Root created without email: ${ROOT_SUPERUSER_EMAIL} already belongs to user '${emailOwner.username}'`);
+      }
+    } else {
+      const updates: Partial<typeof users.$inferInsert> = {};
+      if (existingRoot.role !== 'admin') updates.role = 'admin';
+      if (!existingRoot.isProtected) updates.isProtected = true;
+      if (existingRoot.isBlocked) {
+        updates.isBlocked = false;
+        updates.deactivationReason = null;
+      }
+      if (!existingRoot.email && !emailOwner) {
+        updates.email = ROOT_SUPERUSER_EMAIL;
+      }
+      if (Object.keys(updates).length > 0) {
+        await db.update(users).set(updates).where(eq(users.id, existingRoot.id));
+        console.log(`✓ Root superuser normalized (${Object.keys(updates).join(', ')})`);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to ensure root superuser:', error);
   }
 }
 

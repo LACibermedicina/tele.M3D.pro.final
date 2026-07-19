@@ -692,7 +692,17 @@ export default function Login() {
       }
 
       const result = await response.json();
-      
+
+      // Admin accounts are created pending approval by the root superuser —
+      // no auto-login (the account is deactivated until approved).
+      if (result.pendingApproval) {
+        toast({
+          title: "Cadastro recebido",
+          description: result.message || "Sua conta de Administrador aguarda aprovação do superusuário root antes do primeiro acesso.",
+        });
+        return;
+      }
+
       // Log in with the new credentials
       await login(data.username, data.password);
       
