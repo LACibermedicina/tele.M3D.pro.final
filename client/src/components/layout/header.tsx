@@ -623,7 +623,7 @@ export default function Header() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side={popoverSide} className="w-56 z-[10050]">
               <DropdownMenuLabel>
-                <p className="font-semibold">{user.name}</p>
+                <p className="font-semibold" data-no-translate>{user.name}</p>
                 <p className="text-xs text-muted-foreground font-normal">{getRoleDisplay(user.role)}</p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -1463,7 +1463,7 @@ export default function Header() {
                           <p className="text-white">{group.label}</p>
                         </TooltipContent>
                       </Tooltip>
-                      <DropdownMenuContent align="center" className="w-56 bg-background/95 backdrop-blur-lg border-primary/20 shadow-2xl">
+                      <DropdownMenuContent align="center" className="w-56 z-[10050] bg-background/95 backdrop-blur-lg border-primary/20 shadow-2xl">
                         <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                           {group.label}
                         </DropdownMenuLabel>
@@ -1532,7 +1532,7 @@ export default function Header() {
                 </TooltipContent>
               </Tooltip>
               
-              <DropdownMenuContent align="end" className="w-64 bg-background/95 backdrop-blur-lg border-primary/20 shadow-2xl">
+              <DropdownMenuContent align="end" className="w-64 z-[10050] bg-background/95 backdrop-blur-lg border-primary/20 shadow-2xl">
                 <DropdownMenuLabel className="text-base font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
                   ⚡ Ações Rápidas
                 </DropdownMenuLabel>
@@ -1769,6 +1769,7 @@ export default function Header() {
                         <p 
                           className={`text-sm font-semibold transition-all duration-300 ${getTextColor()}`}
                           data-testid="text-user-name"
+                          data-no-translate
                           style={{
                             textShadow: getShadowEffect()
                           }}
@@ -1786,11 +1787,11 @@ export default function Header() {
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuContent align="end" className="w-56 z-[10050]">
                     <DropdownMenuLabel>
                       <div>
-                        <p className="font-semibold">{user.role === 'visitor' ? 'Visitante' : user.name}</p>
-                        <p className="text-xs text-muted-foreground font-normal">
+                        <p className="font-semibold" data-no-translate>{user.role === 'visitor' ? 'Visitante' : user.name}</p>
+                        <p className="text-xs text-muted-foreground font-normal" data-no-translate>
                           {user.role === 'visitor' ? 'Acesso visitante' : (user.email || user.username)}
                         </p>
                       </div>
