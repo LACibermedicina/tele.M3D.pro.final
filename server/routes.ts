@@ -18771,7 +18771,7 @@ Pressão arterial: 120/80 mmHg, frequência cardíaca: 78 bpm.
 
       const { GoogleGenerativeAI } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(geminiApiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
       const prompt = `Você é um especialista em farmacologia clínica. Analise as seguintes prescrições médicas e forneça uma análise detalhada de interações medicamentosas.
 

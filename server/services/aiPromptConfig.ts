@@ -497,7 +497,7 @@ function getDefaultECGConfig(): ECGConfig {
     modelParams: {
       temperature: 0.3,
       maxTokens: 8192,
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
     },
     jsonSchemaTemplate: DEFAULT_ECG_JSON_SCHEMA,
   };
@@ -512,7 +512,7 @@ function getDefaultRadiologyConfig(): RadiologyConfig {
     modelParams: {
       temperature: 0.3,
       maxTokens: 8192,
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
     },
     jsonSchemaTemplate: DEFAULT_RADIOLOGY_JSON_SCHEMA,
   };

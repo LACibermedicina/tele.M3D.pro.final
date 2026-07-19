@@ -72,7 +72,7 @@ async function generateWithJSON(prompt: string): Promise<any> {
   try {
     const client = getGeminiClient();
     const model = client.getGenerativeModel({ 
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       generationConfig: {
         responseMimeType: "application/json"
       }
@@ -103,7 +103,7 @@ async function generateText(prompt: string, systemInstruction?: string): Promise
   try {
     const client = getGeminiClient();
     const model = client.getGenerativeModel({ 
-      model: "gemini-2.0-flash"
+      model: "gemini-2.5-flash"
     });
     const fullPrompt = systemInstruction ? `${systemInstruction}\n\n${prompt}` : prompt;
     const result = await model.generateContent(fullPrompt);
@@ -577,7 +577,7 @@ Formato: texto corrido, máximo 300 palavras.
     try {
       const client = getGeminiClient();
       const model = client.getGenerativeModel({ 
-        model: "gemini-2.0-flash"
+        model: "gemini-2.5-flash"
       });
 
       // Search for relevant PDF references from database with keyword matching
@@ -961,12 +961,13 @@ Formato: texto corrido, máximo 300 palavras.
       try {
         const client = getGeminiClient();
         const model = client.getGenerativeModel({
-          model: 'gemini-2.0-flash',
+          model: 'gemini-2.5-flash',
           generationConfig: {
             responseMimeType: 'application/json',
             temperature: 0.2,
             maxOutputTokens: 8000,
-          },
+            thinkingConfig: { thinkingBudget: 0 },
+          } as any,
         });
         const response = await model.generateContent([
           prompt,
@@ -990,8 +991,7 @@ Formato: texto corrido, máximo 300 palavras.
             ]},
           ],
           response_format: { type: 'json_object' },
-          max_tokens: 8000,
-          temperature: 0.2,
+          max_completion_tokens: 8000,
         });
         return JSON.parse(response.choices[0].message.content || '{}');
       } catch (openaiError) {
@@ -1286,12 +1286,13 @@ Formato: texto corrido, máximo 300 palavras.
     try {
       const client = getGeminiClient();
       const model = client.getGenerativeModel({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         generationConfig: {
           responseMimeType: 'application/json',
           temperature: 0.2,
           maxOutputTokens: 6000,
-        },
+          thinkingConfig: { thinkingBudget: 0 },
+        } as any,
       });
 
       const response = await model.generateContent([
@@ -1337,8 +1338,7 @@ Formato: texto corrido, máximo 300 palavras.
           },
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 6000,
-        temperature: 0.2,
+        max_completion_tokens: 6000,
       });
 
       const parsed = JSON.parse(response.choices[0].message.content || '{}');
