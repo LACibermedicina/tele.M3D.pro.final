@@ -841,7 +841,7 @@ export default function Schedule() {
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-semibold text-sm truncate">{req.patientName || 'Paciente'}</h4>
+                              <h4 data-no-translate className="font-semibold text-sm truncate">{req.patientName || 'Paciente'}</h4>
                               <Badge className={
                                 req.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
                                 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -1354,7 +1354,7 @@ export default function Schedule() {
                                     </div>
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <h4 className="font-medium text-sm">{vc.patientName}</h4>
+                                    <h4 data-no-translate className="font-medium text-sm">{vc.patientName}</h4>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                                       <Clock className="h-3 w-3" />
                                       {vc.startedAt ? format(new Date(vc.startedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : format(new Date(vc.createdAt), "dd/MM/yyyy", { locale: ptBR })}
@@ -1445,7 +1445,7 @@ export default function Schedule() {
                                     </div>
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <h4 className="font-medium text-sm">{apt.patientName || 'Paciente'}</h4>
+                                    <h4 data-no-translate className="font-medium text-sm">{apt.patientName || 'Paciente'}</h4>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                                       <i className={getTypeIcon(apt.type, apt.aiScheduled)}></i>
                                       <span>
@@ -1530,6 +1530,7 @@ export default function Schedule() {
                     <SelectItem 
                       key={patient.id} 
                       value={patient.id}
+                      data-no-translate
                       data-testid={`option-patient-${patient.id}`}
                     >
                       {patient.name}
@@ -1633,7 +1634,7 @@ export default function Schedule() {
             {editingAppointment && (
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  Paciente: <span className="font-medium">{editingAppointment.patientName}</span>
+                  Paciente: <span data-no-translate className="font-medium">{editingAppointment.patientName}</span>
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Data/Hora: <span className="font-medium">
@@ -1704,7 +1705,7 @@ export default function Schedule() {
           <div className="space-y-4">
             {selectedAppointmentForLink && (
               <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="font-medium text-gray-800">{selectedAppointmentForLink.patientName}</p>
+                <p data-no-translate className="font-medium text-gray-800">{selectedAppointmentForLink.patientName}</p>
                 <p className="text-sm text-gray-600">
                   {new Date(selectedAppointmentForLink.date + ' ' + selectedAppointmentForLink.time).toLocaleString('pt-BR')}
                 </p>
@@ -1797,8 +1798,8 @@ export default function Schedule() {
                 {(allPatientsForInstant || []).map((patient: any) => {
                   const isOnline = onlinePatients?.find((s: any) => s.patientId === patient.id)?.isOnline;
                   return (
-                    <SelectItem key={patient.id} value={patient.id}>
-                      <div className="flex items-center gap-2">
+                    <SelectItem data-no-translate key={patient.id} value={patient.id}>
+                      <div data-no-translate className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
                         {patient.name}
                         {isOnline && <span className="text-xs text-green-600 ml-1">Online</span>}
@@ -1827,7 +1828,7 @@ export default function Schedule() {
                             : 'hover:bg-green-100 dark:hover:bg-green-800/50'
                         }`}
                       >
-                        <div className="flex items-center gap-2">
+                        <div data-no-translate className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                           {p.name}
                         </div>
@@ -2039,7 +2040,7 @@ export default function Schedule() {
                   {blockedPatients.map((block: any) => (
                     <div key={block.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
                       <div className="flex-1">
-                        <p className="font-medium text-sm">{block.patientName}</p>
+                        <p data-no-translate className="font-medium text-sm">{block.patientName}</p>
                         {block.reason && <p className="text-xs text-muted-foreground mt-1">Motivo: {block.reason}</p>}
                         <p className="text-xs text-muted-foreground mt-1">
                           Bloqueado em {new Date(block.blockedAt).toLocaleDateString('pt-BR')}

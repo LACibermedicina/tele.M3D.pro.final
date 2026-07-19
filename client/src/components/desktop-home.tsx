@@ -127,7 +127,7 @@ function CalendarWidget({ userRole }: { userRole: string }) {
               <div key={a.id || i} className="flex items-center gap-2 text-xs rounded-lg px-2 py-1.5 bg-white/[0.04]">
                 <Clock className="w-3 h-3 text-sky-300 shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-slate-700 dark:text-slate-200 truncate">{a.patientName || a.doctorName || "Consulta"}</p>
+                  <p data-no-translate className="text-slate-700 dark:text-slate-200 truncate">{a.patientName || a.doctorName || "Consulta"}</p>
                   <p className="text-slate-500 dark:text-slate-400 text-[10px]">
                     {isToday ? "Hoje" : d.toLocaleDateString("pt-BR")} — {a.time || d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                   </p>
@@ -341,7 +341,7 @@ function AvailableDoctorsWidget() {
               <Circle className="w-2 h-2 text-emerald-400 fill-emerald-400 shrink-0" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1">
-                  <p className="text-slate-700 dark:text-slate-200 truncate">{doc.name}</p>
+                  <p data-no-translate className="text-slate-700 dark:text-slate-200 truncate">{doc.name}</p>
                   {doc.priorAttendance && (
                     <span className="text-[8px] bg-sky-500/20 text-sky-300 px-1 py-0.5 rounded shrink-0">já te atendeu</span>
                   )}
@@ -393,7 +393,7 @@ function AvailableDoctorsWidget() {
               <Circle className="w-2 h-2 text-slate-500 shrink-0" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1">
-                  <p className="text-slate-500 dark:text-slate-400 truncate">{doc.name}</p>
+                  <p data-no-translate className="text-slate-500 dark:text-slate-400 truncate">{doc.name}</p>
                   {doc.priorAttendance && (
                     <span className="text-[8px] bg-white/5 text-slate-500 px-1 py-0.5 rounded shrink-0">já te atendeu</span>
                   )}
@@ -430,7 +430,7 @@ export default function DesktopHome() {
     <div className="p-5 space-y-4" style={{ color: "var(--role-text-color)" }}>
       <div className="mb-2">
         <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">
-          Olá, {user?.name?.split(" ")[0] || "Usuário"}
+          Olá, <span data-no-translate>{user?.name?.split(" ")[0] || "Usuário"}</span>
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">Bem-vindo ao Tele&lt;M3D&gt; Pro</p>
       </div>

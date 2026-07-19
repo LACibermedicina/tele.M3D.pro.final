@@ -812,7 +812,7 @@ export default function ConsultationRequest() {
                             )}
                           </div>
                           <div className="flex-1">
-                            <h3 className="font-semibold text-base">{doctor.name}</h3>
+                            <h3 data-no-translate className="font-semibold text-base">{doctor.name}</h3>
                             {doctor.medicalLicense && (
                               <p className="text-xs text-muted-foreground">CRM: {doctor.medicalLicense}</p>
                             )}
@@ -1165,7 +1165,7 @@ export default function ConsultationRequest() {
                             <Stethoscope className="w-6 h-6" />
                           </div>
                           <div className="flex-1">
-                            <h3 className="font-semibold text-base">{doctor.name}</h3>
+                            <h3 data-no-translate className="font-semibold text-base">{doctor.name}</h3>
                             <p className="text-sm text-muted-foreground">{doctor.specialty}</p>
                             <div className="flex items-center gap-2 mt-1">
                               {doctor.availability && (

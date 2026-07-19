@@ -361,7 +361,7 @@ export default function MedicalAssistant() {
                       <UserIcon className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-sm">{user?.name}</p>
+                      <p data-no-translate className="font-semibold text-sm">{user?.name}</p>
                       <Badge variant="secondary" className="text-xs">
                         {user?.role === 'doctor' ? 'Médico' : user?.role === 'admin' ? 'Administrador' : 'Paciente'}
                       </Badge>

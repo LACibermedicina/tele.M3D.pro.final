@@ -1480,7 +1480,7 @@ export default function VideoConsultation() {
               onlineDoctors.filter((d: any) => d.id !== user?.id).map((doctor: any) => (
                 <Card key={doctor.id} className="p-3 flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-sm">{doctor.name}</p>
+                    <p data-no-translate className="font-medium text-sm">{doctor.name}</p>
                     <p className="text-xs text-muted-foreground">{doctor.specialty || 'Clínico Geral'}</p>
                   </div>
                   <Button

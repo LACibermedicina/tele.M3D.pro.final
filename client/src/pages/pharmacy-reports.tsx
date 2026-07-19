@@ -433,7 +433,7 @@ export default function PharmacyReportsPage() {
                           {filterEntries(reportToView.doctorBreakdown, filterDoctor).map(([name, count]) => (
                             <div key={name} className="flex items-center space-x-3">
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{name}</p>
+                                <p data-no-translate className="text-sm font-medium truncate">{name}</p>
                                 <div className="w-full bg-muted rounded-full h-2 mt-1">
                                   <div
                                     className="bg-orange-500 h-2 rounded-full transition-all"

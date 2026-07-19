@@ -634,7 +634,7 @@ export default function FloatingECGAnalyzer() {
               <SelectContent>
                 {patients.map((p: any) => {
                   const name = p.resource?.name?.[0]?.text || p.resource?.name?.[0]?.given?.join(' ') || p.resource?.id;
-                  return <SelectItem key={p.resource?.id} value={p.resource?.id || ''}>{name}</SelectItem>;
+                  return <SelectItem data-no-translate key={p.resource?.id} value={p.resource?.id || ''}>{name}</SelectItem>;
                 })}
               </SelectContent>
             </Select>

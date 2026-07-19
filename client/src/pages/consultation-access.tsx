@@ -165,7 +165,7 @@ export default function ConsultationAccess() {
               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Médico</span>
-                  <span className="font-medium">{accessData?.doctorName}</span>
+                  <span data-no-translate className="font-medium">{accessData?.doctorName}</span>
                 </div>
                 {accessData?.scheduledAt && (
                   <div className="flex items-center justify-between text-sm">

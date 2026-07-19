@@ -66,9 +66,9 @@ function PatientDetailsPanel({ patient, onClose }: { patient: any; onClose: () =
               <i className="fas fa-user text-primary text-xl"></i>
             </div>
             <div>
-              <h4 className="font-semibold text-lg">{patient.name}</h4>
+              <h4 data-no-translate className="font-semibold text-lg">{patient.name}</h4>
               <p className="text-sm text-muted-foreground">{patient.whatsappNumber || patient.phone}</p>
-              {patient.email && <p className="text-xs text-muted-foreground">{patient.email}</p>}
+              {patient.email && <p data-no-translate className="text-xs text-muted-foreground">{patient.email}</p>}
             </div>
           </div>
 
@@ -431,7 +431,7 @@ export default function WhatsApp() {
                             <i className="fas fa-user text-primary text-sm"></i>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate" data-testid={`patient-name-${patient.id}`}>
+                            <p data-no-translate className="font-medium truncate" data-testid={`patient-name-${patient.id}`}>
                               {patient.name}
                             </p>
                             <div className="flex items-center space-x-1 text-xs text-muted-foreground">
@@ -480,7 +480,7 @@ export default function WhatsApp() {
                       <i className="fas fa-user text-primary"></i>
                     </div>
                     <div>
-                      <h3 className="font-semibold" data-testid="selected-patient-name">
+                      <h3 data-no-translate className="font-semibold" data-testid="selected-patient-name">
                         {selectedPatient.name}
                       </h3>
                       <div className="flex items-center space-x-2 text-sm text-muted-foreground">

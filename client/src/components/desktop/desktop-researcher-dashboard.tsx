@@ -202,7 +202,7 @@ export function DesktopResearcherDashboard() {
                 <div className="flex items-center space-x-4 mb-4">
                   <Database className="w-12 h-12" />
                   <div>
-                    <h1 className="text-3xl font-bold">{user?.name || "Dr. Pesquisador"}</h1>
+                    <h1 data-no-translate className="text-3xl font-bold">{user?.name || "Dr. Pesquisador"}</h1>
                     <p className="text-purple-100">Pesquisador Clínico • Dados Anonimizados</p>
                   </div>
                   <Badge className="bg-white/20 text-white text-lg px-4 py-2">Pesquisador</Badge>

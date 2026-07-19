@@ -93,7 +93,7 @@ export default function MedicalCollaborators() {
                 <div className={`w-12 h-12 ${getCollaboratorColor(collaborator.type, collaborator.isOnline)} rounded-lg flex items-center justify-center mx-auto mb-3`}>
                   <i className={`${collaborator.icon}`}></i>
                 </div>
-                <p className="text-sm font-medium" data-testid={`collaborator-name-${collaborator.id}`}>
+                <p data-no-translate className="text-sm font-medium" data-testid={`collaborator-name-${collaborator.id}`}>
                   {collaborator.name}
                 </p>
                 <p className="text-xs text-muted-foreground mb-2">

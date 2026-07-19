@@ -624,7 +624,7 @@ export default function VideoConsultation({
                     className="w-full h-full object-cover"
                     data-testid="video-waiting-room-preview"
                   />
-                  <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                  <div data-no-translate className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                     {patientName}
                   </div>
                 </div>
@@ -659,7 +659,7 @@ export default function VideoConsultation({
               "w-3 h-3 rounded-full animate-pulse",
               callStatus === 'connected' ? 'bg-green-500' : 'bg-yellow-500'
             )} />
-            <h1 className="text-white text-lg sm:text-xl font-semibold">
+            <h1 data-no-translate className="text-white text-lg sm:text-xl font-semibold">
               {patientName}
             </h1>
           </div>
@@ -705,7 +705,7 @@ export default function VideoConsultation({
           
           {/* Patient name overlay */}
           <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm text-white px-3 py-2 rounded-xl">
-            <p className="text-sm font-medium">{patientName}</p>
+            <p data-no-translate className="text-sm font-medium">{patientName}</p>
           </div>
 
           {/* Local Video (Doctor) - Picture-in-picture */}

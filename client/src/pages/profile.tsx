@@ -259,7 +259,7 @@ export default function Profile() {
                 src={previewUrl || user?.profilePicture || undefined} 
                 alt={user?.name}
               />
-              <AvatarFallback className="bg-gradient-to-br from-secondary to-accent text-white font-semibold text-2xl">
+              <AvatarFallback data-no-translate className="bg-gradient-to-br from-secondary to-accent text-white font-semibold text-2xl">
                 {user ? getUserInitials(user.name) : 'U'}
               </AvatarFallback>
             </Avatar>
@@ -334,10 +334,10 @@ export default function Profile() {
               )}
             </div>
             <div className="text-center">
-              <p className="font-semibold text-lg" data-testid="text-profile-name">
+              <p data-no-translate className="font-semibold text-lg" data-testid="text-profile-name">
                 {user?.name}
               </p>
-              <p className="text-sm text-muted-foreground" data-testid="text-profile-username">
+              <p data-no-translate className="text-sm text-muted-foreground" data-testid="text-profile-username">
                 @{user?.username}
               </p>
               <p className="text-xs text-muted-foreground mt-1">

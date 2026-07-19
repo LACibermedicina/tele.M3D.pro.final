@@ -1258,9 +1258,9 @@ function ClinicalHistoryTab() {
                       </div>
                       <div className="flex items-center gap-2 mb-2 text-xs">
                         <span className="text-muted-foreground">Paciente:</span>
-                        <span className="font-medium">{entry.patientName}</span>
+                        <span data-no-translate className="font-medium">{entry.patientName}</span>
                         <span className="text-muted-foreground ml-2">Médico:</span>
-                        <span className="font-medium">{entry.doctorName}</span>
+                        <span data-no-translate className="font-medium">{entry.doctorName}</span>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {entry.diagnosis && (
@@ -2092,7 +2092,7 @@ function ECGEngineTab({
                 {fhirPatients.map((p: any) => {
                   const name = p.resource?.name?.[0]?.text || p.resource?.name?.[0]?.given?.join(' ') || p.resource?.id;
                   return (
-                    <SelectItem key={p.resource?.id} value={p.resource?.id || ''}>
+                    <SelectItem data-no-translate key={p.resource?.id} value={p.resource?.id || ''}>
                       {name}
                     </SelectItem>
                   );

@@ -487,7 +487,7 @@ export default function Patients() {
                       <i className="fas fa-user text-lg" style={{ color: 'var(--medical-primary)' }}></i>
                     </div>
                     <div>
-                      <CardTitle className="text-lg" data-testid={`text-patient-name-${patient.id}`}>{patient.name}</CardTitle>
+                      <CardTitle data-no-translate className="text-lg" data-testid={`text-patient-name-${patient.id}`}>{patient.name}</CardTitle>
                       <p className="text-sm text-muted-foreground" data-testid={`text-patient-phone-${patient.id}`}>{patient.phone}</p>
                     </div>
                   </div>
@@ -508,7 +508,7 @@ export default function Patients() {
                   {patient.email && (
                     <div className="flex items-center space-x-2">
                       <i className="fas fa-envelope text-muted-foreground"></i>
-                      <span data-testid={`text-patient-email-${patient.id}`}>{patient.email}</span>
+                      <span data-no-translate data-testid={`text-patient-email-${patient.id}`}>{patient.email}</span>
                     </div>
                   )}
                   {patient.gender && (
@@ -588,8 +588,8 @@ export default function Patients() {
           {selectedPatient && (
             <div className="space-y-4">
               <div className="bg-muted p-3 rounded-lg">
-                <p className="text-sm font-medium">Paciente: {selectedPatient.name}</p>
-                <p className="text-xs text-muted-foreground">{selectedPatient.phone}</p>
+                <p data-no-translate className="text-sm font-medium">Paciente: {selectedPatient.name}</p>
+                <p data-no-translate className="text-xs text-muted-foreground">{selectedPatient.phone}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

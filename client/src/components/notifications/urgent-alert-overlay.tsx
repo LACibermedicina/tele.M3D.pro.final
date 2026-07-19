@@ -110,7 +110,7 @@ export default function UrgentAlertOverlay() {
           )}
           {currentAlert.data?.doctorName && (
             <p className="text-center text-sm text-muted-foreground">
-              Médico: <strong>Dr(a). {currentAlert.data.doctorName}</strong>
+              Médico: <strong data-no-translate>Dr(a). {currentAlert.data.doctorName}</strong>
             </p>
           )}
 

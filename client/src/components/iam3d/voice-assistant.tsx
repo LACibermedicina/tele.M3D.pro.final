@@ -538,7 +538,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
           {user && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10">
               <User className="w-3 h-3 text-white/60" />
-              <span className="text-white/60 text-xs">{user.name?.split(' ')[0]}</span>
+              <span data-no-translate className="text-white/60 text-xs">{user.name?.split(' ')[0]}</span>
             </div>
           )}
         </div>
@@ -654,7 +654,7 @@ export function IAM3DVoiceAssistant({ isOpen, onClose }: IAM3DVoiceAssistantProp
                       <Stethoscope className="w-4 h-4 text-emerald-400" />
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="text-white/90 text-sm font-medium">Dr(a). {doc.name}</p>
+                      <p data-no-translate className="text-white/90 text-sm font-medium">Dr(a). {doc.name}</p>
                       <p className="text-white/40 text-xs">{doc.specialty || 'Clínica Geral'}</p>
                     </div>
                     <Phone className="w-4 h-4 text-white/30 group-hover:text-red-400 transition-colors" />

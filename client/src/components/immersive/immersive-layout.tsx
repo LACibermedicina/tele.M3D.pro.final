@@ -346,7 +346,7 @@ export function ImmersiveLayout() {
           <MessageCircle className="w-5 h-5 text-cyan-400" />
           <span className="font-semibold text-sm">Modo Imersivo</span>
           {user && (
-            <Badge variant="outline" className="text-xs border-white/20 text-white/70">
+            <Badge data-no-translate variant="outline" className="text-xs border-white/20 text-white/70">
               {user.name?.split(" ")[0]}
             </Badge>
           )}

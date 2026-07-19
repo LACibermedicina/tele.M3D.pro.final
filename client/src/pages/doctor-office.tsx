@@ -668,7 +668,7 @@ export default function DoctorOffice() {
                     <div className="space-y-2">
                       {participants.map((p, i) => (
                         <div key={i} className="flex items-center justify-between p-2 bg-muted rounded-lg">
-                          <span className="text-sm font-medium">{p.name}</span>
+                          <span data-no-translate className="text-sm font-medium">{p.name}</span>
                           <Badge variant="outline">{p.role}</Badge>
                         </div>
                       ))}

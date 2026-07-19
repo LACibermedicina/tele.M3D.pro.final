@@ -615,7 +615,7 @@ export default function Header() {
             <DropdownMenuTrigger asChild>
               <button className={`${btnSize} flex items-center justify-center hover:bg-white/10 transition-colors`} data-testid="button-user-menu">
                 <Avatar className={compact ? 'w-6 h-6' : 'w-8 h-8'}>
-                  <AvatarFallback className={`text-white font-semibold ${compact ? 'text-[9px]' : 'text-[10px]'}`} style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
+                  <AvatarFallback data-no-translate className={`text-white font-semibold ${compact ? 'text-[9px]' : 'text-[10px]'}`} style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
                     {getUserInitials(user.name)}
                   </AvatarFallback>
                 </Avatar>
@@ -1132,7 +1132,7 @@ export default function Header() {
                       {user ? (
                         <div>
                           <p className="text-sm font-semibold text-foreground">
-                            {t("greeting.hello")}, {getShortName(user.name)}!
+                            {t("greeting.hello")}, <span data-no-translate>{getShortName(user.name)}</span>!
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {getRoleDisplay(user.role)}
@@ -1290,12 +1290,12 @@ export default function Header() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <Avatar className="w-10 h-10">
-                          <AvatarFallback className="text-white font-semibold text-sm" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
+                          <AvatarFallback data-no-translate className="text-white font-semibold text-sm" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
                             {getUserInitials(user.name)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-semibold text-sm" data-testid="text-mobile-user-name">
+                          <p data-no-translate className="font-semibold text-sm" data-testid="text-mobile-user-name">
                             {getShortName(user.name)}
                           </p>
                           <p className="text-xs text-muted-foreground">
@@ -1363,7 +1363,7 @@ export default function Header() {
                       textShadow: getShadowEffect()
                     }}
                   >
-                    {t("greeting.hello")}, {getShortName(user.name)}!
+                    {t("greeting.hello")}, <span data-no-translate>{getShortName(user.name)}</span>!
                   </p>
                   <p 
                     className={`text-xs transition-all duration-300 ${getSubTextColor()}`}
@@ -1761,7 +1761,7 @@ export default function Header() {
                       data-testid="button-user-menu"
                     >
                       <Avatar className="w-9 h-9">
-                        <AvatarFallback className="text-white font-semibold text-sm" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
+                        <AvatarFallback data-no-translate className="text-white font-semibold text-sm" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
                           {getUserInitials(user.name)}
                         </AvatarFallback>
                       </Avatar>
@@ -1984,12 +1984,12 @@ export default function Header() {
             <div className="px-4 py-3 border-b border-border/30">
               <div className="flex items-center space-x-2">
                 <Avatar className="w-8 h-8 shrink-0">
-                  <AvatarFallback className="text-white font-semibold text-xs" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
+                  <AvatarFallback data-no-translate className="text-white font-semibold text-xs" style={{ background: "linear-gradient(135deg, hsl(30, 75%, 55%) 0%, hsl(20, 60%, 58%) 100%)" }}>
                     {getUserInitials(user.name)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate">{getShortName(user.name)}</p>
+                  <p data-no-translate className="text-sm font-semibold truncate">{getShortName(user.name)}</p>
                   <p className="text-[10px] text-muted-foreground">{getRoleDisplay(user.role)}</p>
                 </div>
               </div>

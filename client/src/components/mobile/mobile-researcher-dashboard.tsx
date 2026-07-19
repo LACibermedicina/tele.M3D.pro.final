@@ -108,7 +108,7 @@ export function MobileResearcherDashboard() {
         <CardContent className="p-6">
           <div className="text-center">
             <Database className="w-16 h-16 mx-auto mb-4 opacity-90" />
-            <h1 className="text-2xl font-bold">{user?.name || "Dr. Pesquisador"}</h1>
+            <h1 data-no-translate className="text-2xl font-bold">{user?.name || "Dr. Pesquisador"}</h1>
             <p className="text-purple-100 mt-2">Acesso de Pesquisa • Dados Anonimizados</p>
             <div className="mt-4">
               <Badge className="bg-white/20 text-white">Pesquisador</Badge>

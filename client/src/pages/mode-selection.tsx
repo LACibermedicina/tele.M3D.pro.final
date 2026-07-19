@@ -85,7 +85,7 @@ export default function ModeSelection() {
       <div className="w-full max-w-3xl space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-2xl md:text-3xl font-bold">
-            Bem-vindo{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
+            Bem-vindo{user?.name ? <span data-no-translate>{`, ${user.name.split(" ")[0]}`}</span> : ""}!
           </h1>
           <p className="text-muted-foreground">
             Escolha a modalidade de uso que melhor se adapta ao seu dispositivo.

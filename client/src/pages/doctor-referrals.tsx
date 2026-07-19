@@ -189,10 +189,10 @@ export default function DoctorReferrals() {
                   <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={doc.profilePicture || undefined} />
-                      <AvatarFallback>{doc.name?.charAt(0) || "D"}</AvatarFallback>
+                      <AvatarFallback data-no-translate>{doc.name?.charAt(0) || "D"}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{doc.name}</p>
+                      <p data-no-translate className="font-medium text-sm truncate">{doc.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {doc.specialization || "Sem especialidade"} · CRM {doc.medicalLicense || "N/A"}
                       </p>

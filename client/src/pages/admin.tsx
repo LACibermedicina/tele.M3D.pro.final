@@ -769,7 +769,7 @@ export default function AdminPage() {
                         <TableCell className="font-medium" data-no-translate>{user.username}</TableCell>
                         <TableCell>
                           <div data-no-translate>
-                            <span>{user.name}</span>
+                            <span data-no-translate>{user.name}</span>
                             {user.role === 'pharmacist' && user.medicalLicense && (
                               <span className="block text-xs text-muted-foreground">CRF: {user.medicalLicense}</span>
                             )}
@@ -2371,7 +2371,7 @@ function CreateApiKeyForm({
           </SelectTrigger>
           <SelectContent>
             {collaborators.map((collaborator: Collaborator) => (
-              <SelectItem key={collaborator.id} value={collaborator.id}>
+              <SelectItem data-no-translate key={collaborator.id} value={collaborator.id}>
                 {collaborator.name} ({collaborator.type})
               </SelectItem>
             ))}
@@ -3388,7 +3388,7 @@ function FinancialManagementTab() {
                       </SelectTrigger>
                       <SelectContent>
                         {(creditUsers as CreditUser[]).map((u) => (
-                          <SelectItem key={u.id} value={u.id}>
+                          <SelectItem data-no-translate key={u.id} value={u.id}>
                             {u.name} ({u.username}) - {u.role}
                           </SelectItem>
                         ))}
@@ -3469,7 +3469,7 @@ function FinancialManagementTab() {
                 <TableBody>
                   {filteredUsers.map((user) => (
                     <TableRow key={user.id} data-testid={`credit-user-row-${user.id}`}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell data-no-translate className="font-medium">{user.name}</TableCell>
                       <TableCell className="font-mono text-sm">{user.username}</TableCell>
                       <TableCell>
                         <Badge
@@ -3487,7 +3487,7 @@ function FinancialManagementTab() {
                           {user.role}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{user.email || '-'}</TableCell>
+                      <TableCell data-no-translate className="text-sm text-muted-foreground">{user.email || '-'}</TableCell>
                       <TableCell className="text-right font-mono font-bold">{user.tmcCredits || 0} TM3D</TableCell>
                     </TableRow>
                   ))}
@@ -3844,7 +3844,7 @@ function FinancialManagementTab() {
                           {log.action}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm">{log.username || log.userId}</TableCell>
+                      <TableCell data-no-translate className="text-sm">{log.username || log.userId}</TableCell>
                       <TableCell className="text-sm max-w-[200px] truncate">{log.reason}</TableCell>
                       <TableCell className={`text-right font-mono font-bold ${log.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {log.amount >= 0 ? '+' : ''}{log.amount} TM3D
@@ -4165,8 +4165,8 @@ function AccessModalityAdminSection() {
                     return (
                       <tr key={u.id} className="border-t">
                         <td className="p-2">
-                          <div className="font-medium">{u.name}</div>
-                          <div className="text-xs text-muted-foreground">{u.email}</div>
+                          <div data-no-translate className="font-medium">{u.name}</div>
+                          <div data-no-translate className="text-xs text-muted-foreground">{u.email}</div>
                         </td>
                         <td className="p-2 text-xs">{current}</td>
                         <td className="p-2">
@@ -4594,7 +4594,7 @@ function DoctorRegistrationsPanel() {
               </SelectTrigger>
               <SelectContent>
                 {doctors.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
+                  <SelectItem data-no-translate key={d.id} value={d.id}>
                     {d.name} {d.medicalLicense ? `· ${d.medicalLicense}` : ''}
                   </SelectItem>
                 ))}

@@ -483,7 +483,7 @@ export default function ClinicsPage() {
                               <div className="flex items-center gap-3">
                                 <div className={`w-2 h-2 rounded-full ${member.isOnline ? "bg-green-500" : "bg-gray-300"}`} />
                                 <div>
-                                  <div className="font-medium flex items-center gap-2">
+                                  <div data-no-translate className="font-medium flex items-center gap-2">
                                     {member.name}
                                     {member.role === "owner" && <Crown className="h-3 w-3 text-amber-500" />}
                                   </div>
@@ -521,8 +521,8 @@ export default function ClinicsPage() {
                             clinicDetail.patients?.map((patient) => (
                               <div key={patient.id} className="flex items-center justify-between p-3 rounded-lg border">
                                 <div>
-                                  <div className="font-medium">{patient.name}</div>
-                                  <div className="text-xs text-muted-foreground">{patient.email}</div>
+                                  <div data-no-translate className="font-medium">{patient.name}</div>
+                                  <div data-no-translate className="text-xs text-muted-foreground">{patient.email}</div>
                                 </div>
                                 <Badge className="bg-green-100 text-green-800">
                                   {patient.discountPercent}% desconto

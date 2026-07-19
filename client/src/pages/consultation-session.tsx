@@ -513,7 +513,7 @@ export default function ConsultationSession() {
                   }}
                 >
                   <div>
-                    <p className="font-medium">{doctor.name}</p>
+                    <p data-no-translate className="font-medium">{doctor.name}</p>
                     <p className="text-sm text-muted-foreground">{doctor.specialty}</p>
                   </div>
                   <input

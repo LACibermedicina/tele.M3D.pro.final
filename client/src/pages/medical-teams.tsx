@@ -342,7 +342,7 @@ export default function MedicalTeams() {
                 <CardContent className="space-y-3">
                   {team.patient && (
                     <div className="p-3 bg-muted rounded-lg">
-                      <p className="text-sm font-medium">Paciente: {team.patient.name}</p>
+                      <p data-no-translate className="text-sm font-medium">Paciente: {team.patient.name}</p>
                     </div>
                   )}
 
@@ -406,12 +406,12 @@ export default function MedicalTeams() {
                       <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted">
                         <Avatar>
                           <AvatarImage src={member.profilePicture || undefined} />
-                          <AvatarFallback>
+                          <AvatarFallback data-no-translate>
                             {member.userName.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
-                          <p className="font-medium">{member.userName}</p>
+                          <p data-no-translate className="font-medium">{member.userName}</p>
                           <p className="text-sm text-muted-foreground">
                             {member.specialization || member.userEmail}
                           </p>
@@ -482,11 +482,11 @@ export default function MedicalTeams() {
                       <div key={doctor.id} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted transition-colors">
                         <Avatar>
                           <AvatarImage src={doctor.profilePicture || undefined} />
-                          <AvatarFallback>{doctor.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          <AvatarFallback data-no-translate>{doctor.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
-                          <p className="font-medium">{doctor.name}</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p data-no-translate className="font-medium">{doctor.name}</p>
+                          <p data-no-translate className="text-sm text-muted-foreground">
                             {doctor.specialization || doctor.email}
                           </p>
                         </div>

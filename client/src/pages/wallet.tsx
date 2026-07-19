@@ -1002,14 +1002,14 @@ export default function WalletPage() {
                           className="w-full text-left px-3 py-2 hover:bg-muted text-sm flex items-center justify-between"
                           onClick={() => selectRecipient(u)}
                         >
-                          <span className="font-medium">{u.name || u.username}</span>
+                          <span data-no-translate className="font-medium">{u.name || u.username}</span>
                           <Badge variant="outline" className="text-[10px]">{u.role}</Badge>
                         </button>
                       ))}
                     </div>
                   )}
                   {selectedRecipient && (
-                    <div className="mt-1 flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                    <div data-no-translate className="mt-1 flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
                       <Check className="h-3 w-3" />
                       {selectedRecipient.name || selectedRecipient.username} ({selectedRecipient.role})
                     </div>
@@ -1059,7 +1059,7 @@ export default function WalletPage() {
                 <div className="space-y-3 py-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Destinatário:</span>
-                    <span className="font-medium">{selectedRecipient?.name || selectedRecipient?.username}</span>
+                    <span data-no-translate className="font-medium">{selectedRecipient?.name || selectedRecipient?.username}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Valor:</span>

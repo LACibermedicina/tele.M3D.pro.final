@@ -414,7 +414,7 @@ export default function TodaySchedule() {
                 
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-1">
-                    <p className="font-medium" data-testid={`appointment-patient-${appointment.id}`}>
+                    <p data-no-translate className="font-medium" data-testid={`appointment-patient-${appointment.id}`}>
                       {appointment.patient?.name || "Paciente não identificado"}
                     </p>
                     {appointment.aiScheduled && (
@@ -555,7 +555,7 @@ export default function TodaySchedule() {
           </div>
           {selectedAppointment && (
             <div className="text-sm text-muted-foreground">
-              <p>Paciente: {selectedAppointment.patient?.name}</p>
+              <p data-no-translate>Paciente: {selectedAppointment.patient?.name}</p>
               <p>Data atual: {format(new Date(selectedAppointment.scheduledAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
             </div>
           )}
@@ -607,7 +607,7 @@ export default function TodaySchedule() {
             {newApptPatientId && (
               <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-md text-sm">
                 <User className="w-4 h-4 text-primary" />
-                <span className="font-medium">
+                <span data-no-translate className="font-medium">
                   {patientsList.find((p: any) => p.id === newApptPatientId)?.name || 'Paciente selecionado'}
                 </span>
                 <Button variant="ghost" size="sm" className="ml-auto h-6 px-2 text-xs" onClick={() => setNewApptPatientId("")}>
@@ -637,9 +637,9 @@ export default function TodaySchedule() {
                           <User className="w-3.5 h-3.5 text-primary" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium truncate">{patient.name}</p>
+                          <p data-no-translate className="font-medium truncate">{patient.name}</p>
                           {patient.email && (
-                            <p className="text-xs text-muted-foreground truncate">{patient.email}</p>
+                            <p data-no-translate className="text-xs text-muted-foreground truncate">{patient.email}</p>
                           )}
                         </div>
                       </button>
@@ -764,7 +764,7 @@ export default function TodaySchedule() {
           </div>
           {selectedAppointment && (
             <div className="text-sm text-muted-foreground">
-              <p>Médico: Dr. {selectedAppointment.doctor?.name || 'Nome não disponível'}</p>
+              <p data-no-translate>Médico: Dr. {selectedAppointment.doctor?.name || 'Nome não disponível'}</p>
               <p>Data: {format(new Date(selectedAppointment.scheduledAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
             </div>
           )}

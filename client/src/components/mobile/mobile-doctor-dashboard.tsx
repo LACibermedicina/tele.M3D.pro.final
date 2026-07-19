@@ -68,12 +68,12 @@ export function MobileDoctorDashboard() {
           <div className="flex items-start space-x-4">
             <Avatar className="w-16 h-16 border-2 border-white/20">
               <AvatarImage src={user?.profilePicture || undefined} />
-              <AvatarFallback className="bg-white/20 text-white text-lg">
+              <AvatarFallback data-no-translate className="bg-white/20 text-white text-lg">
                 {user?.name?.charAt(0) || 'D'}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h1 className="text-xl font-bold">{user?.name}</h1>
+              <h1 data-no-translate className="text-xl font-bold">{user?.name}</h1>
               <p className="text-white/90 text-sm">
                 {user?.specialization || 'Medicina Geral'} {user?.medicalLicense ? `• CRM: ${user.medicalLicense}` : ''}
               </p>
@@ -172,10 +172,10 @@ export function MobileDoctorDashboard() {
               <div className="flex items-center space-x-3">
                 <Avatar className="w-12 h-12">
                   <AvatarImage src={appointment.patient?.profilePicture || undefined} />
-                  <AvatarFallback>{appointment.patient?.name?.charAt(0) || 'P'}</AvatarFallback>
+                  <AvatarFallback data-no-translate>{appointment.patient?.name?.charAt(0) || 'P'}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h3 className="font-medium">{appointment.patient?.name || 'Paciente'}</h3>
+                  <h3 data-no-translate className="font-medium">{appointment.patient?.name || 'Paciente'}</h3>
                   <p className="text-sm text-muted-foreground">{appointment.type || 'Consulta'}</p>
                   <div className="flex items-center space-x-2 mt-1">
                     <Clock className="w-3 h-3 text-medical-primary" />

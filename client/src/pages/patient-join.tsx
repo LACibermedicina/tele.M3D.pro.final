@@ -229,7 +229,7 @@ export default function PatientJoin() {
                 <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
                   <UserIcon className="h-5 w-5 text-blue-600" />
                   <div>
-                    <p className="font-medium text-gray-800">{joinData.patientName}</p>
+                    <p data-no-translate className="font-medium text-gray-800">{joinData.patientName}</p>
                     <p className="text-sm text-gray-600">Paciente</p>
                   </div>
                 </div>
@@ -237,7 +237,7 @@ export default function PatientJoin() {
                 <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
                   <PhoneIcon className="h-5 w-5 text-green-600" />
                   <div>
-                    <p className="font-medium text-gray-800">{joinData.doctorName || 'Dr. Silva'}</p>
+                    <p data-no-translate className="font-medium text-gray-800">{joinData.doctorName || 'Dr. Silva'}</p>
                     <p className="text-sm text-gray-600">Médico responsável</p>
                   </div>
                 </div>

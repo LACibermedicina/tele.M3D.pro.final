@@ -216,12 +216,12 @@ export default function ImmediateConsultation() {
                   <CardContent className="p-4 flex items-center gap-4">
                     <Avatar className="h-12 w-12">
                       {doctor.profilePicture && <AvatarImage src={doctor.profilePicture} />}
-                      <AvatarFallback className="bg-primary/10 text-primary">
+                      <AvatarFallback data-no-translate className="bg-primary/10 text-primary">
                         {doctor.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <p className="font-semibold">{doctor.name}</p>
+                      <p data-no-translate className="font-semibold">{doctor.name}</p>
                       <p className="text-sm text-muted-foreground">{doctor.specialization || 'Clínico Geral'}</p>
                     </div>
                     <div className="flex items-center gap-1">
@@ -340,7 +340,7 @@ export default function ImmediateConsultation() {
                       <div className="relative">
                         <Avatar className="h-12 w-12 sm:h-14 sm:w-14">
                           <AvatarImage src={doctor.profilePicture || undefined} />
-                          <AvatarFallback className="bg-red-100 text-red-700">
+                          <AvatarFallback data-no-translate className="bg-red-100 text-red-700">
                             {doctor.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -348,7 +348,7 @@ export default function ImmediateConsultation() {
                       </div>
                       <div className="flex-1 w-full sm:w-auto">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-base sm:text-lg font-semibold">{doctor.name}</h3>
+                          <h3 data-no-translate className="text-base sm:text-lg font-semibold">{doctor.name}</h3>
                           <Badge className="bg-red-100 text-red-700 border-red-300 text-xs">
                             <Siren className="w-3 h-3 mr-1" />
                             Plantão
@@ -452,7 +452,7 @@ export default function ImmediateConsultation() {
                       <div className="relative">
                         <Avatar className="h-12 w-12 sm:h-14 sm:w-14">
                           <AvatarImage src={doctor.profilePicture || undefined} />
-                          <AvatarFallback>
+                          <AvatarFallback data-no-translate>
                             {doctor.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -460,7 +460,7 @@ export default function ImmediateConsultation() {
                       </div>
                       <div className="flex-1 w-full sm:w-auto">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-base sm:text-lg font-semibold">{doctor.name}</h3>
+                          <h3 data-no-translate className="text-base sm:text-lg font-semibold">{doctor.name}</h3>
                           {doctor.inConsultation ? (
                             isAttendingCurrentUser(doctor) ? (
                               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 text-xs">
@@ -577,7 +577,7 @@ export default function ImmediateConsultation() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                        <p data-no-translate className="text-sm font-medium text-blue-800 dark:text-blue-200">
                           {selectedDoctor.name}
                         </p>
                         <p className="text-xs text-blue-600 dark:text-blue-300">

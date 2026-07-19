@@ -373,7 +373,7 @@ function DoctorsTab({ data, onExport }: { data: DoctorsReport | undefined; onExp
               <TableBody>
                 {(data.performance || []).map((doc, i) => (
                   <TableRow key={i}>
-                    <TableCell className="font-medium">{doc.doctorName}</TableCell>
+                    <TableCell data-no-translate className="font-medium">{doc.doctorName}</TableCell>
                     <TableCell className="text-right font-mono">{doc.consultations}</TableCell>
                     <TableCell className="text-right font-mono">{doc.avgRating > 0 ? doc.avgRating.toFixed(1) : '-'} ⭐</TableCell>
                     <TableCell className="text-right font-mono">{(doc.completionRate * 100).toFixed(0)}%</TableCell>

@@ -517,7 +517,7 @@ export default function Analytics() {
                     <tbody>
                       {(doctorData?.doctors || []).map((doctor, index) => (
                         <tr key={doctor.doctorId} className="border-b hover:bg-muted/50">
-                          <td className="p-3 font-medium">{doctor.doctorName}</td>
+                          <td data-no-translate className="p-3 font-medium">{doctor.doctorName}</td>
                           <td className="text-center p-3">{doctor.appointmentCount}</td>
                           <td className="text-center p-3">{doctor.completedCount}</td>
                           <td className="text-center p-3">
@@ -696,7 +696,7 @@ export default function Analytics() {
                 <CardContent>
                   <div className="space-y-3">
                     {(financialData?.topSpenders || []).slice(0, 8).map((spender, index) => (
-                      <div key={index} className="flex items-center justify-between">
+                      <div data-no-translate key={index} className="flex items-center justify-between">
                         <span className="text-sm font-medium truncate flex-1">
                           {spender.userName || 'Usuário não identificado'}
                         </span>

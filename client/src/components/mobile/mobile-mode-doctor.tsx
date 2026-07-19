@@ -96,12 +96,12 @@ export function MobileModeDoctor() {
           <div className="flex items-center gap-3">
             <Avatar className="w-10 h-10 border-2 border-primary/20">
               <AvatarImage src={user?.profilePicture || undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary font-bold">
+              <AvatarFallback data-no-translate className="bg-primary/10 text-primary font-bold">
                 {user?.name?.charAt(0) || "D"}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-base font-bold">Dr(a). {user?.name || "Médico"}</h1>
+              <h1 data-no-translate className="text-base font-bold">Dr(a). {user?.name || "Médico"}</h1>
               <p className="text-xs text-muted-foreground">
                 {user?.specialization || "Medicina Geral"} - Modo Mobile
               </p>
@@ -210,12 +210,12 @@ export function MobileModeDoctor() {
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <Avatar className="w-8 h-8">
                         <AvatarImage src={apt.patient?.profilePicture || undefined} />
-                        <AvatarFallback className="text-xs">
+                        <AvatarFallback data-no-translate className="text-xs">
                           {apt.patient?.name?.charAt(0) || "P"}
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
+                        <p data-no-translate className="text-sm font-medium truncate">
                           {apt.patient?.name || "Paciente"}
                         </p>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">

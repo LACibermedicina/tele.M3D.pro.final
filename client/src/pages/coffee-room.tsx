@@ -355,12 +355,12 @@ export default function CoffeeRoom() {
                 <CardContent className="p-3 sm:p-6 pt-0">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between p-2 bg-primary/10 rounded-lg">
-                      <span className="text-sm font-medium">{user?.name}</span>
+                      <span data-no-translate className="text-sm font-medium">{user?.name}</span>
                       <Badge variant="outline" className="text-xs">Você</Badge>
                     </div>
                     {participants.map((p, i) => (
                       <div key={i} className="flex items-center justify-between p-2 bg-muted rounded-lg">
-                        <span className="text-sm font-medium">{p}</span>
+                        <span data-no-translate className="text-sm font-medium">{p}</span>
                         <Badge variant="outline" className="text-xs">Médico</Badge>
                       </div>
                     ))}

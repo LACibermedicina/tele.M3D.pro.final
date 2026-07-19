@@ -248,7 +248,7 @@ export default function TeamRoom() {
             <CardContent className="py-3 px-4 flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
               <div>
-                <p className="font-medium text-sm">Paciente em discussão: {team.patient.name}</p>
+                <p data-no-translate className="font-medium text-sm">Paciente em discussão: {team.patient.name}</p>
                 {team.patient.healthStatus && (
                   <p className="text-xs text-muted-foreground">Status: {team.patient.healthStatus}</p>
                 )}
@@ -272,12 +272,12 @@ export default function TeamRoom() {
                     <div key={member.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={member.profilePicture || undefined} />
-                        <AvatarFallback className="text-xs">
+                        <AvatarFallback data-no-translate className="text-xs">
                           {member.userName.substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{member.userName}</p>
+                        <p data-no-translate className="font-medium text-sm truncate">{member.userName}</p>
                         <p className="text-xs text-muted-foreground truncate">
                           {member.specialization || "Médico"}
                         </p>

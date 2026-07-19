@@ -134,7 +134,7 @@ export function AssistedLayout() {
           <Sparkles className="w-4 h-4 text-cyan-400" />
           <span data-assisted-title className="text-sm font-semibold">Modalidade Assistida</span>
           {user?.name && (
-            <span className="text-xs text-white/60 ml-2">— {user.name.split(" ")[0]}</span>
+            <span data-no-translate className="text-xs text-white/60 ml-2">— {user.name.split(" ")[0]}</span>
           )}
         </div>
         <div className="flex items-center gap-1">

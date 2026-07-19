@@ -124,7 +124,7 @@ export default function PatientExportDialog({ open, onOpenChange, patientId, pat
             Exportar Prontuário Digital
           </DialogTitle>
           <DialogDescription>
-            Exportar dados de <strong>{patientName}</strong> em formato padronizado internacional.
+            Exportar dados de <strong data-no-translate>{patientName}</strong> em formato padronizado internacional.
           </DialogDescription>
         </DialogHeader>
 

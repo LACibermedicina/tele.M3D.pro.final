@@ -230,7 +230,7 @@ export default function DoctorChat() {
                         <div className="relative">
                           <Avatar>
                             <AvatarImage src={thread.patient.photoUrl || undefined} />
-                            <AvatarFallback>
+                            <AvatarFallback data-no-translate>
                               {thread.patient.name.substring(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -240,7 +240,7 @@ export default function DoctorChat() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
-                            <p className="font-medium truncate">{thread.patient.name}</p>
+                            <p data-no-translate className="font-medium truncate">{thread.patient.name}</p>
                             <TriageBadge level={thread.consultationRequest.urgencyLevel} size="sm" />
                           </div>
                           <p className="text-sm text-muted-foreground truncate">
@@ -267,13 +267,13 @@ export default function DoctorChat() {
                   <div className="flex items-center gap-3">
                     <Avatar>
                       <AvatarImage src={selectedThread.patient.photoUrl || undefined} />
-                      <AvatarFallback>
+                      <AvatarFallback data-no-translate>
                         {selectedThread.patient.name.substring(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg">{selectedThread.patient.name}</CardTitle>
+                        <CardTitle data-no-translate className="text-lg">{selectedThread.patient.name}</CardTitle>
                         {selectedThread.consultationRequest.status === 'pending' && (
                           <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
                             <div className="w-2 h-2 rounded-full bg-orange-500 mr-1.5 animate-pulse" />
@@ -287,7 +287,7 @@ export default function DoctorChat() {
                           </Badge>
                         )}
                       </div>
-                      <CardDescription>
+                      <CardDescription data-no-translate>
                         {selectedThread.patient.phone || selectedThread.patient.email}
                       </CardDescription>
                     </div>
@@ -307,7 +307,7 @@ export default function DoctorChat() {
                       </DialogTrigger>
                       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
-                          <DialogTitle>Histórico Clínico - {selectedThread.patient.name}</DialogTitle>
+                          <DialogTitle data-no-translate>Histórico Clínico - {selectedThread.patient.name}</DialogTitle>
                           <DialogDescription>
                             Informações médicas e consultas anteriores
                           </DialogDescription>

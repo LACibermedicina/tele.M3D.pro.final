@@ -612,7 +612,7 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
                       <div key={doc.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted cursor-pointer" onClick={() => { onClose(); setLocation('/consultation-request'); }}>
                         <Stethoscope className="w-4 h-4 text-emerald-500 shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{doc.name}</p>
+                          <p data-no-translate className="text-sm font-medium truncate">{doc.name}</p>
                           {doc.specialization && <p className="text-xs text-muted-foreground truncate">{doc.specialization}</p>}
                         </div>
                         <Circle className={`w-2 h-2 shrink-0 ${doc.isOnline ? 'text-emerald-400 fill-emerald-400' : 'text-gray-300'}`} />
@@ -629,8 +629,8 @@ export default function CommandPalette({ isOpen, onClose, userRole = 'visitor', 
                       <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted cursor-pointer" onClick={() => { onClose(); setLocation(`/patients`); }}>
                         <Users className="w-4 h-4 text-sky-500 shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{p.name}</p>
-                          {p.email && <p className="text-xs text-muted-foreground truncate">{p.email}</p>}
+                          <p data-no-translate className="text-sm font-medium truncate">{p.name}</p>
+                          {p.email && <p data-no-translate className="text-xs text-muted-foreground truncate">{p.email}</p>}
                         </div>
                       </div>
                     ))}

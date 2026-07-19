@@ -98,7 +98,7 @@ export default function PatientProfile() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold" data-testid="text-patient-name">
+            <h1 data-no-translate className="text-2xl font-bold" data-testid="text-patient-name">
               {patient.name}
             </h1>
             <p className="text-muted-foreground">Perfil do Paciente</p>
@@ -140,7 +140,7 @@ export default function PatientProfile() {
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Nome Completo</label>
-                <p className="text-sm" data-testid="text-patient-full-name">{patient.name}</p>
+                <p data-no-translate className="text-sm" data-testid="text-patient-full-name">{patient.name}</p>
               </div>
               
               {patient.email && (
@@ -148,7 +148,7 @@ export default function PatientProfile() {
                   <label className="text-sm font-medium text-muted-foreground">Email</label>
                   <div className="flex items-center space-x-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm" data-testid="text-patient-email">{patient.email}</p>
+                    <p data-no-translate className="text-sm" data-testid="text-patient-email">{patient.email}</p>
                   </div>
                 </div>
               )}
@@ -157,7 +157,7 @@ export default function PatientProfile() {
                 <label className="text-sm font-medium text-muted-foreground">Telefone</label>
                 <div className="flex items-center space-x-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm" data-testid="text-patient-phone">{patient.phone}</p>
+                  <p data-no-translate className="text-sm" data-testid="text-patient-phone">{patient.phone}</p>
                 </div>
               </div>
 

@@ -314,7 +314,7 @@ function SidebarContent() {
             <User className="text-white h-5 w-5" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-semibold" data-testid="sidebar-user-name">{user?.name || t("user.guest")}</p>
+            <p data-no-translate className="text-sm font-semibold" data-testid="sidebar-user-name">{user?.name || t("user.guest")}</p>
             {user?.medicalLicense && (
               <p className="text-xs text-muted-foreground font-medium">{t("user.crm")}: {user.medicalLicense}</p>
             )}

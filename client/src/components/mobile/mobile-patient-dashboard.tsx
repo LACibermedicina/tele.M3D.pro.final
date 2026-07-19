@@ -68,12 +68,12 @@ export function MobilePatientDashboard({ onOpenIAM3D }: MobilePatientDashboardPr
         <div className="flex items-center gap-3">
           <Avatar className="w-12 h-12 border-2 border-medical-primary/20">
             <AvatarImage src={user?.profilePicture || undefined} />
-            <AvatarFallback className="bg-medical-primary/10 text-medical-primary text-base font-bold">
+            <AvatarFallback data-no-translate className="bg-medical-primary/10 text-medical-primary text-base font-bold">
               {user?.name?.charAt(0) || 'P'}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold truncate">{user?.name || "Paciente"}</h1>
+            <h1 data-no-translate className="text-lg font-bold truncate">{user?.name || "Paciente"}</h1>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Badge variant="outline" className="text-[10px] h-5">Verificado</Badge>
               <span>{wallet?.balance ?? 0} TM3D</span>

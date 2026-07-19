@@ -290,11 +290,11 @@ export default function InterConsultationRequest() {
                             setStep("form");
                           }}
                         >
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-primary/10 text-primary font-bold text-lg">
+                          <div data-no-translate className="w-12 h-12 rounded-full flex items-center justify-center bg-primary/10 text-primary font-bold text-lg">
                             {doctor.name.charAt(0)}
                           </div>
                           <div className="flex-1">
-                            <div className="font-medium">{doctor.name}</div>
+                            <div data-no-translate className="font-medium">{doctor.name}</div>
                             {doctor.medicalLicense && (
                               <div className="text-xs text-muted-foreground">CRM: {doctor.medicalLicense}</div>
                             )}
@@ -325,7 +325,7 @@ export default function InterConsultationRequest() {
                         <UserCheck className="h-5 w-5" />
                         Solicitar Interconsulta
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription data-no-translate>
                         Para: Dr(a). {selectedDoctor.name} — {selectedSpecialty || selectedDoctor.specialization || "Clínico Geral"}
                       </CardDescription>
                     </div>
@@ -356,7 +356,7 @@ export default function InterConsultationRequest() {
                       <SelectContent>
                         <SelectItem value="none">Nenhum paciente específico</SelectItem>
                         {myPatients?.map((p: any) => (
-                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                          <SelectItem data-no-translate key={p.id} value={p.id}>{p.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -408,7 +408,7 @@ export default function InterConsultationRequest() {
                   <h2 className="text-xl font-bold mb-2">Solicitação Enviada!</h2>
                   <p className="text-muted-foreground mb-6 max-w-md">
                     Sua solicitação de interconsulta foi enviada com sucesso.
-                    O Dr(a). {selectedDoctor?.name} será notificado e poderá responder em breve.
+                    O Dr(a). <span data-no-translate>{selectedDoctor?.name}</span> será notificado e poderá responder em breve.
                   </p>
                   <div className="flex gap-3">
                     <Button onClick={resetForm}>
@@ -457,14 +457,14 @@ export default function InterConsultationRequest() {
                                 <span className={`text-xs font-medium ${urg.color}`}>{urg.label}</span>
                               )}
                             </div>
-                            <div className="mt-2 font-medium">
+                            <div data-no-translate className="mt-2 font-medium">
                               {isSent ? "Para" : "De"}: Dr(a). {otherDoctor?.name || "—"}
                               {otherDoctor?.specialization && (
                                 <span className="text-muted-foreground text-sm"> — {otherDoctor.specialization}</span>
                               )}
                             </div>
                             {ic.patient && (
-                              <div className="text-sm text-muted-foreground mt-1">
+                              <div data-no-translate className="text-sm text-muted-foreground mt-1">
                                 Paciente: {ic.patient.name}
                               </div>
                             )}

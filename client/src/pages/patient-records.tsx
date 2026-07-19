@@ -409,7 +409,7 @@ function renderRequestsList(requests: any[], navigate: (path: string) => void, i
         {req.doctor && (
           <div className="flex items-center gap-2 text-sm">
             <User className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium">{req.doctor.name}</span>
+            <span data-no-translate className="font-medium">{req.doctor.name}</span>
             <span className="text-muted-foreground">- {req.doctor.specialty}</span>
           </div>
         )}

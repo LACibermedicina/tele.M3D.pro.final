@@ -136,7 +136,7 @@ export default function PatientQuickInfo() {
             data-testid="img-patient-photo"
           />
           <div>
-            <h3 className="font-semibold" data-testid="text-patient-name">
+            <h3 data-no-translate className="font-semibold" data-testid="text-patient-name">
               {mockPatient.name}
             </h3>
             <p className="text-sm text-muted-foreground" data-testid="text-patient-details">
@@ -201,7 +201,7 @@ export default function PatientQuickInfo() {
                       className="w-10 h-10 rounded-full object-cover"
                     />
                     <div className="flex-1">
-                      <div className="font-medium">{mockPatient.name}</div>
+                      <div data-no-translate className="font-medium">{mockPatient.name}</div>
                       <div className="text-sm text-muted-foreground">
                         {mockPatient.age} anos • ID: {mockPatient.patientId}
                       </div>
@@ -222,8 +222,8 @@ export default function PatientQuickInfo() {
                       <i className="fas fa-user text-primary text-sm"></i>
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium">{patient.name}</div>
-                      <div className="text-sm text-muted-foreground">
+                      <div data-no-translate className="font-medium">{patient.name}</div>
+                      <div data-no-translate className="text-sm text-muted-foreground">
                         {patient.age || 'N/A'} anos • {patient.email || 'Email não informado'}
                       </div>
                     </div>

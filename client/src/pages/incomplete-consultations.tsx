@@ -333,7 +333,7 @@ export default function IncompleteConsultations() {
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
                     <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">{vc.patientName || 'Paciente'}</p>
+                      <p data-no-translate className="font-medium text-sm truncate">{vc.patientName || 'Paciente'}</p>
                       <p className="text-xs text-muted-foreground">
                         {vc.status === 'waiting' ? 'Aguardando' : 'Em andamento'}
                         {vc.startedAt && ` • ${format(new Date(vc.startedAt), "HH:mm", { locale: ptBR })}`}
@@ -389,7 +389,7 @@ export default function IncompleteConsultations() {
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium text-sm">{consultation.patientName}</span>
+                            <span data-no-translate className="font-medium text-sm">{consultation.patientName}</span>
                           </div>
                           <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
                             <AlertCircle className="h-3 w-3 mr-1" />
@@ -470,7 +470,7 @@ export default function IncompleteConsultations() {
                         <User className="h-6 w-6 text-orange-600" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-bold">{selectedConsultation.patientName}</h2>
+                        <h2 data-no-translate className="text-lg font-bold">{selectedConsultation.patientName}</h2>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
@@ -977,7 +977,7 @@ export default function IncompleteConsultations() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-green-500" />
-                            <span className="font-medium text-sm">{doctor.name}</span>
+                            <span data-no-translate className="font-medium text-sm">{doctor.name}</span>
                           </div>
                           <Badge variant="secondary" className="text-xs">{doctor.specialization || "Clínico Geral"}</Badge>
                         </div>
@@ -1063,7 +1063,7 @@ export default function IncompleteConsultations() {
             <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
               <p className="text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2">
                 <Siren className="h-4 w-4" />
-                Paciente: <strong>{selectedConsultation?.patientName}</strong>
+                Paciente: <strong data-no-translate>{selectedConsultation?.patientName}</strong>
               </p>
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                 Os médicos serão notificados via WhatsApp, notificações do sistema e SMS
@@ -1087,7 +1087,7 @@ export default function IncompleteConsultations() {
                       <div className="flex items-center justify-between flex-1">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-gray-400" />
-                          <span className="text-sm font-medium">{doctor.name || doctor.username}</span>
+                          <span data-no-translate className="text-sm font-medium">{doctor.name || doctor.username}</span>
                         </div>
                         <Badge variant="secondary" className="text-xs">{doctor.specialization || "Clínico Geral"}</Badge>
                       </div>

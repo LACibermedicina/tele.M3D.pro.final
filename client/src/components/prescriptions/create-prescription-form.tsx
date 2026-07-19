@@ -583,8 +583,8 @@ export default function CreatePrescriptionForm({ onSuccess }: CreatePrescription
                         {filteredPatients.map(patient => (
                           <SelectItem key={patient.id} value={patient.id}>
                             <div>
-                              <div className="font-medium">{patient.name}</div>
-                              <div className="text-sm text-muted-foreground">{patient.phone}</div>
+                              <div data-no-translate className="font-medium">{patient.name}</div>
+                              <div data-no-translate className="text-sm text-muted-foreground">{patient.phone}</div>
                             </div>
                           </SelectItem>
                         ))}

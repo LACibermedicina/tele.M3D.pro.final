@@ -201,7 +201,7 @@ export default function DigitalSignature() {
                       <p className="text-sm font-medium" data-testid={`document-title-${document.id}`}>
                         {document.title}
                       </p>
-                      <p className="text-xs text-muted-foreground" data-testid={`document-patient-${document.id}`}>
+                      <p data-no-translate className="text-xs text-muted-foreground" data-testid={`document-patient-${document.id}`}>
                         {document.patientName}
                       </p>
                     </div>

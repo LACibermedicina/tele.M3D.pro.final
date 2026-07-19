@@ -386,7 +386,7 @@ export default function MedicalRecords() {
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
+                    <DialogTitle data-no-translate className="flex items-center gap-2">
                       <FileText className="w-5 h-5" />
                       Criar Prontuário PMD v1.0 — {selectedPatient?.name}
                     </DialogTitle>
@@ -476,7 +476,7 @@ export default function MedicalRecords() {
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>Novo Prontuário (Legado) - {selectedPatient?.name}</DialogTitle>
+                    <DialogTitle data-no-translate>Novo Prontuário (Legado) - {selectedPatient?.name}</DialogTitle>
                   </DialogHeader>
                   <Form {...form}>
                     <form className="space-y-4">
@@ -556,8 +556,8 @@ export default function MedicalRecords() {
                         <User className="w-4 h-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate text-sm">{patient.name}</p>
-                        <p className="text-xs text-muted-foreground">{patient.phone}</p>
+                        <p data-no-translate className="font-medium truncate text-sm">{patient.name}</p>
+                        <p data-no-translate className="text-xs text-muted-foreground">{patient.phone}</p>
                         {patient.allergies && (
                           <p className="text-xs text-destructive truncate">{patient.allergies}</p>
                         )}
@@ -587,7 +587,7 @@ export default function MedicalRecords() {
                 <CardHeader>
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
-                      <CardTitle className="flex items-center gap-2 text-lg">
+                      <CardTitle data-no-translate className="flex items-center gap-2 text-lg">
                         <FileText className="w-5 h-5 text-primary" />
                         PMD v1.0 — {pmd.paciente?.nome}
                       </CardTitle>
@@ -619,14 +619,14 @@ export default function MedicalRecords() {
                   </CardHeader>
                   <CardContent className="text-sm space-y-1">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                      <span className="text-muted-foreground">Nome:</span><span>{pmd.paciente?.nome}</span>
+                      <span className="text-muted-foreground">Nome:</span><span data-no-translate>{pmd.paciente?.nome}</span>
                       <span className="text-muted-foreground">Data Nasc.:</span><span>{pmd.paciente?.dt_nasc || '—'}</span>
                       <span className="text-muted-foreground">Sexo:</span><span>{pmd.paciente?.sexo || '—'}</span>
-                      <span className="text-muted-foreground">Contato:</span><span>{pmd.paciente?.contato || '—'}</span>
-                      <span className="text-muted-foreground">Endereço:</span><span>{pmd.paciente?.endereco || '—'}</span>
-                      {pmd.paciente?.nome_mae && (<><span className="text-muted-foreground">Nome da Mãe:</span><span>{pmd.paciente.nome_mae}</span></>)}
-                      {pmd.paciente?.cpf && (<><span className="text-muted-foreground">CPF:</span><span>{pmd.paciente.cpf}</span></>)}
-                      {pmd.paciente?.sus_card && (<><span className="text-muted-foreground">Cartão SUS:</span><span>{pmd.paciente.sus_card}</span></>)}
+                      <span className="text-muted-foreground">Contato:</span><span data-no-translate>{pmd.paciente?.contato || '—'}</span>
+                      <span className="text-muted-foreground">Endereço:</span><span data-no-translate>{pmd.paciente?.endereco || '—'}</span>
+                      {pmd.paciente?.nome_mae && (<><span className="text-muted-foreground">Nome da Mãe:</span><span data-no-translate>{pmd.paciente.nome_mae}</span></>)}
+                      {pmd.paciente?.cpf && (<><span className="text-muted-foreground">CPF:</span><span data-no-translate>{pmd.paciente.cpf}</span></>)}
+                      {pmd.paciente?.sus_card && (<><span className="text-muted-foreground">Cartão SUS:</span><span data-no-translate>{pmd.paciente.sus_card}</span></>)}
                     </div>
                   </CardContent>
                 </Card>
@@ -831,9 +831,9 @@ export default function MedicalRecords() {
                         <User className="w-6 h-6 text-primary" />
                       </div>
                       <div>
-                        <h2 className="text-xl font-bold">{selectedPatient.name}</h2>
+                        <h2 data-no-translate className="text-xl font-bold">{selectedPatient.name}</h2>
                         <div className="flex items-center space-x-3 text-sm text-muted-foreground">
-                          <span>{selectedPatient.phone}</span>
+                          <span data-no-translate>{selectedPatient.phone}</span>
                           {selectedPatient.bloodType && (<><span>•</span><span>{selectedPatient.bloodType}</span></>)}
                           {selectedPatient.gender && (<><span>•</span><span>{selectedPatient.gender}</span></>)}
                         </div>
@@ -971,7 +971,7 @@ export default function MedicalRecords() {
                                         </span>
                                       </div>
                                       <div className="text-sm text-muted-foreground">
-                                        <span>Dr. {consult.doctorName}</span>
+                                        <span data-no-translate>Dr. {consult.doctorName}</span>
                                         {consult.doctorCRM && <span className="ml-1">(CRM: {consult.doctorCRM})</span>}
                                       </div>
                                       {consult.notes && <p className="text-sm mt-1">{consult.notes}</p>}
@@ -1154,7 +1154,7 @@ export default function MedicalRecords() {
                                 <h3 className="font-semibold">
                                   {format(new Date(record.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                                 </h3>
-                                <p className="text-sm text-muted-foreground">Dr. {record.doctorName || "Sistema"}</p>
+                                <p data-no-translate className="text-sm text-muted-foreground">Dr. {record.doctorName || "Sistema"}</p>
                               </div>
                               <div className="flex items-center space-x-2">
                                 {record.pmdData && (
@@ -1389,7 +1389,7 @@ export default function MedicalRecords() {
                                         <FileText className="w-5 h-5 text-emerald-600" />
                                       </div>
                                       <div>
-                                        <p className="font-medium text-sm">{rPmd?.paciente?.nome || selectedPatient.name}</p>
+                                        <p data-no-translate className="font-medium text-sm">{rPmd?.paciente?.nome || selectedPatient.name}</p>
                                         <p className="text-xs text-muted-foreground">
                                           CRM: {rPmd?.medico_crm || 'N/A'} |{' '}
                                           {format(new Date(record.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}

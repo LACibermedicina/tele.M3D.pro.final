@@ -75,12 +75,12 @@ export function MobileModePatient() {
           <div className="flex items-center gap-3">
             <Avatar className="w-10 h-10 border-2 border-primary/20">
               <AvatarImage src={user?.profilePicture || undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary font-bold">
+              <AvatarFallback data-no-translate className="bg-primary/10 text-primary font-bold">
                 {user?.name?.charAt(0) || "P"}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-base font-bold">{user?.name || "Paciente"}</h1>
+              <h1 data-no-translate className="text-base font-bold">{user?.name || "Paciente"}</h1>
               <p className="text-xs text-muted-foreground">Modo Mobile</p>
             </div>
           </div>

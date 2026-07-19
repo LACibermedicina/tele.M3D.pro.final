@@ -455,7 +455,7 @@ export default function MyConsultations() {
               Médico
             </h4>
             <div className="text-sm" data-testid="text-doctor-info">
-              <p className="font-medium">{consultation.doctor.name}</p>
+              <p data-no-translate className="font-medium">{consultation.doctor.name}</p>
               <p className="text-muted-foreground">{consultation.doctor.specialty}</p>
             </div>
           </div>
@@ -515,7 +515,7 @@ export default function MyConsultations() {
             <User className="w-4 h-4" />
             Médico
           </h4>
-          <p className="text-sm font-medium">{vc.doctor.name}</p>
+          <p data-no-translate className="text-sm font-medium">{vc.doctor.name}</p>
           {vc.doctor.specialty && (
             <p className="text-sm text-muted-foreground">{vc.doctor.specialty}</p>
           )}
@@ -721,7 +721,7 @@ export default function MyConsultations() {
                           <User className="w-4 h-4" />
                           Médico
                         </h4>
-                        <p className="text-sm font-medium">{vc.doctor.name}</p>
+                        <p data-no-translate className="text-sm font-medium">{vc.doctor.name}</p>
                         {vc.doctor.specialty && (
                           <p className="text-sm text-muted-foreground">{vc.doctor.specialty}</p>
                         )}
@@ -790,7 +790,7 @@ export default function MyConsultations() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground">
-              Como foi sua consulta com <span className="font-medium text-foreground">{ratingDialog?.doctorName}</span>?
+              Como foi sua consulta com <span data-no-translate className="font-medium text-foreground">{ratingDialog?.doctorName}</span>?
             </p>
             <div className="flex justify-center">
               <StarRating rating={ratingValue} onRate={setRatingValue} />

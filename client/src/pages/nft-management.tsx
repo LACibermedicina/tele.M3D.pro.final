@@ -464,7 +464,7 @@ export default function NftManagement() {
                     <TableBody>
                       {nftDetail.ownership.map((own) => (
                         <TableRow key={own.id}>
-                          <TableCell className="font-medium">{own.userName || own.userId}</TableCell>
+                          <TableCell data-no-translate className="font-medium">{own.userName || own.userId}</TableCell>
                           <TableCell>{own.shares}</TableCell>
                           <TableCell>{new Date(own.acquiredAt).toLocaleDateString("pt-BR")}</TableCell>
                         </TableRow>
@@ -500,7 +500,7 @@ export default function NftManagement() {
                       <TableBody>
                         {nftDetail.lgpdConsents.map((consent) => (
                           <TableRow key={consent.id}>
-                            <TableCell>{consent.userName || consent.userId}</TableCell>
+                            <TableCell data-no-translate>{consent.userName || consent.userId}</TableCell>
                             <TableCell>{consent.consentType}</TableCell>
                             <TableCell>
                               <Badge variant={consent.status === "granted" ? "default" : "secondary"}>

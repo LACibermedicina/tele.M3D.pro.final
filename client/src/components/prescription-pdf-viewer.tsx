@@ -136,7 +136,7 @@ export default function PrescriptionPDFViewer({
             <div>
               <CardTitle className="text-lg">Documentos Médicos</CardTitle>
               <p className="text-sm text-muted-foreground">
-                {patientName && `Paciente: ${patientName}`}
+                {patientName && <span data-no-translate>{`Paciente: ${patientName}`}</span>}
               </p>
             </div>
           </div>
