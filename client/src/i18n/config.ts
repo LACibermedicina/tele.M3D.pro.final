@@ -52,7 +52,8 @@ i18n
     },
     
     detection: {
-      order: ['localStorage', 'navigator', 'htmlTag'],
+      order: ['querystring', 'localStorage', 'navigator', 'htmlTag'],
+      lookupQuerystring: 'lng',
       caches: ['localStorage'],
       lookupLocalStorage: 'telemed-language',
     },

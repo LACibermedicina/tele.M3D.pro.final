@@ -77,7 +77,7 @@ export default function AdminPaymentsPage() {
       const res = await fetch(`/api/admin/payments?${queryParams.toString()}`, {
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to fetch payments");
+      if (!res.ok) throw new Error("Falha ao buscar pagamentos");
       return res.json();
     },
   });
@@ -238,7 +238,7 @@ export default function AdminPaymentsPage() {
                         <TableCell className="text-xs whitespace-nowrap">
                           {new Date(txn.createdAt).toLocaleDateString("pt-BR")}
                         </TableCell>
-                        <TableCell className="text-xs">
+                        <TableCell className="text-xs" data-no-translate>
                           <div>{txn.userName || "N/A"}</div>
                           <div className="text-muted-foreground">{txn.userEmail}</div>
                         </TableCell>
@@ -272,9 +272,9 @@ export default function AdminPaymentsPage() {
               <div className="space-y-3 text-sm">
                 <div className="grid grid-cols-2 gap-2">
                   <div><span className="text-muted-foreground">ID:</span></div>
-                  <div className="font-mono text-xs break-all">{selectedTxn.id}</div>
+                  <div className="font-mono text-xs break-all" data-no-translate>{selectedTxn.id}</div>
                   <div><span className="text-muted-foreground">Usuário:</span></div>
-                  <div>{selectedTxn.userName} ({selectedTxn.userEmail})</div>
+                  <div data-no-translate>{selectedTxn.userName} ({selectedTxn.userEmail})</div>
                   <div><span className="text-muted-foreground">Provedor:</span></div>
                   <div><ProviderBadge provider={selectedTxn.provider} /></div>
                   <div><span className="text-muted-foreground">Método:</span></div>
@@ -287,20 +287,20 @@ export default function AdminPaymentsPage() {
                   <div><StatusBadge status={selectedTxn.status} /></div>
                   {selectedTxn.providerOrderId && (
                     <>
-                      <div><span className="text-muted-foreground">Order ID:</span></div>
-                      <div className="font-mono text-xs break-all">{selectedTxn.providerOrderId}</div>
+                      <div><span className="text-muted-foreground">ID do Pedido:</span></div>
+                      <div className="font-mono text-xs break-all" data-no-translate>{selectedTxn.providerOrderId}</div>
                     </>
                   )}
                   {selectedTxn.payerEmail && (
                     <>
                       <div><span className="text-muted-foreground">Email pagador:</span></div>
-                      <div>{selectedTxn.payerEmail}</div>
+                      <div data-no-translate>{selectedTxn.payerEmail}</div>
                     </>
                   )}
                   {selectedTxn.errorMessage && (
                     <>
                       <div><span className="text-muted-foreground">Erro:</span></div>
-                      <div className="text-red-600">{selectedTxn.errorMessage}</div>
+                      <div className="text-red-600" data-no-translate>{selectedTxn.errorMessage}</div>
                     </>
                   )}
                   <div><span className="text-muted-foreground">Criado em:</span></div>

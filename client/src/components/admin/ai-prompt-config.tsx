@@ -86,7 +86,7 @@ function SeverityEditor({ severityScale, onChange }: { severityScale: SeverityLe
             <Input type="number" min={1} max={5} value={s.level} onChange={e => updateLevel(i, 'level', e.target.value)} />
           </div>
           <div className="col-span-2">
-            <Input value={s.label} onChange={e => updateLevel(i, 'label', e.target.value)} placeholder="Label" />
+            <Input value={s.label} onChange={e => updateLevel(i, 'label', e.target.value)} placeholder="Rótulo" />
           </div>
           <div className="col-span-9">
             <Input value={s.description} onChange={e => updateLevel(i, 'description', e.target.value)} placeholder="Descrição" />
@@ -146,11 +146,11 @@ function ModelParamsEditor({ modelParams, onChange }: { modelParams: AIModelPara
         <Input value={modelParams.model} onChange={e => onChange({ ...modelParams, model: e.target.value })} />
       </div>
       <div>
-        <Label>Temperature (0-1)</Label>
+        <Label>Temperatura (0-1)</Label>
         <Input type="number" step="0.1" min={0} max={1} value={modelParams.temperature} onChange={e => onChange({ ...modelParams, temperature: parseFloat(e.target.value) || 0 })} />
       </div>
       <div>
-        <Label>Max Tokens</Label>
+        <Label>Máximo de Tokens</Label>
         <Input type="number" min={256} max={32768} value={modelParams.maxTokens} onChange={e => onChange({ ...modelParams, maxTokens: parseInt(e.target.value) || 4096 })} />
       </div>
     </div>
@@ -166,7 +166,7 @@ export function ECGConfigTab() {
     queryKey: ['/api/admin/ai-config', 'ecg'],
     queryFn: async () => {
       const res = await fetch('/api/admin/ai-config/ecg', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to load');
+      if (!res.ok) throw new Error('Falha ao carregar');
       return res.json();
     },
   });
@@ -230,8 +230,8 @@ export function ECGConfigTab() {
         </div>
       </div>
 
-      <CollapsibleSection title="Prompt Passe 1 — ECG Reader" icon={Settings} defaultOpen>
-        <CardDescription>Pipeline de 7 fases do ECG Reader. Use {'{{patientInfo}}'}, {'{{colorSemantics}}'}, {'{{jsonSchema}}'}, {'{{severityScale}}'} como variáveis.</CardDescription>
+      <CollapsibleSection title="Prompt Passe 1 — Leitor de ECG" icon={Settings} defaultOpen>
+        <CardDescription>Pipeline de 7 fases do Leitor de ECG. Use {'{{patientInfo}}'}, {'{{colorSemantics}}'}, {'{{jsonSchema}}'}, {'{{severityScale}}'} como variáveis.</CardDescription>
         <Textarea
           rows={16}
           value={config.analysisPrompts.pass1_ecgReader}
@@ -240,8 +240,8 @@ export function ECGConfigTab() {
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Prompt Passe 2 — EKG Analyst" icon={Settings}>
-        <CardDescription>Metodologia do EKG Analyst. Mesmas variáveis disponíveis.</CardDescription>
+      <CollapsibleSection title="Prompt Passe 2 — Analista de EKG" icon={Settings}>
+        <CardDescription>Metodologia do Analista de EKG. Mesmas variáveis disponíveis.</CardDescription>
         <Textarea
           rows={16}
           value={config.analysisPrompts.pass2_ekgAnalyst}
@@ -334,7 +334,7 @@ function RadiologyConfigTabInner() {
     queryKey: ['/api/admin/ai-config', 'radiology'],
     queryFn: async () => {
       const res = await fetch('/api/admin/ai-config/radiology', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to load');
+      if (!res.ok) throw new Error('Falha ao carregar');
       return res.json();
     },
   });

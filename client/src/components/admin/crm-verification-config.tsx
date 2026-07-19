@@ -50,7 +50,7 @@ export function CRMVerificationConfigTab() {
     queryKey: ['/api/admin/crm-config'],
     queryFn: async () => {
       const res = await fetch('/api/admin/crm-config', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to load');
+      if (!res.ok) throw new Error('Falha ao carregar');
       return res.json();
     },
   });

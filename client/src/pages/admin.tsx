@@ -167,14 +167,14 @@ export default function AdminPage() {
       // Show toast notification for new activities
       if (activity.action === 'user_blocked') {
         toast({
-          title: "User Blocked",
-          description: `${activity.details.blockedUsername} was blocked by ${activity.details.blockedBy}`,
+          title: "Usuário Bloqueado",
+          description: `${activity.details.blockedUsername} foi bloqueado por ${activity.details.blockedBy}`,
           variant: "destructive",
         });
       } else if (activity.action === 'user_unblocked') {
         toast({
-          title: "User Unblocked",
-          description: `${activity.details.unblockedUsername} was unblocked by ${activity.details.unblockedBy}`,
+          title: "Usuário Desbloqueado",
+          description: `${activity.details.unblockedUsername} foi desbloqueado por ${activity.details.unblockedBy}`,
         });
       }
     }
@@ -225,7 +225,7 @@ export default function AdminPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/collaborators'] });
       setShowCreateCollaborator(false);
-      toast({ title: 'Success', description: 'Collaborator created successfully' });
+      toast({ title: 'Sucesso', description: 'Colaborador criado com sucesso' });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -238,7 +238,7 @@ export default function AdminPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/api-keys'] });
       setShowCreateApiKey(false);
-      toast({ title: 'Success', description: 'API key created successfully' });
+      toast({ title: 'Sucesso', description: 'Chave de API criada com sucesso' });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -251,7 +251,7 @@ export default function AdminPage() {
       apiRequest('PATCH', `/api/admin/api-keys/${keyId}`, { isActive }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/api-keys'] });
-      toast({ title: 'Success', description: 'API key updated successfully' });
+      toast({ title: 'Sucesso', description: 'Chave de API atualizada com sucesso' });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -264,7 +264,7 @@ export default function AdminPage() {
       apiRequest('POST', `/api/admin/users/${userId}/block`, { reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-      toast({ title: 'Success', description: 'User blocked successfully' });
+      toast({ title: 'Sucesso', description: 'Usuário bloqueado com sucesso' });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -277,7 +277,7 @@ export default function AdminPage() {
       apiRequest('POST', `/api/admin/users/${userId}/unblock`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-      toast({ title: 'Success', description: 'User unblocked successfully' });
+      toast({ title: 'Sucesso', description: 'Usuário desbloqueado com sucesso' });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -317,7 +317,7 @@ export default function AdminPage() {
       apiRequest('PATCH', `/api/admin/users/${userId}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-      toast({ title: 'Success', description: 'User updated successfully' });
+      toast({ title: 'Sucesso', description: 'Usuário atualizado com sucesso' });
     },
     onError: (error: any) => {
       const errorInfo = formatErrorForToast(error);
@@ -385,7 +385,7 @@ export default function AdminPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast({ title: 'Copied', description: 'Copied to clipboard' });
+    toast({ title: 'Copiado', description: 'Copiado para a área de transferência' });
   };
 
   const toggleShowApiKey = (keyId: string) => {
@@ -420,7 +420,7 @@ export default function AdminPage() {
       <div className="container mx-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 lg:space-y-8" data-testid="admin-page">
         <div className="flex items-center gap-2 sm:gap-3">
           <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-400" />
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">System Administration</h1>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Administração do Sistema</h1>
         </div>
 
         {/* Dashboard Navigation Cards */}
@@ -464,7 +464,7 @@ export default function AdminPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Collaborators</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Colaboradores</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -472,14 +472,14 @@ export default function AdminPage() {
               {(collaborators as Collaborator[]).length}
             </div>
             <p className="text-xs text-muted-foreground">
-              Active: {(collaborators as Collaborator[]).filter((c: Collaborator) => c.isActive).length}
+              Ativos: {(collaborators as Collaborator[]).filter((c: Collaborator) => c.isActive).length}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">API Keys</CardTitle>
+            <CardTitle className="text-sm font-medium">Chaves de API</CardTitle>
             <Key className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -487,14 +487,14 @@ export default function AdminPage() {
               {(apiKeys as ApiKey[]).length}
             </div>
             <p className="text-xs text-muted-foreground">
-              Active: {(apiKeys as ApiKey[]).filter((k: ApiKey) => k.isActive).length}
+              Ativas: {(apiKeys as ApiKey[]).filter((k: ApiKey) => k.isActive).length}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Requests</CardTitle>
+            <CardTitle className="text-sm font-medium">Requisições de Hoje</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -502,21 +502,21 @@ export default function AdminPage() {
               {(analytics as any)?.todayRequests || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              Success: {(analytics as any)?.todaySuccess || 0}
+              Sucesso: {(analytics as any)?.todaySuccess || 0}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Security Alerts</CardTitle>
+            <CardTitle className="text-sm font-medium">Alertas de Segurança</CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600" data-testid="security-alerts">
               {(analytics as any)?.securityAlerts || 0}
             </div>
-            <p className="text-xs text-muted-foreground">Last 24h</p>
+            <p className="text-xs text-muted-foreground">Últimas 24h</p>
           </CardContent>
         </Card>
       </div>
@@ -524,25 +524,25 @@ export default function AdminPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
+          <TabsTrigger value="users" data-testid="tab-users">Usuários</TabsTrigger>
           <TabsTrigger value="activity" data-testid="tab-activity">
             <div className="flex items-center space-x-2">
               <Zap className="h-4 w-4" />
-              <span>Live Activity</span>
+              <span>Atividade ao Vivo</span>
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
             </div>
           </TabsTrigger>
           <TabsTrigger value="error-logs" data-testid="tab-error-logs">
             <div className="flex items-center space-x-2">
               <AlertTriangle className="h-4 w-4" />
-              <span>Error Logs</span>
+              <span>Logs de Erro</span>
             </div>
           </TabsTrigger>
-          <TabsTrigger value="collaborators" data-testid="tab-collaborators">Collaborators</TabsTrigger>
-          <TabsTrigger value="api-keys" data-testid="tab-api-keys">API Keys</TabsTrigger>
-          <TabsTrigger value="monitoring" data-testid="tab-monitoring">Monitoring</TabsTrigger>
-          <TabsTrigger value="security" data-testid="tab-security">Security</TabsTrigger>
-          <TabsTrigger value="ai-references" data-testid="tab-ai-references">AI References</TabsTrigger>
+          <TabsTrigger value="collaborators" data-testid="tab-collaborators">Colaboradores</TabsTrigger>
+          <TabsTrigger value="api-keys" data-testid="tab-api-keys">Chaves de API</TabsTrigger>
+          <TabsTrigger value="monitoring" data-testid="tab-monitoring">Monitoramento</TabsTrigger>
+          <TabsTrigger value="security" data-testid="tab-security">Segurança</TabsTrigger>
+          <TabsTrigger value="ai-references" data-testid="tab-ai-references">Referências de IA</TabsTrigger>
           <TabsTrigger value="layout-theme" data-testid="tab-layout-theme">Layout & Tema</TabsTrigger>
           <TabsTrigger value="financial" data-testid="tab-financial">
             <div className="flex items-center space-x-2">
@@ -620,28 +620,28 @@ export default function AdminPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Total Users</CardTitle>
+                <CardTitle className="text-lg">Total de Usuários</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="total-users">
                   {(adminUsers as AdminUser[]).length}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Active: {(adminUsers as AdminUser[]).filter((u: AdminUser) => !u.isBlocked).length}
+                  Ativos: {(adminUsers as AdminUser[]).filter((u: AdminUser) => !u.isBlocked).length}
                 </p>
               </CardContent>
             </Card>
             
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Blocked Users</CardTitle>
+                <CardTitle className="text-lg">Usuários Bloqueados</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600" data-testid="blocked-users">
                   {(adminUsers as AdminUser[]).filter((u: AdminUser) => u.isBlocked).length}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Require attention
+                  Requerem atenção
                 </p>
               </CardContent>
             </Card>
@@ -650,7 +650,7 @@ export default function AdminPage() {
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Pill className="h-4 w-4 text-purple-600" />
-                  Pharmacists
+                  Farmacêuticos
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -658,21 +658,21 @@ export default function AdminPage() {
                   {(adminUsers as AdminUser[]).filter((u: AdminUser) => u.role === 'pharmacist').length}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Active: {(adminUsers as AdminUser[]).filter((u: AdminUser) => u.role === 'pharmacist' && !u.isBlocked).length}
+                  Ativos: {(adminUsers as AdminUser[]).filter((u: AdminUser) => u.role === 'pharmacist' && !u.isBlocked).length}
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Recent Activity</CardTitle>
+                <CardTitle className="text-lg">Atividade Recente</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="recent-activity">
                   {(recentActivity as AdminUser[]).length}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Users active today
+                  Usuários ativos hoje
                 </p>
               </CardContent>
             </Card>
@@ -682,43 +682,43 @@ export default function AdminPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>User Management</CardTitle>
+                  <CardTitle>Gestão de Usuários</CardTitle>
                   <CardDescription>
-                    Manage system users, roles, and access permissions
+                    Gerencie usuários do sistema, papéis e permissões de acesso
                   </CardDescription>
                 </div>
                 <Select value={userRoleFilter} onValueChange={setUserRoleFilter}>
                   <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Filter by role" />
+                    <SelectValue placeholder="Filtrar por papel" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="doctor">Doctor</SelectItem>
-                    <SelectItem value="patient">Patient</SelectItem>
-                    <SelectItem value="pharmacist">Pharmacist</SelectItem>
-                    <SelectItem value="researcher">Researcher</SelectItem>
-                    <SelectItem value="visitor">Visitor</SelectItem>
+                    <SelectItem value="all">Todos os Papéis</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                    <SelectItem value="doctor">Médico</SelectItem>
+                    <SelectItem value="patient">Paciente</SelectItem>
+                    <SelectItem value="pharmacist">Farmacêutico</SelectItem>
+                    <SelectItem value="researcher">Pesquisador</SelectItem>
+                    <SelectItem value="visitor">Visitante</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </CardHeader>
             <CardContent>
               {loadingUsers ? (
-                <div className="text-center py-8">Loading users...</div>
+                <div className="text-center py-8">Carregando usuários...</div>
               ) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       {[
-                        { key: 'username', label: 'Username' },
-                        { key: 'name', label: 'Name' },
-                        { key: 'role', label: 'Role' },
+                        { key: 'username', label: 'Usuário' },
+                        { key: 'name', label: 'Nome' },
+                        { key: 'role', label: 'Papel' },
                         { key: 'status', label: 'Status' },
                         { key: 'lastLogin', label: 'Último Login' },
                         { key: 'usageTime', label: 'Tempo de Uso' },
-                        { key: 'credits', label: 'TM3D Credits' },
+                        { key: 'credits', label: 'Créditos TM3D' },
                       ].map(col => (
                         <TableHead
                           key={col.key}
@@ -742,7 +742,7 @@ export default function AdminPage() {
                           </div>
                         </TableHead>
                       ))}
-                      <TableHead>Actions</TableHead>
+                      <TableHead>Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -766,9 +766,9 @@ export default function AdminPage() {
                       })
                       .map((user: AdminUser) => (
                       <TableRow key={user.id} data-testid={`user-row-${user.id}`}>
-                        <TableCell className="font-medium">{user.username}</TableCell>
+                        <TableCell className="font-medium" data-no-translate>{user.username}</TableCell>
                         <TableCell>
-                          <div>
+                          <div data-no-translate>
                             <span>{user.name}</span>
                             {user.role === 'pharmacist' && user.medicalLicense && (
                               <span className="block text-xs text-muted-foreground">CRF: {user.medicalLicense}</span>
@@ -840,7 +840,7 @@ export default function AdminPage() {
                                 size="sm"
                                 onClick={() => blockUserMutation.mutate({ 
                                   userId: user.id, 
-                                  reason: 'Administrative action' 
+                                  reason: 'Ação administrativa' 
                                 })}
                                 data-testid={`button-block-${user.id}`}
                                 disabled={blockUserMutation.isPending}
@@ -889,38 +889,38 @@ export default function AdminPage() {
           <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Edit User: {editingUser?.name}</DialogTitle>
+                <DialogTitle>Editar Usuário: <span data-no-translate>{editingUser?.name}</span></DialogTitle>
                 <DialogDescription>
-                  Update user role and permissions. Username: {editingUser?.username}
+                  Atualize o papel e as permissões do usuário. Login: <span data-no-translate>{editingUser?.username}</span>
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Role</Label>
+                  <Label>Papel</Label>
                   <Select value={editUserRole} onValueChange={setEditUserRole}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
+                      <SelectValue placeholder="Selecione o papel" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="doctor">Doctor</SelectItem>
-                      <SelectItem value="patient">Patient</SelectItem>
-                      <SelectItem value="pharmacist">Pharmacist</SelectItem>
-                      <SelectItem value="researcher">Researcher</SelectItem>
-                      <SelectItem value="visitor">Visitor</SelectItem>
+                      <SelectItem value="admin">Administrador</SelectItem>
+                      <SelectItem value="doctor">Médico</SelectItem>
+                      <SelectItem value="patient">Paciente</SelectItem>
+                      <SelectItem value="pharmacist">Farmacêutico</SelectItem>
+                      <SelectItem value="researcher">Pesquisador</SelectItem>
+                      <SelectItem value="visitor">Visitante</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {editingUser && (
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <p>Email: {editingUser.email || 'N/A'}</p>
-                    <p>Phone: {editingUser.phone || 'N/A'}</p>
-                    <p>Created: {format(new Date(editingUser.createdAt), 'MMM dd, yyyy')}</p>
+                  <div className="space-y-2 text-sm text-muted-foreground" data-no-translate>
+                    <p>E-mail: {editingUser.email || 'N/A'}</p>
+                    <p>Telefone: {editingUser.phone || 'N/A'}</p>
+                    <p>Criado em: {format(new Date(editingUser.createdAt), 'dd/MM/yyyy')}</p>
                     {editingUser.role === 'pharmacist' && editingUser.medicalLicense && (
                       <p>CRF: {editingUser.medicalLicense}</p>
                     )}
                     {editingUser.role === 'pharmacist' && editingUser.specialization && (
-                      <p>Pharmacy: {editingUser.specialization}</p>
+                      <p>Farmácia: {editingUser.specialization}</p>
                     )}
                   </div>
                 )}
@@ -1041,52 +1041,52 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-sm font-medium">
-                  {isConnected ? 'Connected' : 'Disconnected'}
+                  {isConnected ? 'Conectado' : 'Desconectado'}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Real-time connection status
+                  Status da conexão em tempo real
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Live Activities</CardTitle>
+                <CardTitle className="text-lg">Atividades ao Vivo</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="live-activities-count">
                   {realtimeActivities.length}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Recent admin actions
+                  Ações administrativas recentes
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Messages</CardTitle>
+                <CardTitle className="text-lg">Mensagens</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="websocket-messages-count">
                   {messages.length}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Total WebSocket messages
+                  Total de mensagens WebSocket
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">System Status</CardTitle>
+                <CardTitle className="text-lg">Status do Sistema</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-sm font-medium text-green-600">
                   Online
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  All systems operational
+                  Todos os sistemas operacionais
                 </p>
               </CardContent>
             </Card>
@@ -1098,13 +1098,13 @@ export default function AdminPage() {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Activity className="h-5 w-5" />
-                  <span>Live Activity Feed</span>
+                  <span>Feed de Atividade ao Vivo</span>
                   <Badge variant="outline" className="ml-2">
-                    {realtimeActivities.length} activities
+                    {realtimeActivities.length} atividades
                   </Badge>
                 </CardTitle>
                 <CardDescription>
-                  Real-time administrative actions and system events
+                  Ações administrativas e eventos do sistema em tempo real
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1112,8 +1112,8 @@ export default function AdminPage() {
                   {realtimeActivities.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <Clock className="h-8 w-8 mx-auto mb-2" />
-                      <p>No recent activity</p>
-                      <p className="text-sm">Administrative actions will appear here in real-time</p>
+                      <p>Nenhuma atividade recente</p>
+                      <p className="text-sm">Ações administrativas aparecerão aqui em tempo real</p>
                     </div>
                   ) : (
                     realtimeActivities.map((activity, index) => (
@@ -1137,16 +1137,20 @@ export default function AdminPage() {
                             </span>
                           </div>
                           <p className="text-sm font-medium mt-1">
-                            {activity.action === 'user_blocked' && 
-                              `User ${activity.details.blockedUsername} was blocked`}
-                            {activity.action === 'user_unblocked' && 
-                              `User ${activity.details.unblockedUsername} was unblocked`}
+                            {activity.action === 'user_blocked' && (
+                              <>Usuário <span data-no-translate>{activity.details.blockedUsername}</span> foi bloqueado</>
+                            )}
+                            {activity.action === 'user_unblocked' && (
+                              <>Usuário <span data-no-translate>{activity.details.unblockedUsername}</span> foi desbloqueado</>
+                            )}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {activity.action === 'user_blocked' && 
-                              `By ${activity.details.blockedBy} - ${activity.details.reason}`}
-                            {activity.action === 'user_unblocked' && 
-                              `By ${activity.details.unblockedBy}`}
+                            {activity.action === 'user_blocked' && (
+                              <>Por <span data-no-translate>{activity.details.blockedBy}</span> - <span data-no-translate>{activity.details.reason}</span></>
+                            )}
+                            {activity.action === 'user_unblocked' && (
+                              <>Por <span data-no-translate>{activity.details.unblockedBy}</span></>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -1161,13 +1165,13 @@ export default function AdminPage() {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Zap className="h-5 w-5" />
-                  <span>WebSocket Messages</span>
+                  <span>Mensagens WebSocket</span>
                   <Badge variant="outline" className="ml-2">
-                    {messages.length} messages
+                    {messages.length} mensagens
                   </Badge>
                 </CardTitle>
                 <CardDescription>
-                  Debug information for WebSocket communication
+                  Informações de depuração da comunicação WebSocket
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1175,8 +1179,8 @@ export default function AdminPage() {
                   {messages.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <Activity className="h-8 w-8 mx-auto mb-2" />
-                      <p>No WebSocket messages</p>
-                      <p className="text-sm">Messages will appear here when received</p>
+                      <p>Nenhuma mensagem WebSocket</p>
+                      <p className="text-sm">As mensagens aparecerão aqui quando recebidas</p>
                     </div>
                   ) : (
                     messages.slice(-20).reverse().map((message, index) => (
@@ -1211,23 +1215,23 @@ export default function AdminPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>External Collaborators</CardTitle>
+                  <CardTitle>Colaboradores Externos</CardTitle>
                   <CardDescription>
-                    Manage pharmacies, laboratories, and hospitals integrated with the system
+                    Gerencie farmácias, laboratórios e hospitais integrados ao sistema
                   </CardDescription>
                 </div>
                 <Dialog open={showCreateCollaborator} onOpenChange={setShowCreateCollaborator}>
                   <DialogTrigger asChild>
                     <Button data-testid="button-create-collaborator">
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Collaborator
+                      Adicionar Colaborador
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                      <DialogTitle>Create New Collaborator</DialogTitle>
+                      <DialogTitle>Criar Novo Colaborador</DialogTitle>
                       <DialogDescription>
-                        Add a new pharmacy, laboratory, or hospital to the system
+                        Adicione uma nova farmácia, laboratório ou hospital ao sistema
                       </DialogDescription>
                     </DialogHeader>
                     <CreateCollaboratorForm 
@@ -1240,24 +1244,24 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               {loadingCollaborators ? (
-                <div className="text-center py-8">Loading collaborators...</div>
+                <div className="text-center py-8">Carregando colaboradores...</div>
               ) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Tipo</TableHead>
                       <TableHead>CNPJ</TableHead>
                       <TableHead>CNES</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
+                      <TableHead>Criado em</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {(collaborators as Collaborator[]).map((collaborator: Collaborator) => (
                       <TableRow key={collaborator.id} data-testid={`collaborator-row-${collaborator.id}`}>
-                        <TableCell className="font-medium">{collaborator.name}</TableCell>
+                        <TableCell className="font-medium" data-no-translate>{collaborator.name}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{collaborator.type}</Badge>
                         </TableCell>
@@ -1265,10 +1269,10 @@ export default function AdminPage() {
                         <TableCell>{collaborator.cnes}</TableCell>
                         <TableCell>
                           <Badge variant={collaborator.isActive ? 'default' : 'secondary'}>
-                            {collaborator.isActive ? 'Active' : 'Inactive'}
+                            {collaborator.isActive ? 'Ativo' : 'Inativo'}
                           </Badge>
                         </TableCell>
-                        <TableCell>{format(new Date(collaborator.createdAt), 'MMM dd, yyyy')}</TableCell>
+                        <TableCell>{format(new Date(collaborator.createdAt), 'dd/MM/yyyy')}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -1285,23 +1289,23 @@ export default function AdminPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>API Key Management</CardTitle>
+                  <CardTitle>Gestão de Chaves de API</CardTitle>
                   <CardDescription>
-                    Generate and manage API keys for collaborator access
+                    Gere e gerencie chaves de API para acesso de colaboradores
                   </CardDescription>
                 </div>
                 <Dialog open={showCreateApiKey} onOpenChange={setShowCreateApiKey}>
                   <DialogTrigger asChild>
                     <Button data-testid="button-create-api-key">
                       <Plus className="h-4 w-4 mr-2" />
-                      Generate API Key
+                      Gerar Chave de API
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Generate New API Key</DialogTitle>
+                      <DialogTitle>Gerar Nova Chave de API</DialogTitle>
                       <DialogDescription>
-                        Create a new API key for collaborator access
+                        Crie uma nova chave de API para acesso de colaboradores
                       </DialogDescription>
                     </DialogHeader>
                     <CreateApiKeyForm 
@@ -1315,18 +1319,18 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               {loadingApiKeys ? (
-                <div className="text-center py-8">Loading API keys...</div>
+                <div className="text-center py-8">Carregando chaves de API...</div>
               ) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Key Name</TableHead>
-                      <TableHead>Collaborator</TableHead>
-                      <TableHead>API Key</TableHead>
+                      <TableHead>Nome da Chave</TableHead>
+                      <TableHead>Colaborador</TableHead>
+                      <TableHead>Chave de API</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Last Used</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead>Último Uso</TableHead>
+                      <TableHead>Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1334,8 +1338,8 @@ export default function AdminPage() {
                       const collaborator = (collaborators as Collaborator[]).find((c: Collaborator) => c.id === apiKey.collaboratorId);
                       return (
                         <TableRow key={apiKey.id} data-testid={`api-key-row-${apiKey.id}`}>
-                          <TableCell className="font-medium">{apiKey.keyName}</TableCell>
-                          <TableCell>{collaborator?.name || 'Unknown'}</TableCell>
+                          <TableCell className="font-medium" data-no-translate>{apiKey.keyName}</TableCell>
+                          <TableCell data-no-translate>{collaborator?.name || 'Desconhecido'}</TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
                               <code className="px-2 py-1 bg-muted rounded text-sm">
@@ -1361,11 +1365,11 @@ export default function AdminPage() {
                           </TableCell>
                           <TableCell>
                             <Badge variant={apiKey.isActive ? 'default' : 'secondary'}>
-                              {apiKey.isActive ? 'Active' : 'Inactive'}
+                              {apiKey.isActive ? 'Ativa' : 'Inativa'}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {apiKey.lastUsed ? format(new Date(apiKey.lastUsed), 'MMM dd, yyyy HH:mm') : 'Never'}
+                            {apiKey.lastUsed ? format(new Date(apiKey.lastUsed), 'dd/MM/yyyy HH:mm') : 'Nunca'}
                           </TableCell>
                           <TableCell>
                             <Button
@@ -1377,7 +1381,7 @@ export default function AdminPage() {
                               })}
                               data-testid={`button-toggle-status-${apiKey.id}`}
                             >
-                              {apiKey.isActive ? 'Deactivate' : 'Activate'}
+                              {apiKey.isActive ? 'Desativar' : 'Ativar'}
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -1395,32 +1399,32 @@ export default function AdminPage() {
         <TabsContent value="monitoring" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Integration Activity</CardTitle>
+              <CardTitle>Atividade de Integrações</CardTitle>
               <CardDescription>
-                Monitor all integration events and API usage
+                Monitore todos os eventos de integração e uso da API
               </CardDescription>
             </CardHeader>
             <CardContent>
               {loadingIntegrations ? (
-                <div className="text-center py-8">Loading integration logs...</div>
+                <div className="text-center py-8">Carregando registros de integração...</div>
               ) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Collaborator</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Action</TableHead>
+                      <TableHead>Hora</TableHead>
+                      <TableHead>Colaborador</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Ação</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Details</TableHead>
+                      <TableHead>Detalhes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {(integrations as CollaboratorIntegration[]).slice(0, 50).map((integration: CollaboratorIntegration) => (
                       <TableRow key={integration.id} data-testid={`integration-row-${integration.id}`}>
-                        <TableCell>{format(new Date(integration.createdAt), 'MMM dd HH:mm:ss')}</TableCell>
-                        <TableCell>{integration.collaboratorName || 'Unknown'}</TableCell>
+                        <TableCell>{format(new Date(integration.createdAt), 'dd/MM HH:mm:ss')}</TableCell>
+                        <TableCell data-no-translate>{integration.collaboratorName || 'Desconhecido'}</TableCell>
                         <TableCell>
                           <Badge className={getIntegrationTypeColor(integration.integrationType)}>
                             {integration.integrationType.replace('_', ' ')}
@@ -1438,7 +1442,7 @@ export default function AdminPage() {
                           )}
                           {integration.requestData && (
                             <details className="cursor-pointer">
-                              <summary className="text-sm text-muted-foreground">View data</summary>
+                              <summary className="text-sm text-muted-foreground">Ver dados</summary>
                               <pre className="text-xs mt-1 p-2 bg-muted rounded overflow-auto max-w-xs">
                                 {formatJsonData(integration.requestData)}
                               </pre>
@@ -1585,9 +1589,9 @@ export default function AdminPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Security Events</CardTitle>
+              <CardTitle>Eventos de Segurança</CardTitle>
               <CardDescription>
-                Monitor authentication failures, rate limit violations, and security alerts
+                Monitore falhas de autenticação, violações de limite de requisições e alertas de segurança
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1595,11 +1599,11 @@ export default function AdminPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Event Type</TableHead>
-                    <TableHead>IP Address</TableHead>
-                    <TableHead>Details</TableHead>
-                    <TableHead>Severity</TableHead>
+                    <TableHead>Hora</TableHead>
+                    <TableHead>Tipo de Evento</TableHead>
+                    <TableHead>Endereço IP</TableHead>
+                    <TableHead>Detalhes</TableHead>
+                    <TableHead>Severidade</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1612,14 +1616,14 @@ export default function AdminPage() {
                     .slice(0, 20)
                     .map((event: CollaboratorIntegration) => (
                       <TableRow key={event.id} data-testid={`security-event-row-${event.id}`}>
-                        <TableCell>{format(new Date(event.createdAt), 'MMM dd HH:mm:ss')}</TableCell>
+                        <TableCell>{format(new Date(event.createdAt), 'dd/MM HH:mm:ss')}</TableCell>
                         <TableCell>
                           <Badge variant="destructive">
                             {event.integrationType.replace('_', ' ')}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {event.requestData?.clientIp || 'Unknown'}
+                          {event.requestData?.clientIp || 'Desconhecido'}
                         </TableCell>
                         <TableCell className="max-w-xs truncate">
                           {event.errorMessage || event.action}
@@ -1628,7 +1632,7 @@ export default function AdminPage() {
                           <Badge variant={
                             event.integrationType === 'authorization_violation' ? 'destructive' : 'secondary'
                           }>
-                            {event.integrationType === 'authorization_violation' ? 'High' : 'Medium'}
+                            {event.integrationType === 'authorization_violation' ? 'Alta' : 'Média'}
                           </Badge>
                         </TableCell>
                       </TableRow>
@@ -1644,18 +1648,18 @@ export default function AdminPage() {
         <TabsContent value="ai-references" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>AI Reference Documents</CardTitle>
+              <CardTitle>Documentos de Referência de IA</CardTitle>
               <CardDescription>
-                Upload and manage PDF reference documents for AI diagnostic assistance
+                Envie e gerencie documentos PDF de referência para o assistente de diagnóstico de IA
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Upload PDF Section */}
               <div className="border-2 border-dashed rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4">Upload New PDF Reference</h3>
+                <h3 className="text-lg font-semibold mb-4">Enviar Nova Referência em PDF</h3>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="pdf-upload">PDF File (max 20MB)</Label>
+                    <Label htmlFor="pdf-upload">Arquivo PDF (máx. 20MB)</Label>
                     <Input 
                       id="pdf-upload" 
                       type="file" 
@@ -1704,10 +1708,10 @@ export default function AdminPage() {
                   </div>
                   
                   <div>
-                    <Label htmlFor="ref-title">Reference Title</Label>
+                    <Label htmlFor="ref-title">Título da Referência</Label>
                     <Input 
                       id="ref-title" 
-                      placeholder="e.g., Diabetes Clinical Guidelines 2024"
+                      placeholder="ex.: Diretrizes Clínicas de Diabetes 2024"
                       value={refTitle}
                       onChange={(e) => setRefTitle(e.target.value)}
                       data-testid="input-ref-title"
@@ -1715,11 +1719,11 @@ export default function AdminPage() {
                   </div>
                   
                   <div>
-                    <Label htmlFor="ref-content">Content/Summary</Label>
+                    <Label htmlFor="ref-content">Conteúdo/Resumo</Label>
                     <textarea 
                       id="ref-content" 
                       className="w-full min-h-[100px] p-2 border rounded-md"
-                      placeholder="Provide a summary or key points from the PDF..."
+                      placeholder="Forneça um resumo ou pontos-chave do PDF..."
                       value={refContent}
                       onChange={(e) => setRefContent(e.target.value)}
                       data-testid="input-ref-content"
@@ -1727,17 +1731,17 @@ export default function AdminPage() {
                   </div>
                   
                   <div>
-                    <Label htmlFor="ref-category">Category</Label>
+                    <Label htmlFor="ref-category">Categoria</Label>
                     <Select value={refCategory} onValueChange={setRefCategory}>
                       <SelectTrigger id="ref-category" data-testid="select-ref-category">
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Selecione a categoria" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="medical">Medical</SelectItem>
-                        <SelectItem value="procedural">Procedural</SelectItem>
-                        <SelectItem value="emergency">Emergency</SelectItem>
-                        <SelectItem value="diagnostic">Diagnostic</SelectItem>
-                        <SelectItem value="general">General</SelectItem>
+                        <SelectItem value="medical">Médica</SelectItem>
+                        <SelectItem value="procedural">Procedimental</SelectItem>
+                        <SelectItem value="emergency">Emergência</SelectItem>
+                        <SelectItem value="diagnostic">Diagnóstica</SelectItem>
+                        <SelectItem value="general">Geral</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1791,7 +1795,7 @@ export default function AdminPage() {
                         
                         toast({
                           title: "Referência Criada",
-                          description: "Documento de referência AI criado com sucesso"
+                          description: "Documento de referência de IA criado com sucesso"
                         });
                         
                         // Clear form
@@ -1814,14 +1818,14 @@ export default function AdminPage() {
                     data-testid="button-create-reference"
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    Create Reference
+                    Criar Referência
                   </Button>
                 </div>
               </div>
 
               {/* References List */}
               <div>
-                <h3 className="text-lg font-semibold mb-4">Existing References</h3>
+                <h3 className="text-lg font-semibold mb-4">Referências Existentes</h3>
                 <AIReferencesTable />
               </div>
             </CardContent>
@@ -2132,13 +2136,13 @@ function AIReferencesTable() {
         method: 'DELETE',
         credentials: 'include'
       });
-      if (!response.ok) throw new Error('Failed to delete reference');
+      if (!response.ok) throw new Error('Falha ao excluir a referência');
       return response.json();
     },
     onSuccess: () => {
       toast({
-        title: "Reference Deleted",
-        description: "AI reference document deleted successfully"
+        title: "Referência Excluída",
+        description: "Documento de referência de IA excluído com sucesso"
       });
       queryClient.invalidateQueries({ queryKey: ['/api/chatbot-references'] });
     },
@@ -2153,18 +2157,18 @@ function AIReferencesTable() {
   });
 
   if (isLoading) {
-    return <div>Loading references...</div>;
+    return <div>Carregando referências...</div>;
   }
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Title</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead>Source Type</TableHead>
+          <TableHead>Título</TableHead>
+          <TableHead>Categoria</TableHead>
+          <TableHead>Tipo de Fonte</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead>Actions</TableHead>
+          <TableHead>Ações</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -2179,7 +2183,7 @@ function AIReferencesTable() {
             </TableCell>
             <TableCell>
               <Badge variant={ref.isActive ? "default" : "secondary"}>
-                {ref.isActive ? "Active" : "Inactive"}
+                {ref.isActive ? "Ativa" : "Inativa"}
               </Badge>
             </TableCell>
             <TableCell>
@@ -2234,7 +2238,7 @@ function CreateCollaboratorForm({ onSubmit, isLoading }: { onSubmit: (data: any)
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Name</Label>
+          <Label htmlFor="name">Nome</Label>
           <Input
             id="name"
             value={formData.name}
@@ -2244,14 +2248,14 @@ function CreateCollaboratorForm({ onSubmit, isLoading }: { onSubmit: (data: any)
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="type">Type</Label>
+          <Label htmlFor="type">Tipo</Label>
           <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
             <SelectTrigger data-testid="select-collaborator-type">
-              <SelectValue placeholder="Select type" />
+              <SelectValue placeholder="Selecione o tipo" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="pharmacy">Pharmacy</SelectItem>
-              <SelectItem value="laboratory">Laboratory</SelectItem>
+              <SelectItem value="pharmacy">Farmácia</SelectItem>
+              <SelectItem value="laboratory">Laboratório</SelectItem>
               <SelectItem value="hospital">Hospital</SelectItem>
             </SelectContent>
           </Select>
@@ -2260,7 +2264,7 @@ function CreateCollaboratorForm({ onSubmit, isLoading }: { onSubmit: (data: any)
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">E-mail</Label>
           <Input
             id="email"
             type="email"
@@ -2271,7 +2275,7 @@ function CreateCollaboratorForm({ onSubmit, isLoading }: { onSubmit: (data: any)
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="phone">Phone</Label>
+          <Label htmlFor="phone">Telefone</Label>
           <Input
             id="phone"
             value={formData.phone}
@@ -2283,7 +2287,7 @@ function CreateCollaboratorForm({ onSubmit, isLoading }: { onSubmit: (data: any)
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="address">Address</Label>
+        <Label htmlFor="address">Endereço</Label>
         <Input
           id="address"
           value={formData.address}
@@ -2320,7 +2324,7 @@ function CreateCollaboratorForm({ onSubmit, isLoading }: { onSubmit: (data: any)
 
       <DialogFooter>
         <Button type="submit" disabled={isLoading} data-testid="button-submit-collaborator">
-          {isLoading ? 'Creating...' : 'Create Collaborator'}
+          {isLoading ? 'Criando...' : 'Criar Colaborador'}
         </Button>
       </DialogFooter>
     </form>
@@ -2357,13 +2361,13 @@ function CreateApiKeyForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="collaborator">Collaborator</Label>
+        <Label htmlFor="collaborator">Colaborador</Label>
         <Select 
           value={formData.collaboratorId} 
           onValueChange={(value) => setFormData({ ...formData, collaboratorId: value })}
         >
           <SelectTrigger data-testid="select-api-key-collaborator">
-            <SelectValue placeholder="Select collaborator" />
+            <SelectValue placeholder="Selecione o colaborador" />
           </SelectTrigger>
           <SelectContent>
             {collaborators.map((collaborator: Collaborator) => (
@@ -2376,12 +2380,12 @@ function CreateApiKeyForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="keyName">Key Name</Label>
+        <Label htmlFor="keyName">Nome da Chave</Label>
         <Input
           id="keyName"
           value={formData.keyName}
           onChange={(e) => setFormData({ ...formData, keyName: e.target.value })}
-          placeholder="Production API Key"
+          placeholder="Chave de API de Produção"
           required
           data-testid="input-api-key-name"
         />
@@ -2389,7 +2393,7 @@ function CreateApiKeyForm({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="rateLimit">Rate Limit (per hour)</Label>
+          <Label htmlFor="rateLimit">Limite de Requisições (por hora)</Label>
           <Input
             id="rateLimit"
             type="number"
@@ -2400,7 +2404,7 @@ function CreateApiKeyForm({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="expiresAt">Expiration Date (optional)</Label>
+          <Label htmlFor="expiresAt">Data de Expiração (opcional)</Label>
           <Input
             id="expiresAt"
             type="datetime-local"
@@ -2413,7 +2417,7 @@ function CreateApiKeyForm({
 
       <DialogFooter>
         <Button type="submit" disabled={isLoading} data-testid="button-submit-api-key">
-          {isLoading ? 'Generating...' : 'Generate API Key'}
+          {isLoading ? 'Gerando...' : 'Gerar Chave de API'}
         </Button>
       </DialogFooter>
     </form>
